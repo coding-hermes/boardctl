@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-001",
+  "task_title": "boardctl doctor subcommand \u2014 deep board validation",
+  "task_criteria": [
+    "The boardctl CLI gains a 'doctor' subcommand performing deep validation beyond 'validate': (1) git-tracked-set check on the board directory reports an error/warning if any .db or .parquet file is git-tracked under .coding-hermes/board/ (JSONL-canonical doctrine); (2) header counter sanity: ticks_total/ticks_idle in board.jsonl header cross-checked against the max tick_number present in events.jsonl; (3) fixture orphan detection: fixture ids in fixtures.jsonl that do not appear in tasks.jsonl are reported. Findings render like validate's Report; a board with findings exits non-zero with errors listed; a clean board exits 0. go build ./..., go vet ./..., go test ./... -count=1 -short all pass."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m1:38AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~89325 bytes (89.32 KB) in 44.4ms\u001b[0m\n\u001b[90m1:38AM\u001b[0m \u001b[32m\n  \u2713 tests: ?   \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t[no test files]\nok  \tgithub.com/coding-hermes/bo",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m1:38AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~89325 bytes (89.32 KB) in 44.4ms\u001b[0m\n\u001b[90m1:38AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "?   \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.043s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 The boardctl CLI gains a 'doctor' subcommand performing deep validation beyond 'validate': (1) git-tracked-set check on the board directory reports an error/warning if any .db or .parquet file is git-tracked under .coding-hermes/board/ (JSONL-canonical doctrine); (2) header counter sanity: ticks_total/ticks_idle in board.jsonl header cross-checked against the max tick_number present in events.jsonl; (3) fixture orphan detection: fixture ids in fixtures.jsonl that do not appear in tasks.jsonl are reported. Findings render like validate's Report; a board with findings exits non-zero with errors listed; a clean board exits 0. go build ./..., go vet ./..., go test ./... -count=1 -short all pass.: doctor subcommand fully implemented and verified. cmd/boardctl/main.go:93 wires 'doctor'->cmdDoctor (line 638) which calls b.Doctor(), prints rep.RenderText(), returns error when rep.HasErrors(). internal/board/doctor.go: Doctor() runs Validate() then (1) doctorGitTrackedSet reports error for any tracked .db/.parquet under the board dir; (2) doctorHeaderVsEvents reports error when header ticks_total < max events tick_number and warn when ticks_idle > ticks_total; (3) doctorFixtureOrphans reports error for fixture ids absent from tasks.jsonl. Findings render identically to validate via Report.RenderText() (validate.go:238). E2E: clean live board -> exit 0 'RESULT: OK'; dirty board (tracked board.db + stale header + orphan fixture) -> exit 1 with 3 errors listed. go build ./... exit 0; go vet ./... exit 0; go test ./... -count=1 -short exit 0 (ok internal/board); all 5 Doctor tests PASS (TestDoctorCleanBoard, TestDoctorRepoBoardNoTrackedCaches, TestDoctorGitTrackedDBError, TestDoctorHeaderCounterDrift, TestDoctorOrphanFixture). No LSP diagnostics; skylos grade A+.\nThe boardctl doctor subcommand is fully implemented with all three deep-validation checks, validate-style rendering, correct exit codes, and passing build/vet/tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 The boardctl CLI gains a 'doctor' subcommand performing deep validation beyond 'validate': (1) git-tracked-set check on the board directory reports an error/warning if any .db or .parquet file is git-tracked under .coding-hermes/board/ (JSONL-canonical doctrine); (2) header counter sanity: ticks_total/ticks_idle in board.jsonl header cross-checked against the max tick_number present in events.jsonl; (3) fixture orphan detection: fixture ids in fixtures.jsonl that do not appear in ta",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "The boardctl CLI gains a 'doctor' subcommand performing deep validation beyond 'validate': (1) git-tracked-set check on the board directory reports an error/warning if any .db or .parquet file is git-tracked under .coding-hermes/board/ (JSONL-canonical doctrine); (2) header counter sanity: ticks_total/ticks_idle in board.jsonl header cross-checked against the max tick_number present in events.jsonl; (3) fixture orphan detection: fixture ids in fixtures.jsonl that do not appear in tasks.jsonl are reported. Findings render like validate's Report; a board with findings exits non-zero with errors listed; a clean board exits 0. go build ./..., go vet ./..., go test ./... -count=1 -short all pass.",
+                "status": "PASS",
+                "detail": "doctor subcommand fully implemented and verified. cmd/boardctl/main.go:93 wires 'doctor'->cmdDoctor (line 638) which calls b.Doctor(), prints rep.RenderText(), returns error when rep.HasErrors(). internal/board/doctor.go: Doctor() runs Validate() then (1) doctorGitTrackedSet reports error for any tracked .db/.parquet under the board dir; (2) doctorHeaderVsEvents reports error when header ticks_total < max events tick_number and warn when ticks_idle > ticks_total; (3) doctorFixtureOrphans reports error for fixture ids absent from tasks.jsonl. Findings render identically to validate via Report.RenderText() (validate.go:238). E2E: clean live board -> exit 0 'RESULT: OK'; dirty board (tracked board.db + stale header + orphan fixture) -> exit 1 with 3 errors listed. go build ./... exit 0; go vet ./... exit 0; go test ./... -count=1 -short exit 0 (ok internal/board); all 5 Doctor tests PASS (TestDoctorCleanBoard, TestDoctorRepoBoardNoTrackedCaches, TestDoctorGitTrackedDBError, TestDoctorHeaderCounterDrift, TestDoctorOrphanFixture). No LSP diagnostics; skylos grade A+."
+              }
+            ],
+            "summary": "The boardctl doctor subcommand is fully implemented with all three deep-validation checks, validate-style rendering, correct exit codes, and passing build/vet/tests."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-001\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m1:38AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~89325 bytes (89.32 KB) in 44.4ms\u001b[0m\n\u001b[90m1:38AM\u001b[0m \u001b[32m\n  \u2713 tests: ?   \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t[no test files]\nok  \tgithub.com/coding-hermes/bo\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 The boardctl CLI gains a 'doctor' subcommand performing deep validation beyond 'validate': (1) git-tracked-set check on the board directory reports an error/warning if any .db or .parquet file is git-tracked under .coding-hermes/board/ (JSONL-canonical doctrine); (2) header counter sanity: ticks_total/ticks_idle in board.jsonl header cross-checked against the max tick_number present in events.jsonl; (3) fixture orphan detection: fixture ids in fixtures.jsonl that do not appear in tasks.jsonl are reported. Findings render like validate's Report; a board with findings exits non-zero with errors listed; a clean board exits 0. go build ./..., go vet ./..., go test ./... -count=1 -short all pass.: doctor subcommand fully implemented and verified. cmd/boardctl/main.go:93 wires 'doctor'->cmdDoctor (line 638) which calls b.Doctor(), prints rep.RenderText(), returns error when rep.HasErrors(). internal/board/doctor.go: Doctor() runs Validate() then (1) doctorGitTrackedSet reports error for any tracked .db/.parquet under the board dir; (2) doctorHeaderVsEvents reports error when header ticks_total < max events tick_number and warn when ticks_idle > ticks_total; (3) doctorFixtureOrphans reports error for fixture ids absent from tasks.jsonl. Findings render identically to validate via Report.RenderText() (validate.go:238). E2E: clean live board -> exit 0 'RESULT: OK'; dirty board (tracked board.db + stale header + orphan fixture) -> exit 1 with 3 errors listed. go build ./... exit 0; go vet ./... exit 0; go test ./... -count=1 -short exit 0 (ok internal/board); all 5 Doctor tests PASS (TestDoctorCleanBoard, TestDoctorRepoBoardNoTrackedCaches, TestDoctorGitTrackedDBError, TestDoctorHeaderCounterDrift, TestDoctorOrphanFixture). No LSP diagnostics; skylos grade A+.\nThe boardctl doctor subcommand is fully implemented with all three deep-validation checks, validate-style rendering, correct exit codes, and passing build/vet/tests.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-03T06:39:58.675452"
+}
