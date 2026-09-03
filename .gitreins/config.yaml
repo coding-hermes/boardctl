@@ -8,7 +8,7 @@ guards:
     lint: true
     tests: true
 evaluator:
-  max_iterations: 15
+  max_iterations: 200
   static_analysis_diagnostics: false
 history:
   enabled: true
