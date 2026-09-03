@@ -18,6 +18,13 @@ import (
 	"github.com/coding-hermes/boardctl/internal/board"
 )
 
+// version is stamped at release time via the Makefile release target:
+//
+//	go build -ldflags "-X main.version=$(VERSION)" ./cmd/boardctl
+//
+// Unstamped builds (go build / go install) report "dev".
+var version = "dev"
+
 const usageText = `boardctl — manage coding-hermes JSONL foreman boards
 
 usage:
@@ -37,6 +44,7 @@ commands:
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
   validate
   doctor
+  version
   stats   [--json] [--all]
 
 -C resolves the board dir: a repo root (looks for .coding-hermes/board),
@@ -91,6 +99,8 @@ func run(args []string) int {
 		err = cmdValidate(boardDir, rest)
 	case "doctor":
 		err = cmdDoctor(boardDir, rest)
+	case "version":
+		err = cmdVersion(rest)
 	case "stats":
 		err = cmdStats(boardDir, rest)
 	case "help", "-h", "--help":
@@ -662,6 +672,24 @@ func cmdDoctor(dir string, args []string) error {
 	if rep.HasErrors() {
 		return errors.New("doctor found errors")
 	}
+	return nil
+}
+
+// ---------- version ----------
+
+// cmdVersion prints the stamped version. The Makefile release target injects
+// the real version via -ldflags "-X main.version=..."; plain `go build` /
+// `go install` builds report "dev".
+func cmdVersion(args []string) error {
+	fs := newFlagSet("version")
+	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl version\n") }
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("version takes no positional args (got %q)", fs.Arg(0))
+	}
+	fmt.Fprintf(os.Stdout, "boardctl version %s\n", version)
 	return nil
 }
 
