@@ -36,6 +36,7 @@ commands:
           [--tick N]
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
   validate
+  doctor
   stats   [--json] [--all]
 
 -C resolves the board dir: a repo root (looks for .coding-hermes/board),
@@ -88,6 +89,8 @@ func run(args []string) int {
 		err = cmdHeader(boardDir, rest)
 	case "validate":
 		err = cmdValidate(boardDir, rest)
+	case "doctor":
+		err = cmdDoctor(boardDir, rest)
 	case "stats":
 		err = cmdStats(boardDir, rest)
 	case "help", "-h", "--help":
@@ -626,6 +629,38 @@ func cmdValidate(dir string, args []string) error {
 	fmt.Fprint(os.Stdout, rep.RenderText())
 	if rep.HasErrors() {
 		return errors.New("validation failed")
+	}
+	return nil
+}
+
+// ---------- doctor ----------
+
+func cmdDoctor(dir string, args []string) error {
+	fs := newFlagSet("doctor")
+	args = reorderArgs(args, valueFlags("C"))
+	var cdir string
+	addCFlag(fs, &cdir)
+	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl doctor [-C dir]\n") }
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("doctor takes no positional args (got %q)", fs.Arg(0))
+	}
+	if dir == "" {
+		dir = cdir
+	}
+	b, err := openBoard(dir)
+	if err != nil {
+		return err
+	}
+	rep, err := b.Doctor()
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(os.Stdout, rep.RenderText())
+	if rep.HasErrors() {
+		return errors.New("doctor found errors")
 	}
 	return nil
 }

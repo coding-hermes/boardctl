@@ -24,6 +24,9 @@ boardctl -C ~/myproject stats
 boardctl -C ~/myproject list --status pending
 boardctl -C ~/myproject show DF-MYPROJECT-1 --events
 boardctl -C ~/myproject validate
+boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
+                                   # (no .db/.parquet), header vs events ticks,
+                                   # fixture orphans
 
 # create a task row (appends tasks.jsonl + task_created event)
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
