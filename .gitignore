@@ -4,3 +4,4 @@ dist/
 __pycache__/
 .gitreins/tasks.yaml
 .gitreins/usage.jsonl
+dagger.db

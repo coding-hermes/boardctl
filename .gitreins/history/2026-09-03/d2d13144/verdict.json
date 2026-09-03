@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-002",
+  "task_title": "boardctl version stamp \u2014 version var + version subcommand",
+  "task_criteria": [
+    "The boardctl CLI gains a version stamp: (1) a version variable exists in cmd/boardctl/main.go settable via -ldflags '-X main.version=...' (Makefile already passes it); (2) a 'version' subcommand prints the stamped version (fallback 'dev' when unset); (3) go build ./..., go vet ./..., go test ./... -count=1 -short all pass."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m9:32AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~95648 bytes (95.65 KB) in 47.6ms\u001b[0m\n\u001b[90m9:32AM\u001b[0m \u001b[32m\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.002s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m9:32AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~95648 bytes (95.65 KB) in 47.6ms\u001b[0m\n\u001b[90m9:32AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.002s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.048s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 The boardctl CLI gains a version stamp: (1) a version variable exists in cmd/boardctl/main.go settable via -ldflags '-X main.version=...' (Makefile already passes it); (2) a 'version' subcommand prints the stamped version (fallback 'dev' when unset); (3) go build ./..., go vet ./..., go test ./... -count=1 -short all pass.: (1) cmd/boardctl/main.go:26 'var version = \"dev\"' settable via -ldflags; Makefile:30 passes '-X main.version=$(VERSION)'. (2) main.go:103 dispatches 'version' to cmdVersion (main.go:683) which prints 'boardctl version %s\\n' with fallback 'dev'; tests in main_test.go cover default 'dev', stamped output, and arg rejection. (3) go build ./... exit 0; go vet ./... exit 0; go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board).\nAll three sub-parts of the version-stamp criterion verified: version var + Makefile -X stamping, version subcommand with 'dev' fallback, and clean build/vet/test runs.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 The boardctl CLI gains a version stamp: (1) a version variable exists in cmd/boardctl/main.go settable via -ldflags '-X main.version=...' (Makefile already passes it); (2) a 'version' subcommand prints the stamped version (fallback 'dev' when unset); (3) go build ./..., go vet ./..., go test ./... -count=1 -short all pass.: (1) cmd/boardctl/main.go:26 'var version = \"dev\"' settable via -ldflags; Makefile:30 passes '-X main.version=$(VERSION)'. (2) main.go:103 dispatches 'version' to",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "The boardctl CLI gains a version stamp: (1) a version variable exists in cmd/boardctl/main.go settable via -ldflags '-X main.version=...' (Makefile already passes it); (2) a 'version' subcommand prints the stamped version (fallback 'dev' when unset); (3) go build ./..., go vet ./..., go test ./... -count=1 -short all pass.",
+                "status": "PASS",
+                "detail": "(1) cmd/boardctl/main.go:26 'var version = \"dev\"' settable via -ldflags; Makefile:30 passes '-X main.version=$(VERSION)'. (2) main.go:103 dispatches 'version' to cmdVersion (main.go:683) which prints 'boardctl version %s\\n' with fallback 'dev'; tests in main_test.go cover default 'dev', stamped output, and arg rejection. (3) go build ./... exit 0; go vet ./... exit 0; go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board)."
+              }
+            ],
+            "summary": "All three sub-parts of the version-stamp criterion verified: version var + Makefile -X stamping, version subcommand with 'dev' fallback, and clean build/vet/test runs."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-002\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m9:32AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~95648 bytes (95.65 KB) in 47.6ms\u001b[0m\n\u001b[90m9:32AM\u001b[0m \u001b[32m\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.002s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 The boardctl CLI gains a version stamp: (1) a version variable exists in cmd/boardctl/main.go settable via -ldflags '-X main.version=...' (Makefile already passes it); (2) a 'version' subcommand prints the stamped version (fallback 'dev' when unset); (3) go build ./..., go vet ./..., go test ./... -count=1 -short all pass.: (1) cmd/boardctl/main.go:26 'var version = \"dev\"' settable via -ldflags; Makefile:30 passes '-X main.version=$(VERSION)'. (2) main.go:103 dispatches 'version' to cmdVersion (main.go:683) which prints 'boardctl version %s\\n' with fallback 'dev'; tests in main_test.go cover default 'dev', stamped output, and arg rejection. (3) go build ./... exit 0; go vet ./... exit 0; go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board).\nAll three sub-parts of the version-stamp criterion verified: version var + Makefile -X stamping, version subcommand with 'dev' fallback, and clean build/vet/test runs.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-03T14:33:12.336597"
+}
