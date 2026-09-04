@@ -89,6 +89,11 @@ boardctl -C ~/myproject header --set-ticks-total 43
    zero-dep path a fresh user actually wants. → BT-009.
 6. **Topology B (header-on-line-1) is read-only in practice**, with the stale
    error text from (1). → BT-010.
+7. **The events trail is silent for the main verbs.** README says `create`
+   appends a `task_created` event and `update` a completion event + header
+   bump — neither happens (source: `AppendEvent` is only reachable from the
+   `event` subcommand). Discovered because 7 task filings left
+   `events.jsonl` untouched. → BT-011.
 
 ## Errors hit and their meaning
 
