@@ -29,6 +29,82 @@ func NormalizeStatus(s string) string {
 	return s
 }
 
+// GuardResultVocabulary is the canonical write vocabulary for guard_result
+// (the update --guard flag's documented set). Values are stored upper-cased.
+var GuardResultVocabulary = map[string]bool{
+	"PASS": true,
+	"FAIL": true,
+	"SKIP": true,
+}
+
+// CIResultVocabulary is the canonical write vocabulary for ci_result (the
+// update --ci flag's documented set). Values are stored upper-cased.
+var CIResultVocabulary = map[string]bool{
+	"GREEN": true,
+	"RED":   true,
+	"SKIP":  true,
+}
+
+// PriorityVocabulary is the canonical priority set used by every live fleet
+// board (P0 through P3).
+var PriorityVocabulary = map[string]bool{
+	"P0": true,
+	"P1": true,
+	"P2": true,
+	"P3": true,
+}
+
+// EventTypeVocabulary is the canonical event_type set enforced by
+// AppendEvent: the types the help text enumerates (task_created,
+// task_dispatched, task_completed, audit) plus every type boardctl itself
+// writes (task_updated) and the task/tick/board lifecycle types observed on
+// live fleet boards. Legacy free-form event_type rows already on boards are
+// NOT flagged by validate — only new writes are restricted.
+var EventTypeVocabulary = map[string]bool{
+	"audit":             true,
+	"board_bootstrap":   true,
+	"board_init":        true,
+	"board_migration":   true,
+	"dogfood":           true,
+	"e2e_verified":      true,
+	"idle":              true,
+	"spec_created":      true,
+	"task_added":        true,
+	"task_completed":    true,
+	"task_created":      true,
+	"task_dispatched":   true,
+	"task_started":      true,
+	"task_updated":      true,
+	"task_verified":     true,
+	"tick":              true,
+	"worker_dispatched": true,
+}
+
+// NormalizeResultValue canonicalizes a guard/ci result spelling: trimmed and
+// upper-cased (the form the write path stores).
+func NormalizeResultValue(v string) string {
+	return strings.ToUpper(strings.TrimSpace(v))
+}
+
+// NormalizePriority maps accepted priority spellings onto the canonical
+// P0-P3 vocabulary: bare digits ("0".."3") and case/whitespace variants
+// (" p2 ") normalize to P0..P3. Anything else passes through unchanged for
+// the caller to reject.
+func NormalizePriority(p string) string {
+	p = strings.ToUpper(strings.TrimSpace(p))
+	switch p {
+	case "0":
+		return "P0"
+	case "1":
+		return "P1"
+	case "2":
+		return "P2"
+	case "3":
+		return "P3"
+	}
+	return p
+}
+
 // TaskFilter restricts `list`/`stats` output.
 type TaskFilter struct {
 	Status   string // "" = any; canonicalized via NormalizeStatus

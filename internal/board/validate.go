@@ -2,6 +2,7 @@ package board
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -54,6 +55,10 @@ func (r *Report) HasErrors() bool { return r.Errors() > 0 }
 //   - board.jsonl header (topology A) parses with integer counters
 //   - task status is in the vocabulary {pending,in_progress,review,blocked,
 //     complete,failed}; read-side alias "completed" is accepted
+//   - BT-007: guard_result/ci_result values on existing rows are itemized
+//     warnings when free-form (legacy prose tolerated, not failed)
+//   - BT-007: depends_on ids that reference no task row are itemized warnings
+//   - BT-007: negative header counters are errors
 //
 // Exit non-zero (HasErrors) with the itemized report on any error.
 func (b *Board) Validate() (*Report, error) {
@@ -82,6 +87,7 @@ func (b *Board) validateTasks(rep *Report) {
 		return
 	}
 	seen := map[string]int{}
+	depends := map[string][]depRef{} // dependency id -> rows that reference it
 	rows := 0
 	ierr := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
 		rows++
@@ -100,12 +106,82 @@ func (b *Board) validateTasks(rep *Report) {
 			rep.Add("error", "tasks.jsonl line %d (task %s): status %q not in vocabulary {%s} ('completed' accepted as read alias)",
 				idx+1, id, st, strings.Join(sortedVocab(), ","))
 		}
+		// BT-007: guard_result/ci_result values already on boards must be
+		// in the write vocabulary. The canonical form is upper-cased
+		// (PASS/FAIL/SKIP and GREEN/RED/SKIP); case is tolerated on read
+		// so a lowercase spelling does not flag. Empty/null (never run)
+		// rows are skipped; free-form prose values ARE flagged (warn) —
+		// legacy boards carry prose in these columns that predates the
+		// vocabulary, and flagging (not failing) is the point.
+		for _, c := range []struct {
+			key   string
+			vocab map[string]bool
+		}{
+			{"guard_result", GuardResultVocabulary},
+			{"ci_result", CIResultVocabulary},
+		} {
+			v := row.String(c.key)
+			if v == "" {
+				continue // absent, null, or never-run
+			}
+			if !c.vocab[NormalizeResultValue(v)] {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): %s %q is free-form — not in vocabulary {PASS,FAIL,SKIP} / {GREEN,RED,SKIP} (writes now enforce this; hand-edit the row or rewrite via boardctl update)",
+					idx+1, id, c.key, v)
+			}
+		}
+		// BT-007: collect depends_on for the existence cross-check below.
+		for _, dep := range rowStringSlice(row, "depends_on") {
+			depends[dep] = append(depends[dep], depRef{line: idx + 1, id: id})
+		}
 		return nil
 	})
 	if ierr != nil {
 		rep.Add("error", "tasks.jsonl: %v", ierr)
 	}
+	// BT-007: dependency ids must exist in tasks.jsonl (WARN, per the board
+	// wording "validate depends_on ids exist (warn)") — legacy boards carry
+	// dangling refs that a read-only check must surface but not fail on.
+	for _, dep := range SortedKeys(depends) {
+		if _, ok := seen[dep]; !ok {
+			for _, ref := range depends[dep] {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): depends_on references nonexistent task id %q",
+					ref.line, ref.id, dep)
+			}
+		}
+	}
 	rep.Tasks = rows
+}
+
+// depRef records which row references a depends_on id (for itemized findings).
+type depRef struct {
+	line int
+	id   string
+}
+
+// rowStringSlice returns the string elements of an array-valued key (e.g.
+// depends_on). Non-array / malformed values yield nil.
+func rowStringSlice(row *Row, key string) []string {
+	raw := row.Get(key)
+	if raw == nil {
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); err != nil {
+		return nil
+	}
+	arr, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, e := range arr {
+		if s, ok := e.(string); ok && s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // validateEvents parses events.jsonl: parse errors are errors; numeric ids
@@ -169,8 +245,12 @@ func (b *Board) validateHeader(rep *Report) error {
 		return nil
 	}
 	for _, k := range []string{"version", "ticks_total", "ticks_idle"} {
-		if _, ok := row.Int(k); !ok {
+		if v, ok := row.Int(k); !ok {
 			rep.Add("error", "board.jsonl header: %s is not an integer counter", k)
+		} else if v < 0 {
+			// BT-007: counters are non-negative by definition — a
+			// negative header counter is junk, not a tick count.
+			rep.Add("error", "board.jsonl header: %s is negative (%d) — counters must be >= 0", k, v)
 		}
 	}
 	if _, ok := row.Int("cooldown_s"); !ok {

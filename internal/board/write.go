@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -22,6 +23,17 @@ func vocabList() string {
 		ks = append(ks, k)
 	}
 	return strings.Join(ks, ",")
+}
+
+// sortedEventVocab renders EventTypeVocabulary deterministically for error
+// messages.
+func sortedEventVocab() string {
+	out := make([]string, 0, len(EventTypeVocabulary))
+	for k := range EventTypeVocabulary {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return strings.Join(out, ",")
 }
 
 // DefaultTaskRowKeys is the built-in default task schema used when creating
@@ -142,6 +154,17 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	if !StatusVocabulary[status] {
 		return "", fmt.Errorf("status %q not in write vocabulary {%s}", status, vocabList())
 	}
+	// BT-007: priority is normalized-or-rejected at write time — bare
+	// digits ("1") and case variants ("p2") map onto the canonical
+	// P0-P3 set every fleet board uses, so stats never splits groups.
+	priority := NormalizePriority(spec.Priority)
+	if priority == "" {
+		priority = "P2"
+	}
+	if !PriorityVocabulary[priority] {
+		return "", fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3} (bare 0-3 are normalized; use e.g. --priority P1)", spec.Priority)
+	}
+	spec.Priority = priority
 
 	rows, last, err := b.lastTaskRow()
 	if err != nil {
@@ -150,6 +173,28 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	for _, r := range rows { // duplicate check on PARSED ids, never substrings
 		if r.String("id") == spec.ID {
 			return "", &ErrDuplicateTaskID{ID: spec.ID}
+		}
+	}
+
+	// BT-007: dependency ids must exist in tasks.jsonl. REJECTED at create
+	// (not merely warned): the create is a no-op abort — nothing is written
+	// — and the append-only store otherwise bakes a dangling reference into
+	// board history that no later edit can repair.
+	if spec.HasDependsOn {
+		known := make(map[string]bool, len(rows))
+		for _, r := range rows {
+			if id := r.String("id"); id != "" {
+				known[id] = true
+			}
+		}
+		var missing []string
+		for _, dep := range spec.DependsOn {
+			if !known[dep] {
+				missing = append(missing, dep)
+			}
+		}
+		if len(missing) > 0 {
+			return "", fmt.Errorf("depends_on references nonexistent task id(s): %s — create aborted (create the dependency task first)", strings.Join(missing, ", "))
 		}
 	}
 
@@ -178,10 +223,8 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	}
 	set := func(key string, v any) error { return row.SetGoValue(key, v, style) }
 
-	priority := spec.Priority
-	if priority == "" {
-		priority = "P2"
-	}
+	// spec.Priority is already normalized (P0-P3, default P2) and validated
+	// above; complexity defaults to 3.
 	complexity := int64(3)
 	if spec.Complexity != nil {
 		complexity = *spec.Complexity
@@ -190,7 +233,7 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 		"id":         spec.ID,
 		"title":      spec.Title,
 		"status":     status,
-		"priority":   priority,
+		"priority":   spec.Priority,
 		"complexity": complexity,
 	}
 	if spec.HasDependsOn {
@@ -378,12 +421,26 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 		}
 	}
 	if spec.Guard != nil {
-		if err := set("guard_result", strings.ToUpper(*spec.Guard)); err != nil {
+		// BT-007: guard_result is vocabulary-checked at write time (the
+		// update --guard flag's documented PASS|FAIL|SKIP set), stored
+		// upper-cased like the existing write path.
+		g := NormalizeResultValue(*spec.Guard)
+		if !GuardResultVocabulary[g] {
+			return nil, fmt.Errorf("guard %q not in vocabulary {PASS,FAIL,SKIP}", *spec.Guard)
+		}
+		if err := set("guard_result", g); err != nil {
 			return nil, err
 		}
 	}
 	if spec.CI != nil {
-		if err := set("ci_result", strings.ToUpper(*spec.CI)); err != nil {
+		// BT-007: ci_result is vocabulary-checked at write time (the
+		// update --ci flag's documented GREEN|RED|SKIP set), stored
+		// upper-cased like the existing write path.
+		c := NormalizeResultValue(*spec.CI)
+		if !CIResultVocabulary[c] {
+			return nil, fmt.Errorf("ci %q not in vocabulary {GREEN,RED,SKIP}", *spec.CI)
+		}
+		if err := set("ci_result", c); err != nil {
 			return nil, err
 		}
 	}
@@ -514,6 +571,14 @@ func (b *Board) AppendEvent(spec EventSpec) (int64, error) {
 	if etype == "" {
 		etype = "audit"
 	}
+	// BT-007: event_type is vocabulary-checked at write time — the set the
+	// help text enumerates plus every type boardctl itself writes and the
+	// task/tick/board lifecycle types observed on live fleet boards. Legacy
+	// free-form rows already on boards are tolerated (validate does not flag
+	// them); only NEW event rows are restricted.
+	if !EventTypeVocabulary[etype] {
+		return 0, fmt.Errorf("event type %q not in vocabulary {%s} — use one of the enumerated event_type values", etype, sortedEventVocab())
+	}
 	actor := spec.Actor
 	if actor == "" {
 		actor = "foreman"
@@ -623,11 +688,19 @@ func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
 		return nil
 	}
 	if u.TicksTotal != nil {
+		// BT-007: header counters are non-negative by definition — a
+		// negative value is rejected at write time.
+		if *u.TicksTotal < 0 {
+			return nil, fmt.Errorf("--set-ticks-total: %d is negative — header counters must be >= 0", *u.TicksTotal)
+		}
 		if err := set("ticks_total", *u.TicksTotal); err != nil {
 			return nil, err
 		}
 	}
 	if u.TicksIdle != nil {
+		if *u.TicksIdle < 0 {
+			return nil, fmt.Errorf("--set-ticks-idle: %d is negative — header counters must be >= 0", *u.TicksIdle)
+		}
 		if err := set("ticks_idle", *u.TicksIdle); err != nil {
 			return nil, err
 		}
