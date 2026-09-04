@@ -1,0 +1,67 @@
+{
+  "task_id": "GITREINS-JUDGE",
+  "task_title": "add explicit evaluator.model to gitreins config",
+  "task_criteria": [
+    "The .gitreins/config.yaml evaluator section declares an explicit model field (fleet convention: deepseek-v4-flash, muster pattern) so the Tier 2 judge no longer relies on the global default; max_iterations stays 200; gitreins task complete GITREINS-JUDGE returns a PASS verdict"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m8:27AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~97569 bytes (97.57 KB) in 43.9ms\u001b[0m\n\u001b[90m8:27AM\u001b[0m \u001b[32m\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m8:27AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~97569 bytes (97.57 KB) in 43.9ms\u001b[0m\n\u001b[90m8:27AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.041s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 The .gitreins/config.yaml evaluator section declares an explicit model field (fleet convention: deepseek-v4-flash, muster pattern) so the Tier 2 judge no longer relies on the global default; max_iterations stays 200; gitreins task complete GITREINS-JUDGE returns a PASS verdict: git show HEAD:.gitreins/config.yaml shows evaluator section now contains `model: deepseek-v4-flash` (added line in commit 1ed8680) and `max_iterations: 200` unchanged. Ran `gitreins task complete GITREINS-JUDGE` -> exit code 0, output 'Overall: PASS \u2713', verdict saved d267f258; report confirms GITREINS-JUDGE marked complete.\nThe evaluator.model field (deepseek-v4-flash) was added to .gitreins/config.yaml, max_iterations remains 200, and gitreins task complete GITREINS-JUDGE returns a PASS verdict.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 The .gitreins/config.yaml evaluator section declares an explicit model field (fleet convention: deepseek-v4-flash, muster pattern) so the Tier 2 judge no longer relies on the global default; max_iterations stays 200; gitreins task complete GITREINS-JUDGE returns a PASS verdict: git show HEAD:.gitreins/config.yaml shows evaluator section now contains `model: deepseek-v4-flash` (added line in commit 1ed8680) and `max_iterations: 200` unchanged. Ran `gitreins task complete GITREINS-JUD",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "The .gitreins/config.yaml evaluator section declares an explicit model field (fleet convention: deepseek-v4-flash, muster pattern) so the Tier 2 judge no longer relies on the global default; max_iterations stays 200; gitreins task complete GITREINS-JUDGE returns a PASS verdict",
+                "status": "PASS",
+                "detail": "git show HEAD:.gitreins/config.yaml shows evaluator section now contains `model: deepseek-v4-flash` (added line in commit 1ed8680) and `max_iterations: 200` unchanged. Ran `gitreins task complete GITREINS-JUDGE` -> exit code 0, output 'Overall: PASS \u2713', verdict saved d267f258; report confirms GITREINS-JUDGE marked complete."
+              }
+            ],
+            "summary": "The evaluator.model field (deepseek-v4-flash) was added to .gitreins/config.yaml, max_iterations remains 200, and gitreins task complete GITREINS-JUDGE returns a PASS verdict."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GITREINS-JUDGE\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m8:27AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~97569 bytes (97.57 KB) in 43.9ms\u001b[0m\n\u001b[90m8:27AM\u001b[0m \u001b[32m\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 The .gitreins/config.yaml evaluator section declares an explicit model field (fleet convention: deepseek-v4-flash, muster pattern) so the Tier 2 judge no longer relies on the global default; max_iterations stays 200; gitreins task complete GITREINS-JUDGE returns a PASS verdict: git show HEAD:.gitreins/config.yaml shows evaluator section now contains `model: deepseek-v4-flash` (added line in commit 1ed8680) and `max_iterations: 200` unchanged. Ran `gitreins task complete GITREINS-JUDGE` -> exit code 0, output 'Overall: PASS \u2713', verdict saved d267f258; report confirms GITREINS-JUDGE marked complete.\nThe evaluator.model field (deepseek-v4-flash) was added to .gitreins/config.yaml, max_iterations remains 200, and gitreins task complete GITREINS-JUDGE returns a PASS verdict.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-04T13:28:08.967614"
+}
