@@ -14,9 +14,10 @@ import (
 //
 //   - git tracked-set: no tracked path under the board dir may carry a .db or
 //     .parquet extension — JSONL is the canonical store, caches are untracked
-//   - header counter sanity (topology A): header ticks_total must not be
-//     behind the newest numeric tick_number in events.jsonl, and ticks_idle
-//     must not exceed ticks_total
+//   - header counter sanity (both topologies — topology B reads the line-1
+//     tasks.jsonl header): header ticks_total must not be behind the newest
+//     numeric tick_number in events.jsonl, and ticks_idle must not exceed
+//     ticks_total
 //   - fixture orphan detection: every id listed in fixtures.jsonl must have a
 //     definition row in tasks.jsonl
 func (b *Board) Doctor() (*Report, error) {
@@ -87,17 +88,14 @@ func findRepoRoot(dir string) string {
 	}
 }
 
-// doctorHeaderVsEvents compares header counters (topology A) against the
-// events stream: ticks_total behind the newest numeric event tick_number is
-// drift (an error); ticks_idle above ticks_total is an internal inconsistency
-// (a warn). Events without a numeric tick_number (legacy rows) are ignored;
+// doctorHeaderVsEvents compares header counters against the events stream in
+// BOTH topologies (BT-010 reads the topology-B line-1 header via HeaderRow):
+// ticks_total behind the newest numeric event tick_number is drift (an
+// error); ticks_idle above ticks_total is an internal inconsistency (a
+// warn). Events without a numeric tick_number (legacy rows) are ignored;
 // header/event read failures are skipped because Validate already itemized
 // them.
 func (b *Board) doctorHeaderVsEvents(rep *Report) {
-	if b.Topology != "A" {
-		rep.Add("warn", "topology B: no board.jsonl — header counters not checked")
-		return
-	}
 	rows, _, err := ReadAllRows(b.eventsPath)
 	if err != nil {
 		return // validate already reported the events read failure
@@ -143,7 +141,7 @@ func (b *Board) doctorFixtureOrphans(rep *Report) {
 	if len(fixtureIDs) == 0 {
 		return
 	}
-	taskRows, _, err := ReadAllRows(b.tasksPath)
+	taskRows, err := b.TaskRows()
 	if err != nil {
 		return // validate already reported the tasks read failure
 	}

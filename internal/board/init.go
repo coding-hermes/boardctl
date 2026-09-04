@@ -39,10 +39,12 @@ var ErrAlreadyInitialized = errors.New("board already initialized")
 // ErrAlreadyInitialized is returned.
 //
 // Init writes board files ONLY: it never runs git, never commits, and never
-// writes a header row into tasks.jsonl — a header on line 1 of tasks.jsonl is
-// topology B, which is read-only. If tasks.jsonl's first row looks like a
-// topology-B header, Init refuses rather than layering a fresh board.jsonl
-// over it (which would silently flip the read-side topology).
+// writes a header row into tasks.jsonl. If tasks.jsonl's first row looks like
+// a topology-B header, Init refuses rather than layering a fresh board.jsonl
+// over it (which would silently flip the read-side topology): init bootstraps
+// NEW boards, while a topology-B board already exists and is fully writable
+// as-is (BT-010) — migration to topology A (splitting line 1 of tasks.jsonl
+// into board.jsonl) is an optional modernization done outside init.
 //
 // It returns the resolved board dir and the paths of the files it wrote.
 func Init(dir string, opts InitOptions) (boardDir string, wrote []string, err error) {
@@ -78,7 +80,7 @@ func Init(dir string, opts InitOptions) (boardDir string, wrote []string, err er
 			return boardDir, nil, err
 		}
 		if isHeader {
-			return boardDir, nil, errors.New("tasks.jsonl line 1 looks like a topology-B header (metadata row without a task id) — topology B is read-only; migrate by splitting line 1 of tasks.jsonl into board.jsonl instead of running init")
+			return boardDir, nil, errors.New("tasks.jsonl line 1 looks like a topology-B header (metadata row without a task id) — init is for fresh boards only and this board already exists; topology B is fully writable, and migrating it to topology A (splitting line 1 of tasks.jsonl into board.jsonl) is an optional manual step")
 		}
 	}
 

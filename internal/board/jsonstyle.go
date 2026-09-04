@@ -1,5 +1,5 @@
 // Package board implements read/write access to coding-hermes foreman JSONL
-// boards. JSONL is the canonical git-tracked store; board.db / *.parquet are
+// boards. JSONL is the canonical git-tracked store; .db / *.parquet files are
 // untracked rebuildable caches and are NEVER written by this package.
 package board
 

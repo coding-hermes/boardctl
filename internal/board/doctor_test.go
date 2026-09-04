@@ -198,3 +198,35 @@ func TestDoctorOrphanFixture(t *testing.T) {
 		t.Fatalf("error %q is not the orphan-fixture finding", msgs[0])
 	}
 }
+
+// BT-010: doctor compares the topology-B line-1 header counters against the
+// events stream — the drift error fires exactly as it does on topology A,
+// and the old "header counters not checked" warn is gone.
+func TestDoctorHeaderCounterDriftOnTopologyB(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl": `{"project":"legacy","namespace":"legacy","version":3,"ticks_total":0,"ticks_idle":0}` + "\n" +
+			`{"id":"WORK-1","title":"Work","status":"pending","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":3}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := b.Doctor()
+	if err != nil {
+		t.Fatal(err)
+	}
+	msgs := errorMsgs(rep)
+	if len(msgs) != 1 {
+		t.Fatalf("errors = %d, want exactly 1: %+v", len(msgs), rep.Findings)
+	}
+	if !strings.Contains(msgs[0], "header ticks_total 0 < max events tick_number 3") {
+		t.Fatalf("error %q is not the counter-drift finding", msgs[0])
+	}
+	for _, f := range rep.Findings {
+		if strings.Contains(f.Msg, "not checked") {
+			t.Fatalf("topology-B 'not checked' warn is still emitted: %s", f.Msg)
+		}
+	}
+}

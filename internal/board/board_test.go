@@ -396,3 +396,256 @@ func TestUpdateCommitHashBumpsHeader(t *testing.T) {
 		t.Fatalf("events.jsonl has %d rows, want 1 (no event for commit-hash-only update)", n)
 	}
 }
+
+// ---------- BT-010: topology-B boards are writable ----------
+
+// newTestBoardB builds a minimal topology-B board: the header is line 1 of
+// tasks.jsonl and task rows follow it; board.jsonl does not exist.
+func newTestBoardB(t *testing.T) *Board {
+	t.Helper()
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl": `{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234"}` + "\n" +
+			`{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Topology != "B" {
+		t.Fatalf("topology = %q, want B", b.Topology)
+	}
+	return b
+}
+
+// TestBoardBHeaderRowReadsLine1: HeaderRow on topology B parses line 1 of
+// tasks.jsonl (previously it returned nil for B).
+func TestBoardBHeaderRowReadsLine1(t *testing.T) {
+	b := newTestBoardB(t)
+	hdr, err := b.HeaderRow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hdr.String("project") != "legacy" || hdr.String("namespace") != "legacy" {
+		t.Fatalf("header identity wrong: %s", RowJSONCompact(hdr))
+	}
+	if n, ok := hdr.Int("ticks_total"); !ok || n != 1 {
+		t.Fatalf("ticks_total = %v, want 1", hdr.Get("ticks_total"))
+	}
+}
+
+// TestCreateOnTopologyBAppendsAfterHeader: create on a topology-B board
+// appends a task row mirroring the LAST TASK row's schema (NOT line 1's
+// header keys), and line 1 stays byte-identical.
+func TestCreateOnTopologyBAppendsAfterHeader(t *testing.T) {
+	b := newTestBoardB(t)
+	before, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	linesBefore := strings.SplitN(strings.TrimRight(string(before), "\n"), "\n", 2)
+	if _, err := b.Create(TaskRowSpec{ID: "NEW-1", Title: "New task", Status: "pending", Priority: "P2"}); err != nil {
+		t.Fatalf("create on topology B: %v", err)
+	}
+	raw, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 2)
+	// line 1 (the header) untouched byte-for-byte
+	if lines[0] != linesBefore[0] {
+		t.Fatalf("topology-B header line mutated by create:\n got %s\nwant %s", lines[0], linesBefore[0])
+	}
+	if len(lines) != 2 || !strings.Contains(lines[1], `"NEW-1"`) {
+		t.Fatalf("appended rows wrong: %q", lines)
+	}
+	// the appended row mirrors the LAST TASK row's key set (EXIST-1's), not
+	// the header's {project,namespace,version,...} key set. (Create's
+	// guarantee-core-schema step may ADD keys the mirrored row lacks —
+	// complexity/created_at/updated_at — which is the topology-A contract
+	// too; it must never DROP or swap the mirrored set.)
+	rows, err := b.TaskRows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("task rows = %d, want 2 (header excluded)", len(rows))
+	}
+	if len(rows[1].Keys) < len(rows[0].Keys) {
+		t.Fatalf("new row schema smaller than the mirrored task row: %d keys vs %d\n%s",
+			len(rows[1].Keys), len(rows[0].Keys), RowJSONCompact(rows[1]))
+	}
+	for _, k := range rows[0].Keys {
+		if !rows[1].Has(k) {
+			t.Fatalf("new row missing mirrored key %q: %s", k, RowJSONCompact(rows[1]))
+		}
+	}
+	if rows[1].Has("project") || rows[1].Has("namespace") {
+		t.Fatalf("new row inherited header keys: %s", RowJSONCompact(rows[1]))
+	}
+}
+
+// TestCreateDuplicateOnTopologyBRejected: the dup scan must ignore the header
+// row and still catch a duplicate task id.
+func TestCreateDuplicateOnTopologyBRejected(t *testing.T) {
+	b := newTestBoardB(t)
+	_, err := b.Create(TaskRowSpec{ID: "EXIST-1", Title: "dup", Status: "pending", Priority: "P1"})
+	if err == nil {
+		t.Fatal("duplicate id accepted on topology B")
+	}
+	if _, ok := err.(*ErrDuplicateTaskID); !ok {
+		t.Fatalf("error type = %T, want *ErrDuplicateTaskID", err)
+	}
+}
+
+// TestUpdateTaskOnTopologyB: a status flip rewrites ONLY the target task
+// row — line 1 (header) and the other task lines stay byte-identical.
+func TestUpdateTaskOnTopologyB(t *testing.T) {
+	b := newTestBoardB(t)
+	before, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	linesBefore := strings.SplitN(strings.TrimRight(string(before), "\n"), "\n", 2)
+	status := "in_progress"
+	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{Status: &status}); err != nil {
+		t.Fatalf("update on topology B: %v", err)
+	}
+	raw, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 2)
+	if lines[0] != linesBefore[0] {
+		t.Fatalf("topology-B header line mutated by update:\n got %s\nwant %s", lines[0], linesBefore[0])
+	}
+	if !strings.Contains(lines[1], `"status":"in_progress"`) {
+		t.Fatalf("status not flipped: %s", lines[1])
+	}
+}
+
+// TestUpdateCommitHashBumpsLine1HeaderOnTopologyB: --commit-hash bumps
+// last_commit IN LINE 1 of tasks.jsonl (via SetHeader) while the task rows
+// keep their bytes (the target row's commit_hash aside).
+func TestUpdateCommitHashBumpsLine1HeaderOnTopologyB(t *testing.T) {
+	b := newTestBoardB(t)
+	commit := "f00df00"
+	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{CommitHash: &commit}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 2)
+	var hdr map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &hdr); err != nil {
+		t.Fatalf("line 1 no longer parses: %v (%s)", err, lines[0])
+	}
+	if hdr["last_commit"] != commit {
+		t.Fatalf("line-1 last_commit = %v, want %s", hdr["last_commit"], commit)
+	}
+	if hdr["project"] != "legacy" {
+		t.Fatalf("line-1 header identity lost: %s", lines[0])
+	}
+	if !strings.Contains(lines[1], `"commit_hash":"f00df00"`) {
+		t.Fatalf("task row missing commit_hash: %s", lines[1])
+	}
+}
+
+// TestSetHeaderOnTopologyB: a direct SetHeader rewrites ONLY line 1 of
+// tasks.jsonl; the task rows round-trip byte-identical (the same guarantee
+// topology A has for board.jsonl).
+func TestSetHeaderOnTopologyB(t *testing.T) {
+	b := newTestBoardB(t)
+	before, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	linesBefore := strings.SplitN(strings.TrimRight(string(before), "\n"), "\n", 2)
+	tt := int64(42)
+	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &tt}); err != nil {
+		t.Fatalf("SetHeader on topology B: %v", err)
+	}
+	raw, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 2)
+	var hdr map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &hdr); err != nil {
+		t.Fatalf("line 1 no longer parses: %v (%s)", err, lines[0])
+	}
+	if hdr["ticks_total"] != float64(42) || hdr["project"] != "legacy" {
+		t.Fatalf("line-1 header wrong: %s", lines[0])
+	}
+	if lines[1] != linesBefore[1] {
+		t.Fatalf("task row mutated by SetHeader:\n got %s\nwant %s", lines[1], linesBefore[1])
+	}
+}
+
+// TestSetHeaderRejectsNegativeCountersOnTopologyB: the negative-counter guard
+// holds on topology B too — and nothing is written.
+func TestSetHeaderRejectsNegativeCountersOnTopologyB(t *testing.T) {
+	b := newTestBoardB(t)
+	before, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	neg := int64(-5)
+	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &neg}); err == nil {
+		t.Fatal("negative ticks_total accepted on topology B")
+	}
+	after, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatalf("rejected header update mutated tasks.jsonl:\nbefore %s\nafter  %s", before, after)
+	}
+}
+
+// TestAppendEventOnTopologyB: events.jsonl has no header in any topology, so
+// appends work with plain MAX(id)+1 sequencing.
+func TestAppendEventOnTopologyB(t *testing.T) {
+	b := newTestBoardB(t)
+	id, err := b.AppendEvent(EventSpec{Type: "audit", Actor: "foreman", DetailText: strPtr(`"tick 2 summary"`), Tick: i64Ptr(2)})
+	if err != nil {
+		t.Fatalf("AppendEvent on topology B: %v", err)
+	}
+	if id != 2 {
+		t.Fatalf("event id = %d, want 2 (MAX+1)", id)
+	}
+	var e map[string]any
+	if err := json.Unmarshal(lastEventLine(t, b), &e); err != nil {
+		t.Fatal(err)
+	}
+	if e["id"] != float64(2) || e["tick_number"] != float64(2) {
+		t.Fatalf("event wrong: %s", lastEventLine(t, b))
+	}
+}
+
+// TestStatsAndListSkipHeaderOnTopologyB: the read side must not count the
+// line-1 header as a task.
+func TestStatsAndListSkipHeaderOnTopologyB(t *testing.T) {
+	b := newTestBoardB(t)
+	st, err := b.ComputeStats(TaskFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Total != 1 {
+		t.Fatalf("stats total = %d, want 1 (header row must not be counted)", st.Total)
+	}
+	tasks, err := b.ListTasks(TaskFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tasks) != 1 || tasks[0].String("id") != "EXIST-1" {
+		t.Fatalf("list = %v, want only EXIST-1", len(tasks))
+	}
+	row, file, err := b.ShowTask("EXIST-1")
+	if err != nil || row == nil || file != b.tasksPath {
+		t.Fatalf("ShowTask on topology B failed: %v %v %v", row != nil, file, err)
+	}
+}

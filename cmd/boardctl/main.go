@@ -1,7 +1,7 @@
 // Command boardctl manages coding-hermes JSONL foreman boards (full CRUD).
 //
-// JSONL is the canonical git-tracked board store; board.db and *.parquet are
-// untracked rebuildable caches and are NEVER written by boardctl.
+// JSONL is the canonical git-tracked board store; any .db or *.parquet files
+// are untracked rebuildable caches and are NEVER written by boardctl.
 package main
 
 import (
@@ -608,20 +608,9 @@ func cmdHeader(dir string, args []string) error {
 		return err
 	}
 	writing := *setTotal != "" || *setIdle != "" || *setCommit != ""
-	if b.Topology != "A" {
-		// topology B: header is line 1 of tasks.jsonl — read reports, writes fail.
-		msg := "topology B: header is line 1 of tasks.jsonl (read-only legacy layout) — migrate by splitting line 1 of tasks.jsonl into board.jsonl"
-		if writing {
-			return errors.New(msg)
-		}
-		if *asJSON {
-			out, _ := json.Marshal(map[string]string{"topology": "B", "note": msg})
-			fmt.Fprintln(os.Stdout, string(out))
-		} else {
-			fmt.Fprintf(os.Stderr, "boardctl: %s\n", msg)
-		}
-		return nil
-	}
+	// BT-010: no topology special case — HeaderRow reads board.jsonl (A) or
+	// line 1 of tasks.jsonl (B), and SetHeader rewrites whichever carries
+	// the header. Both read and write work identically on either topology.
 	row, err := b.HeaderRow()
 	if err != nil {
 		return err
@@ -662,7 +651,11 @@ func cmdHeader(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "header updated (line 1 of board.jsonl): %s\n", strings.Join(changed, ", "))
+	where := "line 1 of board.jsonl"
+	if b.Topology != "A" {
+		where = "line 1 of tasks.jsonl"
+	}
+	fmt.Fprintf(os.Stdout, "header updated (%s): %s\n", where, strings.Join(changed, ", "))
 	return nil
 }
 

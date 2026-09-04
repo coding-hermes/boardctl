@@ -67,8 +67,10 @@ boardctl stats
 The first `create` runs against an empty `tasks.jsonl`, so it builds the row
 from a built-in default schema (the standard fleet task fields) instead of
 mirroring a previous row. If a directory holds a legacy topology-B board (the
-header is line 1 of `tasks.jsonl`), `init` refuses — topology B is read-only;
-migrate by splitting line 1 of `tasks.jsonl` into `board.jsonl`.
+header is line 1 of `tasks.jsonl`), `init` refuses — init bootstraps NEW
+boards, and that board already exists and is fully writable as-is. Migration
+to topology A (splitting line 1 of `tasks.jsonl` into `board.jsonl`) is an
+optional modernization, done by hand outside init.
 
 Exit codes: `0` ok, `1` validation failure, `2` usage/board-not-found.
 
@@ -82,10 +84,15 @@ Exit codes: `0` ok, `1` validation failure, `2` usage/board-not-found.
   fixtures.jsonl  perpetual fixture tasks (NEVER-DONE, E2E-001, ...)
 ```
 
-Two tracked topologies are tolerated on read:
+Two tracked topologies are tolerated:
 - **A** — all four files tracked in git (current standard)
 - **B** — legacy boards where `board.jsonl` is a header object on line 1 of
   `tasks.jsonl` (auto-detected)
+
+Both topologies are FULLY WRITABLE (BT-010): on topology B the header is read
+from and rewritten on line 1 of `tasks.jsonl`, task rows are appended after
+it, and `validate`/`doctor` check the line-1 header counters the same way
+they do on topology A. `init` remains for fresh boards only.
 
 Writes are append-only for `events.jsonl`; task-row updates rewrite
 `tasks.jsonl` preserving each line's original serialization style (detected

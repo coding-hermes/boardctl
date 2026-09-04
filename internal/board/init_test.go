@@ -177,7 +177,9 @@ func TestInitIdempotentAndNoClobber(t *testing.T) {
 
 // TestInitRejectsTopologyBBoard: a hand-made topology-B board (header row on
 // line 1 of tasks.jsonl, no board.jsonl) must NOT be re-initialized — init
-// refuses instead of layering a fresh board.jsonl over the real header.
+// bootstraps fresh boards only, and refuses to layer a new board.jsonl over
+// the real header (the board itself is writable; migration is a manual,
+// optional step).
 func TestInitRejectsTopologyBBoard(t *testing.T) {
 	dir := t.TempDir()
 	boardDir := filepath.Join(dir, ".coding-hermes", "board")
@@ -189,7 +191,7 @@ func TestInitRejectsTopologyBBoard(t *testing.T) {
 	if err == nil {
 		t.Fatalf("init on topology-B board accepted (wrote=%v)", wrote)
 	}
-	if !strings.Contains(err.Error(), "topology B") || !strings.Contains(err.Error(), "read-only") {
+	if !strings.Contains(err.Error(), "topology B") || !strings.Contains(err.Error(), "fresh boards") {
 		t.Fatalf("error %q does not explain the topology-B situation", err)
 	}
 	if _, err := os.Stat(filepath.Join(boardDir, "board.jsonl")); !os.IsNotExist(err) {
@@ -259,22 +261,50 @@ func TestCreateOnEmptyInitializedBoard(t *testing.T) {
 	}
 }
 
+// initTopologyBRefusalMessage is the exact error Init returns when the
+// target's tasks.jsonl line 1 is a topology-B header (built here on a temp
+// probe dir). Feeds the stale-copy guard below.
+func initTopologyBRefusalMessage(t *testing.T) string {
+	dir := t.TempDir()
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	writeBoardFiles(t, boardDir, map[string]string{
+		"tasks.jsonl":  `{"project":"probe","namespace":"probe","version":1,"ticks_total":0}` + "\n" + `{"id":"W-1","title":"Work","status":"pending","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+	})
+	_, _, err := Init(dir, InitOptions{})
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+// staleNonTestSourceMarkers are phrases that must never reappear in live
+// non-test source: they date from the retired DuckDB-cache era or misstate
+// topology-B writability. ("board.db" is scanned too; it still legitimately
+// appears in doctor.go as the tracked-file check, so only the live
+// error/warn COPY is asserted clean via the refusal message above.)
+func staleNonTestSourceMarkers() []string {
+	return []string{"board.db", "scripts/update", "DuckDB cache", "read-only legacy layout"}
+}
+
 // TestStaleTopologyBMessagesGone: the DuckDB-era copy must be fully retired —
-// no live error/warning may mention board.db-as-header-home or scripts/update,
-// and the replacement must say topology B is read-only with the migration.
+// no live error/warning may mention board.db-as-header-home or scripts/update.
+// BT-010 world: topology-B boards are WRITABLE, so the copy must say so
+// (legacy layout, line-1 tasks.jsonl header) while still pointing at the
+// optional migration (split line 1 of tasks.jsonl into board.jsonl).
 func TestStaleTopologyBMessagesGone(t *testing.T) {
 	stale := []string{"board.db", "scripts/update", "DuckDB cache"}
-	for _, s := range []string{TopologyBWriteError.Error()} {
+	for _, s := range []string{initTopologyBRefusalMessage(t)} {
 		for _, bad := range stale {
 			if strings.Contains(s, bad) {
 				t.Fatalf("stale topology-B text %q still present in: %s", bad, s)
 			}
 		}
-		if !strings.Contains(s, "topology B") || !strings.Contains(s, "read-only") {
-			t.Fatalf("topology-B error does not describe the real topology: %s", s)
+		if !strings.Contains(s, "topology B") || !strings.Contains(s, "writable") {
+			t.Fatalf("topology-B message does not describe the writable reality: %s", s)
 		}
 		if !strings.Contains(s, "tasks.jsonl") || !strings.Contains(s, "board.jsonl") {
-			t.Fatalf("topology-B error lacks migration guidance: %s", s)
+			t.Fatalf("topology-B message lacks migration guidance: %s", s)
 		}
 	}
 	// Also scan the package source for any lingering stale copy.
@@ -290,8 +320,10 @@ func TestStaleTopologyBMessagesGone(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(data), "scripts/update") {
-			t.Fatalf("%s still references scripts/update", e.Name())
+		for _, bad := range append([]string{"scripts/update"}, staleNonTestSourceMarkers()...) {
+			if strings.Contains(string(data), bad) {
+				t.Fatalf("%s still references %q", e.Name(), bad)
+			}
 		}
 	}
 }

@@ -175,3 +175,208 @@ func TestCmdInitThenStatsViaCodingHermesDir(t *testing.T) {
 		t.Fatalf("stats output = %q, want a zero-count summary", got)
 	}
 }
+
+// ---------- BT-010: topology-B boards are writable (CLI level) ----------
+
+// seedCLITopologyBBoard writes a minimal topology-B board under dir (header
+// on line 1 of tasks.jsonl, no board.jsonl) and returns the -C target.
+func seedCLITopologyBBoard(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	if err := os.MkdirAll(boardDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"tasks.jsonl": `{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n" +
+			`{"id":"EXIST-1","title":"Existing","status":"pending","priority":"P2"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(boardDir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+// TestCmdTopologyBFullWorkflow walks the four write subcommands (create,
+// update --commit-hash, event, header read/set) plus validate and doctor
+// against the SAME hand-made topology-B board, asserting exit codes and the
+// on-disk line-1 invariants at each step.
+func TestCmdTopologyBFullWorkflow(t *testing.T) {
+	dir := seedCLITopologyBBoard(t)
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	tasksPath := filepath.Join(boardDir, "tasks.jsonl")
+	hdrBefore := `{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":null}`
+
+	// AC1: create appends a task and leaves line 1 (header) intact.
+	if code := run([]string{"-C", dir, "create", "--id", "NEW-1", "--title", "Fresh"}); code != 0 {
+		t.Fatalf("create on topology B exit code = %d, want 0", code)
+	}
+	raw, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 3)
+	if lines[0] != hdrBefore {
+		t.Fatalf("create mutated line 1:\n got %s\nwant %s", lines[0], hdrBefore)
+	}
+	if len(lines) != 3 || !strings.Contains(lines[2], `"NEW-1"`) || strings.Contains(lines[2], `"project"`) {
+		t.Fatalf("create appended wrong rows: %q", lines)
+	}
+
+	// AC3: event appends to events.jsonl. (create already appended its
+	// README-promised task_created event, so the count goes 1 -> 2 -> 3.)
+	if code := run([]string{"-C", dir, "event", "--type", "audit", "--task-id", "NEW-1"}); code != 0 {
+		t.Fatalf("event on topology B exit code = %d, want 0", code)
+	}
+	eventsRaw, err := os.ReadFile(filepath.Join(boardDir, "events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventRows := strings.Split(strings.TrimRight(string(eventsRaw), "\n"), "\n")
+	if len(eventRows) != 3 {
+		t.Fatalf("events.jsonl has %d rows, want 3 (seed + task_created + audit)", len(eventRows))
+	}
+	if !strings.Contains(eventRows[1], `"task_created"`) || !strings.Contains(eventRows[2], `"audit"`) {
+		t.Fatalf("event rows wrong: %q", eventRows)
+	}
+
+	// AC2: update flips the row and bumps last_commit IN LINE 1.
+	if code := run([]string{"-C", dir, "update", "NEW-1", "--status", "complete", "--commit-hash", "abc1234"}); code != 0 {
+		t.Fatalf("update on topology B exit code = %d, want 0", code)
+	}
+	raw, err = os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines = strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 3)
+	if !strings.Contains(lines[0], `"last_commit":"abc1234"`) {
+		t.Fatalf("update did not bump last_commit in line 1: %s", lines[0])
+	}
+	if lines[0] == hdrBefore {
+		t.Fatal("line 1 unchanged — last_commit bump missing")
+	}
+	if !strings.Contains(lines[2], `"status":"complete"`) {
+		t.Fatalf("update did not flip the task row: %s", lines[2])
+	}
+
+	// AC4a: header --json prints the line-1 header (ticks_total 1, project
+	// legacy) — not a topology note.
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "header", "--json"}); code != 0 {
+			t.Fatalf("header --json on topology B exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, `"project":"legacy"`) || !strings.Contains(got, `"ticks_total":1`) {
+		t.Fatalf("header --json output = %q, want the line-1 header object", got)
+	}
+
+	// AC4b: header --set-ticks-total rewrites ONLY line 1.
+	if code := run([]string{"-C", dir, "header", "--set-ticks-total", "7"}); code != 0 {
+		t.Fatalf("header --set-ticks-total on topology B exit code = %d, want 0", code)
+	}
+	raw, err = os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines = strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 3)
+	if !strings.Contains(lines[0], `"ticks_total":7`) {
+		t.Fatalf("line 1 ticks_total not bumped: %s", lines[0])
+	}
+	if !strings.Contains(lines[0], `"last_commit":"abc1234"`) {
+		t.Fatalf("line 1 lost last_commit: %s", lines[0])
+	}
+	if !strings.Contains(lines[2], `"status":"complete"`) {
+		t.Fatalf("task row mutated by header --set: %s", lines[2])
+	}
+
+	// AC5a: validate runs the header checks on the line-1 header — clean
+	// board, no "not checked" warn.
+	got, err = captureStdout(func() {
+		if code := run([]string{"-C", dir, "validate"}); code != 0 {
+			t.Fatalf("validate on topology B exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if strings.Contains(got, "not checked") || strings.Contains(got, "RESULT: FAIL") {
+		t.Fatalf("validate output unexpected:\n%s", got)
+	}
+}
+
+// AC5b: a negative ticks_total in the topology-B line-1 header FAILS
+// validate (the counter checks must run, not be downgraded).
+func TestCmdValidateTopologyBFlagsNegativeCounter(t *testing.T) {
+	dir := seedCLITopologyBBoard(t)
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	tasksPath := filepath.Join(boardDir, "tasks.jsonl")
+	bad := strings.Replace(
+		`{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":null}`,
+		`"ticks_total":1`, `"ticks_total":-5`, 1)
+	if err := os.WriteFile(tasksPath, []byte(bad+"\n"+
+		`{"id":"EXIST-1","title":"Existing","status":"pending","priority":"P2"}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "validate"}); code != 1 {
+			t.Fatalf("validate with negative ticks_total exit code = %d, want 1", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, "negative") || !strings.Contains(got, "ticks_total") {
+		t.Fatalf("validate report missing the negative-counter error:\n%s", got)
+	}
+}
+
+// doctor on topology B compares the line-1 header counters vs the events
+// stream (counter drift is an error; the "not checked" warn is gone).
+func TestCmdDoctorTopologyBChecksHeaderVsEvents(t *testing.T) {
+	dir := seedCLITopologyBBoard(t)
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	tasksPath := filepath.Join(boardDir, "tasks.jsonl")
+	// ticks_total 0 with a tick_number 1 event -> drift.
+	stale := strings.Replace(
+		`{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":null}`,
+		`"ticks_total":1`, `"ticks_total":0`, 1)
+	if err := os.WriteFile(tasksPath, []byte(stale+"\n"+
+		`{"id":"EXIST-1","title":"Existing","status":"pending","priority":"P2"}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "doctor"}); code != 1 {
+			t.Fatalf("doctor with stale ticks_total exit code = %d, want 1", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, "header ticks_total 0 < max events tick_number 1") {
+		t.Fatalf("doctor report missing the drift error:\n%s", got)
+	}
+	if strings.Contains(got, "not checked") {
+		t.Fatalf("doctor still emits the topology-B 'not checked' warn:\n%s", got)
+	}
+}
+
+// init on a topology-B board still refuses (fresh boards only), with the
+// writable-era wording, and writes nothing.
+func TestCmdInitOnTopologyBStillRefuses(t *testing.T) {
+	dir := seedCLITopologyBBoard(t)
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	if err := cmdInit(dir, nil); err == nil {
+		t.Fatal("init on topology-B board accepted")
+	} else if !strings.Contains(err.Error(), "topology B") || strings.Contains(err.Error(), "read-only") {
+		t.Fatalf("init refusal wording wrong: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(boardDir, "board.jsonl")); !os.IsNotExist(err) {
+		t.Fatal("board.jsonl written despite init refusal")
+	}
+}

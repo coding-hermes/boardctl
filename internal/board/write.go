@@ -124,8 +124,10 @@ type TaskRowSpec struct {
 // priority "P2", complexity 3. Values the user did not supply are reset to
 // pending-neutral defaults rather than inheriting the mirrored row's values,
 // so a fresh row is always a clean pending task no matter what the mirrored
-// row held. Append-only; fails when the parsed id already exists, or on
-// topology B (boardctl never writes caches).
+// row held. Append-only; fails when the parsed id already exists.
+// Works on BOTH topologies (BT-010): on topology B the header is line 1 of
+// tasks.jsonl and is neither mirrored, dup-checked, nor overwritten — the
+// append lands after the last task row.
 //
 // On an EMPTY tasks.jsonl (the freshly initialized state `init` produces)
 // there is no row to mirror; Create then builds the row from the BUILT-IN
@@ -135,9 +137,6 @@ type TaskRowSpec struct {
 // dispatch/completion timestamps, counters, guard/ci results, summaries,
 // created_at/updated_at) instead of failing.
 func (b *Board) Create(spec TaskRowSpec) (string, error) {
-	if b.Topology != "A" {
-		return "", TopologyBWriteError
-	}
 	if spec.ID == "" {
 		return "", fmt.Errorf("create requires --id")
 	}
@@ -289,11 +288,24 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	return spec.ID, nil
 }
 
-// lastTaskRow parses tasks.jsonl, returning all rows and the last one.
+// lastTaskRow parses tasks.jsonl, returning all task rows and the last one.
+// Topology B: line 1 is the board header (metadata, no task id) and is
+// skipped — it must never become the mirror template nor part of the
+// duplicate-id scan.
 func (b *Board) lastTaskRow() (rows []*Row, last *Row, err error) {
-	rows, _, err = ReadAllRows(b.tasksPath)
+	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
 		return nil, nil, err
+	}
+	err = IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+		if b.skipTaskLine(lines, idx) {
+			return nil
+		}
+		rows = append(rows, row)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", b.tasksPath, err)
 	}
 	if len(rows) > 0 {
 		last = rows[len(rows)-1]
@@ -305,8 +317,9 @@ func (b *Board) lastTaskRow() (rows []*Row, last *Row, err error) {
 // row's updated_at (fallback created_at), else the spec default.
 func (b *Board) tasksTSFormat(last *Row) TSFormat {
 	if last == nil {
-		if rows, _, err := ReadAllRows(b.tasksPath); err == nil && len(rows) > 0 {
-			last = rows[len(rows)-1]
+		lastRows, _, err := b.lastTaskRow()
+		if err == nil && len(lastRows) > 0 {
+			last = lastRows[len(lastRows)-1]
 		}
 	}
 	sample := ""
@@ -360,10 +373,10 @@ type UpdateSpec struct {
 // identical -> atomic rewrite. updated_at is refreshed (when the row carries
 // the key) in the row's own timestamp dialect. Fields the flag sets but the
 // row lacks are appended at the end of the row.
+// Works on topology B too (BT-010): the header is line 1 of tasks.jsonl and
+// is never an update target; with --commit-hash the header's last_commit is
+// bumped IN LINE 1 via SetHeader, leaving the rest of the file untouched.
 func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
-	if b.Topology != "A" {
-		return nil, TopologyBWriteError
-	}
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
 		return nil, err
@@ -371,6 +384,9 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 	targetIdx := -1
 	var target *Row
 	if err := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+		if b.skipTaskLine(lines, idx) {
+			return nil // topology B: the header is not a task row
+		}
 		if row.String("id") != id {
 			return nil
 		}
@@ -525,10 +541,9 @@ type EventSpec struct {
 // timestamp in the last row's dialect, schema/key-order mirrored from the
 // last event row (unknown keys nulled, tick_number added when --tick is given
 // and the mirrored row lacks it). Append-only — never rewrites events.jsonl.
+// events.jsonl has no header in ANY topology, so this works unchanged on
+// topology-B boards (BT-010).
 func (b *Board) AppendEvent(spec EventSpec) (int64, error) {
-	if b.Topology != "A" {
-		return 0, TopologyBWriteError
-	}
 	rows, _, err := ReadAllRows(b.eventsPath)
 	if err != nil {
 		return 0, err
@@ -647,14 +662,13 @@ type HeaderUpdate struct {
 	LastCommit *string
 }
 
-// SetHeader rewrites ONLY line 1 of board.jsonl (topology A) with the given
-// --set fields; every untouched header field keeps its verbatim bytes and any
-// other lines round-trip byte-identical (asserted before the atomic write).
+// SetHeader rewrites ONLY the header row — line 1 of board.jsonl (topology A)
+// or line 1 of tasks.jsonl (topology B) — with the given --set fields; every
+// untouched header field keeps its verbatim bytes and any other lines
+// round-trip byte-identical (asserted before the atomic write).
 func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
-	if b.Topology != "A" {
-		return nil, TopologyBWriteError
-	}
-	lines, err := ReadJSONLLines(b.headerPath)
+	headerPath := b.headerPathFor()
+	lines, err := ReadJSONLLines(headerPath)
 	if err != nil {
 		return nil, err
 	}
@@ -666,14 +680,14 @@ func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
 		}
 		row, err := ParseRow(l)
 		if err != nil {
-			return nil, fmt.Errorf("board.jsonl line %d: %w", i+1, err)
+			return nil, fmt.Errorf("%s line %d: %w", filepath.Base(headerPath), i+1, err)
 		}
 		header = row
 		headerIdx = i
 		break
 	}
 	if header == nil {
-		return nil, fmt.Errorf("board.jsonl is empty")
+		return nil, fmt.Errorf("%s is empty", filepath.Base(headerPath))
 	}
 	if u.TicksTotal == nil && u.TicksIdle == nil && u.LastCommit == nil {
 		return nil, fmt.Errorf("header requires at least one --set flag (--set-ticks-total/--set-ticks-idle/--set-last-commit)")
@@ -715,10 +729,10 @@ func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
 	newLines[headerIdx] = header.Marshal(style)
 	for i, l := range lines {
 		if i != headerIdx && !bytes.Equal(l, newLines[i]) {
-			return nil, fmt.Errorf("internal error: untouched line %d of board.jsonl would change — header update aborted (nothing written)", i+1)
+			return nil, fmt.Errorf("internal error: untouched line %d of %s would change — header update aborted (nothing written)", i+1, filepath.Base(headerPath))
 		}
 	}
-	if err := atomicRewrite(b.headerPath, JoinLines(newLines)); err != nil {
+	if err := atomicRewrite(headerPath, JoinLines(newLines)); err != nil {
 		return nil, err
 	}
 	return changed, nil

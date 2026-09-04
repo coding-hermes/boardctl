@@ -9,12 +9,6 @@ import (
 	"strings"
 )
 
-// TopologyBWriteError is returned when a mutating command targets a
-// topology-B board (no board.jsonl: the header is line 1 of tasks.jsonl,
-// a read-only legacy layout). Migrate by splitting line 1 of tasks.jsonl
-// into its own board.jsonl; boardctl does not rewrite topology-B boards.
-var TopologyBWriteError = errors.New("topology B: header is line 1 of tasks.jsonl (read-only legacy layout) — migrate by splitting line 1 of tasks.jsonl into board.jsonl")
-
 // Board locates one JSONL-canonical foreman board and its tracked files.
 type Board struct {
 	Dir      string // absolute board dir (.coding-hermes/board or equivalent)
@@ -117,8 +111,42 @@ func (b *Board) FixturesPath() string {
 	return ""
 }
 
-// IsTopologyA reports whether the header lives in board.jsonl (writable).
+// IsTopologyA reports whether the header lives in board.jsonl (the modern
+// layout). Topology B — the header is line 1 of tasks.jsonl — is fully
+// writable too; only `init` treats the topologies differently (it bootstraps
+// fresh boards and refuses to layer a new board.jsonl over an existing
+// topology-B header).
 func (b *Board) IsTopologyA() bool { return b.Topology == "A" }
+
+// headerPathFor returns the file that carries the board header: board.jsonl
+// on topology A, tasks.jsonl (line 1) on topology B.
+func (b *Board) headerPathFor() string {
+	if b.IsTopologyA() {
+		return b.headerPath
+	}
+	return b.tasksPath
+}
+
+// rowIsHeaderShape reports whether a parsed row looks like a board header
+// (metadata without a task id): no "id" plus at least one of the header
+// identity keys. Shared by init's topology-B detection and the task-row
+// enumeration that must skip line 1 on topology B.
+func rowIsHeaderShape(row *Row) bool {
+	return row.String("id") == "" &&
+		(row.Has("project") || row.Has("namespace") || row.Has("version") || row.Has("ticks_total"))
+}
+
+// skipTaskLine reports whether the raw line at lines[idx] is a header row
+// (topology-B line 1) rather than a task row. Task-line enumeration on
+// topology B skips it; line indices remain file-absolute so callers can map
+// back to the exact file line.
+func (b *Board) skipTaskLine(lines [][]byte, idx int) bool {
+	if b.IsTopologyA() || idx != 0 {
+		return false
+	}
+	row, err := ParseRow(bytes.TrimSpace(lines[0]))
+	return err == nil && rowIsHeaderShape(row)
+}
 
 // ReadJSONLLines reads a file, splitting on "\n" exactly as stored. The
 // returned slice round-trips byte-identically through JoinLines: the file is
@@ -186,14 +214,14 @@ func ReadAllRows(path string) (rows []*Row, raws [][]byte, err error) {
 	return rows, raws, nil
 }
 
-// HeaderRow returns the parsed line-1 header (topology A). Topology B (the
-// header is line 1 of tasks.jsonl, a read-only legacy layout) yields a nil
-// row — boardctl never reads a header out of tasks.jsonl.
+// HeaderRow returns the parsed board header row. Topology A reads line 1 of
+// board.jsonl; topology B (legacy layout) reads line 1 of tasks.jsonl — the
+// metadata row that shares the file with the task rows. BT-010: topology B
+// is fully writable (SetHeader rewrites line 1 in place), so the header is
+// read the same way in both topologies.
 func (b *Board) HeaderRow() (*Row, error) {
-	if b.Topology != "A" {
-		return nil, nil
-	}
-	lines, err := ReadJSONLLines(b.headerPath)
+	path := b.headerPathFor()
+	lines, err := ReadJSONLLines(path)
 	if err != nil {
 		return nil, err
 	}
@@ -203,11 +231,11 @@ func (b *Board) HeaderRow() (*Row, error) {
 		}
 		row, err := ParseRow(l)
 		if err != nil {
-			return nil, fmt.Errorf("board.jsonl line 1: %w", err)
+			return nil, fmt.Errorf("%s line 1: %w", filepath.Base(path), err)
 		}
 		return row, nil
 	}
-	return nil, fmt.Errorf("board.jsonl is empty (topology A requires a header row)")
+	return nil, fmt.Errorf("%s is empty (a board header row is required)", filepath.Base(path))
 }
 
 // FixtureIDs returns the union of task ids that live in fixtures.jsonl

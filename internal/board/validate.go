@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -67,12 +68,11 @@ func (b *Board) Validate() (*Report, error) {
 	if err := b.validateEvents(rep); err != nil {
 		return nil, err
 	}
-	if b.Topology == "A" {
-		if err := b.validateHeader(rep); err != nil {
-			return nil, err
-		}
-	} else {
-		rep.Add("warn", "topology B: no board.jsonl — header is line 1 of tasks.jsonl (read-only legacy layout); header counters not checked")
+	// BT-010: the header checks run in BOTH topologies — on topology B the
+	// header is line 1 of tasks.jsonl (validateHeader reads it via
+	// HeaderRow/headerPathFor), so nothing is downgraded to "not checked".
+	if err := b.validateHeader(rep); err != nil {
+		return nil, err
 	}
 	if fp := b.FixturesPath(); fp != "" {
 		b.validateFixtures(rep, fp)
@@ -90,6 +90,9 @@ func (b *Board) validateTasks(rep *Report) {
 	depends := map[string][]depRef{} // dependency id -> rows that reference it
 	rows := 0
 	ierr := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+		if b.skipTaskLine(lines, idx) {
+			return nil // topology B: line 1 is the header, not a task row
+		}
 		rows++
 		id := row.String("id")
 		if id == "" {
@@ -228,42 +231,53 @@ func (b *Board) validateEvents(rep *Report) error {
 	return nil
 }
 
+// validateHeader checks the board header: integer, non-negative tick
+// counters, an integer-or-null cooldown_s, and project/namespace identity.
+// Works in BOTH topologies (BT-010): the header is read via headerPathFor —
+// board.jsonl line 1 on topology A, tasks.jsonl line 1 on topology B — with
+// findings worded for whichever file carries it.
 func (b *Board) validateHeader(rep *Report) error {
-	lines, err := ReadJSONLLines(b.headerPath)
+	headerPath := b.headerPathFor()
+	name := filepath.Base(headerPath)
+	lines, err := ReadJSONLLines(headerPath)
 	if err != nil {
-		rep.Add("error", "board.jsonl: %v", err)
+		rep.Add("error", "%s: %v", name, err)
 		return nil
 	}
 	rep.Header = true
 	if len(lines) == 0 || len(bytes.TrimSpace(lines[0])) == 0 {
-		rep.Add("error", "board.jsonl: empty — topology A requires a header row on line 1")
+		rep.Add("error", "%s: empty — a header row is required on line 1", name)
 		return nil
 	}
 	row, err := ParseRow(bytes.TrimSpace(lines[0]))
 	if err != nil {
-		rep.Add("error", "board.jsonl line 1: %v", err)
+		rep.Add("error", "%s line 1: %v", name, err)
 		return nil
 	}
 	for _, k := range []string{"version", "ticks_total", "ticks_idle"} {
 		if v, ok := row.Int(k); !ok {
-			rep.Add("error", "board.jsonl header: %s is not an integer counter", k)
+			rep.Add("error", "%s header: %s is not an integer counter", name, k)
 		} else if v < 0 {
 			// BT-007: counters are non-negative by definition — a
 			// negative header counter is junk, not a tick count.
-			rep.Add("error", "board.jsonl header: %s is negative (%d) — counters must be >= 0", k, v)
+			rep.Add("error", "%s header: %s is negative (%d) — counters must be >= 0", name, k, v)
 		}
 	}
 	if _, ok := row.Int("cooldown_s"); !ok {
 		if raw := row.Get("cooldown_s"); raw != nil && !bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-			rep.Add("error", "board.jsonl header: cooldown_s is not an integer (or null)")
+			rep.Add("error", "%s header: cooldown_s is not an integer (or null)", name)
 		}
 	}
 	for _, k := range []string{"project", "namespace"} {
 		if row.String(k) == "" {
-			rep.Add("warn", "board.jsonl header: missing %s", k)
+			rep.Add("warn", "%s header: missing %s", name, k)
 		}
 	}
-	if len(lines) > 1 {
+	// Topology A pins the header to board.jsonl line 1: extra content after
+	// it is a shape violation. On topology B the header lives on line 1 of
+	// tasks.jsonl (task rows legitimately follow it) and board.jsonl does
+	// not exist, so there is nothing extra to flag.
+	if b.IsTopologyA() && len(lines) > 1 {
 		n := 0
 		for _, l := range lines[1:] {
 			if len(bytes.TrimSpace(l)) > 0 {

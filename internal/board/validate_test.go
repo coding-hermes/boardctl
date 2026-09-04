@@ -148,3 +148,67 @@ func TestDoctorSurfacesVocabularyAndDepFindings(t *testing.T) {
 		t.Fatalf("doctor missing dangling depends_on finding: %+v", rep.Findings)
 	}
 }
+
+// BT-010: validate checks the line-1 tasks.jsonl header on topology B with
+// the SAME counter checks as topology A — a negative ticks_total is an
+// error, and the old "header counters not checked" downgrade is gone.
+func TestValidateTopologyBChecksHeaderCounters(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl": `{"project":"legacy","namespace":"legacy","version":1,"ticks_total":-5,"ticks_idle":0}` + "\n" +
+			`{"id":"T-1","title":"t","status":"pending","priority":"P2"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := b.Validate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rep.HasErrors() {
+		t.Fatalf("negative ticks_total on topology B must be an error; findings: %+v", rep.Findings)
+	}
+	found := false
+	for _, f := range errorMsgs(rep) {
+		if strings.Contains(f, "ticks_total") && strings.Contains(f, "negative") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("no negative-counter error for ticks_total: %+v", rep.Findings)
+	}
+	if rep.Header != true {
+		t.Fatal("validate did not mark the header as parsed on topology B")
+	}
+}
+
+// BT-010: a healthy topology-B board validates clean — no "not checked"
+// downgrade warn, no header-shape complaints about the task rows that follow
+// the line-1 header.
+func TestValidateTopologyBClean(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl": `{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"cooldown_s":21600,"last_commit":null}` + "\n" +
+			`{"id":"T-1","title":"t","status":"pending","priority":"P2"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := b.Validate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.HasErrors() {
+		t.Fatalf("clean topology-B board has errors: %+v", rep.Findings)
+	}
+	if len(rep.Findings) != 0 {
+		t.Fatalf("clean topology-B board has findings (the 'not checked' warn must be gone): %+v", rep.Findings)
+	}
+	if rep.Tasks != 1 {
+		t.Fatalf("tasks counted = %d, want 1 (header excluded)", rep.Tasks)
+	}
+}

@@ -130,9 +130,31 @@ func (f TaskFilter) Match(row *Row, fixtureIDs map[string]bool) bool {
 	return true
 }
 
+// TaskRows reads tasks.jsonl into parsed task rows, skipping the line-1
+// header row on topology B (the header is board metadata, not a task).
+// Topology A returns every row.
+func (b *Board) TaskRows() ([]*Row, error) {
+	lines, err := ReadJSONLLines(b.tasksPath)
+	if err != nil {
+		return nil, err
+	}
+	var rows []*Row
+	err = IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+		if b.skipTaskLine(lines, idx) {
+			return nil
+		}
+		rows = append(rows, row)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", b.tasksPath, err)
+	}
+	return rows, nil
+}
+
 // ListTasks returns task rows (in file order) matching the filter.
 func (b *Board) ListTasks(f TaskFilter) ([]*Row, error) {
-	rows, _, err := ReadAllRows(b.tasksPath)
+	rows, err := b.TaskRows()
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +174,7 @@ func (b *Board) ListTasks(f TaskFilter) ([]*Row, error) {
 // ShowTask finds a task by parsed id. It searches tasks.jsonl first, then
 // fixtures.jsonl (a row may live in either). Returns nil, nil when absent.
 func (b *Board) ShowTask(id string) (row *Row, file string, err error) {
-	rows, _, err := ReadAllRows(b.tasksPath)
+	rows, err := b.TaskRows()
 	if err != nil {
 		return nil, "", err
 	}
@@ -201,7 +223,7 @@ type Stats struct {
 // ComputeStats tallies counts by status and by priority (string form; numeric
 // priorities like 1/2/3 appear as "1"/"2"/"3", distinct from "P1").
 func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
-	rows, _, err := ReadAllRows(b.tasksPath)
+	rows, err := b.TaskRows()
 	if err != nil {
 		return nil, err
 	}
