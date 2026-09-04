@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -115,5 +116,62 @@ func TestCmdInitThenCreateSmoke(t *testing.T) {
 	}
 	if !strings.Contains(got, "created task T-1") {
 		t.Fatalf("create output = %q, want a created-task note", got)
+	}
+}
+
+// BT-006 exit-code contract: a normal command on a board exits 0; a command
+// against a dir with NO board exits 2 (README: "2 usage/board-not-found"),
+// not 1.
+func TestCmdExitCodes(t *testing.T) {
+	// 0: normal command against a seeded board.
+	dir := t.TempDir()
+	if err := cmdInit(dir, []string{"--project", "demo"}); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "stats"}); code != 0 {
+			t.Fatalf("stats exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, "total tasks: 0") {
+		t.Fatalf("stats output = %q, want a zero-count summary", got)
+	}
+
+	// 2: board-not-found via stats.
+	if code := run([]string{"-C", t.TempDir(), "stats"}); code != 2 {
+		t.Fatalf("stats on boardless dir exit code = %d, want 2", code)
+	}
+
+	// 2: board-not-found via create (the wrapped openBoard error path).
+	if code := run([]string{"-C", t.TempDir(), "create", "--id", "X-1", "--title", "X"}); code != 2 {
+		t.Fatalf("create on boardless dir exit code = %d, want 2", code)
+	}
+
+	// 2: unknown command (unchanged).
+	if code := run([]string{"-C", dir, "nope"}); code != 2 {
+		t.Fatalf("unknown command exit code = %d, want 2", code)
+	}
+}
+
+// BT-006 end-to-end user path: init a fresh repo, then run stats through the
+// .coding-hermes dir — the exact -C form that used to fail.
+func TestCmdInitThenStatsViaCodingHermesDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := cmdInit(dir, []string{"--project", "demo"}); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", filepath.Join(dir, ".coding-hermes"), "stats"}); code != 0 {
+			t.Fatalf("stats -C <repo>/.coding-hermes exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, "total tasks: 0") {
+		t.Fatalf("stats output = %q, want a zero-count summary", got)
 	}
 }

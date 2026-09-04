@@ -114,6 +114,13 @@ func run(args []string) int {
 		return 2
 	}
 	if err != nil {
+		// Board-not-found is a usage-level failure (README exit-code
+		// contract: "2 usage/board-not-found"), not a validation failure —
+		// openBoard wraps ErrBoardNotFound with a hint, so match the chain.
+		if errors.Is(err, board.ErrBoardNotFound) {
+			fmt.Fprintf(os.Stderr, "boardctl: %v\n", err)
+			return 2
+		}
 		var dup *board.ErrDuplicateTaskID
 		if errors.As(err, &dup) {
 			fmt.Fprintf(os.Stderr, "boardctl: %v\n", err)

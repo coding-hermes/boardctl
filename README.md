@@ -19,7 +19,10 @@ Or grab a static binary from [releases](../../releases) (linux/darwin/windows/fr
 ## Usage
 
 ```bash
-# -C resolves a repo root, .coding-hermes, or the board dir itself
+# -C resolves a repo root, .coding-hermes, or the board dir itself:
+#   -C ~/myproject                    -> ~/myproject/.coding-hermes/board
+#   -C ~/myproject/.coding-hermes     -> ~/myproject/.coding-hermes/board
+#   -C ~/myproject/.coding-hermes/board -> the board dir itself
 boardctl -C ~/myproject stats
 boardctl -C ~/myproject list --status pending
 boardctl -C ~/myproject show DF-MYPROJECT-1 --events

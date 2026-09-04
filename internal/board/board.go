@@ -30,10 +30,21 @@ type Board struct {
 var ErrBoardNotFound = errors.New("no JSONL foreman board found")
 
 // boardDirCandidates lists the directories Resolve probes for a
-// tasks.jsonl+events.jsonl pair, in order: the target itself, its
-// .coding-hermes, then .coding-hermes/board. Init uses the same order (and
-// falls back to the LAST candidate as the fresh-board location).
+// tasks.jsonl+events.jsonl pair, in order. For an ordinary target (a repo
+// root or a board dir) that is: the target itself, its .coding-hermes, then
+// .coding-hermes/board. When the target itself is named .coding-hermes the
+// nested .coding-hermes/.coding-hermes/board candidate is meaningless, so the
+// board subdir <given>/board is probed instead — passing -C
+// <repo>/.coding-hermes finds <repo>/.coding-hermes/board (BT-006). Init uses
+// the same order (and falls back to the LAST candidate as the fresh-board
+// location).
 func boardDirCandidates(abs string) []string {
+	if filepath.Base(abs) == ".coding-hermes" {
+		return []string{
+			abs,
+			filepath.Join(abs, "board"),
+		}
+	}
 	return []string{
 		abs,
 		filepath.Join(abs, ".coding-hermes"),
@@ -43,8 +54,13 @@ func boardDirCandidates(abs string) []string {
 
 // Resolve locates a board from a user-supplied -C target:
 //
-//	-C <repo-root>        -> <repo>/.coding-hermes/board
-//	-C <repo>/.coding-hermes/board  (or .coding-hermes, or the board dir itself)
+//	-C <repo-root>                  -> <repo>/.coding-hermes/board
+//	-C <repo>/.coding-hermes        -> <repo>/.coding-hermes/board
+//	-C <repo>/.coding-hermes/board  -> the board dir itself
+//
+// The probing order is boardDirCandidates: the target itself, then the
+// nested locations (for a .coding-hermes target the board/ subdir, otherwise
+// .coding-hermes/board).
 //
 // An empty target means the current working directory (same probing rules).
 func Resolve(target string) (*Board, error) {

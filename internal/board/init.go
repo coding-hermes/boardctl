@@ -22,8 +22,8 @@ var ErrAlreadyInitialized = errors.New("board already initialized")
 
 // Init bootstraps a fresh topology-A board so `create` works on a brand-new
 // project. The board dir is resolved with the same candidate order Resolve
-// probes (the target itself, its .coding-hermes, then .coding-hermes/board —
-// see boardDirCandidates); when no existing board is found the standard fresh
+// probes (the target itself, then the nested locations — see
+// boardDirCandidates); when no existing board is found the standard fresh
 // location <target>/.coding-hermes/board is used, so a follow-up Resolve
 // finds the board.
 //
@@ -114,9 +114,9 @@ func Init(dir string, opts InitOptions) (boardDir string, wrote []string, err er
 }
 
 // defaultBoardDir mirrors Resolve's candidate probing: an existing
-// tasks.jsonl+events.jsonl pair wins (the init target itself, its
-// .coding-hermes, then .coding-hermes/board); otherwise the fresh board goes
-// to the STANDARD fleet location <target>/.coding-hermes/board so a follow-up
+// tasks.jsonl+events.jsonl pair wins (the init target itself, then the nested
+// locations — see boardDirCandidates); otherwise the fresh board goes to the
+// STANDARD fleet location <target>/.coding-hermes/board so a follow-up
 // Resolve finds it. Targets that already carry the .coding-hermes or board
 // component are normalized (not doubled): init -C <repo>/.coding-hermes seeds
 // <repo>/.coding-hermes/board, init -C <repo>/.coding-hermes/board seeds the

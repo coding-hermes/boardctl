@@ -3,6 +3,7 @@ package board
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -181,6 +182,92 @@ func TestValidateTopologyA(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 func i64Ptr(i int64) *int64   { return &i }
+
+// BT-006: Resolve(-C) contract — repo root, .coding-hermes dir, and the
+// board dir itself all land on the same board; an empty dir finds nothing.
+func TestResolveRepoRootFindsNestedBoard(t *testing.T) {
+	repo := t.TempDir()
+	boardDir := filepath.Join(repo, ".coding-hermes", "board")
+	writeBoardFiles(t, boardDir, map[string]string{
+		"tasks.jsonl":  `{"id":"E-1","title":"Existing","status":"pending","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+	})
+
+	b, err := Resolve(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Dir != boardDir {
+		t.Fatalf("Resolve(repo) = %q, want %q", b.Dir, boardDir)
+	}
+}
+
+func TestResolveCodingHermesDirFindsItsBoard(t *testing.T) {
+	repo := t.TempDir()
+	boardDir := filepath.Join(repo, ".coding-hermes", "board")
+	writeBoardFiles(t, boardDir, map[string]string{
+		"tasks.jsonl":  `{"id":"E-1","title":"Existing","status":"pending","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+	})
+
+	// The BT-006 bug: -C <repo>/.coding-hermes probed
+	// .coding-hermes/.coding-hermes/board and missed the real board.
+	b, err := Resolve(filepath.Join(repo, ".coding-hermes"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Dir != boardDir {
+		t.Fatalf("Resolve(<repo>/.coding-hermes) = %q, want %q", b.Dir, boardDir)
+	}
+}
+
+func TestResolveBoardDirItself(t *testing.T) {
+	repo := t.TempDir()
+	boardDir := filepath.Join(repo, ".coding-hermes", "board")
+	writeBoardFiles(t, boardDir, map[string]string{
+		"tasks.jsonl":  `{"id":"E-1","title":"Existing","status":"pending","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+	})
+
+	b, err := Resolve(boardDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Dir != boardDir {
+		t.Fatalf("Resolve(<board dir>) = %q, want %q", b.Dir, boardDir)
+	}
+}
+
+func TestResolveEmptyDirNotFound(t *testing.T) {
+	empty := t.TempDir()
+	_, err := Resolve(empty)
+	if !errors.Is(err, ErrBoardNotFound) {
+		t.Fatalf("Resolve(<empty dir>) err = %v, want ErrBoardNotFound", err)
+	}
+}
+
+// BT-006: init on <repo>/.coding-hermes must land the board at
+// .coding-hermes/board (NOT .coding-hermes/.coding-hermes/board) so a
+// follow-up Resolve on the .coding-hermes dir finds it.
+func TestInitOnCodingHermesDirUsesItsBoardSubdir(t *testing.T) {
+	repo := t.TempDir()
+	chDir := filepath.Join(repo, ".coding-hermes")
+	boardDir, _, err := Init(chDir, InitOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(chDir, "board")
+	if boardDir != want {
+		t.Fatalf("Init(<repo>/.coding-hermes) board dir = %q, want %q", boardDir, want)
+	}
+	b, err := Resolve(chDir)
+	if err != nil {
+		t.Fatalf("Resolve(<repo>/.coding-hermes) after init: %v", err)
+	}
+	if b.Dir != want {
+		t.Fatalf("Resolve found %q, want %q", b.Dir, want)
+	}
+}
 
 // lastEventLine returns the last non-empty line of events.jsonl.
 func lastEventLine(t *testing.T, b *Board) []byte {
