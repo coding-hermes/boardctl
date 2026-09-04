@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-011",
+  "task_title": "boardctl create/update must write the README-promised audit events",
+  "task_criteria": [
+    "boardctl create appends a task_created event row to events.jsonl; boardctl update appends a task_completed event when the task transitions to status complete (and a task_updated event on other status flips), and bumps board.jsonl last_commit when --commit-hash is given; regression tests cover all paths; go build/vet/test pass"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m1:25PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~138104 bytes (138.10 KB) in 69.6ms\u001b[0m\n\u001b[90m1:25PM\u001b[0m \u001b[3\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m1:25PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~138104 bytes (138.10 KB) in 69.6ms\u001b[0m\n\u001b[90m1:25PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t2.387s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 boardctl create appends a task_created event row to events.jsonl; boardctl update appends a task_completed event when the task transitions to status complete (and a task_updated event on other status flips), and bumps board.jsonl last_commit when --commit-hash is given; regression tests cover all paths; go build/vet/test pass: internal/board/write.go: Create appends task_created event after task row (lines ~230-240); UpdateTask appends task_completed when status=='complete' else task_updated (lines ~432-450) and bumps last_commit via SetHeader when CommitHash set (lines ~451-456). Regression tests in board_test.go: TestCreateWritesTaskCreatedEvent, TestUpdateToCompleteWritesCompletionEvent, TestUpdateNonCompleteStatusWritesUpdatedEvent, TestUpdateCommitHashBumpsHeader all PASS (go test -count=1 -run ... -v exit 0). go build ./... exit 0, go vet ./... exit 0, go test -count=1 ./... exit 0 (ok internal/board 3.551s). No LSP diagnostics, no dead code.\nboardctl create/update now write the README-promised audit events (task_created, task_completed/task_updated, last_commit header bump), with passing regression tests and clean go build/vet/test.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 boardctl create appends a task_created event row to events.jsonl; boardctl update appends a task_completed event when the task transitions to status complete (and a task_updated event on other status flips), and bumps board.jsonl last_commit when --commit-hash is given; regression tests cover all paths; go build/vet/test pass: internal/board/write.go: Create appends task_created event after task row (lines ~230-240); UpdateTask appends task_completed when status=='complete' else tas",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "boardctl create appends a task_created event row to events.jsonl; boardctl update appends a task_completed event when the task transitions to status complete (and a task_updated event on other status flips), and bumps board.jsonl last_commit when --commit-hash is given; regression tests cover all paths; go build/vet/test pass",
+                "status": "PASS",
+                "detail": "internal/board/write.go: Create appends task_created event after task row (lines ~230-240); UpdateTask appends task_completed when status=='complete' else task_updated (lines ~432-450) and bumps last_commit via SetHeader when CommitHash set (lines ~451-456). Regression tests in board_test.go: TestCreateWritesTaskCreatedEvent, TestUpdateToCompleteWritesCompletionEvent, TestUpdateNonCompleteStatusWritesUpdatedEvent, TestUpdateCommitHashBumpsHeader all PASS (go test -count=1 -run ... -v exit 0). go build ./... exit 0, go vet ./... exit 0, go test -count=1 ./... exit 0 (ok internal/board 3.551s). No LSP diagnostics, no dead code."
+              }
+            ],
+            "summary": "boardctl create/update now write the README-promised audit events (task_created, task_completed/task_updated, last_commit header bump), with passing regression tests and clean go build/vet/test."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-011\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m1:25PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~138104 bytes (138.10 KB) in 69.6ms\u001b[0m\n\u001b[90m1:25PM\u001b[0m \u001b[3\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 boardctl create appends a task_created event row to events.jsonl; boardctl update appends a task_completed event when the task transitions to status complete (and a task_updated event on other status flips), and bumps board.jsonl last_commit when --commit-hash is given; regression tests cover all paths; go build/vet/test pass: internal/board/write.go: Create appends task_created event after task row (lines ~230-240); UpdateTask appends task_completed when status=='complete' else task_updated (lines ~432-450) and bumps last_commit via SetHeader when CommitHash set (lines ~451-456). Regression tests in board_test.go: TestCreateWritesTaskCreatedEvent, TestUpdateToCompleteWritesCompletionEvent, TestUpdateNonCompleteStatusWritesUpdatedEvent, TestUpdateCommitHashBumpsHeader all PASS (go test -count=1 -run ... -v exit 0). go build ./... exit 0, go vet ./... exit 0, go test -count=1 ./... exit 0 (ok internal/board 3.551s). No LSP diagnostics, no dead code.\nboardctl create/update now write the README-promised audit events (task_created, task_completed/task_updated, last_commit header bump), with passing regression tests and clean go build/vet/test.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-04T18:26:13.653519"
+}
