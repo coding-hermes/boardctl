@@ -46,6 +46,27 @@ boardctl -C ~/myproject header --json
 boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
 ```
 
+## Start a board
+
+A fresh project has no board yet. `init` bootstraps one — it writes the three
+topology-A files (`tasks.jsonl`, `events.jsonl`, and the `board.jsonl` header)
+under `<dir>/.coding-hermes/board`, nothing else. No git init, no commits, and
+it is no-clobber: re-running on an initialized board just prints "already
+initialized" (exit 0).
+
+```bash
+cd ~/myproject                     # any dir; --project defaults to its name
+boardctl init                      # optional: --project NAME --namespace NS
+boardctl create --id TASK-1 --title "First task"
+boardctl stats
+```
+
+The first `create` runs against an empty `tasks.jsonl`, so it builds the row
+from a built-in default schema (the standard fleet task fields) instead of
+mirroring a previous row. If a directory holds a legacy topology-B board (the
+header is line 1 of `tasks.jsonl`), `init` refuses — topology B is read-only;
+migrate by splitting line 1 of `tasks.jsonl` into `board.jsonl`.
+
 Exit codes: `0` ok, `1` validation failure, `2` usage/board-not-found.
 
 ## Board topology

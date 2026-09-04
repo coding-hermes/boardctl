@@ -67,7 +67,7 @@ func (b *Board) Validate() (*Report, error) {
 			return nil, err
 		}
 	} else {
-		rep.Add("warn", "topology B: no board.jsonl — header lives in board.db (DuckDB cache); header counters not checked")
+		rep.Add("warn", "topology B: no board.jsonl — header is line 1 of tasks.jsonl (read-only legacy layout); header counters not checked")
 	}
 	if fp := b.FixturesPath(); fp != "" {
 		b.validateFixtures(rep, fp)

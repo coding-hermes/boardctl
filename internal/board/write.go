@@ -24,6 +24,24 @@ func vocabList() string {
 	return strings.Join(ks, ",")
 }
 
+// DefaultTaskRowKeys is the built-in default task schema used when creating
+// a task on an EMPTY tasks.jsonl (the freshly initialized state `init`
+// produces): the standard fields the fleet's own board writes, in fleet
+// order. Values come from neutralValue + the create overrides; every key is
+// present so the first row doubles as the mirror template for the second.
+var DefaultTaskRowKeys = []string{
+	"id", "title", "status", "priority", "complexity",
+	"depends_on", "blocks",
+	"primary_model", "primary_provider", "fallback_model", "fallback_provider",
+	"reasoning", "capability_tags",
+	"worker_status", "dispatched_at", "completed_at",
+	"attempts", "exit_code", "commit_hash",
+	"files_changed", "lines_added", "lines_removed",
+	"guard_result", "ci_result",
+	"worker_summary", "foreman_note", "blocked_reason", "review_notes",
+	"created_at", "updated_at", "blocked_since",
+}
+
 // rawLastLine returns the last non-empty line of a JSONL file ("" if none).
 func rawLastLine(path string) []byte {
 	content, err := os.ReadFile(path)
@@ -88,7 +106,7 @@ type TaskRowSpec struct {
 	HasTags        bool
 }
 
-// Create appends a new task row by deep-copying the schema (key set, key
+// Create appends a new task row, deep-copying the schema (key set, key
 // order, serialization style, timestamp dialect) of the LAST tasks.jsonl row
 // and overriding values: id/title are required, status defaults to "pending",
 // priority "P2", complexity 3. Values the user did not supply are reset to
@@ -96,6 +114,14 @@ type TaskRowSpec struct {
 // so a fresh row is always a clean pending task no matter what the mirrored
 // row held. Append-only; fails when the parsed id already exists, or on
 // topology B (boardctl never writes caches).
+//
+// On an EMPTY tasks.jsonl (the freshly initialized state `init` produces)
+// there is no row to mirror; Create then builds the row from the BUILT-IN
+// DEFAULT TASK SCHEMA (DefaultTaskRow: the standard fields the fleet's own
+// board writes — id, title, status, priority, complexity, depends_on, blocks,
+// primary/fallback model+provider, reasoning, capability_tags, worker_status,
+// dispatch/completion timestamps, counters, guard/ci results, summaries,
+// created_at/updated_at) instead of failing.
 func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	if b.Topology != "A" {
 		return "", TopologyBWriteError
@@ -126,17 +152,29 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 			return "", &ErrDuplicateTaskID{ID: spec.ID}
 		}
 	}
-	if last == nil {
-		return "", fmt.Errorf("tasks.jsonl is empty — no row to mirror the schema from; cannot create %q", spec.ID)
-	}
 
-	style := DetectStyle(rawLastLine(b.tasksPath))
-	now := b.tasksTSFormat(last).Now()
-
-	// Mirror key order, neutralize values, then apply spec overrides.
-	row := &Row{Keys: append([]string(nil), last.Keys...), Vals: map[string]json.RawMessage{}}
-	for _, k := range last.Keys {
-		row.Vals[k] = neutralValue(k)
+	var style Style
+	var nowStr string
+	var neutral func(key string) json.RawMessage
+	row := &Row{Keys: nil, Vals: map[string]json.RawMessage{}}
+	if last != nil {
+		// Mirror key order, neutralize values, then apply spec overrides.
+		style = DetectStyle(rawLastLine(b.tasksPath))
+		nowStr = b.tasksTSFormat(last).Now()
+		neutral = neutralValue
+		row.Keys = append(row.Keys, last.Keys...)
+		for _, k := range last.Keys {
+			row.Vals[k] = neutral(k)
+		}
+	} else {
+		// Empty tasks.jsonl: fresh schema, fleet default serialization.
+		style = DefaultStyle()
+		nowStr = TSFormat{Layout: DefaultTSLayout}.Now()
+		neutral = neutralValue // same pending-neutral semantics as mirroring
+		row.Keys = append(row.Keys, DefaultTaskRowKeys...)
+		for _, k := range DefaultTaskRowKeys {
+			row.Vals[k] = neutral(k)
+		}
 	}
 	set := func(key string, v any) error { return row.SetGoValue(key, v, style) }
 
@@ -164,8 +202,8 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	if spec.Reasoning != "" {
 		overrides["reasoning"] = spec.Reasoning
 	}
-	overrides["created_at"] = now
-	overrides["updated_at"] = now
+	overrides["created_at"] = nowStr
+	overrides["updated_at"] = nowStr
 	for k, v := range overrides {
 		if row.Has(k) {
 			if err := set(k, v); err != nil {

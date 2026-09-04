@@ -10,9 +10,10 @@ import (
 )
 
 // TopologyBWriteError is returned when a mutating command targets a
-// topology-B board (no board.jsonl: the header lives only in the board.db
-// DuckDB cache, which boardctl never writes).
-var TopologyBWriteError = errors.New("topology B: header lives in board.db (DuckDB cache) — use scripts/update header manually")
+// topology-B board (no board.jsonl: the header is line 1 of tasks.jsonl,
+// a read-only legacy layout). Migrate by splitting line 1 of tasks.jsonl
+// into its own board.jsonl; boardctl does not rewrite topology-B boards.
+var TopologyBWriteError = errors.New("topology B: header is line 1 of tasks.jsonl (read-only legacy layout) — migrate by splitting line 1 of tasks.jsonl into board.jsonl")
 
 // Board locates one JSONL-canonical foreman board and its tracked files.
 type Board struct {
@@ -27,6 +28,18 @@ type Board struct {
 
 // ErrBoardNotFound is wrapped with the directories probed.
 var ErrBoardNotFound = errors.New("no JSONL foreman board found")
+
+// boardDirCandidates lists the directories Resolve probes for a
+// tasks.jsonl+events.jsonl pair, in order: the target itself, its
+// .coding-hermes, then .coding-hermes/board. Init uses the same order (and
+// falls back to the LAST candidate as the fresh-board location).
+func boardDirCandidates(abs string) []string {
+	return []string{
+		abs,
+		filepath.Join(abs, ".coding-hermes"),
+		filepath.Join(abs, ".coding-hermes", "board"),
+	}
+}
 
 // Resolve locates a board from a user-supplied -C target:
 //
@@ -46,11 +59,7 @@ func Resolve(target string) (*Board, error) {
 	if err != nil {
 		return nil, err
 	}
-	cands := []string{
-		abs,
-		filepath.Join(abs, ".coding-hermes"),
-		filepath.Join(abs, ".coding-hermes", "board"),
-	}
+	cands := boardDirCandidates(abs)
 	for _, c := range cands {
 		tasks := filepath.Join(c, "tasks.jsonl")
 		events := filepath.Join(c, "events.jsonl")
@@ -161,8 +170,9 @@ func ReadAllRows(path string) (rows []*Row, raws [][]byte, err error) {
 	return rows, raws, nil
 }
 
-// HeaderRow returns the parsed line-1 header (topology A). An empty string
-// means topology B (header lives in board.db; boardctl never reads DuckDB).
+// HeaderRow returns the parsed line-1 header (topology A). Topology B (the
+// header is line 1 of tasks.jsonl, a read-only legacy layout) yields a nil
+// row — boardctl never reads a header out of tasks.jsonl.
 func (b *Board) HeaderRow() (*Row, error) {
 	if b.Topology != "A" {
 		return nil, nil

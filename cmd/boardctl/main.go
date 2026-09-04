@@ -31,6 +31,7 @@ usage:
   boardctl [-C <repo-or-board-dir>] <command> [flags]
 
 commands:
+  init    [-C dir] [--project P] [--namespace NS]   bootstrap a fresh board
   list    [--status S] [--priority P] [--json] [--all]
   show    <id> [--events]
   create  --id ID --title T [--priority P2] [--complexity N] [--depends-on a,b]
@@ -83,6 +84,8 @@ func run(args []string) int {
 
 	var err error
 	switch cmd {
+	case "init":
+		err = cmdInit(boardDir, rest)
 	case "list":
 		err = cmdList(boardDir, rest)
 	case "show":
@@ -207,6 +210,48 @@ func splitCSV(v string) []string {
 		}
 	}
 	return out
+}
+
+// ---------- init ----------
+
+// cmdInit bootstraps a fresh topology-A board (tasks.jsonl + events.jsonl +
+// board.jsonl header) so `create` works on a brand-new project. Idempotent
+// and no-clobber: existing board files are never overwritten; a fully
+// initialized board reports "already initialized" and exits 0. Init writes
+// board files only — no git init, no commits.
+func cmdInit(dir string, args []string) error {
+	fs := newFlagSet("init")
+	args = reorderArgs(args, valueFlags("C", "project", "namespace"))
+	project := fs.String("project", "", "project name for the board.jsonl header (default: target dir basename)")
+	namespace := fs.String("namespace", "", "namespace for the board.jsonl header (default: project)")
+	var cdir string
+	addCFlag(fs, &cdir)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "boardctl init [-C dir] [--project P] [--namespace NS]\n")
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("init takes no positional args (got %q)", fs.Arg(0))
+	}
+	if dir == "" {
+		dir = cdir
+	}
+	boardDir, wrote, err := board.Init(dir, board.InitOptions{Project: *project, Namespace: *namespace})
+	if err != nil {
+		if errors.Is(err, board.ErrAlreadyInitialized) {
+			fmt.Fprintf(os.Stdout, "already initialized: %s\n", boardDir)
+			return nil
+		}
+		return err
+	}
+	fmt.Fprintf(os.Stdout, "initialized board at %s\n", boardDir)
+	for _, p := range wrote {
+		fmt.Fprintf(os.Stdout, "  wrote %s\n", filepath.Base(p))
+	}
+	fmt.Fprintln(os.Stdout, "next: boardctl create --id TASK-1 --title \"First task\"")
+	return nil
 }
 
 // ---------- list ----------
@@ -557,8 +602,8 @@ func cmdHeader(dir string, args []string) error {
 	}
 	writing := *setTotal != "" || *setIdle != "" || *setCommit != ""
 	if b.Topology != "A" {
-		// topology B: header lives in board.db — read reports, writes fail.
-		msg := "topology B: header lives in board.db (DuckDB cache) — use scripts/update header manually"
+		// topology B: header is line 1 of tasks.jsonl — read reports, writes fail.
+		msg := "topology B: header is line 1 of tasks.jsonl (read-only legacy layout) — migrate by splitting line 1 of tasks.jsonl into board.jsonl"
 		if writing {
 			return errors.New(msg)
 		}

@@ -73,3 +73,47 @@ func TestCmdVersionRejectsArgs(t *testing.T) {
 		t.Fatalf("unexpected error text: %v", err)
 	}
 }
+
+// TestCmdInitRejectsArgs verifies init follows the same no-positional-args
+// convention as the other subcommands.
+func TestCmdInitRejectsArgs(t *testing.T) {
+	if err := cmdInit(t.TempDir(), []string{"extra"}); err == nil {
+		t.Fatal("cmdInit with positional arg should error")
+	} else if !strings.Contains(err.Error(), "takes no positional args") {
+		t.Fatalf("unexpected error text: %v", err)
+	}
+}
+
+// TestCmdInitThenCreateSmoke: the fresh-user path end to end at the CLI
+// layer — init on an empty dir, then `boardctl create` resolving the freshly
+// seeded board — both exit 0.
+func TestCmdInitThenCreateSmoke(t *testing.T) {
+	dir := t.TempDir()
+	if err := cmdInit(dir, []string{"--project", "demo"}); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	// Re-init on the initialized board exits 0 with "already initialized".
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "init"}); code != 0 {
+			t.Fatalf("re-init exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, "already initialized") {
+		t.Fatalf("re-init output = %q, want an already-initialized note", got)
+	}
+	// create on the empty-but-initialized tasks.jsonl must succeed.
+	got, err = captureStdout(func() {
+		if code := run([]string{"-C", dir, "create", "--id", "T-1", "--title", "First"}); code != 0 {
+			t.Fatalf("create exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, "created task T-1") {
+		t.Fatalf("create output = %q, want a created-task note", got)
+	}
+}
