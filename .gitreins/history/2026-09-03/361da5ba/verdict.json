@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-003",
+  "task_title": "cut v0.1.1 release \u2014 binaries include doctor + version stamp",
+  "task_criteria": [
+    "v0.1.1 GitHub release exists with cross-compiled binaries built from a commit containing doctor (7dc0b9a) and version stamp (f649df9); release notes mention doctor and version subcommand; tag v0.1.1 pushed to origin"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/\n  \u2713 secrets: \u001b[90m3:37PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~96348 bytes (96.35 KB) in 46.5ms\u001b[0m\n\u001b[90m3:37PM\u001b[0m \u001b[32m",
+      "steps": [
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m3:37PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~96348 bytes (96.35 KB) in 46.5ms\u001b[0m\n\u001b[90m3:37PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 v0.1.1 GitHub release exists with cross-compiled binaries built from a commit containing doctor (7dc0b9a) and version stamp (f649df9); release notes mention doctor and version subcommand; tag v0.1.1 pushed to origin: gh release view v0.1.1 confirms published (not draft/prerelease) release at github.com/coding-hermes/boardctl/releases/tag/v0.1.1 with 7 cross-compiled assets (darwin-amd64/arm64, linux-amd64/arm/arm64, windows-amd64.exe, freebsd-amd64). Downloaded boardctl-linux-amd64 asset runs: `version` -> 'boardctl version 20260903', `--help` lists doctor+version. Tag v0.1.1 -> a15a115; both 7dc0b9a (doctor) and f649df9 (version stamp) are ancestors (git merge-base --is-ancestor = YES). Release notes body: 'doctor subcommand: deep board validation... \u2014 7dc0b9a' and 'version stamp: version var + version subcommand... \u2014 f649df9'. Tag pushed to origin: git ls-remote origin v0.1.1 -> a15a115 refs/tags/v0.1.1; gh api git/ref/tags/v0.1.1 sha=a15a115.\nv0.1.1 GitHub release exists with cross-compiled binaries containing doctor and version stamp, built from commit a15a115 which includes both 7dc0b9a and f649df9; release notes mention doctor and version subcommand; tag v0.1.1 is pushed to origin.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 v0.1.1 GitHub release exists with cross-compiled binaries built from a commit containing doctor (7dc0b9a) and version stamp (f649df9); release notes mention doctor and version subcommand; tag v0.1.1 pushed to origin: gh release view v0.1.1 confirms published (not draft/prerelease) release at github.com/coding-hermes/boardctl/releases/tag/v0.1.1 with 7 cross-compiled assets (darwin-amd64/arm64, linux-amd64/arm/arm64, windows-amd64.exe, freebsd-amd64). Downloaded boardctl-linux-amd64 ",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "v0.1.1 GitHub release exists with cross-compiled binaries built from a commit containing doctor (7dc0b9a) and version stamp (f649df9); release notes mention doctor and version subcommand; tag v0.1.1 pushed to origin",
+                "status": "PASS",
+                "detail": "gh release view v0.1.1 confirms published (not draft/prerelease) release at github.com/coding-hermes/boardctl/releases/tag/v0.1.1 with 7 cross-compiled assets (darwin-amd64/arm64, linux-amd64/arm/arm64, windows-amd64.exe, freebsd-amd64). Downloaded boardctl-linux-amd64 asset runs: `version` -> 'boardctl version 20260903', `--help` lists doctor+version. Tag v0.1.1 -> a15a115; both 7dc0b9a (doctor) and f649df9 (version stamp) are ancestors (git merge-base --is-ancestor = YES). Release notes body: 'doctor subcommand: deep board validation... \u2014 7dc0b9a' and 'version stamp: version var + version subcommand... \u2014 f649df9'. Tag pushed to origin: git ls-remote origin v0.1.1 -> a15a115 refs/tags/v0.1.1; gh api git/ref/tags/v0.1.1 sha=a15a115."
+              }
+            ],
+            "summary": "v0.1.1 GitHub release exists with cross-compiled binaries containing doctor and version stamp, built from commit a15a115 which includes both 7dc0b9a and f649df9; release notes mention doctor and version subcommand; tag v0.1.1 is pushed to origin."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-003\n\nStage tier1: PASS\n    \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/\n  \u2713 secrets: \u001b[90m3:37PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~96348 bytes (96.35 KB) in 46.5ms\u001b[0m\n\u001b[90m3:37PM\u001b[0m \u001b[32m\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 v0.1.1 GitHub release exists with cross-compiled binaries built from a commit containing doctor (7dc0b9a) and version stamp (f649df9); release notes mention doctor and version subcommand; tag v0.1.1 pushed to origin: gh release view v0.1.1 confirms published (not draft/prerelease) release at github.com/coding-hermes/boardctl/releases/tag/v0.1.1 with 7 cross-compiled assets (darwin-amd64/arm64, linux-amd64/arm/arm64, windows-amd64.exe, freebsd-amd64). Downloaded boardctl-linux-amd64 asset runs: `version` -> 'boardctl version 20260903', `--help` lists doctor+version. Tag v0.1.1 -> a15a115; both 7dc0b9a (doctor) and f649df9 (version stamp) are ancestors (git merge-base --is-ancestor = YES). Release notes body: 'doctor subcommand: deep board validation... \u2014 7dc0b9a' and 'version stamp: version var + version subcommand... \u2014 f649df9'. Tag pushed to origin: git ls-remote origin v0.1.1 -> a15a115 refs/tags/v0.1.1; gh api git/ref/tags/v0.1.1 sha=a15a115.\nv0.1.1 GitHub release exists with cross-compiled binaries containing doctor and version stamp, built from commit a15a115 which includes both 7dc0b9a and f649df9; release notes mention doctor and version subcommand; tag v0.1.1 is pushed to origin.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-03T20:38:05.473869"
+}

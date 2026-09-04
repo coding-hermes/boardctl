@@ -8,6 +8,7 @@ guards:
     lint: true
     tests: true
 evaluator:
+  model: deepseek-v4-flash
   max_iterations: 200
   static_analysis_diagnostics: false
 history:
