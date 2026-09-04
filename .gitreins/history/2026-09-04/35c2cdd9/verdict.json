@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-005",
+  "task_title": "boardctl init subcommand \u2014 bootstrap topology-A board files",
+  "task_criteria": [
+    "The boardctl CLI gains an 'init' subcommand: (1) 'boardctl init [-C dir] [--project P --namespace NS]' on an empty directory writes the three topology-A files (.coding-hermes/board/tasks.jsonl, events.jsonl, board.jsonl header), idempotent re-run exits 0 with no clobber; (2) 'boardctl create' works after init on an empty tasks.jsonl by building rows from a built-in default schema (no mirror-from-last failure); (3) the stale topology-B error no longer references board.db or scripts/update; it states topology B is read-only and to migrate by splitting line 1 of tasks.jsonl into board.jsonl; (4) go build ./..., go vet ./..., go test ./... -count=1 -short all pass; (5) README documents 'Start a board' using init."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m12:01PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~130796 bytes (130.80 KB) in 119ms\u001b[0m\n\u001b[90m12:01PM\u001b[0m \u001b[\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m12:01PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~130796 bytes (130.80 KB) in 119ms\u001b[0m\n\u001b[90m12:01PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t2.252s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 The boardctl CLI gains an 'init' subcommand: (1) 'boardctl init [-C dir] [--project P --namespace NS]' on an empty directory writes the three topology-A files (.coding-hermes/board/tasks.jsonl, events.jsonl, board.jsonl header), idempotent re-run exits 0 with no clobber; (2) 'boardctl create' works after init on an empty tasks.jsonl by building rows from a built-in default schema (no mirror-from-last failure); (3) the stale topology-B error no longer references board.db or scripts/update; it states topology B is read-only and to migrate by splitting line 1 of tasks.jsonl into board.jsonl; (4) go build ./..., go vet ./..., go test ./... -count=1 -short all pass; (5) README documents 'Start a board' using init.: (1) cmd/boardctl/main.go:222 cmdInit + internal/board/init.go Init write tasks.jsonl/events.jsonl/board.jsonl under .coding-hermes/board; manual CLI run confirmed 3 files written, re-init exited 0 'already initialized' with no clobber (existing row preserved). Tests TestInitEmptyDirCreatesTopologyA, TestInitIdempotentAndNoClobber, TestCmdInitThenCreateSmoke PASS. (2) internal/board/write.go Create() builds rows from DefaultTaskRowKeys on empty tasks.jsonl; manual create TASK-1 succeeded; TestCreateOnEmptyInitializedBoard PASS. (3) internal/board/board.go:16 TopologyBWriteError states read-only + migrate by splitting line 1 of tasks.jsonl into board.jsonl; search_pattern for board.db|scripts/update returned 0 matches; TestStaleTopologyBMessagesGone PASS. (4) go build ./... exit 0, go vet ./... exit 0, go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board). (5) README.md:49 '## Start a board' documents boardctl init/create.\nAll 5 criteria verified: init subcommand writes topology-A files idempotently with no clobber, create works on empty tasks.jsonl via default schema, topology-B error updated (no board.db/scripts/update), build/vet/test all pass, and README documents 'Start a board'.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 The boardctl CLI gains an 'init' subcommand: (1) 'boardctl init [-C dir] [--project P --namespace NS]' on an empty directory writes the three topology-A files (.coding-hermes/board/tasks.jsonl, events.jsonl, board.jsonl header), idempotent re-run exits 0 with no clobber; (2) 'boardctl create' works after init on an empty tasks.jsonl by building rows from a built-in default schema (no mirror-from-last failure); (3) the stale topology-B error no longer references board.db or scripts/u",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "The boardctl CLI gains an 'init' subcommand: (1) 'boardctl init [-C dir] [--project P --namespace NS]' on an empty directory writes the three topology-A files (.coding-hermes/board/tasks.jsonl, events.jsonl, board.jsonl header), idempotent re-run exits 0 with no clobber; (2) 'boardctl create' works after init on an empty tasks.jsonl by building rows from a built-in default schema (no mirror-from-last failure); (3) the stale topology-B error no longer references board.db or scripts/update; it states topology B is read-only and to migrate by splitting line 1 of tasks.jsonl into board.jsonl; (4) go build ./..., go vet ./..., go test ./... -count=1 -short all pass; (5) README documents 'Start a board' using init.",
+                "status": "PASS",
+                "detail": "(1) cmd/boardctl/main.go:222 cmdInit + internal/board/init.go Init write tasks.jsonl/events.jsonl/board.jsonl under .coding-hermes/board; manual CLI run confirmed 3 files written, re-init exited 0 'already initialized' with no clobber (existing row preserved). Tests TestInitEmptyDirCreatesTopologyA, TestInitIdempotentAndNoClobber, TestCmdInitThenCreateSmoke PASS. (2) internal/board/write.go Create() builds rows from DefaultTaskRowKeys on empty tasks.jsonl; manual create TASK-1 succeeded; TestCreateOnEmptyInitializedBoard PASS. (3) internal/board/board.go:16 TopologyBWriteError states read-only + migrate by splitting line 1 of tasks.jsonl into board.jsonl; search_pattern for board.db|scripts/update returned 0 matches; TestStaleTopologyBMessagesGone PASS. (4) go build ./... exit 0, go vet ./... exit 0, go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board). (5) README.md:49 '## Start a board' documents boardctl init/create."
+              }
+            ],
+            "summary": "All 5 criteria verified: init subcommand writes topology-A files idempotently with no clobber, create works on empty tasks.jsonl via default schema, topology-B error updated (no board.db/scripts/update), build/vet/test all pass, and README documents 'Start a board'."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-005\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m12:01PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~130796 bytes (130.80 KB) in 119ms\u001b[0m\n\u001b[90m12:01PM\u001b[0m \u001b[\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 The boardctl CLI gains an 'init' subcommand: (1) 'boardctl init [-C dir] [--project P --namespace NS]' on an empty directory writes the three topology-A files (.coding-hermes/board/tasks.jsonl, events.jsonl, board.jsonl header), idempotent re-run exits 0 with no clobber; (2) 'boardctl create' works after init on an empty tasks.jsonl by building rows from a built-in default schema (no mirror-from-last failure); (3) the stale topology-B error no longer references board.db or scripts/update; it states topology B is read-only and to migrate by splitting line 1 of tasks.jsonl into board.jsonl; (4) go build ./..., go vet ./..., go test ./... -count=1 -short all pass; (5) README documents 'Start a board' using init.: (1) cmd/boardctl/main.go:222 cmdInit + internal/board/init.go Init write tasks.jsonl/events.jsonl/board.jsonl under .coding-hermes/board; manual CLI run confirmed 3 files written, re-init exited 0 'already initialized' with no clobber (existing row preserved). Tests TestInitEmptyDirCreatesTopologyA, TestInitIdempotentAndNoClobber, TestCmdInitThenCreateSmoke PASS. (2) internal/board/write.go Create() builds rows from DefaultTaskRowKeys on empty tasks.jsonl; manual create TASK-1 succeeded; TestCreateOnEmptyInitializedBoard PASS. (3) internal/board/board.go:16 TopologyBWriteError states read-only + migrate by splitting line 1 of tasks.jsonl into board.jsonl; search_pattern for board.db|scripts/update returned 0 matches; TestStaleTopologyBMessagesGone PASS. (4) go build ./... exit 0, go vet ./... exit 0, go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board). (5) README.md:49 '## Start a board' documents boardctl init/create.\nAll 5 criteria verified: init subcommand writes topology-A files idempotently with no clobber, create works on empty tasks.jsonl via default schema, topology-B error updated (no board.db/scripts/update), build/vet/test all pass, and README documents 'Start a board'.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-04T17:03:01.642857"
+}
