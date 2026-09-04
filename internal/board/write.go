@@ -232,6 +232,17 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	if err := appendBytes(b.tasksPath, line); err != nil {
 		return "", err
 	}
+	// README-promised audit trail: every successful create appends a
+	// task_created event. Runs only after the task row is durably appended;
+	// the task row is kept even if the event append fails (the row IS the
+	// board state; the event is the trail), but the error surfaces.
+	if _, err := b.AppendEvent(EventSpec{
+		Type:   "task_created",
+		TaskID: spec.ID,
+		Detail: []byte(fmt.Sprintf(`{"id":%q,"status":%q}`, spec.ID, status)),
+	}); err != nil {
+		return "", fmt.Errorf("task row appended but task_created event failed: %w", err)
+	}
 	return spec.ID, nil
 }
 
@@ -417,6 +428,29 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 	if err := atomicRewrite(b.tasksPath, JoinLines(newLines)); err != nil {
 		return nil, err
 	}
+	// README-promised audit trail, appended only after the row rewrite
+	// succeeds. A status flag produces exactly one event: task_completed when
+	// the write form "complete" is set, task_updated for any other vocabulary
+	// value. A commit hash bumps the board header's last_commit (the "header
+	// bump" the README promises) without an extra event.
+	if spec.Status != nil {
+		etype := "task_updated"
+		if *spec.Status == "complete" {
+			etype = "task_completed"
+		}
+		if _, err := b.AppendEvent(EventSpec{
+			Type:   etype,
+			TaskID: id,
+			Detail: []byte(fmt.Sprintf(`{"status":%q}`, *spec.Status)),
+		}); err != nil {
+			return changed, fmt.Errorf("task row updated but %s event failed: %w", etype, err)
+		}
+	}
+	if spec.CommitHash != nil {
+		if _, err := b.SetHeader(HeaderUpdate{LastCommit: spec.CommitHash}); err != nil {
+			return changed, fmt.Errorf("task row updated but header bump failed: %w", err)
+		}
+	}
 	return changed, nil
 }
 
@@ -510,16 +544,15 @@ func (b *Board) AppendEvent(spec EventSpec) (int64, error) {
 	// detail: --detail @file (raw JSON payload embedded as an escaped string),
 	// then --detail-text (plain string), else null. Single JSON-encoding,
 	// matching the fleet appenders; style.ASCII escapes raw non-ASCII content.
+	// embedDetail already returns the exact JSON string VALUE, so it is
+	// written verbatim via SetRaw — routing it through SetGoValue would run
+	// encodeValue's default branch (json.Marshal on []byte) and base64-mangle
+	// the payload.
 	switch {
 	case spec.Detail != nil:
-		content := bytes.TrimSpace(spec.Detail)
-		if err := set("detail", embedDetail(content, style)); err != nil {
-			return 0, err
-		}
+		row.SetRaw("detail", embedDetail(bytes.TrimSpace(spec.Detail), style))
 	case spec.DetailText != nil:
-		if err := set("detail", embedDetail([]byte(*spec.DetailText), style)); err != nil {
-			return 0, err
-		}
+		row.SetRaw("detail", embedDetail([]byte(*spec.DetailText), style))
 	default:
 		if err := set("detail", nil); err != nil {
 			return 0, err

@@ -181,3 +181,131 @@ func TestValidateTopologyA(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 func i64Ptr(i int64) *int64   { return &i }
+
+// lastEventLine returns the last non-empty line of events.jsonl.
+func lastEventLine(t *testing.T, b *Board) []byte {
+	t.Helper()
+	raw, err := os.ReadFile(b.eventsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := bytes.Split(bytes.TrimRight(raw, "\n"), []byte("\n"))
+	for i := len(lines) - 1; i >= 0; i-- {
+		if len(bytes.TrimSpace(lines[i])) > 0 {
+			return lines[i]
+		}
+	}
+	t.Fatal("events.jsonl has no rows")
+	return nil
+}
+
+func eventLineCount(t *testing.T, b *Board) int {
+	t.Helper()
+	raw, err := os.ReadFile(b.eventsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, l := range bytes.Split(raw, []byte("\n")) {
+		if len(bytes.TrimSpace(l)) > 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// BT-011: create must append the README-promised task_created event.
+func TestCreateWritesTaskCreatedEvent(t *testing.T) {
+	b := newTestBoard(t)
+	if _, err := b.Create(TaskRowSpec{ID: "NEW-1", Title: "New task", Status: "pending"}); err != nil {
+		t.Fatal(err)
+	}
+	// fixture board ships 1 event row; the create adds exactly one more
+	if n := eventLineCount(t, b); n != 2 {
+		t.Fatalf("events.jsonl has %d rows, want 2", n)
+	}
+	var e map[string]any
+	if err := json.Unmarshal(lastEventLine(t, b), &e); err != nil {
+		t.Fatal(err)
+	}
+	if e["id"] != float64(2) {
+		t.Fatalf("event id = %v, want 2 (MAX+1)", e["id"])
+	}
+	if e["event_type"] != "task_created" || e["task_id"] != "NEW-1" {
+		t.Fatalf("event wrong: %s", lastEventLine(t, b))
+	}
+	// detail is a JSON-encoded string carrying the created id + status
+	detail, ok := e["detail"].(string)
+	if !ok {
+		t.Fatalf("detail not a JSON string: %s", lastEventLine(t, b))
+	}
+	var d map[string]any
+	if err := json.Unmarshal([]byte(detail), &d); err != nil {
+		t.Fatalf("detail %q is not decodable JSON: %v", detail, err)
+	}
+	if d["id"] != "NEW-1" || d["status"] != "pending" {
+		t.Fatalf("detail = %s, want {id,status}", detail)
+	}
+}
+
+// BT-011: update to the write form "complete" must append a task_completed
+// event (even when the row already read complete — the flag is the trigger).
+func TestUpdateToCompleteWritesCompletionEvent(t *testing.T) {
+	b := newTestBoard(t)
+	status := "complete"
+	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{Status: &status}); err != nil {
+		t.Fatal(err)
+	}
+	var e map[string]any
+	if err := json.Unmarshal(lastEventLine(t, b), &e); err != nil {
+		t.Fatal(err)
+	}
+	if e["id"] != float64(2) {
+		t.Fatalf("event id = %v, want 2 (MAX+1)", e["id"])
+	}
+	if e["event_type"] != "task_completed" || e["task_id"] != "EXIST-1" {
+		t.Fatalf("event wrong: %s", lastEventLine(t, b))
+	}
+}
+
+// BT-011: update to any other valid vocabulary status must append a
+// task_updated event.
+func TestUpdateNonCompleteStatusWritesUpdatedEvent(t *testing.T) {
+	b := newTestBoard(t)
+	status := "in_progress"
+	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{Status: &status}); err != nil {
+		t.Fatal(err)
+	}
+	var e map[string]any
+	if err := json.Unmarshal(lastEventLine(t, b), &e); err != nil {
+		t.Fatal(err)
+	}
+	if e["event_type"] != "task_updated" || e["task_id"] != "EXIST-1" {
+		t.Fatalf("event wrong: %s", lastEventLine(t, b))
+	}
+}
+
+// BT-011: update with --commit-hash must bump the board header's last_commit
+// (the README-promised "header bump") without appending an extra event.
+func TestUpdateCommitHashBumpsHeader(t *testing.T) {
+	b := newTestBoard(t)
+	commit := "deadbeef"
+	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{CommitHash: &commit}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(b.headerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var hdr map[string]any
+	if err := json.Unmarshal(raw, &hdr); err != nil {
+		t.Fatal(err)
+	}
+	if hdr["last_commit"] != commit {
+		t.Fatalf("last_commit = %v, want %s", hdr["last_commit"], commit)
+	}
+	// commit-hash-only update: row audit, not a trail event
+	if n := eventLineCount(t, b); n != 1 {
+		t.Fatalf("events.jsonl has %d rows, want 1 (no event for commit-hash-only update)", n)
+	}
+}
