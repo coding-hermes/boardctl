@@ -9,18 +9,29 @@ no cache files, no parity probes. What git tracks is what you get.
 
 ## Install
 
-```bash
-go install github.com/coding-hermes/boardctl/cmd/boardctl@latest
-```
-
-Or grab a static binary from [releases](../../releases) (linux/darwin/windows/freebsd
-× amd64/arm64/arm). Verify the binary's checksum before running it:
+The zero-dependency path: grab a static binary from
+[releases](../../releases) (linux/darwin/windows/freebsd × amd64/arm64/arm) —
+no Go toolchain needed. Verify the binary's checksum before running it:
 
 ```bash
 curl -sL -o boardctl https://github.com/coding-hermes/boardctl/releases/download/v0.1.1/boardctl-linux-amd64
 curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.1/sha256sums.txt
 sha256sum -c sha256sums.txt   # verify the binary's checksum
 chmod +x boardctl && ./boardctl version
+```
+
+Move `boardctl` somewhere on your `PATH` (or invoke it as `./boardctl`).
+
+With a Go toolchain, `go install` works too:
+
+```bash
+go install github.com/coding-hermes/boardctl/cmd/boardctl@latest
+```
+
+Or build directly from a checkout (see [Development](#development)):
+
+```bash
+go build ./cmd/boardctl
 ```
 
 ## Usage
