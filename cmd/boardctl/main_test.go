@@ -361,6 +361,10 @@ func TestCmdDoctorTopologyBChecksHeaderVsEvents(t *testing.T) {
 	if !strings.Contains(got, "header ticks_total 0 < max events tick_number 1") {
 		t.Fatalf("doctor report missing the drift error:\n%s", got)
 	}
+	// BT-013: the remediation hint must print right under the drift error.
+	if !strings.Contains(got, "fix: boardctl header --set-ticks-total=1") {
+		t.Fatalf("doctor report missing the remediation hint:\n%s", got)
+	}
 	if strings.Contains(got, "not checked") {
 		t.Fatalf("doctor still emits the topology-B 'not checked' warn:\n%s", got)
 	}

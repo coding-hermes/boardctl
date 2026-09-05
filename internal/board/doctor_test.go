@@ -147,7 +147,8 @@ func TestDoctorGitTrackedDBError(t *testing.T) {
 }
 
 // TestDoctorHeaderCounterDrift: header ticks_total 0 with a tick_number 3
-// event (topology A) yields the counter-drift error.
+// event (topology A) yields the counter-drift error plus the BT-013
+// remediation hint naming the exact fix command with the right counter.
 func TestDoctorHeaderCounterDrift(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
@@ -169,6 +170,11 @@ func TestDoctorHeaderCounterDrift(t *testing.T) {
 	}
 	if !strings.Contains(msgs[0], "header ticks_total 0 < max events tick_number 3") {
 		t.Fatalf("error %q is not the counter-drift finding", msgs[0])
+	}
+	// BT-013: the remediation hint rides in the same finding, immediately
+	// after the drift text, with the counter value that resolves it.
+	if !strings.Contains(msgs[0], "fix: boardctl header --set-ticks-total=3") {
+		t.Fatalf("drift error missing the remediation hint: %q", msgs[0])
 	}
 }
 
@@ -201,7 +207,8 @@ func TestDoctorOrphanFixture(t *testing.T) {
 
 // BT-010: doctor compares the topology-B line-1 header counters against the
 // events stream — the drift error fires exactly as it does on topology A,
-// and the old "header counters not checked" warn is gone.
+// with the BT-013 remediation hint, and the old "header counters not
+// checked" warn is gone.
 func TestDoctorHeaderCounterDriftOnTopologyB(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
@@ -223,6 +230,9 @@ func TestDoctorHeaderCounterDriftOnTopologyB(t *testing.T) {
 	}
 	if !strings.Contains(msgs[0], "header ticks_total 0 < max events tick_number 3") {
 		t.Fatalf("error %q is not the counter-drift finding", msgs[0])
+	}
+	if !strings.Contains(msgs[0], "fix: boardctl header --set-ticks-total=3") {
+		t.Fatalf("drift error missing the remediation hint: %q", msgs[0])
 	}
 	for _, f := range rep.Findings {
 		if strings.Contains(f.Msg, "not checked") {

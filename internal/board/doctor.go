@@ -91,8 +91,9 @@ func findRepoRoot(dir string) string {
 // doctorHeaderVsEvents compares header counters against the events stream in
 // BOTH topologies (BT-010 reads the topology-B line-1 header via HeaderRow):
 // ticks_total behind the newest numeric event tick_number is drift (an
-// error); ticks_idle above ticks_total is an internal inconsistency (a
-// warn). Events without a numeric tick_number (legacy rows) are ignored;
+// error, with a BT-013 remediation hint naming the exact fix command);
+// ticks_idle above ticks_total is an internal inconsistency (a warn).
+// Events without a numeric tick_number (legacy rows) are ignored;
 // header/event read failures are skipped because Validate already itemized
 // them.
 func (b *Board) doctorHeaderVsEvents(rep *Report) {
@@ -120,7 +121,13 @@ func (b *Board) doctorHeaderVsEvents(rep *Report) {
 		return // non-integer/missing counters already flagged by validate
 	}
 	if haveTick && total < maxTick {
-		rep.Add("error", "header ticks_total %d < max events tick_number %d — header counter stale or an event tick never completed", total, maxTick)
+		// BT-013: the original drift text is asserted verbatim by tests,
+		// so the remediation rides inside the same finding as a second
+		// line — the fix command printed directly under the error, with
+		// the counter value that resolves the drift (max event tick).
+		rep.Add("error",
+			"header ticks_total %d < max events tick_number %d — header counter stale or an event tick never completed\nfix: boardctl header --set-ticks-total=%d",
+			total, maxTick, maxTick)
 	}
 	if idle > total {
 		rep.Add("warn", "header ticks_idle exceeds ticks_total — counters inconsistent")
