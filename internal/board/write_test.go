@@ -218,3 +218,98 @@ func TestSetHeaderRejectsNegativeCounters(t *testing.T) {
 		t.Fatalf("zero counters rejected: %v", err)
 	}
 }
+
+// BT-014: an event appended with a tick number is a completed tick —
+// AppendEvent must raise header ticks_total to the event's tick so the next
+// doctor run does not fail the BT-013 counter-drift check.
+func TestAppendEventTickBumpsHeaderTicksTotal(t *testing.T) {
+	b := newTestBoard(t) // header ticks_total=1, seed event tick_number=1
+	if _, err := b.AppendEvent(EventSpec{Type: "audit", Actor: "foreman", DetailText: strPtr(`"tick 5 summary"`), Tick: i64Ptr(5)}); err != nil {
+		t.Fatal(err)
+	}
+	hdr, err := b.HeaderRow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	total, ok := hdr.Int("ticks_total")
+	if !ok {
+		t.Fatal("header ticks_total missing after tick-bearing event")
+	}
+	if total != 5 {
+		t.Fatalf("ticks_total = %d, want 5 (max(current, tick) — no regression)", total)
+	}
+	// the bump must keep the drift check green: max event tick 5 == total 5
+	rep, err := b.Doctor()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range rep.Findings {
+		if f.IsError() && strings.Contains(f.Msg, "header ticks_total") {
+			t.Fatalf("doctor reports counter drift after the auto-bump: %+v", f)
+		}
+	}
+}
+
+// BT-014: a tick-bearing event must never REGRESS the header counter — an
+// out-of-order event (tick 2 on a board already at 5) leaves ticks_total 5.
+func TestAppendEventTickNeverRegressesTicksTotal(t *testing.T) {
+	b := newTestBoard(t) // header ticks_total=1
+	five := int64(5)
+	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &five}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.AppendEvent(EventSpec{Type: "audit", Actor: "foreman", DetailText: strPtr(`"late tick 2"`), Tick: i64Ptr(2)}); err != nil {
+		t.Fatal(err)
+	}
+	hdr, err := b.HeaderRow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total, _ := hdr.Int("ticks_total"); total != 5 {
+		t.Fatalf("ticks_total = %d, want 5 (older tick must not regress the counter)", total)
+	}
+}
+
+// BT-014 acceptance: a tick-LESS event (plain audit row) is not a tick
+// completion — the header must stay untouched, byte for byte.
+func TestAppendEventWithoutTickLeavesHeaderUntouched(t *testing.T) {
+	b := newTestBoard(t)
+	before, err := os.ReadFile(b.headerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.AppendEvent(EventSpec{Type: "audit", Actor: "foreman", DetailText: strPtr(`"plain audit, no tick"`)}); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(b.headerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatalf("tick-less event mutated the header:\nbefore %s\nafter  %s", before, after)
+	}
+}
+
+// BT-014 acceptance: topology-B boards (header on line 1 of tasks.jsonl)
+// get the same auto-bump — SetHeader already targets the line-1 header.
+func TestAppendEventTickBumpsHeaderOnTopologyB(t *testing.T) {
+	b := newTestBoardB(t) // line-1 header ticks_total=1, seed event tick 1
+	if _, err := b.AppendEvent(EventSpec{Type: "audit", Actor: "foreman", DetailText: strPtr(`"tick 3 summary"`), Tick: i64Ptr(3)}); err != nil {
+		t.Fatal(err)
+	}
+	hdr, err := b.HeaderRow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total, _ := hdr.Int("ticks_total"); total != 3 {
+		t.Fatalf("topology-B ticks_total = %d, want 3 after event --tick 3", total)
+	}
+	// the line-1 bump must not have disturbed the task row below it
+	tasks, err := b.ListTasks(TaskFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tasks) != 1 || tasks[0].String("id") != "EXIST-1" {
+		t.Fatalf("topology-B task rows disturbed: %v", tasks)
+	}
+}

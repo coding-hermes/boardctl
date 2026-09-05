@@ -543,6 +543,11 @@ type EventSpec struct {
 // and the mirrored row lacks it). Append-only — never rewrites events.jsonl.
 // events.jsonl has no header in ANY topology, so this works unchanged on
 // topology-B boards (BT-010).
+//
+// BT-014: when the event carries a tick number it IS a completed tick, so
+// the header ticks_total is auto-bumped to max(current, tick) — otherwise
+// the counter goes stale and the very next `doctor` run fails the drift
+// check. Tick-less events (plain audit rows) never touch the header.
 func (b *Board) AppendEvent(spec EventSpec) (int64, error) {
 	rows, _, err := ReadAllRows(b.eventsPath)
 	if err != nil {
@@ -642,6 +647,14 @@ func (b *Board) AppendEvent(spec EventSpec) (int64, error) {
 	if err := appendBytes(b.eventsPath, line); err != nil {
 		return 0, err
 	}
+	// BT-014: a tick-bearing event is a completed tick — keep the header
+	// counter from going stale (doctor's drift check compares ticks_total
+	// against the max event tick_number). Plain audit events do not bump.
+	if spec.Tick != nil {
+		if err := b.bumpHeaderTicksTotal(*spec.Tick); err != nil {
+			return nextID, fmt.Errorf("event row appended but header ticks_total bump failed: %w", err)
+		}
+	}
 	return nextID, nil
 }
 
@@ -653,6 +666,28 @@ func embedDetail(content []byte, s Style) []byte {
 		return jsonString("", s)
 	}
 	return jsonString(string(content), s)
+}
+
+// bumpHeaderTicksTotal raises the header ticks_total counter to
+// max(current, n) — used after appending an event that carries a tick
+// number, because such an event IS a completed tick and a stale ticks_total
+// makes the very next `doctor` run fail the BT-013 drift check. No-op when
+// the header already reports n or higher (never regresses the counter).
+// Mirrors the update --commit-hash precedent: a write command keeps its
+// derived header field current. Works on both topologies — SetHeader targets
+// line 1 of board.jsonl (A) or tasks.jsonl (B).
+func (b *Board) bumpHeaderTicksTotal(n int64) error {
+	hdr, err := b.HeaderRow()
+	if err != nil {
+		return err
+	}
+	if cur, ok := hdr.Int("ticks_total"); ok && cur >= n {
+		return nil
+	}
+	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &n}); err != nil {
+		return err
+	}
+	return nil
 }
 
 // HeaderUpdate carries --set fields (nil pointer = untouched).

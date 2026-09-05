@@ -384,3 +384,79 @@ func TestCmdInitOnTopologyBStillRefuses(t *testing.T) {
 		t.Fatal("board.jsonl written despite init refusal")
 	}
 }
+
+// BT-014: `event --tick N` must auto-bump the header ticks_total, otherwise
+// the counter goes stale and the very next `doctor` FAILs the counter-drift
+// check. Walks the exact repro: fresh init → event --tick 1 → line-1 header
+// shows ticks_total 1 → doctor exits 0. (AC: event without --tick is covered
+// by TestCmdEventWithoutTickLeavesTicksTotalStale below.)
+func TestCmdEventTickBumpsTicksTotalDoctorPasses(t *testing.T) {
+	dir := t.TempDir()
+	if code := run([]string{"-C", dir, "init", "--project", "evtest", "--namespace", "test"}); code != 0 {
+		t.Fatalf("init exit code = %d, want 0", code)
+	}
+	detail := filepath.Join(t.TempDir(), "d.json")
+	if err := os.WriteFile(detail, []byte(`{"tick":1,"summary":"t"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code := run([]string{"-C", dir, "event", "--type", "audit", "--tick", "1", "--detail", "@" + detail}); code != 0 {
+		t.Fatalf("event --tick 1 exit code = %d, want 0", code)
+	}
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	raw, err := os.ReadFile(filepath.Join(boardDir, "board.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"ticks_total":1`) {
+		t.Fatalf("header ticks_total not bumped by event --tick 1: %s", raw)
+	}
+	// the acceptance criterion: the very next doctor run PASSES
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "doctor"}); code != 0 {
+			t.Fatalf("doctor after event --tick 1 exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if strings.Contains(got, "RESULT: FAIL") {
+		t.Fatalf("doctor unexpectedly failed after the auto-bump:\n%s", got)
+	}
+}
+
+// BT-014 negative control: the same command WITHOUT --tick must NOT bump
+// ticks_total — plain audit events are not tick completions. The event row
+// carries tick_number null, so there is no drift for doctor to catch either
+// (max event tick is unchanged); the stale-counter failure mode with a real
+// --tick event is covered by TestDoctorHeaderCounterDrift and the repro walk
+// in TestCmdTopologyBFullWorkflow.
+func TestCmdEventWithoutTickLeavesTicksTotalStale(t *testing.T) {
+	dir := t.TempDir()
+	if code := run([]string{"-C", dir, "init", "--project", "evtest", "--namespace", "test"}); code != 0 {
+		t.Fatalf("init exit code = %d, want 0", code)
+	}
+	if code := run([]string{"-C", dir, "event", "--type", "audit", "--detail-text", `"plain audit"`}); code != 0 {
+		t.Fatalf("event (no tick) exit code = %d, want 0", code)
+	}
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	raw, err := os.ReadFile(filepath.Join(boardDir, "board.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"ticks_total":0`) {
+		t.Fatalf("tick-less event bumped ticks_total: %s", raw)
+	}
+	// no tick completed -> no drift: doctor stays green (exit 0), and the
+	// report carries no counter-drift error.
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "doctor"}); code != 0 {
+			t.Fatalf("doctor after tick-less event exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if strings.Contains(got, "header ticks_total") || strings.Contains(got, "RESULT: FAIL") {
+		t.Fatalf("tick-less event produced a doctor drift error:\n%s", got)
+	}
+}
