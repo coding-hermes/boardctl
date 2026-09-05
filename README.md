@@ -14,7 +14,14 @@ go install github.com/coding-hermes/boardctl/cmd/boardctl@latest
 ```
 
 Or grab a static binary from [releases](../../releases) (linux/darwin/windows/freebsd
-× amd64/arm64/arm).
+× amd64/arm64/arm). Verify the binary's checksum before running it:
+
+```bash
+curl -sL -o boardctl https://github.com/coding-hermes/boardctl/releases/download/v0.1.1/boardctl-linux-amd64
+curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.1/sha256sums.txt
+sha256sum -c sha256sums.txt   # verify the binary's checksum
+chmod +x boardctl && ./boardctl version
+```
 
 ## Usage
 
@@ -114,6 +121,12 @@ go build ./cmd/boardctl
 go test ./...
 make release   # cross-compile all targets into dist/
 ```
+
+`make release` is the only sanctioned path for cutting a release — it builds
+every target and generates `dist/sha256sums.txt`, which must be uploaded as a
+release asset alongside the binaries. Cutting a release by hand (tag + manual
+asset upload) skips the checksum file; that is how v0.1.1 shipped without one
+(BT-008).
 
 ## License
 
