@@ -117,6 +117,25 @@ Writes are append-only for `events.jsonl`; task-row updates rewrite
 per-board: sorted vs insertion-order keys, compact vs spaced separators) so
 git diffs stay minimal and byte-stable.
 
+## Repository layout
+
+| Path | Purpose |
+|------|---------|
+| `cmd/boardctl/` | CLI entrypoint (`main.go`) |
+| `internal/board/` | Board engine — read/write/validate/doctor/init plus JSONL style handling |
+| `.coding-hermes/board/` | This repo's own dogfood board (`tasks.jsonl`, `events.jsonl`, `board.jsonl`, `fixtures.jsonl`) |
+| `docs/dogfood/` | Dogfood diagnostics and integration notes |
+| `skills/boardctl-usage/` | Fleet skill: how agents drive `boardctl` |
+| `.github/workflows/ci.yml` | CI (build, vet, test) |
+| `.gitreins/` | GitReins config + `history/<date>/<hash>/` judge verdicts (tracked audit records — keep) |
+| `Makefile`, `go.mod` | Build/test/release targets (see [Development](#development)) |
+| `LICENSE`, `README.md`, `.gitleaks.toml`, `.gitignore` | Repo metadata and hygiene |
+
+Intentionally not tracked (gitignored, regenerated on demand):
+
+- `bin/`, `dist/` — build and release outputs (`make build`, `make release`); `make clean` removes them
+- `dagger.db` (+ `-shm`/`-wal`) — local DAGger cache, recreated when DAGger runs
+
 ## Why no database
 
 The board used to carry a DuckDB `board.db` cache. It always lagged the JSONL,
