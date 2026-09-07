@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-010",
+  "task_title": "Topology B boards are read-only in practice \u2014 implement writes",
+  "task_criteria": [
+    "create/update/event/header writes must work on topology-B boards (header = line 1 of tasks.jsonl): (1) SetHeader rewrites line 1 of tasks.jsonl on topology B (board.jsonl on A), untouched lines round-trip byte-identical; (2) Create mirrors task-row schema skipping the line-1 header and append-only task rows work; (3) UpdateTask works with header line preserved; (4) AppendEvent works (events.jsonl has no header); (5) header subcommand reads/writes line-1 header on topology B; (6) validate/doctor check header counters on topology B by reading line 1 of tasks.jsonl (warn upgraded to real check); (7) README updated: topology B no longer read-only, migration still documented; (8) go build ./..., go vet ./..., go test ./... -count=1 -short all pass; regression tests cover each path"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m6:10PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~203108 bytes (203.11 KB) in 104ms\u001b[0m\n\u001b[90m6:10PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.018s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m6:10PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~203108 bytes (203.11 KB) in 104ms\u001b[0m\n\u001b[90m6:10PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.018s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.105s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 create/update/event/header writes must work on topology-B boards (header = line 1 of tasks.jsonl): (1) SetHeader rewrites line 1 of tasks.jsonl on topology B (board.jsonl on A), untouched lines round-trip byte-identical; (2) Create mirrors task-row schema skipping the line-1 header and append-only task rows work; (3) UpdateTask works with header line preserved; (4) AppendEvent works (events.jsonl has no header); (5) header subcommand reads/writes line-1 header on topology B; (6) validate/doctor check header counters on topology B by reading line 1 of tasks.jsonl (warn upgraded to real check); (7) README updated: topology B no longer read-only, migration still documented; (8) go build ./..., go vet ./..., go test ./... -count=1 -short all pass; regression tests cover each path: (1) write.go SetHeader uses headerPathFor() (tasksPath on B), rewrites only headerIdx line, asserts untouched lines byte-identical before atomicRewrite; TestSetHeaderOnTopologyB (board_test.go:560) verifies task row byte-identical. (2) Create uses lastTaskRow() which skips header via skipTaskLine, appends via O_APPEND; TestCreateOnTopologyBAppendsAfterHeader (board_test.go:441) verifies new row mirrors last TASK row keys not header keys. (3) UpdateTask (write.go:379) skips header when finding target, preserves line 1; TestUpdateTaskOnTopologyB (board_test.go:504). (4) AppendEvent (write.go:546) no topology guard; TestAppendEventOnTopologyB (board_test.go:611). (5) cmdHeader (main.go:608) removed topology special case; TestCmdTopologyBFullWorkflow AC4a/AC4b (main_test.go:207). (6) validate.go Validate() runs validateHeader on both topologies (removed 'not checked' warn), doctor.go doctorHeaderVsEvents uses HeaderRow; TestValidateTopologyBChecksHeaderCounters (validate_test.go:155), TestDoctorHeaderCounterDriftOnTopologyB (doctor_test.go:205). (7) README.md:92 'Both topologies are FULLY WRITABLE (BT-010)', migration documented as optional at README.md:69-73. (8) go build ./... exit 0, go vet ./... exit 0, go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board); regression tests cover each path incl. TestCmdTopologyBFullWorkflow, TestCmdValidateTopologyBFlagsNegativeCounter, TestCmdDoctorTopologyBChecksHeaderVsEvents, TestCmdInitOnTopologyBStillRefuses.\nAll topology-B write paths (SetHeader, Create, UpdateTask, AppendEvent, header subcommand, validate/doctor header checks) are implemented with byte-identical untouched-line guarantees, README updated, and build/vet/test all pass with regression tests covering each path.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 create/update/event/header writes must work on topology-B boards (header = line 1 of tasks.jsonl): (1) SetHeader rewrites line 1 of tasks.jsonl on topology B (board.jsonl on A), untouched lines round-trip byte-identical; (2) Create mirrors task-row schema skipping the line-1 header and append-only task rows work; (3) UpdateTask works with header line preserved; (4) AppendEvent works (events.jsonl has no header); (5) header subcommand reads/writes line-1 header on topology B; (6) val",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "create/update/event/header writes must work on topology-B boards (header = line 1 of tasks.jsonl): (1) SetHeader rewrites line 1 of tasks.jsonl on topology B (board.jsonl on A), untouched lines round-trip byte-identical; (2) Create mirrors task-row schema skipping the line-1 header and append-only task rows work; (3) UpdateTask works with header line preserved; (4) AppendEvent works (events.jsonl has no header); (5) header subcommand reads/writes line-1 header on topology B; (6) validate/doctor check header counters on topology B by reading line 1 of tasks.jsonl (warn upgraded to real check); (7) README updated: topology B no longer read-only, migration still documented; (8) go build ./..., go vet ./..., go test ./... -count=1 -short all pass; regression tests cover each path",
+                "status": "PASS",
+                "detail": "(1) write.go SetHeader uses headerPathFor() (tasksPath on B), rewrites only headerIdx line, asserts untouched lines byte-identical before atomicRewrite; TestSetHeaderOnTopologyB (board_test.go:560) verifies task row byte-identical. (2) Create uses lastTaskRow() which skips header via skipTaskLine, appends via O_APPEND; TestCreateOnTopologyBAppendsAfterHeader (board_test.go:441) verifies new row mirrors last TASK row keys not header keys. (3) UpdateTask (write.go:379) skips header when finding target, preserves line 1; TestUpdateTaskOnTopologyB (board_test.go:504). (4) AppendEvent (write.go:546) no topology guard; TestAppendEventOnTopologyB (board_test.go:611). (5) cmdHeader (main.go:608) removed topology special case; TestCmdTopologyBFullWorkflow AC4a/AC4b (main_test.go:207). (6) validate.go Validate() runs validateHeader on both topologies (removed 'not checked' warn), doctor.go doctorHeaderVsEvents uses HeaderRow; TestValidateTopologyBChecksHeaderCounters (validate_test.go:155), TestDoctorHeaderCounterDriftOnTopologyB (doctor_test.go:205). (7) README.md:92 'Both topologies are FULLY WRITABLE (BT-010)', migration documented as optional at README.md:69-73. (8) go build ./... exit 0, go vet ./... exit 0, go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board); regression tests cover each path incl. TestCmdTopologyBFullWorkflow, TestCmdValidateTopologyBFlagsNegativeCounter, TestCmdDoctorTopologyBChecksHeaderVsEvents, TestCmdInitOnTopologyBStillRefuses."
+              }
+            ],
+            "summary": "All topology-B write paths (SetHeader, Create, UpdateTask, AppendEvent, header subcommand, validate/doctor header checks) are implemented with byte-identical untouched-line guarantees, README updated, and build/vet/test all pass with regression tests covering each path."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-010\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m6:10PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~203108 bytes (203.11 KB) in 104ms\u001b[0m\n\u001b[90m6:10PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.018s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 create/update/event/header writes must work on topology-B boards (header = line 1 of tasks.jsonl): (1) SetHeader rewrites line 1 of tasks.jsonl on topology B (board.jsonl on A), untouched lines round-trip byte-identical; (2) Create mirrors task-row schema skipping the line-1 header and append-only task rows work; (3) UpdateTask works with header line preserved; (4) AppendEvent works (events.jsonl has no header); (5) header subcommand reads/writes line-1 header on topology B; (6) validate/doctor check header counters on topology B by reading line 1 of tasks.jsonl (warn upgraded to real check); (7) README updated: topology B no longer read-only, migration still documented; (8) go build ./..., go vet ./..., go test ./... -count=1 -short all pass; regression tests cover each path: (1) write.go SetHeader uses headerPathFor() (tasksPath on B), rewrites only headerIdx line, asserts untouched lines byte-identical before atomicRewrite; TestSetHeaderOnTopologyB (board_test.go:560) verifies task row byte-identical. (2) Create uses lastTaskRow() which skips header via skipTaskLine, appends via O_APPEND; TestCreateOnTopologyBAppendsAfterHeader (board_test.go:441) verifies new row mirrors last TASK row keys not header keys. (3) UpdateTask (write.go:379) skips header when finding target, preserves line 1; TestUpdateTaskOnTopologyB (board_test.go:504). (4) AppendEvent (write.go:546) no topology guard; TestAppendEventOnTopologyB (board_test.go:611). (5) cmdHeader (main.go:608) removed topology special case; TestCmdTopologyBFullWorkflow AC4a/AC4b (main_test.go:207). (6) validate.go Validate() runs validateHeader on both topologies (removed 'not checked' warn), doctor.go doctorHeaderVsEvents uses HeaderRow; TestValidateTopologyBChecksHeaderCounters (validate_test.go:155), TestDoctorHeaderCounterDriftOnTopologyB (doctor_test.go:205). (7) README.md:92 'Both topologies are FULLY WRITABLE (BT-010)', migration documented as optional at README.md:69-73. (8) go build ./... exit 0, go vet ./... exit 0, go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board); regression tests cover each path incl. TestCmdTopologyBFullWorkflow, TestCmdValidateTopologyBFlagsNegativeCounter, TestCmdDoctorTopologyBChecksHeaderVsEvents, TestCmdInitOnTopologyBStillRefuses.\nAll topology-B write paths (SetHeader, Create, UpdateTask, AppendEvent, header subcommand, validate/doctor header checks) are implemented with byte-identical untouched-line guarantees, README updated, and build/vet/test all pass with regression tests covering each path.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-04T23:12:18.090869"
+}

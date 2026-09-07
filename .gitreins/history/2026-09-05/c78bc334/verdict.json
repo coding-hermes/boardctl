@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-009",
+  "task_title": "Install docs assume a Go toolchain first; static binary path is the zero-dep one \u2014 reorder and add bootstrap example",
+  "task_criteria": [
+    "README Install section reorders: (1) static binary + sha256 verify, (2) go install for Go users, (3) build from source; adds a 'Start a board' example using boardctl init so time-to-first-success is documented; go test ./... and go vet ./... still pass; README renders correctly"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m8:28PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~206137 bytes (206.14 KB) in 95.9ms\u001b[0m\n\u001b[90m8:28PM\u001b[0m \u001b[3\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m8:28PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~206137 bytes (206.14 KB) in 95.9ms\u001b[0m\n\u001b[90m8:28PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.161s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README Install section reorders: (1) static binary + sha256 verify, (2) go install for Go users, (3) build from source; adds a 'Start a board' example using boardctl init so time-to-first-success is documented; go test ./... and go vet ./... still pass; README renders correctly: README.md Install section reordered correctly: (1) static binary + sha256 verify first (lines 12-13 'The zero-dependency path: grab a static binary from [releases]... Verify the binary's checksum before running it'), (2) go install for Go users second (lines 23-24 'With a Go toolchain, go install works too'), (3) build from source third (lines 28-29 'Or build directly from a checkout... go build ./cmd/boardctl'). 'Start a board' section (line 70) documents time-to-first-success with boardctl init/create/stats example; init command confirmed in cmd/boardctl/main.go:87,230. go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). go vet ./... exit 0. README renders correctly: 14 code fences balanced (7 pairs), well-formed headings, [Development](#development) resolves to ## Development at line 128.\nREADME Install section correctly reordered (static binary+sha256 first, go install second, build-from-source third), adds a boardctl init 'Start a board' example, and go test/go vet both pass with README rendering valid.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README Install section reorders: (1) static binary + sha256 verify, (2) go install for Go users, (3) build from source; adds a 'Start a board' example using boardctl init so time-to-first-success is documented; go test ./... and go vet ./... still pass; README renders correctly: README.md Install section reordered correctly: (1) static binary + sha256 verify first (lines 12-13 'The zero-dependency path: grab a static binary from [releases]... Verify the binary's checksum before runn",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README Install section reorders: (1) static binary + sha256 verify, (2) go install for Go users, (3) build from source; adds a 'Start a board' example using boardctl init so time-to-first-success is documented; go test ./... and go vet ./... still pass; README renders correctly",
+                "status": "PASS",
+                "detail": "README.md Install section reordered correctly: (1) static binary + sha256 verify first (lines 12-13 'The zero-dependency path: grab a static binary from [releases]... Verify the binary's checksum before running it'), (2) go install for Go users second (lines 23-24 'With a Go toolchain, go install works too'), (3) build from source third (lines 28-29 'Or build directly from a checkout... go build ./cmd/boardctl'). 'Start a board' section (line 70) documents time-to-first-success with boardctl init/create/stats example; init command confirmed in cmd/boardctl/main.go:87,230. go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). go vet ./... exit 0. README renders correctly: 14 code fences balanced (7 pairs), well-formed headings, [Development](#development) resolves to ## Development at line 128."
+              }
+            ],
+            "summary": "README Install section correctly reordered (static binary+sha256 first, go install second, build-from-source third), adds a boardctl init 'Start a board' example, and go test/go vet both pass with README rendering valid."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-009\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m8:28PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~206137 bytes (206.14 KB) in 95.9ms\u001b[0m\n\u001b[90m8:28PM\u001b[0m \u001b[3\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README Install section reorders: (1) static binary + sha256 verify, (2) go install for Go users, (3) build from source; adds a 'Start a board' example using boardctl init so time-to-first-success is documented; go test ./... and go vet ./... still pass; README renders correctly: README.md Install section reordered correctly: (1) static binary + sha256 verify first (lines 12-13 'The zero-dependency path: grab a static binary from [releases]... Verify the binary's checksum before running it'), (2) go install for Go users second (lines 23-24 'With a Go toolchain, go install works too'), (3) build from source third (lines 28-29 'Or build directly from a checkout... go build ./cmd/boardctl'). 'Start a board' section (line 70) documents time-to-first-success with boardctl init/create/stats example; init command confirmed in cmd/boardctl/main.go:87,230. go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). go vet ./... exit 0. README renders correctly: 14 code fences balanced (7 pairs), well-formed headings, [Development](#development) resolves to ## Development at line 128.\nREADME Install section correctly reordered (static binary+sha256 first, go install second, build-from-source third), adds a boardctl init 'Start a board' example, and go test/go vet both pass with README rendering valid.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-05T01:29:28.428857"
+}

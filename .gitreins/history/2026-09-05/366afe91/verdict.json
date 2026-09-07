@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-012",
+  "task_title": "Docs refresh: boardctl-usage skill + diagnostics for BT-005..011 fixes (init, -C, topology B, vocab, CI)",
+  "task_criteria": [
+    "skills/boardctl-usage/SKILL.md and docs/dogfood/diagnostics.md updated so every claim matches the live binary (init exists, -C .coding-hermes works, topology B fully writable, guard/ci vocab enforced, audit events on create/update, CI workflow live, board-not-found exits 2); stale markers gone (grep for write-dead-end/until BT-005/are NOT: any string = 0 hits); go build/vet/test pass; only the two doc files changed"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m10:58PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~209391 bytes (209.39 KB) in 111ms\u001b[0m\n\u001b[90m10:58PM\u001b[0m \u001b[\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m10:58PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~209391 bytes (209.39 KB) in 111ms\u001b[0m\n\u001b[90m10:58PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.106s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 skills/boardctl-usage/SKILL.md and docs/dogfood/diagnostics.md updated so every claim matches the live binary (init exists, -C .coding-hermes works, topology B fully writable, guard/ci vocab enforced, audit events on create/update, CI workflow live, board-not-found exits 2); stale markers gone (grep for write-dead-end/until BT-005/are NOT: any string = 0 hits); go build/vet/test pass; only the two doc files changed: All claims verified against live binary (built /tmp/boardctl from ./cmd/boardctl): init exists and bootstraps tasks/events/board.jsonl (exit 0); -C .coding-hermes and -C board-dir both exit 0; topology B fully writable (create appends after header line, update rewrites row + bumps updated_at, events append); guard/ci vocab enforced (guard MAYBE and ci BANANA rejected exit 1); audit events on create/update (task_created + task_completed written to events.jsonl); CI workflow live (.github/workflows/ci.yml in HEAD, BT-004); board-not-found exits 2 (verified). Stale markers gone: grep -E 'write-dead-end|until BT-005|are NOT:' over both docs = 0 hits (exit 1); commit diff removed the stale lines ('are NOT: any string is accepted', 'read-only in practice', 'until BT-005', 'board-not-found currently exits 1'). go build ./... exit 0, go vet ./... exit 0, go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). Only two doc files changed in commit: git diff --name-only HEAD~1 HEAD = docs/dogfood/diagnostics.md + skills/boardctl-usage/SKILL.md.\nDocs refresh accurately matches the live binary on all claims (init, -C, topology B, vocab, audit events, CI, exit 2), stale markers removed, build/vet/test pass, and only the two doc files changed.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 skills/boardctl-usage/SKILL.md and docs/dogfood/diagnostics.md updated so every claim matches the live binary (init exists, -C .coding-hermes works, topology B fully writable, guard/ci vocab enforced, audit events on create/update, CI workflow live, board-not-found exits 2); stale markers gone (grep for write-dead-end/until BT-005/are NOT: any string = 0 hits); go build/vet/test pass; only the two doc files changed: All claims verified against live binary (built /tmp/boardctl from .",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "skills/boardctl-usage/SKILL.md and docs/dogfood/diagnostics.md updated so every claim matches the live binary (init exists, -C .coding-hermes works, topology B fully writable, guard/ci vocab enforced, audit events on create/update, CI workflow live, board-not-found exits 2); stale markers gone (grep for write-dead-end/until BT-005/are NOT: any string = 0 hits); go build/vet/test pass; only the two doc files changed",
+                "status": "PASS",
+                "detail": "All claims verified against live binary (built /tmp/boardctl from ./cmd/boardctl): init exists and bootstraps tasks/events/board.jsonl (exit 0); -C .coding-hermes and -C board-dir both exit 0; topology B fully writable (create appends after header line, update rewrites row + bumps updated_at, events append); guard/ci vocab enforced (guard MAYBE and ci BANANA rejected exit 1); audit events on create/update (task_created + task_completed written to events.jsonl); CI workflow live (.github/workflows/ci.yml in HEAD, BT-004); board-not-found exits 2 (verified). Stale markers gone: grep -E 'write-dead-end|until BT-005|are NOT:' over both docs = 0 hits (exit 1); commit diff removed the stale lines ('are NOT: any string is accepted', 'read-only in practice', 'until BT-005', 'board-not-found currently exits 1'). go build ./... exit 0, go vet ./... exit 0, go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). Only two doc files changed in commit: git diff --name-only HEAD~1 HEAD = docs/dogfood/diagnostics.md + skills/boardctl-usage/SKILL.md."
+              }
+            ],
+            "summary": "Docs refresh accurately matches the live binary on all claims (init, -C, topology B, vocab, audit events, CI, exit 2), stale markers removed, build/vet/test pass, and only the two doc files changed."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-012\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m10:58PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~209391 bytes (209.39 KB) in 111ms\u001b[0m\n\u001b[90m10:58PM\u001b[0m \u001b[\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 skills/boardctl-usage/SKILL.md and docs/dogfood/diagnostics.md updated so every claim matches the live binary (init exists, -C .coding-hermes works, topology B fully writable, guard/ci vocab enforced, audit events on create/update, CI workflow live, board-not-found exits 2); stale markers gone (grep for write-dead-end/until BT-005/are NOT: any string = 0 hits); go build/vet/test pass; only the two doc files changed: All claims verified against live binary (built /tmp/boardctl from ./cmd/boardctl): init exists and bootstraps tasks/events/board.jsonl (exit 0); -C .coding-hermes and -C board-dir both exit 0; topology B fully writable (create appends after header line, update rewrites row + bumps updated_at, events append); guard/ci vocab enforced (guard MAYBE and ci BANANA rejected exit 1); audit events on create/update (task_created + task_completed written to events.jsonl); CI workflow live (.github/workflows/ci.yml in HEAD, BT-004); board-not-found exits 2 (verified). Stale markers gone: grep -E 'write-dead-end|until BT-005|are NOT:' over both docs = 0 hits (exit 1); commit diff removed the stale lines ('are NOT: any string is accepted', 'read-only in practice', 'until BT-005', 'board-not-found currently exits 1'). go build ./... exit 0, go vet ./... exit 0, go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). Only two doc files changed in commit: git diff --name-only HEAD~1 HEAD = docs/dogfood/diagnostics.md + skills/boardctl-usage/SKILL.md.\nDocs refresh accurately matches the live binary on all claims (init, -C, topology B, vocab, audit events, CI, exit 2), stale markers removed, build/vet/test pass, and only the two doc files changed.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-05T03:59:23.869340"
+}

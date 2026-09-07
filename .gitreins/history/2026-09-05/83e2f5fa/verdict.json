@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-014",
+  "task_title": "boardctl event --tick N leaves header ticks_total stale -> doctor FAILs",
+  "task_criteria": [
+    "cmdEvent auto-bumps ticks_total to max(tick_number) when --tick is given (or always); regression test: event --tick N then doctor PASS; go build/vet/test all pass"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m5:50AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~226720 bytes (226.72 KB) in 92ms\u001b[0m\n\u001b[90m5:50AM\u001b[0m \u001b[32m\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m5:50AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~226720 bytes (226.72 KB) in 92ms\u001b[0m\n\u001b[90m5:50AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.112s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 cmdEvent auto-bumps ticks_total to max(tick_number) when --tick is given (or always); regression test: event --tick N then doctor PASS; go build/vet/test all pass: internal/board/write.go: AppendEvent calls b.bumpHeaderTicksTotal(*spec.Tick) when spec.Tick!=nil (lines ~650-655); bumpHeaderTicksTotal (~671-690) raises header ticks_total to max(current,n) via SetHeader, never regressing. cmd/boardctl/main.go:569-574 sets spec.Tick from --tick. Regression test TestCmdEventTickBumpsTicksTotalDoctorPasses (cmd/boardctl/main_test.go) walks init->event --tick 1->header ticks_total 1->doctor exit 0 and PASSES; tick-less no-bump and topology-B tests also PASS. go build exit 0; go vet exit 0; go test -count=1 ./... -> ok cmd/boardctl, ok internal/board.\nBT-014 fix correctly auto-bumps header ticks_total on tick-bearing events so doctor stays green; regression tests and go build/vet/test all pass.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 cmdEvent auto-bumps ticks_total to max(tick_number) when --tick is given (or always); regression test: event --tick N then doctor PASS; go build/vet/test all pass: internal/board/write.go: AppendEvent calls b.bumpHeaderTicksTotal(*spec.Tick) when spec.Tick!=nil (lines ~650-655); bumpHeaderTicksTotal (~671-690) raises header ticks_total to max(current,n) via SetHeader, never regressing. cmd/boardctl/main.go:569-574 sets spec.Tick from --tick. Regression test TestCmdEventTickBumpsTick",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "cmdEvent auto-bumps ticks_total to max(tick_number) when --tick is given (or always); regression test: event --tick N then doctor PASS; go build/vet/test all pass",
+                "status": "PASS",
+                "detail": "internal/board/write.go: AppendEvent calls b.bumpHeaderTicksTotal(*spec.Tick) when spec.Tick!=nil (lines ~650-655); bumpHeaderTicksTotal (~671-690) raises header ticks_total to max(current,n) via SetHeader, never regressing. cmd/boardctl/main.go:569-574 sets spec.Tick from --tick. Regression test TestCmdEventTickBumpsTicksTotalDoctorPasses (cmd/boardctl/main_test.go) walks init->event --tick 1->header ticks_total 1->doctor exit 0 and PASSES; tick-less no-bump and topology-B tests also PASS. go build exit 0; go vet exit 0; go test -count=1 ./... -> ok cmd/boardctl, ok internal/board."
+              }
+            ],
+            "summary": "BT-014 fix correctly auto-bumps header ticks_total on tick-bearing events so doctor stays green; regression tests and go build/vet/test all pass."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-014\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m5:50AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~226720 bytes (226.72 KB) in 92ms\u001b[0m\n\u001b[90m5:50AM\u001b[0m \u001b[32m\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 cmdEvent auto-bumps ticks_total to max(tick_number) when --tick is given (or always); regression test: event --tick N then doctor PASS; go build/vet/test all pass: internal/board/write.go: AppendEvent calls b.bumpHeaderTicksTotal(*spec.Tick) when spec.Tick!=nil (lines ~650-655); bumpHeaderTicksTotal (~671-690) raises header ticks_total to max(current,n) via SetHeader, never regressing. cmd/boardctl/main.go:569-574 sets spec.Tick from --tick. Regression test TestCmdEventTickBumpsTicksTotalDoctorPasses (cmd/boardctl/main_test.go) walks init->event --tick 1->header ticks_total 1->doctor exit 0 and PASSES; tick-less no-bump and topology-B tests also PASS. go build exit 0; go vet exit 0; go test -count=1 ./... -> ok cmd/boardctl, ok internal/board.\nBT-014 fix correctly auto-bumps header ticks_total on tick-bearing events so doctor stays green; regression tests and go build/vet/test all pass.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-05T10:51:51.480116"
+}

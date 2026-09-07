@@ -1,0 +1,67 @@
+{
+  "task_id": "CLN-1",
+  "task_title": "Repo hygiene: clean up project folder structure",
+  "task_criteria": [
+    "Stale untracked build artifacts (bin/, dist/, dagger.db) removed from repo root; README gains a Repository layout section documenting tracked structure and intentional exceptions (gitignored build outputs, .gitreins/history verdicts); go build/vet/test and gitreins guard all pass; commit pushed"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/in\n  \u2713 secrets: \u001b[90m11:12PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~255456 bytes (255.46 KB) in 99.7ms\u001b[0m\n\u001b[90m11:12PM\u001b[0m \u001b",
+      "steps": [
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.067s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m11:12PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~255456 bytes (255.46 KB) in 99.7ms\u001b[0m\n\u001b[90m11:12PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Stale untracked build artifacts (bin/, dist/, dagger.db) removed from repo root; README gains a Repository layout section documenting tracked structure and intentional exceptions (gitignored build outputs, .gitreins/history verdicts); go build/vet/test and gitreins guard all pass; commit pushed: bin/, dist/, dagger.db absent from repo root (ls -la root shows none; find confirms no bin/dist/dagger.db anywhere in tree). README.md:120-140 adds 'Repository layout' section documenting tracked structure and intentional exceptions (gitignored bin/, dist/, dagger.db; .gitreins/history/<date>/<hash>/ verdicts as tracked audit records). go build/vet/test all exit 0 (ok cmd/boardctl, ok internal/board). gitreins guard exit 0 'Tier 1 Guards: PASS' (secrets clean, go_build ok, go_lint ok, go_tests). Commit 7f58fc7 pushed (HEAD==origin/main).\nAll CLN-1 criteria met: build artifacts removed, README Repository layout section added, go build/vet/test and gitreins guard pass, commit pushed.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Stale untracked build artifacts (bin/, dist/, dagger.db) removed from repo root; README gains a Repository layout section documenting tracked structure and intentional exceptions (gitignored build outputs, .gitreins/history verdicts); go build/vet/test and gitreins guard all pass; commit pushed: bin/, dist/, dagger.db absent from repo root (ls -la root shows none; find confirms no bin/dist/dagger.db anywhere in tree). README.md:120-140 adds 'Repository layout' section documenting tr",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Stale untracked build artifacts (bin/, dist/, dagger.db) removed from repo root; README gains a Repository layout section documenting tracked structure and intentional exceptions (gitignored build outputs, .gitreins/history verdicts); go build/vet/test and gitreins guard all pass; commit pushed",
+                "status": "PASS",
+                "detail": "bin/, dist/, dagger.db absent from repo root (ls -la root shows none; find confirms no bin/dist/dagger.db anywhere in tree). README.md:120-140 adds 'Repository layout' section documenting tracked structure and intentional exceptions (gitignored bin/, dist/, dagger.db; .gitreins/history/<date>/<hash>/ verdicts as tracked audit records). go build/vet/test all exit 0 (ok cmd/boardctl, ok internal/board). gitreins guard exit 0 'Tier 1 Guards: PASS' (secrets clean, go_build ok, go_lint ok, go_tests). Commit 7f58fc7 pushed (HEAD==origin/main)."
+              }
+            ],
+            "summary": "All CLN-1 criteria met: build artifacts removed, README Repository layout section added, go build/vet/test and gitreins guard pass, commit pushed."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: CLN-1\n\nStage tier1: PASS\n    \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/in\n  \u2713 secrets: \u001b[90m11:12PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~255456 bytes (255.46 KB) in 99.7ms\u001b[0m\n\u001b[90m11:12PM\u001b[0m \u001b\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Stale untracked build artifacts (bin/, dist/, dagger.db) removed from repo root; README gains a Repository layout section documenting tracked structure and intentional exceptions (gitignored build outputs, .gitreins/history verdicts); go build/vet/test and gitreins guard all pass; commit pushed: bin/, dist/, dagger.db absent from repo root (ls -la root shows none; find confirms no bin/dist/dagger.db anywhere in tree). README.md:120-140 adds 'Repository layout' section documenting tracked structure and intentional exceptions (gitignored bin/, dist/, dagger.db; .gitreins/history/<date>/<hash>/ verdicts as tracked audit records). go build/vet/test all exit 0 (ok cmd/boardctl, ok internal/board). gitreins guard exit 0 'Tier 1 Guards: PASS' (secrets clean, go_build ok, go_lint ok, go_tests). Commit 7f58fc7 pushed (HEAD==origin/main).\nAll CLN-1 criteria met: build artifacts removed, README Repository layout section added, go build/vet/test and gitreins guard pass, commit pushed.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-07T04:13:18.628313"
+}

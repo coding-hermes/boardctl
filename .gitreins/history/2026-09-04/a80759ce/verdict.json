@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-006",
+  "task_title": "Fix -C resolution: .coding-hermes dir must resolve to its board/; board-not-found exits 2",
+  "task_criteria": [
+    "go build/vet/test PASS; boardctl -C <repo>/.coding-hermes stats works; -C <repo>/.coding-hermes/board works; -C <repo> works; board-not-found exits 2; README exit-code table still consistent (0 ok, 1 validation failure, 2 usage/board-not-found)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/\n  \u2713 secrets: \u001b[90m2:48PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~146128 bytes (146.13 KB) in 83.2ms\u001b[0m\n\u001b[90m2:48PM\u001b[0m \u001b[3",
+      "steps": [
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m2:48PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~146128 bytes (146.13 KB) in 83.2ms\u001b[0m\n\u001b[90m2:48PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 go build/vet/test PASS; boardctl -C <repo>/.coding-hermes stats works; -C <repo>/.coding-hermes/board works; -C <repo> works; board-not-found exits 2; README exit-code table still consistent (0 ok, 1 validation failure, 2 usage/board-not-found): go build ./... exit 0; go vet ./... exit 0; go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). Functional binary checks: /tmp/boardctl -C /tmp/bttest/.coding-hermes stats exit 0; -C /tmp/bttest/.coding-hermes/board stats exit 0; -C /tmp/bttest stats exit 0; board-not-found on boardless dir: stats exit 2 and create exit 2 (cmd/boardctl/main.go:117-122 returns 2 on errors.Is(err, board.ErrBoardNotFound)). README.md:73 exit-code table '0 ok, 1 validation failure, 2 usage/board-not-found' consistent. BT-006 tests pass: TestCmdExitCodes, TestCmdInitThenStatsViaCodingHermesDir, TestResolveRepoRootFindsNestedBoard, TestResolveCodingHermesDirFindsItsBoard, TestResolveBoardDirItself, TestResolveEmptyDirNotFound, TestInitOnCodingHermesDirUsesItsBoardSubdir. boardDirCandidates in internal/board/board.go:44-47 special-cases a .coding-hermes target to probe <given>/board.\nAll BT-006 requirements verified: build/vet/test pass, all three -C resolution forms work (exit 0), board-not-found exits 2, and README exit-code table remains consistent.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 go build/vet/test PASS; boardctl -C <repo>/.coding-hermes stats works; -C <repo>/.coding-hermes/board works; -C <repo> works; board-not-found exits 2; README exit-code table still consistent (0 ok, 1 validation failure, 2 usage/board-not-found): go build ./... exit 0; go vet ./... exit 0; go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). Functional binary checks: /tmp/boardctl -C /tmp/bttest/.coding-hermes stats exit 0; -C /tmp/bttest/.coding-hermes/board stats exi",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "go build/vet/test PASS; boardctl -C <repo>/.coding-hermes stats works; -C <repo>/.coding-hermes/board works; -C <repo> works; board-not-found exits 2; README exit-code table still consistent (0 ok, 1 validation failure, 2 usage/board-not-found)",
+                "status": "PASS",
+                "detail": "go build ./... exit 0; go vet ./... exit 0; go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). Functional binary checks: /tmp/boardctl -C /tmp/bttest/.coding-hermes stats exit 0; -C /tmp/bttest/.coding-hermes/board stats exit 0; -C /tmp/bttest stats exit 0; board-not-found on boardless dir: stats exit 2 and create exit 2 (cmd/boardctl/main.go:117-122 returns 2 on errors.Is(err, board.ErrBoardNotFound)). README.md:73 exit-code table '0 ok, 1 validation failure, 2 usage/board-not-found' consistent. BT-006 tests pass: TestCmdExitCodes, TestCmdInitThenStatsViaCodingHermesDir, TestResolveRepoRootFindsNestedBoard, TestResolveCodingHermesDirFindsItsBoard, TestResolveBoardDirItself, TestResolveEmptyDirNotFound, TestInitOnCodingHermesDirUsesItsBoardSubdir. boardDirCandidates in internal/board/board.go:44-47 special-cases a .coding-hermes target to probe <given>/board."
+              }
+            ],
+            "summary": "All BT-006 requirements verified: build/vet/test pass, all three -C resolution forms work (exit 0), board-not-found exits 2, and README exit-code table remains consistent."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-006\n\nStage tier1: PASS\n    \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/\n  \u2713 secrets: \u001b[90m2:48PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~146128 bytes (146.13 KB) in 83.2ms\u001b[0m\n\u001b[90m2:48PM\u001b[0m \u001b[3\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 go build/vet/test PASS; boardctl -C <repo>/.coding-hermes stats works; -C <repo>/.coding-hermes/board works; -C <repo> works; board-not-found exits 2; README exit-code table still consistent (0 ok, 1 validation failure, 2 usage/board-not-found): go build ./... exit 0; go vet ./... exit 0; go test -count=1 ./... exit 0 (ok cmd/boardctl, ok internal/board). Functional binary checks: /tmp/boardctl -C /tmp/bttest/.coding-hermes stats exit 0; -C /tmp/bttest/.coding-hermes/board stats exit 0; -C /tmp/bttest stats exit 0; board-not-found on boardless dir: stats exit 2 and create exit 2 (cmd/boardctl/main.go:117-122 returns 2 on errors.Is(err, board.ErrBoardNotFound)). README.md:73 exit-code table '0 ok, 1 validation failure, 2 usage/board-not-found' consistent. BT-006 tests pass: TestCmdExitCodes, TestCmdInitThenStatsViaCodingHermesDir, TestResolveRepoRootFindsNestedBoard, TestResolveCodingHermesDirFindsItsBoard, TestResolveBoardDirItself, TestResolveEmptyDirNotFound, TestInitOnCodingHermesDirUsesItsBoardSubdir. boardDirCandidates in internal/board/board.go:44-47 special-cases a .coding-hermes target to probe <given>/board.\nAll BT-006 requirements verified: build/vet/test pass, all three -C resolution forms work (exit 0), board-not-found exits 2, and README exit-code table remains consistent.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-04T19:49:36.319719"
+}

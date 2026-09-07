@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-008",
+  "task_title": "v0.1.1 release missing sha256sums.txt \u2014 regenerate + upload + README checksum guidance",
+  "task_criteria": [
+    "sha256sums.txt appears as a v0.1.1 release asset, with checksums computed from the exact published binaries (download the 7 assets and hash them, matching v0.1.0's format with bare filenames); 'gh release view v0.1.1' lists the asset; curl -sL <release>/sha256sums.txt works and each checksum verifies against its downloaded binary via sha256sum -c; README Install section shows curl + sha256sum -c verification for the static-binary path; a release checklist note stating 'make release is the only sanctioned cut path' is added; go build ./..., go vet ./..., go test ./... -count=1 -short all pass"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m7:21PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~205008 bytes (205.01 KB) in 95.7ms\u001b[0m\n\u001b[90m7:21PM\u001b[0m \u001b[3\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m7:21PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~205008 bytes (205.01 KB) in 95.7ms\u001b[0m\n\u001b[90m7:21PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.091s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 sha256sums.txt appears as a v0.1.1 release asset, with checksums computed from the exact published binaries (download the 7 assets and hash them, matching v0.1.0's format with bare filenames); 'gh release view v0.1.1' lists the asset; curl -sL <release>/sha256sums.txt works and each checksum verifies against its downloaded binary via sha256sum -c; README Install section shows curl + sha256sum -c verification for the static-binary path; a release checklist note stating 'make release is the only sanctioned cut path' is added; go build ./..., go vet ./..., go test ./... -count=1 -short all pass: gh release view v0.1.1 lists asset sha256sums.txt + 7 binaries. curl -sL <release>/sha256sums.txt downloaded OK; content uses bare filenames matching v0.1.0's format (verified v0.1.0 file). Downloaded all 7 binaries and `sha256sum -c sha256sums.txt` returned OK for all 7 (darwin-amd64, darwin-arm64, freebsd-amd64, linux-amd64, linux-arm, linux-arm64, windows-amd64.exe). README.md (HEAD 592fa35) Install section shows `curl -sL -o boardctl .../boardctl-linux-amd64`, `curl -sL -o sha256sums.txt .../sha256sums.txt`, `sha256sum -c sha256sums.txt`; Development section line 125: '`make release` is the only sanctioned path for cutting a release'. go build ./... exit 0; go vet ./... exit 0; go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board).\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 sha256sums.txt appears as a v0.1.1 release asset, with checksums computed from the exact published binaries (download the 7 assets and hash them, matching v0.1.0's format with bare filenames); 'gh release view v0.1.1' lists the asset; curl -sL <release>/sha256sums.txt works and each checksum verifies against its downloaded binary via sha256sum -c; README Install section shows curl + sha256sum -c verification for the static-binary path; a release checklist note stating 'make release ",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "sha256sums.txt appears as a v0.1.1 release asset, with checksums computed from the exact published binaries (download the 7 assets and hash them, matching v0.1.0's format with bare filenames); 'gh release view v0.1.1' lists the asset; curl -sL <release>/sha256sums.txt works and each checksum verifies against its downloaded binary via sha256sum -c; README Install section shows curl + sha256sum -c verification for the static-binary path; a release checklist note stating 'make release is the only sanctioned cut path' is added; go build ./..., go vet ./..., go test ./... -count=1 -short all pass",
+                "status": "PASS",
+                "detail": "gh release view v0.1.1 lists asset sha256sums.txt + 7 binaries. curl -sL <release>/sha256sums.txt downloaded OK; content uses bare filenames matching v0.1.0's format (verified v0.1.0 file). Downloaded all 7 binaries and `sha256sum -c sha256sums.txt` returned OK for all 7 (darwin-amd64, darwin-arm64, freebsd-amd64, linux-amd64, linux-arm, linux-arm64, windows-amd64.exe). README.md (HEAD 592fa35) Install section shows `curl -sL -o boardctl .../boardctl-linux-amd64`, `curl -sL -o sha256sums.txt .../sha256sums.txt`, `sha256sum -c sha256sums.txt`; Development section line 125: '`make release` is the only sanctioned path for cutting a release'. go build ./... exit 0; go vet ./... exit 0; go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board)."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-008\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m7:21PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~205008 bytes (205.01 KB) in 95.7ms\u001b[0m\n\u001b[90m7:21PM\u001b[0m \u001b[3\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 sha256sums.txt appears as a v0.1.1 release asset, with checksums computed from the exact published binaries (download the 7 assets and hash them, matching v0.1.0's format with bare filenames); 'gh release view v0.1.1' lists the asset; curl -sL <release>/sha256sums.txt works and each checksum verifies against its downloaded binary via sha256sum -c; README Install section shows curl + sha256sum -c verification for the static-binary path; a release checklist note stating 'make release is the only sanctioned cut path' is added; go build ./..., go vet ./..., go test ./... -count=1 -short all pass: gh release view v0.1.1 lists asset sha256sums.txt + 7 binaries. curl -sL <release>/sha256sums.txt downloaded OK; content uses bare filenames matching v0.1.0's format (verified v0.1.0 file). Downloaded all 7 binaries and `sha256sum -c sha256sums.txt` returned OK for all 7 (darwin-amd64, darwin-arm64, freebsd-amd64, linux-amd64, linux-arm, linux-arm64, windows-amd64.exe). README.md (HEAD 592fa35) Install section shows `curl -sL -o boardctl .../boardctl-linux-amd64`, `curl -sL -o sha256sums.txt .../sha256sums.txt`, `sha256sum -c sha256sums.txt`; Development section line 125: '`make release` is the only sanctioned path for cutting a release'. go build ./... exit 0; go vet ./... exit 0; go test ./... -count=1 -short exit 0 (ok cmd/boardctl, ok internal/board).\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-05T00:22:21.686534"
+}

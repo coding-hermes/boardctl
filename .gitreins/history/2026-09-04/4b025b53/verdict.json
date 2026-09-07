@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-007",
+  "task_title": "Write vocabulary unenforced on guard/ci/priority/depends-on; validate+doctor silent on junk rows",
+  "task_criteria": [
+    "create/update reject or normalize out-of-vocabulary guard_result/ci_result/priority values; validate warns on depends_on ids that don't exist and header counters < 0; validate flags out-of-vocab values already on boards"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m4:29PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~176079 bytes (176.08 KB) in 122ms\u001b[0m\n\u001b[90m4:29PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.111s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m4:29PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~176079 bytes (176.08 KB) in 122ms\u001b[0m\n\u001b[90m4:29PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.111s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.570s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 create/update reject or normalize out-of-vocabulary guard_result/ci_result/priority values; validate warns on depends_on ids that don't exist and header counters < 0; validate flags out-of-vocab values already on boards: (a) write.go: Create normalizes priority via NormalizePriority (bare digits 0-3 -> P0-P3) and rejects out-of-vocab values (write.go ~155-165); Update rejects guard_result not in {PASS,FAIL,SKIP} and ci_result not in {GREEN,RED,SKIP} (write.go ~410-440). (b) validate.go ~145-150 warns on depends_on ids referencing no task row. (c) validate.go ~215-220 flags negative header counters. (d) validate.go ~120-135 warns on out-of-vocab guard_result/ci_result already on boards; Doctor() calls Validate() so surfaces same findings (doctor.go:22). Tests: `go test -count=1 ./...` -> ok cmd/boardctl and internal/board (exit 0); targeted BT-007 tests (TestUpdateGuardRejectsOutOfVocab, TestUpdateCIRejectsOutOfVocab, TestCreatePriorityNormalizesBareDigits, TestCreatePriorityRejectsGarbage, TestCreateDependsOnGhostRejected, TestValidateFlagsFreeFormGuardAndCI, TestValidateWarnsOnDanglingDependsOn, TestValidateErrorsOnNegativeHeaderCounters, TestDoctorSurfacesVocabularyAndDepFindings, TestCmdValidateFlagsJunkRow) all pass. go vet/build clean, no LSP diagnostics.\nWrite path rejects/normalizes out-of-vocab guard/ci/priority values, validate warns on dangling depends_on and flags out-of-vocab values already on boards, and negative header counters are flagged; all covered by passing tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 create/update reject or normalize out-of-vocabulary guard_result/ci_result/priority values; validate warns on depends_on ids that don't exist and header counters < 0; validate flags out-of-vocab values already on boards: (a) write.go: Create normalizes priority via NormalizePriority (bare digits 0-3 -> P0-P3) and rejects out-of-vocab values (write.go ~155-165); Update rejects guard_result not in {PASS,FAIL,SKIP} and ci_result not in {GREEN,RED,SKIP} (write.go ~410-440). (b) validate",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "create/update reject or normalize out-of-vocabulary guard_result/ci_result/priority values; validate warns on depends_on ids that don't exist and header counters < 0; validate flags out-of-vocab values already on boards",
+                "status": "PASS",
+                "detail": "(a) write.go: Create normalizes priority via NormalizePriority (bare digits 0-3 -> P0-P3) and rejects out-of-vocab values (write.go ~155-165); Update rejects guard_result not in {PASS,FAIL,SKIP} and ci_result not in {GREEN,RED,SKIP} (write.go ~410-440). (b) validate.go ~145-150 warns on depends_on ids referencing no task row. (c) validate.go ~215-220 flags negative header counters. (d) validate.go ~120-135 warns on out-of-vocab guard_result/ci_result already on boards; Doctor() calls Validate() so surfaces same findings (doctor.go:22). Tests: `go test -count=1 ./...` -> ok cmd/boardctl and internal/board (exit 0); targeted BT-007 tests (TestUpdateGuardRejectsOutOfVocab, TestUpdateCIRejectsOutOfVocab, TestCreatePriorityNormalizesBareDigits, TestCreatePriorityRejectsGarbage, TestCreateDependsOnGhostRejected, TestValidateFlagsFreeFormGuardAndCI, TestValidateWarnsOnDanglingDependsOn, TestValidateErrorsOnNegativeHeaderCounters, TestDoctorSurfacesVocabularyAndDepFindings, TestCmdValidateFlagsJunkRow) all pass. go vet/build clean, no LSP diagnostics."
+              }
+            ],
+            "summary": "Write path rejects/normalizes out-of-vocab guard/ci/priority values, validate warns on dangling depends_on and flags out-of-vocab values already on boards, and negative header counters are flagged; all covered by passing tests."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-007\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m4:29PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~176079 bytes (176.08 KB) in 122ms\u001b[0m\n\u001b[90m4:29PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.111s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 create/update reject or normalize out-of-vocabulary guard_result/ci_result/priority values; validate warns on depends_on ids that don't exist and header counters < 0; validate flags out-of-vocab values already on boards: (a) write.go: Create normalizes priority via NormalizePriority (bare digits 0-3 -> P0-P3) and rejects out-of-vocab values (write.go ~155-165); Update rejects guard_result not in {PASS,FAIL,SKIP} and ci_result not in {GREEN,RED,SKIP} (write.go ~410-440). (b) validate.go ~145-150 warns on depends_on ids referencing no task row. (c) validate.go ~215-220 flags negative header counters. (d) validate.go ~120-135 warns on out-of-vocab guard_result/ci_result already on boards; Doctor() calls Validate() so surfaces same findings (doctor.go:22). Tests: `go test -count=1 ./...` -> ok cmd/boardctl and internal/board (exit 0); targeted BT-007 tests (TestUpdateGuardRejectsOutOfVocab, TestUpdateCIRejectsOutOfVocab, TestCreatePriorityNormalizesBareDigits, TestCreatePriorityRejectsGarbage, TestCreateDependsOnGhostRejected, TestValidateFlagsFreeFormGuardAndCI, TestValidateWarnsOnDanglingDependsOn, TestValidateErrorsOnNegativeHeaderCounters, TestDoctorSurfacesVocabularyAndDepFindings, TestCmdValidateFlagsJunkRow) all pass. go vet/build clean, no LSP diagnostics.\nWrite path rejects/normalizes out-of-vocab guard/ci/priority values, validate warns on dangling depends_on and flags out-of-vocab values already on boards, and negative header counters are flagged; all covered by passing tests.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-04T21:30:59.094878"
+}
