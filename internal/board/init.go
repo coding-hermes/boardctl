@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // InitOptions carries the header identity for a freshly bootstrapped board.
@@ -86,15 +87,16 @@ func Init(dir string, opts InitOptions) (boardDir string, wrote []string, err er
 
 	type seed struct{ name, content string }
 	seeds := []seed{
-		{"tasks.jsonl", ""},
+		{"tasks.jsonl", defaultFixtureLine()},
 		{"events.jsonl", ""},
 		{"board.jsonl", headerLine},
+		{"fixtures.jsonl", defaultFixtureLine()},
 	}
 	for _, s := range seeds {
 		p := filepath.Join(boardDir, s.name)
 		if fileExists(p) {
 			if s.name != "board.jsonl" {
-				continue // tasks/events: existence = initialized (never clobber)
+				continue // tasks/events/fixtures: existence = initialized (never clobber)
 			}
 			content, readErr := os.ReadFile(p)
 			if readErr != nil {
@@ -113,6 +115,45 @@ func Init(dir string, opts InitOptions) (boardDir string, wrote []string, err er
 		return boardDir, nil, ErrAlreadyInitialized
 	}
 	return boardDir, wrote, nil
+}
+
+// defaultFixtureLine returns the seed row for a fresh board (SCHED-GAP-106):
+// the fleet-standard NEVER-DONE perpetual audit fixture, written BOTH to
+// tasks.jsonl (row 0) and fixtures.jsonl (the permanent-fixture registry).
+// It carries the FULL DefaultTaskRowKeys schema (with a trailing perpetual
+// flag) so subsequent `create` rows stay self-similar with it. Operators
+// disable the fixture by deleting both rows — "built in unless disabled".
+func defaultFixtureLine() string {
+	now := time.Now().UTC().Format(DefaultTSLayout)
+	// Neutral defaults for every fleet schema key (mirror of write.go's
+	// neutralValue semantics), then the fixture-specific values on top.
+	row := map[string]any{}
+	for _, k := range DefaultTaskRowKeys {
+		switch k {
+		case "depends_on", "blocks", "capability_tags", "files_changed":
+			row[k] = []any{}
+		case "attempts", "lines_added", "lines_removed":
+			row[k] = 0
+		case "status", "worker_status":
+			row[k] = "pending"
+		default:
+			row[k] = nil
+		}
+	}
+	row["id"] = "NEVER-DONE"
+	row["title"] = "Perpetual audit fixture — find the next worthwhile improvement (never complete)"
+	row["priority"] = "P3"
+	row["complexity"] = 3
+	row["perpetual"] = true
+	row["worker_summary"] = "Perpetual audit fixture — always on the board by design; excluded from adaptive speed control (SCHED-GAP-106)."
+	row["foreman_note"] = "Never complete. Refresh the summary each audit; never mark done."
+	row["created_at"] = now
+	row["updated_at"] = now
+	b, err := json.Marshal(row)
+	if err != nil {
+		return "" // unreachable with these types — omit the seed rather than fail init
+	}
+	return string(b) + "\n"
 }
 
 // defaultBoardDir mirrors Resolve's candidate probing: an existing

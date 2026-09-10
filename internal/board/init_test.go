@@ -30,8 +30,10 @@ func initFileMap(t *testing.T, dir string) map[string]string {
 }
 
 // TestInitEmptyDirCreatesTopologyA: init on a fresh directory writes exactly
-// the three topology-A files under .coding-hermes/board, the header parses
-// with project/namespace identity, and the board resolves as topology A.
+// the four topology-A files (tasks, events, board, fixtures — SCHED-GAP-106
+// ships the perpetual audit fixture with every fresh board) under
+// .coding-hermes/board, the header parses with project/namespace identity,
+// and the board resolves as topology A.
 func TestInitEmptyDirCreatesTopologyA(t *testing.T) {
 	dir := t.TempDir()
 	boardDir, wrote, err := Init(dir, InitOptions{Project: "demo", Namespace: "ns-demo"})
@@ -42,20 +44,28 @@ func TestInitEmptyDirCreatesTopologyA(t *testing.T) {
 	if boardDir != want {
 		t.Fatalf("board dir = %q, want %q", boardDir, want)
 	}
-	if len(wrote) != 3 {
-		t.Fatalf("wrote %d files, want 3: %v", len(wrote), wrote)
+	if len(wrote) != 4 {
+		t.Fatalf("wrote %d files, want 4: %v", len(wrote), wrote)
 	}
 	files := initFileMap(t, boardDir)
-	if len(files) != 3 {
-		t.Fatalf("board dir holds %d files, want 3 (tasks, events, board): %v", len(files), files)
+	if len(files) != 4 {
+		t.Fatalf("board dir holds %d files, want 4 (tasks, events, board, fixtures): %v", len(files), files)
 	}
-	for _, name := range []string{"tasks.jsonl", "events.jsonl", "board.jsonl"} {
+	for _, name := range []string{"tasks.jsonl", "events.jsonl", "board.jsonl", "fixtures.jsonl"} {
 		if _, ok := files[name]; !ok {
 			t.Fatalf("%s missing after init", name)
 		}
 	}
-	if files["tasks.jsonl"] != "" || files["events.jsonl"] != "" {
-		t.Fatalf("tasks/events must start empty: %q / %q", files["tasks.jsonl"], files["events.jsonl"])
+	if files["tasks.jsonl"] == "" || files["events.jsonl"] != "" {
+		t.Fatalf("tasks must start with the fixture row, events empty: %q / %q", files["tasks.jsonl"], files["events.jsonl"])
+	}
+	if !strings.Contains(files["tasks.jsonl"], "NEVER-DONE") {
+		t.Fatalf("tasks.jsonl seed lacks the NEVER-DONE fixture row: %q", files["tasks.jsonl"])
+	}
+	// The shipped fixture row must be the NEVER-DONE perpetual audit marker.
+	fx := files["fixtures.jsonl"]
+	if !strings.Contains(fx, "NEVER-DONE") || !strings.Contains(fx, `"perpetual":true`) {
+		t.Fatalf("fixtures.jsonl seed lacks NEVER-DONE perpetual fixture: %q", fx)
 	}
 	hdr, err := ParseRow([]byte(strings.TrimRight(files["board.jsonl"], "\n")))
 	if err != nil {
@@ -219,10 +229,12 @@ func TestCreateOnEmptyInitializedBoard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 1 {
-		t.Fatalf("tasks.jsonl holds %d rows, want 1", len(rows))
+	// Row 0 is the shipped NEVER-DONE fixture (SCHED-GAP-106); the create
+	// target must land beside it, not replace it.
+	if len(rows) != 2 {
+		t.Fatalf("tasks.jsonl holds %d rows, want 2 (fixture + T-1)", len(rows))
 	}
-	first := rows[0]
+	first := rows[1]
 	if got := first.String("status"); got != "pending" {
 		t.Fatalf("status = %q, want pending", got)
 	}
@@ -245,7 +257,8 @@ func TestCreateOnEmptyInitializedBoard(t *testing.T) {
 		t.Fatal("created_at not stamped")
 	}
 
-	// The empty-board path is repeatable: second create mirrors row 1.
+	// The empty-board path is repeatable: second create mirrors the schema
+	// (fixture row carries perpetual, so mirror rows include it too).
 	if _, err := b.Create(TaskRowSpec{ID: "T-2", Title: "Second", Status: "pending"}); err != nil {
 		t.Fatal(err)
 	}
@@ -253,11 +266,15 @@ func TestCreateOnEmptyInitializedBoard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 2 {
-		t.Fatalf("tasks.jsonl holds %d rows, want 2", len(rows))
+	// fixture + T-1 + T-2
+	if len(rows) != 3 {
+		t.Fatalf("tasks.jsonl holds %d rows, want 3", len(rows))
 	}
-	if len(rows[1].Keys) != len(rows[0].Keys) {
-		t.Fatalf("second row schema diverged: %d keys vs %d", len(rows[1].Keys), len(rows[0].Keys))
+	if len(rows[2].Keys) != len(rows[1].Keys) {
+		t.Fatalf("second create schema diverged: %d keys vs %d", len(rows[2].Keys), len(rows[1].Keys))
+	}
+	if !rows[1].Has("perpetual") || !rows[2].Has("perpetual") {
+		t.Fatal("created rows must stay self-similar with the fixture schema (perpetual key present)")
 	}
 }
 
