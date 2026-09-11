@@ -14,8 +14,8 @@ The zero-dependency path: grab a static binary from
 no Go toolchain needed. Verify the binary's checksum before running it:
 
 ```bash
-curl -sL -o boardctl https://github.com/coding-hermes/boardctl/releases/download/v0.1.1/boardctl-linux-amd64
-curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.1/sha256sums.txt
+curl -sL -o boardctl https://github.com/coding-hermes/boardctl/releases/download/v0.1.2/boardctl-linux-amd64
+curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.2/sha256sums.txt
 sha256sum -c sha256sums.txt   # verify the binary's checksum
 chmod +x boardctl && ./boardctl version
 ```
