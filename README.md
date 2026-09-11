@@ -69,9 +69,12 @@ boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
 
 ## Start a board
 
-A fresh project has no board yet. `init` bootstraps one — it writes the three
-topology-A files (`tasks.jsonl`, `events.jsonl`, and the `board.jsonl` header)
-under `<dir>/.coding-hermes/board`, nothing else. No git init, no commits, and
+A fresh project has no board yet. `init` bootstraps one — it writes the four
+topology-A files (`tasks.jsonl`, `events.jsonl`, the `board.jsonl` header, and
+`fixtures.jsonl`) under `<dir>/.coding-hermes/board`, nothing else.
+`tasks.jsonl` starts seeded with the fleet-standard NEVER-DONE perpetual audit
+fixture row, which is registered in `fixtures.jsonl` (the perpetual fixture
+registry) as well. No git init, no commits, and
 it is no-clobber: re-running on an initialized board just prints "already
 initialized" (exit 0).
 
