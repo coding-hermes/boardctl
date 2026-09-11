@@ -14,13 +14,17 @@ The zero-dependency path: grab a static binary from
 no Go toolchain needed. Verify the binary's checksum before running it:
 
 ```bash
-curl -sL -o boardctl https://github.com/coding-hermes/boardctl/releases/download/v0.1.2/boardctl-linux-amd64
+curl -sL -o boardctl-linux-amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.2/boardctl-linux-amd64
 curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.2/sha256sums.txt
-sha256sum -c sha256sums.txt   # verify the binary's checksum
-chmod +x boardctl && ./boardctl version
+sha256sum -c --ignore-missing sha256sums.txt   # verify the binary you downloaded
+chmod +x boardctl-linux-amd64 && ./boardctl-linux-amd64 version
 ```
 
-Move `boardctl` somewhere on your `PATH` (or invoke it as `./boardctl`).
+`sha256sums.txt` lists every published platform, so `--ignore-missing` skips the
+ones you did not download (without it, `sha256sum -c` exits 1 on the absent
+files). The downloaded binary must keep its release filename for this to verify.
+
+Move `boardctl` somewhere on your `PATH` (or invoke it as `./boardctl-linux-amd64`).
 
 With a Go toolchain, `go install` works too:
 
