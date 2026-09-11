@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-016",
+  "task_title": "README Start-a-board truth: init writes four files, not three",
+  "task_criteria": [
+    "README.md Start a board section states init writes four topology-A files (tasks.jsonl seeded with the NEVER-DONE perpetual fixture row, events.jsonl, board.jsonl header, fixtures.jsonl registry) instead of the stale three files nothing else; no other stale init claims remain in README; commit pushed."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/\n  \u2713 secrets: \u001b[90m12:41PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~323590 bytes (323.59 KB) in 243ms\u001b[0m\n\u001b[90m12:41PM\u001b[0m \u001b[",
+      "steps": [
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.073s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m12:41PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~323590 bytes (323.59 KB) in 243ms\u001b[0m\n\u001b[90m12:41PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README.md Start a board section states init writes four topology-A files (tasks.jsonl seeded with the NEVER-DONE perpetual fixture row, events.jsonl, board.jsonl header, fixtures.jsonl registry) instead of the stale three files nothing else; no other stale init claims remain in README; commit pushed.: README.md:72-77 now reads 'init bootstraps one \u2014 it writes the four topology-A files (tasks.jsonl, events.jsonl, the board.jsonl header, and fixtures.jsonl) under <dir>/.coding-hermes/board, nothing else. tasks.jsonl starts seeded with the fleet-standard NEVER-DONE perpetual audit fixture row, which is registered in fixtures.jsonl (the perpetual fixture registry) as well.' This matches code: internal/board/init.go:88-93 seeds exactly 4 files {tasks.jsonl, events.jsonl, board.jsonl, fixtures.jsonl} and defaultFixtureLine() (init.go:121-155) sets id=NEVER-DONE, perpetual:true written to both tasks.jsonl and fixtures.jsonl. No stale 'three files' claim remains \u2014 grep for 'three|3 files' hits only unrelated lines (7, 72, 91). Commit d7f6419 'docs: README start-a-board - init writes four files... Addresses BT-016' is present in origin/main (git log origin/main shows it), so it is pushed. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/` => 'ok github.com/coding-hermes/boardctl/internal/board 0.078s' and 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.017s', exit_code 0; init_test.go:47-68 asserts len(wrote)==4 and NEVER-DONE seed in both files.\nREADME Start a board section correctly documents init writing four topology-A files with the NEVER-DONE perpetual fixture seed, matching the code, with no stale claims and the commit pushed to origin/main.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README.md Start a board section states init writes four topology-A files (tasks.jsonl seeded with the NEVER-DONE perpetual fixture row, events.jsonl, board.jsonl header, fixtures.jsonl registry) instead of the stale three files nothing else; no other stale init claims remain in README; commit pushed.: README.md:72-77 now reads 'init bootstraps one \u2014 it writes the four topology-A files (tasks.jsonl, events.jsonl, the board.jsonl header, and fixtures.jsonl) under <dir>/.coding-hermes/",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README.md Start a board section states init writes four topology-A files (tasks.jsonl seeded with the NEVER-DONE perpetual fixture row, events.jsonl, board.jsonl header, fixtures.jsonl registry) instead of the stale three files nothing else; no other stale init claims remain in README; commit pushed.",
+                "status": "PASS",
+                "detail": "README.md:72-77 now reads 'init bootstraps one \u2014 it writes the four topology-A files (tasks.jsonl, events.jsonl, the board.jsonl header, and fixtures.jsonl) under <dir>/.coding-hermes/board, nothing else. tasks.jsonl starts seeded with the fleet-standard NEVER-DONE perpetual audit fixture row, which is registered in fixtures.jsonl (the perpetual fixture registry) as well.' This matches code: internal/board/init.go:88-93 seeds exactly 4 files {tasks.jsonl, events.jsonl, board.jsonl, fixtures.jsonl} and defaultFixtureLine() (init.go:121-155) sets id=NEVER-DONE, perpetual:true written to both tasks.jsonl and fixtures.jsonl. No stale 'three files' claim remains \u2014 grep for 'three|3 files' hits only unrelated lines (7, 72, 91). Commit d7f6419 'docs: README start-a-board - init writes four files... Addresses BT-016' is present in origin/main (git log origin/main shows it), so it is pushed. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/` => 'ok github.com/coding-hermes/boardctl/internal/board 0.078s' and 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.017s', exit_code 0; init_test.go:47-68 asserts len(wrote)==4 and NEVER-DONE seed in both files."
+              }
+            ],
+            "summary": "README Start a board section correctly documents init writing four topology-A files with the NEVER-DONE perpetual fixture seed, matching the code, with no stale claims and the commit pushed to origin/main."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-016\n\nStage tier1: PASS\n    \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/\n  \u2713 secrets: \u001b[90m12:41PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~323590 bytes (323.59 KB) in 243ms\u001b[0m\n\u001b[90m12:41PM\u001b[0m \u001b[\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README.md Start a board section states init writes four topology-A files (tasks.jsonl seeded with the NEVER-DONE perpetual fixture row, events.jsonl, board.jsonl header, fixtures.jsonl registry) instead of the stale three files nothing else; no other stale init claims remain in README; commit pushed.: README.md:72-77 now reads 'init bootstraps one \u2014 it writes the four topology-A files (tasks.jsonl, events.jsonl, the board.jsonl header, and fixtures.jsonl) under <dir>/.coding-hermes/board, nothing else. tasks.jsonl starts seeded with the fleet-standard NEVER-DONE perpetual audit fixture row, which is registered in fixtures.jsonl (the perpetual fixture registry) as well.' This matches code: internal/board/init.go:88-93 seeds exactly 4 files {tasks.jsonl, events.jsonl, board.jsonl, fixtures.jsonl} and defaultFixtureLine() (init.go:121-155) sets id=NEVER-DONE, perpetual:true written to both tasks.jsonl and fixtures.jsonl. No stale 'three files' claim remains \u2014 grep for 'three|3 files' hits only unrelated lines (7, 72, 91). Commit d7f6419 'docs: README start-a-board - init writes four files... Addresses BT-016' is present in origin/main (git log origin/main shows it), so it is pushed. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/` => 'ok github.com/coding-hermes/boardctl/internal/board 0.078s' and 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.017s', exit_code 0; init_test.go:47-68 asserts len(wrote)==4 and NEVER-DONE seed in both files.\nREADME Start a board section correctly documents init writing four topology-A files with the NEVER-DONE perpetual fixture seed, matching the code, with no stale claims and the commit pushed to origin/main.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-11T17:41:35.953171"
+}
