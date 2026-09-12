@@ -47,6 +47,7 @@ commands:
   doctor
   version
   stats   [--json] [--all]
+  render  [-C dir] [-o out.html] [--tz Zone] [--json out.json]
 
 -C resolves the board dir: a repo root (looks for .coding-hermes/board),
 .coding-hermes, or the board dir itself. Defaults to the current directory.
@@ -106,6 +107,8 @@ func run(args []string) int {
 		err = cmdVersion(rest)
 	case "stats":
 		err = cmdStats(boardDir, rest)
+	case "render":
+		err = cmdRender(boardDir, rest)
 	case "help", "-h", "--help":
 		fmt.Fprint(os.Stdout, usageText)
 		return 0
