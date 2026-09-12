@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.1.0
+version: 1.2.0
 category: software-development
 ---
 
@@ -66,8 +66,9 @@ boardctl -C R update FEAT-1 --status complete \
     --commit-hash <sha> --guard PASS --ci GREEN --summary "done (+80/-12)"
 boardctl -C R event --type audit --tick 42 --detail-text "..."   # or --detail @file
 boardctl -C R header --set-ticks-total 42 --set-last-commit <sha>
-boardctl init --project myproject          # bootstrap a fresh board:
-                                           # writes tasks/events/board.jsonl
+boardctl init --project myproject          # bootstrap a fresh board: writes
+                                           # tasks/events/board/fixtures.jsonl
+                                           # + the NEVER-DONE seed row
 boardctl version                           # date-stamp on release builds, "dev" otherwise
 ```
 
@@ -90,16 +91,39 @@ boardctl version                           # date-stamp on release builds, "dev"
 
 ## Common pitfalls
 
-1. **Bootstrap with `boardctl init` (BT-005).** `boardctl init --project X`
-   in an empty repo writes `tasks.jsonl` + `events.jsonl` +
-   `board.jsonl` under `.coding-hermes/board/` and exits 0. `create` on the
-   empty board works too and emits the full default row schema — no copying
-   files from other boards, no hand-seeding needed.
-2. **`create` mirrors the LAST row's schema.** On boards with legacy rows your
+1. **Bootstrap with `boardctl init` (BT-005, four files since BT-016).**
+   `boardctl init --project X` in an empty repo writes `tasks.jsonl` +
+   `events.jsonl` + `board.jsonl` + `fixtures.jsonl` (with the fleet
+   NEVER-DONE perpetual fixture row) under `.coding-hermes/board/` and
+   exits 0. Re-running is a no-clobber no-op (exit 0). `create` on the
+   empty board works too and emits the full default row schema — no
+   copying files from other boards, no hand-seeding needed.
+2. **`create --id` does not validate the id format (BT-023).** Any string
+   is accepted — `"bad id!"` lands in tasks AND events and validate stays
+   silent. Fleet convention is `PREFIX-NUM` (often `PROJ-N`); until
+   BT-023 lands, keep ids clean at the call site — downstream consumers
+   (task-router, board-scan dedupe) parse them.
+3. **`update --commit-hash` writes the task's fix commit into the header's
+   `last_commit` (BT-024).** The header field is the board-edit drift
+   pointer, so a routine task completion silently degrades drift
+   detection, and the header's `updated_at` does not move. Use
+   `header --set-last-commit` explicitly when you mean the board commit;
+   until BT-024 lands, re-pin drift pointers after bulk updates.
+4. **`validate` enforces a status vocabulary the fleet doesn't fully
+   speak (BT-025).** Real foreman rows with `todo`/`done`/`open` produce
+   ERRORs (exit 1) — on boards with legacy statuses, treat validate's
+   status errors as an alias-policy question, not data corruption.
+5. **Legacy/partial boards fail with unhelpful errors (BT-026).** A board
+   dir with only `tasks.jsonl` reports "no board found" (exit 2 — the
+   file IS there; events.jsonl is missing); a pretty-printed
+   (multi-line JSON) board fails with a raw JSON escape error and no row
+   context. Both board classes are valid-on-disk and readable by
+   `jq`; they are just not line-loadable. Don't rewrite them (fleet law).
+6. **`create` mirrors the LAST row's schema.** On boards with legacy rows your
    new row inherits their key style — that's a feature (byte-stable diffs),
    but check `stats` output for `(none)` status groups after creating on
    odd boards.
-3. **Topology B (header on line 1 of tasks.jsonl) is fully writable
+7. **Topology B (header on line 1 of tasks.jsonl) is fully writable
    (BT-010).** `create` appends after the header line, `update` rewrites the
    row and bumps the header's `last_commit`, events append normally. The
    old stale-`board.db` write dead-end is gone. Migrating to topology A
@@ -107,11 +131,13 @@ boardctl version                           # date-stamp on release builds, "dev"
    not a requirement. Note: `init` still refuses on an existing topology-B
    board (it's for fresh boards only) — and tells you topology B is
    writable when it does.
-4. **Prefer `create`/`update` over hand-editing tasks.jsonl.** `update` also
-   writes the audit event and bumps `updated_at`; hand edits skip the event
-   trail and can mix serialization styles.
-5. **`doctor` is your preflight.** It catches tracked `.db`/`.parquet` caches,
+8. **Prefer `create`/`update` over hand-editing tasks.jsonl.** `update` also
+   writes the audit event and keeps `updated_at` coherent; hand edits skip
+   the event trail and can mix serialization styles.
+9. **`doctor` is your preflight.** It catches tracked `.db`/`.parquet` caches,
    header counter drift, and fixture orphans in ~0.02s on real fleet boards.
+   And never `git add -A` a board COPY — an untracked `board.db` rides
+   along and doctor (correctly) fails the copy.
 
 ## Minimal task-row schema (reference only)
 

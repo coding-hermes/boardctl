@@ -98,6 +98,38 @@ way to do things. Not a log dump.
    `boardctl validate` effectively gates every PR touching
    `.coding-hermes/`.
 
+## 2026-09-12 re-run (addendum)
+
+Second dogfood run against HEAD `237e594` (post v0.1.2). Full report:
+`2026-09-12-integration.md`. What it added to this trail:
+
+- **BT-014's fix is real.** `event --tick N` auto-syncs the header now —
+  the "doctor fails on the very next run" trap from tick 16 is closed and
+  regression-checked on a real board copy.
+- **Byte-stability proven at scale:** one `update` on the 186-row live
+  scheduler board produced a 1-line git diff in `tasks.jsonl`.
+- **New failure classes found (BT-023..026):** id format is the one write
+  still unvalidated (`create --id "bad id!"` exits 0, validate silent);
+  `update --commit-hash` hijacks the header's `last_commit` drift pointer
+  with the task's fix commit and leaves header `updated_at` stale;
+  real foreman rows (`todo`/`done`/`open`) fail validate's status
+  vocabulary (23 errors on the live scheduler board — writers enforce a
+  vocabulary the fleet doesn't speak); and legacy/partial boards get
+  error UX that doesn't match the README's own topology story (a
+  `tasks.jsonl`-only dir reads as "no board found", exit 2; a
+  pretty-printed board surfaces a raw JSON escape error, no row context).
+- **Bunker install re-proven:** fresh agent fcfd3f4b on las-bunker-03
+  (bare Debian 13.6, no sudo/no Go) cloned the public repo and ran the
+  README quickstart verbatim — checksum-verified v0.1.2 binary in 3 s,
+  validate+doctor OK on the cloned board, init→create→update smoke OK.
+  One lesson for future dogfooders: never `git add -A` a board copy —
+  the untracked `board.db` comes along and doctor (correctly) fails it.
+- **Skipped-leg reminder:** `sha256sums.txt` from the README flow only
+  verifies files still present; if a release ever drops the checksum
+  asset again (the v0.1.1 failure, BT-008), `curl -sL` writes the 404
+  JSON page to `sha256sums.txt` and `sha256sum -c` fails with
+  "no file was verified" — that failure mode is the canary, not noise.
+
 ## What a new agent should check when picking this project up
 
 - `go build ./cmd/boardctl && go test ./...` (fast, stdlib-only).
