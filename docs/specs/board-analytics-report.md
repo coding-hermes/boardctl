@@ -228,6 +228,35 @@ aborts the file on the first bad line). Report loader semantics:
 
 ## 3. Derivation spec — every metric, exact formula
 
+### 3.0 View catalog — the user question each view answers
+
+Every chart, table and heatmap in the report exists to answer exactly one
+question a board owner actually asks. This catalog is normative: an
+implementation that renders a view whose question cannot be named here does
+not belong in the report. "Source" points at the formula subsection; "UI
+layer" points at the Section 5 surface that draws it.
+
+| # | View | The user question it answers | Source | UI layer |
+|---|---|---|---|---|
+| V1 | Burndown (open tasks per day) | "Is the backlog actually shrinking, or are we opening work as fast as we close it?" | 3.1 | project page |
+| V2 | Burn-up (cumulative completions per day) | "How much real work has this board delivered over time, and is the slope still alive?" | 3.2 | project page, overview sparkline |
+| V3 | Weekly velocity bars | "Are we completing more or fewer tasks per week than last month?" | 3.3 | project page |
+| V4 | Cycle time per task (median, p90, worst-5 table) | "How long does a task take from filing to done, and which tasks are the outliers dragging the tail?" | 3.4 | project page + worst-5 table |
+| V5 | Delivery streak (current / longest) | "Have we shipped something real every day this week — is the board genuinely moving?" | 3.6, 4.1 | overview card + project page (headline) |
+| V6 | Activity streak (current / longest) | "Is the project being worked on at all, even on days without a completion?" | 3.6, 4.1 | project page (secondary) |
+| V7 | Raw any-tick streak | "How long has the scheduler been firing?" — context only, never a headline (4.1/4.2) | 3.6 | project page, muted footnote style |
+| V8 | Tick-health timeline (completed / failed / audit per day) | "When did things happen, and were the ticks healthy or throwing audits and failures?" | 3.5 | project page |
+| V9 | Work clock (weekday x hour heatmap) | "When does this fleet actually work — which hours/days carry the load?" | 3.7 | project page |
+| V10 | Model share across completed tasks | "Which worker models are doing the delivery, and is one model carrying everything?" | 3.8 | project page |
+| V11 | Status / priority counts | "What is the board's composition right now — how much is pending, and at which priority?" | 3.9 | overview card + project page |
+| V12 | 26-week calendar heatmap | "What does the last half-year of activity look like at a glance — are there dead weeks?" | 3.6 day-count input, 3.5 | overview + project page |
+| V13 | Multi-board compare (overlaid burn-up, velocity race, side-by-side key numbers) | "Which of these boards is healthiest — who is delivering fastest, who is stuck and idle?" | 3.10 | compare view (5.6) |
+| V14 | Collapsible task table | "What is the actual state and history of this one task — who touched it, what did the guard and CI say?" | 5.3 (renders 2.3/2.4 fields) | project page |
+
+Rule: the report footer must not claim a metric that has no catalog row here.
+Adding a view later means adding its row (question + source + layer) in the
+same change.
+
 Conventions used by every formula below:
 
 - Day key: `YYYY-MM-DD` string in the report timezone (2.5).
