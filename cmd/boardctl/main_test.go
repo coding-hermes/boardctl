@@ -107,14 +107,14 @@ func TestCmdInitThenCreateSmoke(t *testing.T) {
 	}
 	// create on the empty-but-initialized tasks.jsonl must succeed.
 	got, err = captureStdout(func() {
-		if code := run([]string{"-C", dir, "create", "--id", "T-1", "--title", "First"}); code != 0 {
+		if code := run([]string{"-C", dir, "create", "--id", "TASK-1", "--title", "First"}); code != 0 {
 			t.Fatalf("create exit code = %d, want 0", code)
 		}
 	})
 	if err != nil {
 		t.Fatalf("captureStdout: %v", err)
 	}
-	if !strings.Contains(got, "created task T-1") {
+	if !strings.Contains(got, "created task TASK-1") {
 		t.Fatalf("create output = %q, want a created-task note", got)
 	}
 }
@@ -459,4 +459,93 @@ func TestCmdEventWithoutTickLeavesTicksTotalStale(t *testing.T) {
 	if strings.Contains(got, "header ticks_total") || strings.Contains(got, "RESULT: FAIL") {
 		t.Fatalf("tick-less event produced a doctor drift error:\n%s", got)
 	}
+}
+
+// BT-023 CLI contract: `create --id 'bad id!'` exits 1 and names the
+// offending id; `--force` succeeds; `update` on a junk-id row is rejected
+// without --force (exit 1) and succeeds with it; `doctor` exits 0 on a board
+// carrying a junk id while the report text names it as a warning; `validate`
+// stays exit-0 and silent about it.
+func TestCmdIDFormatEnforcement(t *testing.T) {
+	dir := t.TempDir()
+	if code := run([]string{"-C", dir, "init", "--project", "idfmt", "--namespace", "test"}); code != 0 {
+		t.Fatalf("init exit code = %d, want 0", code)
+	}
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	tasksPath := filepath.Join(boardDir, "tasks.jsonl")
+
+	// Rejected create: exit 1 (stderr content is verified against the built
+	// binary in the live-verify pass).
+	if code := run([]string{"-C", dir, "create", "--id", "bad id!", "--title", "x"}); code != 1 {
+		t.Fatalf("create 'bad id!' exit code = %d, want 1", code)
+	}
+	// The init-seeded NEVER-DONE fixture is line 1; nothing was appended.
+	raw, rerr := os.ReadFile(tasksPath)
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	if n := nonEmptyLines(string(raw)); n != 1 {
+		t.Fatalf("rejected create changed tasks.jsonl: %d lines, want 1", n)
+	}
+
+	// --force writes it.
+	if code := run([]string{"-C", dir, "create", "--id", "bad id!", "--title", "x", "--force"}); code != 0 {
+		t.Fatalf("create 'bad id!' --force exit code = %d, want 0", code)
+	}
+
+	// doctor exits 0 and the report carries the junk-id warning naming line 2.
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "doctor"}); code != 0 {
+			t.Fatalf("doctor exit code = %d, want 0 despite junk-id warning", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, "bad id!") || !strings.Contains(got, "line 2") {
+		t.Fatalf("doctor report missing junk-id warning with line number:\n%s", got)
+	}
+	if strings.Contains(got, "RESULT: FAIL") {
+		t.Fatalf("doctor failed on a warn-only junk id:\n%s", got)
+	}
+
+	// validate stays exit-0 and silent about the junk id.
+	got, err = captureStdout(func() {
+		if code := run([]string{"-C", dir, "validate"}); code != 0 {
+			t.Fatalf("validate exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if strings.Contains(got, "bad id!") {
+		t.Fatalf("validate must stay silent on legacy junk ids:\n%s", got)
+	}
+
+	// update on the junk-id row: rejected without --force, allowed with it.
+	if code := run([]string{"-C", dir, "update", "bad id!", "--status", "in_progress"}); code != 1 {
+		t.Fatalf("update junk id without --force exit code = %d, want 1", code)
+	}
+	if code := run([]string{"-C", dir, "update", "bad id!", "--status", "in_progress", "--force"}); code != 0 {
+		t.Fatalf("update junk id --force exit code = %d, want 0", code)
+	}
+	raw, rerr = os.ReadFile(tasksPath)
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	if !strings.Contains(string(raw), `"status":"in_progress"`) && !strings.Contains(string(raw), `"status": "in_progress"`) {
+		t.Fatalf("forced update did not flip the row status:\n%s", raw)
+	}
+}
+
+// nonEmptyLines counts non-blank lines (mirrors the package-internal helper
+// style used in internal/board tests).
+func nonEmptyLines(s string) int {
+	n := 0
+	for _, l := range strings.Split(s, "\n") {
+		if strings.TrimSpace(l) != "" {
+			n++
+		}
+	}
+	return n
 }

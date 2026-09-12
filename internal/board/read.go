@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -103,6 +104,31 @@ func NormalizePriority(p string) string {
 		return "P3"
 	}
 	return p
+}
+
+// FleetTaskIDPattern is the fleet task-id format: an uppercase PREFIX-SEGMENT
+// id with at least one hyphenated segment — BT-023, QA-BOARDCTL-001,
+// NEVER-DONE, GAP-104, INT-CI-3. Digits are allowed after the first letter.
+// Single-segment ids ("TODO") and anything with lowercase/spaces/punctuation
+// ("bad id!", "bt-023") are rejected: downstream fleet tooling parses and
+// dedupes by id, so one junk id can wedge task-router and board-scan.
+const FleetTaskIDPattern = `^[A-Z][A-Z0-9]+(-[A-Z0-9]+)+$`
+
+var fleetTaskIDRe = regexp.MustCompile(FleetTaskIDPattern)
+
+// MatchesFleetTaskID reports whether id conforms to the fleet task-id format.
+func MatchesFleetTaskID(id string) bool {
+	return fleetTaskIDRe.MatchString(id)
+}
+
+// ValidateFleetTaskID returns nil when id conforms to the fleet task-id
+// format; otherwise an error naming the offending value and the expected
+// pattern (write paths reject with this; --force bypasses at the caller).
+func ValidateFleetTaskID(id string) error {
+	if MatchesFleetTaskID(id) {
+		return nil
+	}
+	return fmt.Errorf("task id %q does not match the fleet id format %s (uppercase PREFIX-SEGMENT ids like QA-BOARDCTL-001 or BT-023; pass --force to write it anyway)", id, FleetTaskIDPattern)
 }
 
 // TaskFilter restricts `list`/`stats` output.

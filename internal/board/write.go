@@ -116,6 +116,7 @@ type TaskRowSpec struct {
 	Reasoning      string
 	CapabilityTags []string
 	HasTags        bool
+	Force          bool // BT-023: bypass the fleet task-id format check
 }
 
 // Create appends a new task row, deep-copying the schema (key set, key
@@ -139,6 +140,15 @@ type TaskRowSpec struct {
 func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	if spec.ID == "" {
 		return "", fmt.Errorf("create requires --id")
+	}
+	// BT-023: ids are machine keys — task-router chains and board-scan
+	// dedupe (keep-LAST by id) parse them, so a junk id ("bad id!")
+	// wedges downstream parsers. Enforce the fleet format at write time;
+	// --force is the escape hatch for legacy-style ids.
+	if !spec.Force {
+		if err := ValidateFleetTaskID(spec.ID); err != nil {
+			return "", err
+		}
 	}
 	if spec.Title == "" {
 		return "", fmt.Errorf("create requires --title")
@@ -364,6 +374,7 @@ type UpdateSpec struct {
 	Note          *string // foreman_note
 	BlockedReason *string
 	CompletedAt   *string
+	Force         bool // BT-023: bypass the fleet task-id format check on the target id
 }
 
 // UpdateTask surgically updates ONE task row. Every untouched line of
@@ -401,6 +412,15 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 	}
 	if targetIdx == -1 {
 		return nil, fmt.Errorf("task %q not found in tasks.jsonl", id)
+	}
+	// BT-023: update targets an EXISTING row by id, so the format check
+	// only gates rows that are themselves non-conforming (legacy junk ids
+	// already on a board). With --force those rows remain updatable —
+	// that is the escape hatch's purpose; conforming ids never hit this.
+	if !spec.Force {
+		if err := ValidateFleetTaskID(id); err != nil {
+			return nil, err
+		}
 	}
 
 	style := DetectStyle(lines[targetIdx])

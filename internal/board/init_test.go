@@ -222,7 +222,7 @@ func TestCreateOnEmptyInitializedBoard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := b.Create(TaskRowSpec{ID: "T-1", Title: "First task", Status: "pending", Priority: "P1"}); err != nil {
+	if _, err := b.Create(TaskRowSpec{ID: "TASK-1", Title: "First task", Status: "pending", Priority: "P1"}); err != nil {
 		t.Fatalf("create on empty initialized board: %v", err)
 	}
 	rows, _, err := ReadAllRows(b.tasksPath)
@@ -232,7 +232,7 @@ func TestCreateOnEmptyInitializedBoard(t *testing.T) {
 	// Row 0 is the shipped NEVER-DONE fixture (SCHED-GAP-106); the create
 	// target must land beside it, not replace it.
 	if len(rows) != 2 {
-		t.Fatalf("tasks.jsonl holds %d rows, want 2 (fixture + T-1)", len(rows))
+		t.Fatalf("tasks.jsonl holds %d rows, want 2 (fixture + TASK-1)", len(rows))
 	}
 	first := rows[1]
 	if got := first.String("status"); got != "pending" {
@@ -259,14 +259,14 @@ func TestCreateOnEmptyInitializedBoard(t *testing.T) {
 
 	// The empty-board path is repeatable: second create mirrors the schema
 	// (fixture row carries perpetual, so mirror rows include it too).
-	if _, err := b.Create(TaskRowSpec{ID: "T-2", Title: "Second", Status: "pending"}); err != nil {
+	if _, err := b.Create(TaskRowSpec{ID: "TASK-2", Title: "Second", Status: "pending"}); err != nil {
 		t.Fatal(err)
 	}
 	rows, _, err = ReadAllRows(b.tasksPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// fixture + T-1 + T-2
+	// fixture + TASK-1 + TASK-2
 	if len(rows) != 3 {
 		t.Fatalf("tasks.jsonl holds %d rows, want 3", len(rows))
 	}

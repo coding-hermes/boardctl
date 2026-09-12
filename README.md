@@ -99,6 +99,32 @@ optional modernization, done by hand outside init.
 
 Exit codes: `0` ok, `1` validation failure, `2` usage/board-not-found.
 
+## Task id format
+
+Task ids are machine keys — downstream fleet tooling (task-router chains,
+board-scan dedupe) parses and groups by id, so `create` and `update` enforce
+the fleet id format at write time:
+
+```
+^[A-Z][A-Z0-9]+(-[A-Z0-9]+)+$     e.g. BT-023, QA-BOARDCTL-001, NEVER-DONE
+```
+
+An id is an uppercase prefix, optionally followed by digits, plus at least
+one hyphenated segment. Ids like `"bad id!"`, `bt-023`, or single-segment
+`TODO` are rejected with exit 1. `--force` (on both `create` and `update`)
+is the escape hatch: it writes a non-conforming id anyway. `update --force`
+exists so legacy junk rows already on a board stay updatable.
+
+`validate` stays silent about ids already on a board (legacy boards must not
+newly fail validation); `doctor` itemizes each non-conforming id as a
+warning with its `tasks.jsonl` line number — never an error.
+
+```bash
+boardctl -C ~/myproject create --id "bad id!" --title x          # exit 1
+boardctl -C ~/myproject create --id "bad id!" --title x --force  # written
+boardctl -C ~/myproject doctor    # ... task id "bad id!" does not match ... (warn)
+```
+
 ## Board topology
 
 ```

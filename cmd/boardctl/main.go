@@ -35,10 +35,10 @@ commands:
   list    [--status S] [--priority P] [--json] [--all]
   show    <id> [--events]
   create  --id ID --title T [--priority P2] [--complexity N] [--depends-on a,b]
-          [--reasoning R] [--capability-tags a,b] [--status pending]
+          [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
   update  <id> --status complete [--worker-status S] [--commit-hash SHA]
           [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S]
-          [--note S] [--blocked-reason R] [--completed-at TS]
+          [--note S] [--blocked-reason R] [--completed-at TS] [--force]
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N]
@@ -419,9 +419,10 @@ func cmdCreate(dir string, args []string) error {
 	dependsOn := fs.String("depends-on", "", "comma-separated dependency ids")
 	reasoning := fs.String("reasoning", "", "reasoning note")
 	capTags := fs.String("capability-tags", "", "comma-separated capability tags")
+	force := fs.Bool("force", false, "write the id even if it violates the fleet id format")
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [flags] [-C dir]\n") }
+	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--force] [flags] [-C dir]\\n") }
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -443,6 +444,7 @@ func cmdCreate(dir string, args []string) error {
 		Reasoning:    *reasoning,
 		HasDependsOn: *dependsOn != "",
 		HasTags:      *capTags != "",
+		Force:        *force,
 	}
 	if spec.HasDependsOn {
 		spec.DependsOn = splitCSV(*dependsOn)
@@ -479,9 +481,10 @@ func cmdUpdate(dir string, args []string) error {
 	note := fs.String("note", "", "foreman_note")
 	blockedReason := fs.String("blocked-reason", "", "blocked_reason")
 	completedAt := fs.String("completed-at", "", "completed_at timestamp")
+	force := fs.Bool("force", false, "allow updating rows whose id violates the fleet id format")
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl update <id> --status complete [flags] [-C dir]\n") }
+	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl update <id> --status complete [--force] [flags] [-C dir]\\n") }
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -511,6 +514,7 @@ func cmdUpdate(dir string, args []string) error {
 		Note:          ptr(*note),
 		BlockedReason: ptr(*blockedReason),
 		CompletedAt:   ptr(*completedAt),
+		Force:         *force,
 	}
 	changed, err := b.UpdateTask(fs.Arg(0), spec)
 	if err != nil {

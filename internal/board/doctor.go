@@ -20,6 +20,10 @@ import (
 //     ticks_total
 //   - fixture orphan detection: every id listed in fixtures.jsonl must have a
 //     definition row in tasks.jsonl
+//   - BT-023 fleet id format: task ids not matching the fleet pattern
+//     (^[A-Z][A-Z0-9]+(-[A-Z0-9]+)+$) are itemized WARNINGS with line
+//     numbers — legacy junk ids surface but never fail doctor (validate
+//     stays silent; the write paths enforce the format on new ids)
 func (b *Board) Doctor() (*Report, error) {
 	rep, err := b.Validate()
 	if err != nil {
@@ -28,6 +32,7 @@ func (b *Board) Doctor() (*Report, error) {
 	b.doctorGitTrackedSet(rep)
 	b.doctorHeaderVsEvents(rep)
 	b.doctorFixtureOrphans(rep)
+	b.doctorTaskIDFormat(rep)
 	return rep, nil
 }
 
@@ -163,4 +168,30 @@ func (b *Board) doctorFixtureOrphans(rep *Report) {
 			rep.Add("error", "fixture %s has no task row in tasks.jsonl — orphaned fixture definition (fixture rows must exist in tasks.jsonl)", id)
 		}
 	}
+}
+
+// doctorTaskIDFormat itemizes task ids that do not match the fleet id format
+// (BT-023) as WARNINGS, one per offending row with its tasks.jsonl line
+// number — in the style of validate's itemized legacy findings. Junk ids
+// already on a board must surface without failing doctor: the board stays
+// green (HasErrors() is untouched by warnings) while flagging rows that can
+// wedge downstream id-parsing tooling. Write-time enforcement lives in
+// Create/UpdateTask (--force escape); validate stays silent so legacy boards
+// do not newly fail validation.
+func (b *Board) doctorTaskIDFormat(rep *Report) {
+	lines, err := ReadJSONLLines(b.tasksPath)
+	if err != nil {
+		return // validate already reported the tasks read failure
+	}
+	_ = IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+		if b.skipTaskLine(lines, idx) {
+			return nil // topology B: line 1 is the header, not a task row
+		}
+		id := row.String("id")
+		if id != "" && !MatchesFleetTaskID(id) {
+			rep.Add("warn", "tasks.jsonl line %d: task id %q does not match the fleet id format %s — downstream id parsing (task-router, board-scan) may wedge; writes now enforce this (rewrite via boardctl create --force or hand-edit the row)",
+				idx+1, id, FleetTaskIDPattern)
+		}
+		return nil
+	})
 }
