@@ -49,6 +49,7 @@ func buildFromBoard(b *board.Board, opts Options) (*ReportPayload, error) {
 		Name:          d.name,
 		Slug:          d.slug,
 		Topology:      d.topology,
+		Error:         d.fatal,
 		Header:        nil,
 		Tasks:         []json.RawMessage{},
 		Events:        []json.RawMessage{},

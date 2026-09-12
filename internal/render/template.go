@@ -101,6 +101,12 @@ footer h4{color:var(--fg);font-size:12px;margin:14px 0 4px}
 footer ul{margin:4px 0;padding-left:18px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #errbox{margin:30px auto;max-width:560px;text-align:center;color:var(--muted);padding:30px;border:1px solid var(--line);border-radius:10px}
+.countspanel{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.countsbox{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px}
+.countsbox h4{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--fg)}
+.countsbox .cnt{display:inline-block;margin:0 8px 6px 0;font-size:12px;color:var(--muted)}
+.countsbox .cnt b{color:var(--fg);font-size:14px;margin-right:4px}
+.errorcard{background:var(--bg2);border:1px solid var(--red);border-radius:10px;padding:14px;position:relative}
 </style>
 </head>
 <body>
@@ -164,6 +170,16 @@ function svgtag(name, attrs){
 }
 function esc(s){ return String(s === undefined || s === null ? "" : s); }
 function fmtPct(a, b){ return b > 0 ? Math.round(100 * a / b) + "%" : "—"; }
+// 5.7: zero streaks are "no activity", not "0d" — Nd is only for positive
+// values. stateSuffix carries the live/ended decoration for the headline.
+function streakFmt(n, suffix){
+  var x = (n === undefined || n === null) ? 0 : n;
+  if (x <= 0) return "0 (no activity)";
+  return x + "d" + (suffix || "");
+}
+function healthyBoards(){
+  return boards.filter(function(bd){ return !bd.error; });
+}
 function boardBySlug(slug){
   for (var i = 0; i < boards.length; i++) if (boards[i].slug === slug) return boards[i];
   return null;
@@ -209,7 +225,7 @@ function buildHash(){
 }
 function applyHash(){
   var h = parseHash();
-  if (h.v === "compare" && boards.length >= 2) { showView("compare"); return; }
+  if (h.v === "compare" && healthyBoards().length >= 2) { showView("compare"); return; }
   if (h.b) {
     var b = boardBySlug(h.b);
     if (!b) { showView("overview"); flashNoMatch("unknown board in link"); return; }
@@ -545,6 +561,20 @@ function renderOverview(){
   }
   boards.forEach(function(bd){
     var d = bd.derived;
+    // 5.7 error state: unparseable board renders an error card (first
+    // meaningful error message) instead of the normal card.
+    if (bd.error) {
+      var ecard = el("div", "card errorcard");
+      ecard.setAttribute("aria-label", "board " + bd.name + " failed to load");
+      var eh = el("h2");
+      eh.appendChild(el("span", null, bd.name));
+      eh.appendChild(el("span", "badge", "error"));
+      ecard.appendChild(eh);
+      ecard.appendChild(el("div", "muted", "board data is unparseable — excluded from analytics and compare"));
+      ecard.appendChild(el("pre", null, String(bd.error)));
+      cards.appendChild(ecard);
+      return;
+    }
     var card = el("div", "card");
     card.setAttribute("role", "button");
     card.setAttribute("tabindex", "0");
@@ -571,7 +601,7 @@ function renderOverview(){
     kv.appendChild(kblock("tasks", kn.total));
     kv.appendChild(kblock("open", kn.open));
     kv.appendChild(kblock("complete", kn.pct));
-    kv.appendChild(kblock("delivery streak", kn.dcurr + (kn.dstate === "live" ? "" : " (ended)")));
+    kv.appendChild(kblock("delivery streak", streakFmt(kn.dcurr, kn.dstate === "live" ? "" : " (ended)")));
     var ti = ticksInfo(bd);
     if (ti) kv.appendChild(kblock("ticks", (ti.total === null ? "—" : ti.total) + " / " + (ti.idle === null ? "—" : ti.idle) + " idle"));
     card.appendChild(kv);
@@ -593,6 +623,21 @@ function renderBoard(){
   if (!bd) { showView("overview"); return; }
   state.board = bd.slug;
   elBoard.textContent = "";
+  // 5.7: a directly-addressed unparseable board shows its error state
+  // instead of the (zero-valued) analytics page.
+  if (bd.error) {
+    var ecard = el("div", "card errorcard");
+    var eh = el("h2", null, bd.name + " ");
+    eh.appendChild(el("span", "badge", "error"));
+    ecard.appendChild(eh);
+    ecard.appendChild(el("div", null, "board data is unparseable — excluded from analytics and compare"));
+    ecard.appendChild(el("pre", null, String(bd.error)));
+    var back = el("button", "btn", "Back to overview");
+    back.addEventListener("click", function(){ showView("overview"); });
+    ecard.appendChild(back);
+    elBoard.appendChild(ecard);
+    return;
+  }
   var d = bd.derived;
 
   var title = el("h2", null, bd.name + " ");
@@ -620,19 +665,27 @@ function renderBoard(){
   if (ti) kn.appendChild(kblock("ticks", (ti.total === null ? "—" : ti.total) + " / " + (ti.idle === null ? "—" : ti.idle)));
   elBoard.appendChild(kn);
 
-  // streaks block (delivery headline, activity secondary, any-tick muted)
+  // streaks block (delivery headline, activity secondary, any-tick muted).
+  // 5.7: zero streaks render "0 (no activity)", never "0d".
   var sl = el("div", "streakline");
   var dv = d.streaks.delivery;
-  sl.appendChild(el("strong", null, "Delivery streak: " + dv.current + "d"));
+  sl.appendChild(el("strong", null, "Delivery streak: " + streakFmt(dv.current, dv.current_state === "live" ? "" : " (ended)")));
   if (dv.current_state === "ended" && dv.current_since) {
     sl.appendChild(el("span", "stale", "  ended " + dv.current_since));
   }
   var ac = d.streaks.activity;
-  sl.appendChild(el("span", null, "   ·   Activity streak: " + ac.current + "d (longest " + ac.longest + "d)"));
+  sl.appendChild(el("span", null, "   ·   Activity streak: " + streakFmt(ac.current, " (longest " + (ac.longest || 0) + "d)")));
   if (ac.current_state === "ended" && ac.current_since) sl.appendChild(el("span", "stale", " ended " + ac.current_since));
-  sl.appendChild(el("span", "stale", "   ·   raw any-tick: " + d.streaks.any_tick.current + "d current / " + d.streaks.any_tick.longest + "d longest"));
+  sl.appendChild(el("span", "stale", "   ·   raw any-tick: " + streakFmt(d.streaks.any_tick.current, " current") + " / " + streakFmt(d.streaks.any_tick.longest, " longest")));
   elBoard.appendChild(sl);
   elBoard.appendChild(el("div", "muted", "cycle time over " + d.cycle.n + " of " + (d.cycle.n + d.cycle.excluded) + " completed tasks"));
+
+  // 3.9 status/priority composition (V11) — host div re-filled by
+  // renderCountsPanel so the fixtures toggle re-renders it live (5.5).
+  var cph = el("div");
+  cph.setAttribute("id", "counts-panel");
+  elBoard.appendChild(cph);
+  renderCountsPanel(bd);
 
   // charts
   var charts = el("div", "charts");
@@ -720,6 +773,67 @@ function renderBoard(){
   tbl.setAttribute("id", "task-table");
   elBoard.appendChild(tbl);
   renderTable(bd);
+}
+
+// ---------- 3.9 status/priority counts (V11) ----------
+// countsFromRaw recomputes composition from RAW task rows with the exact
+// stats semantics (2.3/3.9): status post-alias with "(none)", priorities as
+// display strings where string "P1" and numeric 1 are DISTINCT buckets.
+// fixtures=false mirrors the stats default, true mirrors stats --all —
+// the same numbers the payload's derived.status_counts / priority_counts
+// carry for the default; nothing server-side is recomputed differently.
+function countsFromRaw(bd, fixtures){
+  var sc = {}, pc = {};
+  boardTasks(bd).forEach(function(r){
+    var isFix = isFixtureRow(bd, r);
+    if (!fixtures && isFix) return; // toggle OFF hides fixtures; ON includes ALL rows
+    var s = taskStatus(r);
+    sc[s] = (sc[s] || 0) + 1;
+    var p = priorityLabelOf(r);
+    if (p !== null) pc[p] = (pc[p] || 0) + 1;
+  });
+  return {status: sc, priority: pc};
+}
+// priorityLabelOf mirrors the Go read-side rule: string form as-is (P0..P3),
+// JSON numbers as decimal strings; missing/null/wrong-typed are excluded.
+function priorityLabelOf(r){
+  var v = r ? r.priority : undefined;
+  if (v === undefined || v === null || v === "") return null;
+  if (typeof v === "number") { if (!isFinite(v)) return null; return String(v); }
+  if (typeof v === "string") return v;
+  return null;
+}
+function renderCountsPanel(bd){
+  var host = document.getElementById("counts-panel");
+  if (!host) return;
+  host.textContent = "";
+  var panel = el("div", "countspanel");
+  function countsBox(titleTxt, counts, emptyMsg){
+    var c = el("div", "countsbox");
+    c.appendChild(el("h4", null, titleTxt));
+    var keys = Object.keys(counts || {}).sort(function(a, b){
+      return (counts[b] - counts[a]) || (a < b ? -1 : a > b ? 1 : 0);
+    });
+    if (!keys.length) {
+      c.appendChild(el("div", "muted", emptyMsg));
+      return c;
+    }
+    keys.forEach(function(k){
+      var s = el("span", "cnt");
+      s.appendChild(el("b", null, String(counts[k])));
+      s.appendChild(chip(k));
+      c.appendChild(s);
+    });
+    return c;
+  }
+  var live = countsFromRaw(bd, state.showFixtures);
+  panel.appendChild(countsBox("Status composition" + (state.showFixtures ? " (incl. fixtures)" : ""), live.status, "no tasks yet"));
+  panel.appendChild(countsBox("Priority composition" + (state.showFixtures ? " (incl. fixtures)" : ""), live.priority, "no priorities set"));
+  if (state.showFixtures) {
+    var fixtureN = boardTasks(bd).filter(function(r){ return isFixtureRow(bd, r); }).length;
+    if (fixtureN > 0) panel.appendChild(el("div", "muted", fixtureN + " fixture row(s) included (stats --all semantics)"));
+  }
+  host.appendChild(panel);
 }
 
 function velocityChart(bd){
@@ -810,7 +924,7 @@ function buildToolbar(bd){
   sel.addEventListener("change", function(){ state.status = sel.value; renderTable(bd); history.replaceState(null, "", buildHash()); });
   tb.appendChild(sel);
   var fx = el("input"); fx.type = "checkbox"; fx.checked = state.showFixtures; fx.setAttribute("id", "fx-" + bd.slug);
-  fx.addEventListener("change", function(){ state.showFixtures = fx.checked; renderTable(bd); });
+  fx.addEventListener("change", function(){ state.showFixtures = fx.checked; renderCountsPanel(bd); renderTable(bd); });
   var fxl = el("label", "toggle");
   fxl.setAttribute("for", "fx-" + bd.slug);
   fxl.appendChild(fx); fxl.appendChild(document.createTextNode(" show fixtures"));
@@ -874,16 +988,63 @@ function detailFor(bd, row){
   }
   return wrap;
 }
+// 2.4 detail ladder, mirrored client-side (5.3): (1) object/array as-is;
+// (2) JSON string parsing to object/array; (3) strict base64 whose decoded
+// bytes parse as a JSON object/array; (4) otherwise the raw value. Never
+// throws: any step that errors moves to the next. Every rendered value goes
+// through textContent only (6.3).
+function isPlainObject(v){ return v !== null && typeof v === "object" && !Array.isArray(v); }
+function trimS(s){
+  return String(s).replace(/^[\s\uFEFF\xA0]+/, "").replace(/[\s\uFEFF\xA0]+$/, "");
+}
+function parseJSONContainerStr(s){
+  if (typeof s !== "string") return null;
+  var t = trimS(s);
+  if (!t || (t.charAt(0) !== "{" && t.charAt(0) !== "[")) return null;
+  try {
+    var v = JSON.parse(t);
+    if (isPlainObject(v) || Array.isArray(v)) return v;
+  } catch (e) { /* ladder moves on */ }
+  return null;
+}
+function strictBase64ToJSON(s){
+  if (typeof s !== "string") return null;
+  var t = trimS(s);
+  if (!t) return null;
+  var txt = null;
+  try {
+    var bin = atob(t);
+    if (!bin) return null;
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    if (typeof TextDecoder === "function") txt = new TextDecoder("utf-8").decode(bytes);
+    else txt = decodeURIComponent(escape(bin));
+  } catch (e) { return null; }
+  if (txt === null) return null;
+  return parseJSONContainerStr(txt);
+}
+function detailLadder(v){
+  if (isPlainObject(v) || Array.isArray(v)) return v; // step 1
+  if (typeof v === "string") {
+    var p = parseJSONContainerStr(v); // step 2
+    if (p !== null) return p;
+    var b = strictBase64ToJSON(v); // step 3
+    if (b !== null) return b;
+  }
+  return v; // step 4: raw
+}
 function detailBody(e){
   var pre = el("pre");
   var v = e.detail;
   if (v === undefined || v === null) { pre.textContent = "(no detail)"; return pre; }
-  if (typeof v === "object") {
+  var out;
+  try { out = detailLadder(v); } catch (err) { out = v; }
+  if (isPlainObject(out) || Array.isArray(out)) {
     var txt = null;
-    try { txt = JSON.stringify(v, null, 2); } catch (err) { txt = null; }
+    try { txt = JSON.stringify(out, null, 2); } catch (err2) { txt = null; }
     if (txt !== null) { pre.textContent = txt; return pre; }
   }
-  pre.textContent = String(v);
+  pre.textContent = String(out);
   return pre;
 }
 function taskDetail(bd, row){
@@ -1043,16 +1204,23 @@ function renderTable(bd){
 
 // ---------- compare ----------
 function renderCompare(){
-  if (boards.length < 2) { showView("overview"); return; }
+  var cmpBoards = healthyBoards();
+  if (cmpBoards.length < 2) { showView("overview"); return; }
   elCompare.textContent = "";
   elCompare.appendChild(el("h2", null, "Compare boards"));
+  // Unparseable boards are excluded from compare (5.7); say so explicitly.
+  var errBoards = boards.filter(function(bd){ return bd.error; });
+  if (errBoards.length) {
+    var nb = el("div", "muted", "excluded from compare (unparseable): " + errBoards.map(function(bd){ return bd.name; }).join(", "));
+    elCompare.appendChild(nb);
+  }
   // key numbers table
   var t = el("table", "plain");
   var cols = ["board", "ticks_total", "ticks_idle", "idle %", "tasks", "open", "complete", "completion %", "delivery streak", "median cycle", "last activity"];
   var hr = el("tr");
   cols.forEach(function(c){ hr.appendChild(el("th", null, c)); });
   t.appendChild(hr);
-  boards.forEach(function(bd){
+  cmpBoards.forEach(function(bd){
     var d = bd.derived;
     var ti = ticksInfo(bd);
     var r = el("tr");
@@ -1065,7 +1233,7 @@ function renderCompare(){
     cc(d.open_count);
     cc(d.complete_count);
     cc(fmtPct(d.complete_count, d.complete_count + d.open_count));
-    cc(d.streaks.delivery.current + (d.streaks.delivery.current_state === "live" ? "" : " (ended)"));
+    cc(streakFmt(d.streaks.delivery.current, d.streaks.delivery.current_state === "live" ? "" : " (ended)"));
     cc(d.cycle.median_days === null || d.cycle.median_days === undefined ? "—" : d.cycle.median_days + "d");
     cc(d.last_activity_day || "—");
     t.appendChild(r);
@@ -1077,7 +1245,7 @@ function renderCompare(){
   var W = 900, H = 260, pad = {l: 36, r: 10, t: 12, b: 26};
   var s = svg(W, H, "overlaid burn-up");
   var globalMax = 1;
-  boards.forEach(function(bd){
+  cmpBoards.forEach(function(bd){
     (bd.derived.burnup.cum || []).forEach(function(v){ if (v > globalMax) globalMax = v; });
   });
   var iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
@@ -1086,7 +1254,7 @@ function renderCompare(){
     s.appendChild(svgText(pad.l - 4, pad.t + ih * (1 - g) + 3, Math.round(globalMax * g), "fill:var(--muted);font-size:9px", "end"));
   });
   var legend = el("div", "legend");
-  boards.forEach(function(bd, bi){
+  cmpBoards.forEach(function(bd, bi){
     var cum = bd.derived.burnup.cum || [];
     if (!cum.length) return;
     var color = colors[bi % colors.length];
@@ -1109,7 +1277,7 @@ function renderCompare(){
   // velocity race: first 12 weeks per board
   elCompare.appendChild(el("h3", "sec", "Velocity race — first 12 weeks of each board"));
   var race = el("div", "charts");
-  boards.forEach(function(bd){
+  cmpBoards.forEach(function(bd){
     var v = bd.derived.velocity || {weeks: [], counts: []};
     var w12 = v.weeks.slice(0, 12).map(function(_, i){ return "W" + (i + 1); });
     var c12 = v.counts.slice(0, 12);
@@ -1175,8 +1343,8 @@ function initFromHash(){
   renderBanner();
   renderFooter();
   var h = parseHash();
-  if (boards.length >= 2) tabCmp.hidden = false;
-  if (h.v === "compare" && boards.length >= 2) { showView("compare"); return; }
+  if (healthyBoards().length >= 2) tabCmp.hidden = false;
+  if (h.v === "compare" && healthyBoards().length >= 2) { showView("compare"); return; }
   if (h.b) { applyHash(); return; }
   showView("overview");
 }

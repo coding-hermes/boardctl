@@ -121,6 +121,7 @@ type boardData struct {
 	events   []*eventRec
 	fixtureI map[string]bool // ids from fixtures.jsonl only
 	warns    warningSink
+	fatal    string // 5.7 error state: required file wholly unparseable ("" = valid board)
 }
 
 // slugify builds the URL-safe board slug: lowercased, runs of
@@ -215,23 +216,33 @@ func loadBoard(b *board.Board, now time.Time) (*boardData, error) {
 	}
 
 	// Task rows: tolerant scan from firstTaskIdx, last-row-wins dedup.
+	// Candidate rows (nonblank, non-header) and successful parses are
+	// counted for the 5.7 wholly-unparseable threshold below.
 	type slot struct {
 		rec  *taskRec
 		line int
 	}
 	byID := map[string]*slot{}
 	var order []string
+	taskCand, taskParsed := 0, 0
+	firstTaskErrLine := 0
+	var firstTaskErr error
 	for i := firstTaskIdx; i < len(tasksLines); i++ {
 		line := tasksLines[i]
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue // blank lines skip silently
 		}
+		taskCand++
 		row, err := board.ParseRow(line)
 		if err != nil {
+			if firstTaskErr == nil {
+				firstTaskErrLine, firstTaskErr = i+1, err
+			}
 			d.warns.tasks++
 			d.warns.note("tasks.jsonl line %d: skipped malformed row (%v)", i+1, err)
 			continue
 		}
+		taskParsed++
 		id := row.String("id")
 		if id == "" {
 			d.warns.tasks++
@@ -254,18 +265,39 @@ func loadBoard(b *board.Board, now time.Time) (*boardData, error) {
 	}
 
 	// Events: tolerant scan, duplicates kept (append-log facts).
+	eventCand, eventParsed := 0, 0
+	firstEventErrLine := 0
+	var firstEventErr error
 	for i, line := range eventsLines {
 		if len(bytes.TrimSpace(line)) == 0 {
 			continue
 		}
+		eventCand++
 		row, err := board.ParseRow(line)
 		if err != nil {
+			if firstEventErr == nil {
+				firstEventErrLine, firstEventErr = i+1, err
+			}
 			d.warns.events++
 			d.warns.note("events.jsonl line %d: skipped malformed row (%v)", i+1, err)
 			continue
 		}
+		eventParsed++
 		rec := buildEventRec(row, d)
 		d.events = append(d.events, rec)
+	}
+
+	// 5.7 error state: a required file that has candidate rows (nonblank,
+	// and for tasks.jsonl non-header) but where ZERO candidate rows parse
+	// is "not JSONL at all" — the board renders in an error state and is
+	// excluded from compare. One malformed row among valid rows stays a
+	// plain 2.7 parse warning; empty and header-only files remain valid
+	// empty boards (2.2).
+	switch {
+	case taskCand > 0 && taskParsed == 0:
+		d.fatal = fmt.Sprintf("tasks.jsonl: all %d row(s) failed to parse (first error, line %d: %v)", taskCand, firstTaskErrLine, firstTaskErr)
+	case eventCand > 0 && eventParsed == 0:
+		d.fatal = fmt.Sprintf("events.jsonl: all %d row(s) failed to parse (first error, line %d: %v)", eventCand, firstEventErrLine, firstEventErr)
 	}
 	return d, nil
 }

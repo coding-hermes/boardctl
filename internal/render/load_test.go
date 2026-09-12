@@ -505,3 +505,115 @@ func TestRenderedAtFormatIsRFC3339(t *testing.T) {
 		t.Fatalf("rendered_at %q not RFC3339: %v", rp.RenderedAt, err)
 	}
 }
+
+// ---------- BT-020 remediation: 5.7 error state ----------
+
+// TestUnparseableRequiredFileIsErrorState proves the 5.7 gap: a required
+// file whose candidate rows ALL fail to parse must surface an error-state
+// board (payload Error field) — not a valid empty board with warnings.
+func TestUnparseableRequiredFileIsErrorState(t *testing.T) {
+	root := seedBoard(t, map[string]string{
+		"board.jsonl":  topoAHeader,
+		"tasks.jsonl":  "this is not json at all\n{{{ broken\n",
+		"events.jsonl": emptyEvents,
+	})
+	b := resolveSeed(t, root)
+	d, err := loadBoard(b, tstamp("2026-09-12 12:00:00"))
+	if err != nil {
+		t.Fatalf("loadBoard must not fail the load: %v", err)
+	}
+	if d.fatal == "" {
+		t.Fatal("wholly unparseable tasks.jsonl must set the 5.7 error state, got none")
+	}
+	if !strings.Contains(d.fatal, "tasks.jsonl") {
+		t.Fatalf("fatal message must name the file: %q", d.fatal)
+	}
+	if !strings.Contains(d.fatal, "line 1") {
+		t.Fatalf("fatal message must carry the first meaningful error (line 1): %q", d.fatal)
+	}
+	rp, err := buildFromBoard(b, Options{Now: tstamp("2026-09-12 12:00:00"), Zone: time.UTC})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rp.Boards[0].Error == "" {
+		t.Fatal("payload must carry Error for the unparseable board")
+	}
+}
+
+// TestUnparseableEventsFileIsErrorState covers the events side of the
+// threshold (both required files are covered by 5.7).
+func TestUnparseableEventsFileIsErrorState(t *testing.T) {
+	root := seedBoard(t, map[string]string{
+		"board.jsonl":  topoAHeader,
+		"tasks.jsonl":  taskLine("A", "2026-09-01 00:00:00", "2026-09-02 00:00:00", "complete") + "\n",
+		"events.jsonl": "\x00\x01 binary garbage\nnot json {oops\n",
+	})
+	b := resolveSeed(t, root)
+	d, err := loadBoard(b, tstamp("2026-09-12 12:00:00"))
+	if err != nil {
+		t.Fatalf("loadBoard: %v", err)
+	}
+	if d.fatal == "" || !strings.Contains(d.fatal, "events.jsonl") {
+		t.Fatalf("wholly unparseable events.jsonl must set the error state naming events.jsonl, got %q", d.fatal)
+	}
+}
+
+// TestTornLineAmongValidRowsStaysWarning preserves torn-line tolerance:
+// one malformed row among valid rows is a 2.7 parse WARNING, never the 5.7
+// error state.
+func TestTornLineAmongValidRowsStaysWarning(t *testing.T) {
+	root := seedBoard(t, map[string]string{
+		"board.jsonl": topoAHeader,
+		"tasks.jsonl": taskLine("A", "2026-09-01 00:00:00", "2026-09-02 00:00:00", "complete") + "\n" +
+			"torn tail line without closing brace {\n" +
+			taskLine("B", "2026-09-02 00:00:00", "", "pending") + "\n",
+		"events.jsonl": emptyEvents,
+	})
+	b := resolveSeed(t, root)
+	d, err := loadBoard(b, tstamp("2026-09-12 12:00:00"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.fatal != "" {
+		t.Fatalf("one torn row among valid rows is a warning, not an error state; got %q", d.fatal)
+	}
+	if d.warns.tasks != 1 {
+		t.Fatalf("torn row must count one parse warning, got %d", d.warns.tasks)
+	}
+	if len(d.tasks) != 2 {
+		t.Fatalf("valid rows must survive: %d", len(d.tasks))
+	}
+}
+
+// TestEmptyAndHeaderOnlyBoardsRemainValid pins the threshold's lower bound:
+// empty files and header-only boards are VALID empty boards (2.2), never
+// error states.
+func TestEmptyAndHeaderOnlyBoardsRemainValid(t *testing.T) {
+	cases := map[string]map[string]string{
+		"empty files": {
+			"board.jsonl":  topoAHeader,
+			"tasks.jsonl":  "",
+			"events.jsonl": "",
+		},
+		"header only": {
+			"board.jsonl":  topoAHeader,
+			"tasks.jsonl":  "\n",
+			"events.jsonl": "\n\n",
+		},
+		"topology B header only": {
+			"tasks.jsonl":  `{"project": "legacy", "namespace": "lns", "version": 2, "ticks_total": 1, "ticks_idle": 0}` + "\n",
+			"events.jsonl": "",
+		},
+	}
+	for name, files := range cases {
+		root := seedBoard(t, files)
+		b := resolveSeed(t, root)
+		d, err := loadBoard(b, tstamp("2026-09-12 12:00:00"))
+		if err != nil {
+			t.Fatalf("%s: loadBoard: %v", name, err)
+		}
+		if d.fatal != "" {
+			t.Fatalf("%s: empty/header-only board must be a valid empty board, got error state %q", name, d.fatal)
+		}
+	}
+}

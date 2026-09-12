@@ -5,6 +5,7 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -543,4 +544,117 @@ func TestPriorityLabel(t *testing.T) {
 			t.Fatalf("priority %s -> %q %v, want %q %v", c.raw, got, ok, c.want, c.ok)
 		}
 	}
+}
+
+// ---------- BT-020 remediation: UI contract surfaces ----------
+
+// TestTemplateHasCountsPanel proves gap #1's fix exists in the client: the
+// V11 status/priority composition panel renders from raw rows and re-renders
+// on the fixtures toggle.
+func TestTemplateHasCountsPanel(t *testing.T) {
+	h := mustTemplateHTML(t)
+	for _, want := range []string{
+		`renderCountsPanel`,
+		`countsFromRaw`,
+		`priorityLabelOf`,
+		`"Status composition"`,
+		`"Priority composition"`,
+		`"counts-panel"`,
+		`renderCountsPanel(bd); renderTable(bd)`, // fixtures toggle re-render (5.5)
+		`"no tasks yet"`,                         // empty state
+		`"no priorities set"`,
+	} {
+		if !strings.Contains(h, want) {
+			t.Fatalf("template missing counts-panel piece %q", want)
+		}
+	}
+}
+
+// TestTemplateHasDetailLadder proves gap #2's fix exists in the client: the
+// full 2.4 ladder (object/array -> JSON string -> strict base64(JSON) ->
+// raw) runs client-side, never throws, and renders through textContent.
+func TestTemplateHasDetailLadder(t *testing.T) {
+	h := mustTemplateHTML(t)
+	for _, want := range []string{
+		`function detailLadder`,
+		`function parseJSONContainerStr`,
+		`function strictBase64ToJSON`,
+		`atob`,
+		`detailLadder(v)`,
+	} {
+		if !strings.Contains(h, want) {
+			t.Fatalf("template missing detail-ladder piece %q", want)
+		}
+	}
+	// the old object/array-only detailBody must be gone
+	if strings.Contains(h, `if (typeof v === "object") {
+    var txt`) {
+		t.Fatal("detailBody still uses the object/array-only form (gap #2 unfixed)")
+	}
+}
+
+// TestTemplateHasNoActivityStreakWording proves gap #3's fix: zero streaks
+// render "0 (no activity)" via the shared streakFmt helper.
+func TestTemplateHasNoActivityStreakWording(t *testing.T) {
+	h := mustTemplateHTML(t)
+	if !strings.Contains(h, `"0 (no activity)"`) {
+		t.Fatal(`template missing the 5.7 "0 (no activity)" zero-streak wording`)
+	}
+	if !strings.Contains(h, `function streakFmt`) {
+		t.Fatal("template missing streakFmt helper")
+	}
+}
+
+// TestTemplateHasErrorStateBoardCard proves gap #4's UI half: error boards
+// render an error card and are excluded from compare.
+func TestTemplateHasErrorStateBoardCard(t *testing.T) {
+	h := mustTemplateHTML(t)
+	for _, want := range []string{
+		`if (bd.error)`,
+		`"card errorcard"`,
+		`excluded from analytics and compare`,
+		`function healthyBoards`,
+		`healthyBoards().length >= 2`, // compare gate excludes error boards
+		`excluded from compare (unparseable)`,
+	} {
+		if !strings.Contains(h, want) {
+			t.Fatalf("template missing error-state piece %q", want)
+		}
+	}
+}
+
+// TestErrorBoardExcludedFromComparePayload pins the payload contract: an
+// error board still ships in boards[] (so its card can render) but carries
+// Error != "", and the UI-level compare gate is healthyBoards().length.
+func TestErrorBoardExcludedFromComparePayload(t *testing.T) {
+	root1 := seedBoard(t, map[string]string{
+		"board.jsonl":  topoAHeader,
+		"tasks.jsonl":  "garbage not json\n",
+		"events.jsonl": emptyEvents,
+	})
+	rp1, err := Build(root1, Options{Now: tstamp("2026-09-12 12:00:00"), Zone: time.UTC})
+	if err != nil {
+		t.Fatal(err)
+	}
+	html, err := RenderHTML(rp1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back ReportPayload
+	dec := json.NewDecoder(strings.NewReader(html[strings.Index(html, `{"schema"`):]))
+	if err := dec.Decode(&back); err != nil {
+		t.Fatalf("island unparseable: %v", err)
+	}
+	if len(back.Boards) != 1 || back.Boards[0].Error == "" {
+		t.Fatalf("error board must ship with non-empty Error, got %+v", back.Boards)
+	}
+}
+
+func mustTemplateHTML(t *testing.T) string {
+	t.Helper()
+	h, err := RenderHTML(&ReportPayload{Schema: SchemaName, Boards: []BoardPayload{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return h
 }

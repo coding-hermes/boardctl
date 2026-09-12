@@ -151,6 +151,7 @@ type BoardPayload struct {
 	Name          string            `json:"name"`
 	Slug          string            `json:"slug"`
 	Topology      string            `json:"topology"`
+	Error         string            `json:"error,omitempty"` // 5.7: non-empty = unparseable board, excluded from compare
 	Header        BoardHeader       `json:"header"`
 	Tasks         []json.RawMessage `json:"tasks"`
 	Events        []json.RawMessage `json:"events"`
