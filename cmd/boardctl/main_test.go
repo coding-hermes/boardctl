@@ -243,7 +243,8 @@ func TestCmdTopologyBFullWorkflow(t *testing.T) {
 		t.Fatalf("event rows wrong: %q", eventRows)
 	}
 
-	// AC2: update flips the row and bumps last_commit IN LINE 1.
+	// AC2: update flips the task row and leaves the line-1 drift pointer
+	// alone (BT-024) — commit_hash goes to the TASK row only.
 	if code := run([]string{"-C", dir, "update", "NEW-1", "--status", "complete", "--commit-hash", "abc1234"}); code != 0 {
 		t.Fatalf("update on topology B exit code = %d, want 0", code)
 	}
@@ -252,13 +253,10 @@ func TestCmdTopologyBFullWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines = strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 3)
-	if !strings.Contains(lines[0], `"last_commit":"abc1234"`) {
-		t.Fatalf("update did not bump last_commit in line 1: %s", lines[0])
+	if !strings.Contains(lines[0], `"last_commit":null`) {
+		t.Fatalf("task update leaked into the line-1 drift pointer (BT-024): %s", lines[0])
 	}
-	if lines[0] == hdrBefore {
-		t.Fatal("line 1 unchanged — last_commit bump missing")
-	}
-	if !strings.Contains(lines[2], `"status":"complete"`) {
+	if !strings.Contains(lines[2], `"status":"complete"`) || !strings.Contains(lines[2], `"commit_hash":"abc1234"`) {
 		t.Fatalf("update did not flip the task row: %s", lines[2])
 	}
 
@@ -276,7 +274,9 @@ func TestCmdTopologyBFullWorkflow(t *testing.T) {
 		t.Fatalf("header --json output = %q, want the line-1 header object", got)
 	}
 
-	// AC4b: header --set-ticks-total rewrites ONLY line 1.
+	// AC4b: header --set-ticks-total rewrites ONLY line 1, keeps the drift
+	// pointer (still null — only header --set-last-commit may change it), and
+	// stamps updated_at (BT-024).
 	if code := run([]string{"-C", dir, "header", "--set-ticks-total", "7"}); code != 0 {
 		t.Fatalf("header --set-ticks-total on topology B exit code = %d, want 0", code)
 	}
@@ -288,11 +288,31 @@ func TestCmdTopologyBFullWorkflow(t *testing.T) {
 	if !strings.Contains(lines[0], `"ticks_total":7`) {
 		t.Fatalf("line 1 ticks_total not bumped: %s", lines[0])
 	}
-	if !strings.Contains(lines[0], `"last_commit":"abc1234"`) {
-		t.Fatalf("line 1 lost last_commit: %s", lines[0])
+	if !strings.Contains(lines[0], `"last_commit":null`) {
+		t.Fatalf("line 1 drift pointer disturbed by --set-ticks-total: %s", lines[0])
+	}
+	if !strings.Contains(lines[0], `"updated_at":"2026-`) {
+		t.Fatalf("header --set did not stamp updated_at (BT-024): %s", lines[0])
 	}
 	if !strings.Contains(lines[2], `"status":"complete"`) {
 		t.Fatalf("task row mutated by header --set: %s", lines[2])
+	}
+
+	// AC2b: header --set-last-commit is the explicit drift-pointer update —
+	// it changes last_commit and refreshes updated_at.
+	if code := run([]string{"-C", dir, "header", "--set-last-commit", "board-edit-sha"}); code != 0 {
+		t.Fatalf("header --set-last-commit on topology B exit code = %d, want 0", code)
+	}
+	raw, err = os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines = strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 3)
+	if !strings.Contains(lines[0], `"last_commit":"board-edit-sha"`) {
+		t.Fatalf("explicit header --set-last-commit did not take: %s", lines[0])
+	}
+	if !strings.Contains(lines[0], `"updated_at":"2026-`) {
+		t.Fatalf("explicit --set-last-commit did not stamp updated_at: %s", lines[0])
 	}
 
 	// AC5a: validate runs the header checks on the line-1 header — clean

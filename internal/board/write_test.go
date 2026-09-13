@@ -3,8 +3,10 @@ package board
 import (
 	"encoding/json"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // boardLineCount counts non-empty lines of a board file.
@@ -311,5 +313,253 @@ func TestAppendEventTickBumpsHeaderOnTopologyB(t *testing.T) {
 	}
 	if len(tasks) != 1 || tasks[0].String("id") != "EXIST-1" {
 		t.Fatalf("topology-B task rows disturbed: %v", tasks)
+	}
+}
+
+// ---------- BT-024: SetHeader stamps header updated_at ----------
+
+// seedStaleHeaderBoard builds a topology-A board whose header carries a STALE
+// updated_at (2026-09-01T00:00:00Z) and a drift pointer last_commit. Used to
+// prove SetHeader refreshes updated_at in the header's own dialect.
+func seedStaleHeaderBoard(t *testing.T) *Board {
+	t.Helper()
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl":  `{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"drift-pointer","updated_at":"2026-09-01T00:00:00Z"}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+// parseHeaderLine1 unmarshals line 1 of the given file into a map.
+func parseHeaderLine1(t *testing.T, path string) map[string]any {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 2)[0]
+	var hdr map[string]any
+	if err := json.Unmarshal([]byte(line), &hdr); err != nil {
+		t.Fatalf("line 1 of %s does not parse: %v (%s)", path, err, line)
+	}
+	return hdr
+}
+
+// TestSetHeaderRefreshesUpdatedAtTopologyA: a ticks_total bump refreshes the
+// STALE header updated_at to a later time in the header's own dialect, and
+// every untouched header field keeps its value.
+func TestSetHeaderRefreshesUpdatedAtTopologyA(t *testing.T) {
+	b := seedStaleHeaderBoard(t)
+	five := int64(5)
+	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &five}); err != nil {
+		t.Fatal(err)
+	}
+	hdr := parseHeaderLine1(t, b.headerPath)
+	got, _ := hdr["updated_at"].(string)
+	if got == "" {
+		t.Fatalf("updated_at missing from header after SetHeader: %v", hdr)
+	}
+	// later than the seeded stale value, in the header's own dialect (Z)
+	stale, err := time.Parse(time.RFC3339, "2026-09-01T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := time.Parse(time.RFC3339, got)
+	if err != nil {
+		t.Fatalf("refreshed updated_at %q does not parse: %v", got, err)
+	}
+	if !fresh.After(stale) {
+		t.Fatalf("updated_at = %q, want later than the seeded %s", got, stale)
+	}
+	if !strings.HasSuffix(got, "Z") {
+		t.Fatalf("updated_at = %q, want the header's Z-suffixed dialect", got)
+	}
+	if hdr["last_commit"] != "drift-pointer" {
+		t.Fatalf("last_commit disturbed: %v", hdr["last_commit"])
+	}
+	if hdr["project"] != "test" {
+		t.Fatalf("header identity disturbed: %v", hdr["project"])
+	}
+}
+
+// TestSetHeaderRefreshesUpdatedAtOnTopologyB: the same refresh on a
+// topology-B header — a last_commit change via SetHeader stamps updated_at
+// (added when the header lacks it) without disturbing the task rows.
+func TestSetHeaderRefreshesUpdatedAtOnTopologyB(t *testing.T) {
+	b := newTestBoardB(t)
+	before, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskBefore := strings.SplitN(strings.TrimRight(string(before), "\n"), "\n", 2)[1]
+	sha := "board-edit-sha"
+	if _, err := b.SetHeader(HeaderUpdate{LastCommit: &sha}); err != nil {
+		t.Fatal(err)
+	}
+	hdr := parseHeaderLine1(t, b.tasksPath)
+	if hdr["last_commit"] != sha {
+		t.Fatalf("last_commit = %v, want %s", hdr["last_commit"], sha)
+	}
+	got, _ := hdr["updated_at"].(string)
+	if got == "" {
+		t.Fatalf("updated_at not added by SetHeader: %v", hdr)
+	}
+	if !strings.HasPrefix(got, "2026-") {
+		t.Fatalf("updated_at = %q, want a current timestamp (spec default dialect)", got)
+	}
+	// the task row below the header round-trips byte-identical
+	raw, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskAfter := strings.SplitN(strings.TrimRight(string(raw), "\n"), "\n", 2)[1]
+	if taskAfter != taskBefore {
+		t.Fatalf("task row mutated by SetHeader:\n got %s\nwant %s", taskAfter, taskBefore)
+	}
+}
+
+// TestSetHeaderUpdatedAtDialectPreserved: the refreshed updated_at speaks the
+// header's own dialect (space-naive with constant .000000 fraction here), and
+// a failed update (negative counter) writes nothing.
+func TestSetHeaderUpdatedAtDialectPreserved(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl":  `{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"drift-pointer","updated_at":"2026-09-01 00:00:00.000000"}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(b.headerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	neg := int64(-1)
+	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &neg}); err == nil {
+		t.Fatal("negative ticks_total accepted")
+	}
+	mid, err := os.ReadFile(b.headerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(mid) {
+		t.Fatalf("failed header update mutated the header:\nbefore %s\nafter  %s", before, mid)
+	}
+	zero := int64(0)
+	if _, err := b.SetHeader(HeaderUpdate{TicksIdle: &zero}); err != nil {
+		t.Fatal(err)
+	}
+	hdr := parseHeaderLine1(t, b.headerPath)
+	got, _ := hdr["updated_at"].(string)
+	if got == "" {
+		t.Fatalf("updated_at missing after SetHeader: %v", hdr)
+	}
+	// space-naive 6-digit-fraction dialect preserved (the seeded ".000000"
+	// sample maps to a zero-padded fraction; Go renders the actual digits)
+	if !strings.Contains(got, " ") {
+		t.Fatalf("updated_at = %q, want the header's space-naive dialect", got)
+	}
+	if !regexp.MustCompile(`\.\d{6}$`).MatchString(got) {
+		t.Fatalf("updated_at = %q, want the header's 6-digit fraction dialect", got)
+	}
+}
+
+// TestSetHeaderUpdatedAtDialectFromLastTick: a topology-A header with NO
+// updated_at but a last_tick in the RFC3339/Z dialect stamps the newly added
+// updated_at in that dialect (BT-024 AC3 — the fallback samples the header's
+// real timestamp fields; last_tick is first in the fallback order and the
+// duplicated updated_at entry is gone).
+func TestSetHeaderUpdatedAtDialectFromLastTick(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl":  `{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"drift-pointer","last_tick":"2026-09-11T17:55:00Z"}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sha := "board-edit-sha"
+	if _, err := b.SetHeader(HeaderUpdate{LastCommit: &sha}); err != nil {
+		t.Fatal(err)
+	}
+	hdr := parseHeaderLine1(t, b.headerPath)
+	if hdr["last_commit"] != sha {
+		t.Fatalf("last_commit = %v, want %s", hdr["last_commit"], sha)
+	}
+	if hdr["last_tick"] != "2026-09-11T17:55:00Z" {
+		t.Fatalf("last_tick disturbed: %v", hdr["last_tick"])
+	}
+	got, _ := hdr["updated_at"].(string)
+	if got == "" {
+		t.Fatalf("updated_at not added by SetHeader: %v", hdr)
+	}
+	seeded, err := time.Parse(time.RFC3339, "2026-09-11T17:55:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := time.Parse(time.RFC3339, got)
+	if err != nil {
+		t.Fatalf("added updated_at %q does not parse as RFC3339: %v", got, err)
+	}
+	if !fresh.After(seeded) {
+		t.Fatalf("updated_at = %q, want later than the seeded last_tick %s", got, seeded)
+	}
+	if !strings.HasSuffix(got, "Z") {
+		t.Fatalf("updated_at = %q, want the header's RFC3339/Z dialect from last_tick", got)
+	}
+}
+
+// TestHeaderTSFormatLastTickPreferred: with no updated_at, the fallback
+// samples last_tick BEFORE created_at (last_tick is the live tick clock;
+// created_at is board birth) and never re-samples updated_at.
+func TestHeaderTSFormatLastTickPreferred(t *testing.T) {
+	row := &Row{Keys: nil, Vals: map[string]json.RawMessage{}}
+	row.SetRaw("created_at", json.RawMessage(`"2026-08-01 00:00:00.000000"`))
+	row.SetRaw("last_tick", json.RawMessage(`"2026-09-11T17:55:00Z"`))
+	b := &Board{}
+	got := b.headerTSFormat(row).Layout
+	if got != "2006-01-02T15:04:05Z07:00" {
+		t.Fatalf("headerTSFormat layout = %q, want the last_tick RFC3339/Z layout 2006-01-02T15:04:05Z07:00", got)
+	}
+}
+
+// TestSetHeaderCombinedFlagsRefreshUpdatedAt: --set-ticks-total and
+// --set-last-commit together refresh updated_at exactly once and keep both
+// requested values.
+func TestSetHeaderCombinedFlagsRefreshUpdatedAt(t *testing.T) {
+	b := seedStaleHeaderBoard(t)
+	seven := int64(7)
+	sha := "board-edit-sha"
+	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &seven, LastCommit: &sha}); err != nil {
+		t.Fatal(err)
+	}
+	hdr := parseHeaderLine1(t, b.headerPath)
+	if hdr["ticks_total"] != float64(7) || hdr["last_commit"] != sha {
+		t.Fatalf("combined flags lost values: %v", hdr)
+	}
+	got, _ := hdr["updated_at"].(string)
+	if got == "" {
+		t.Fatalf("updated_at missing after combined SetHeader: %v", hdr)
+	}
+	stale, err := time.Parse(time.RFC3339, "2026-09-01T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := time.Parse(time.RFC3339, got)
+	if err != nil {
+		t.Fatalf("refreshed updated_at %q does not parse: %v", got, err)
+	}
+	if !fresh.After(stale) {
+		t.Fatalf("updated_at = %q, want refreshed past the seeded %s", got, stale)
 	}
 }

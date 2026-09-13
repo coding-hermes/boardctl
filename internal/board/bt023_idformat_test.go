@@ -134,7 +134,7 @@ func TestUpdateJunkIDRequiresForce(t *testing.T) {
 	junkRow := `{"id":"bad id!","title":"legacy junk","status":"pending","priority":"P2"}` + "\n"
 	dir := t.TempDir()
 	files := map[string]string{
-		"tasks.jsonl": junkRow,
+		"tasks.jsonl":  junkRow,
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234"}` + "\n",
 	}
@@ -190,7 +190,7 @@ func TestDoctorWarnsOnJunkIDWithoutFailing(t *testing.T) {
 	junk := `{"id":"bad id!","title":"legacy junk","status":"pending","priority":"P2"}` + "\n"
 	clean := `{"id":"WORK-1","title":"Work","status":"pending","priority":"P1"}` + "\n"
 	b := newGitTestBoard(t, map[string]string{
-		"tasks.jsonl": junk + clean,
+		"tasks.jsonl":  junk + clean,
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"cooldown_s":21600}` + "\n",
 	})
@@ -230,7 +230,7 @@ func TestDoctorWarnsOnJunkIDWithoutFailing(t *testing.T) {
 
 	// A board with only clean ids emits no id-format findings.
 	b2 := newGitTestBoard(t, map[string]string{
-		"tasks.jsonl": clean,
+		"tasks.jsonl":  clean,
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"cooldown_s":21600}` + "\n",
 	})
@@ -250,7 +250,7 @@ func TestDoctorWarnsOnJunkIDWithoutFailing(t *testing.T) {
 func TestValidateSilentOnJunkID(t *testing.T) {
 	junk := `{"id":"bad id!","title":"legacy junk","status":"pending","priority":"P2"}` + "\n"
 	b := newGitTestBoard(t, map[string]string{
-		"tasks.jsonl": junk,
+		"tasks.jsonl":  junk,
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"cooldown_s":21600}` + "\n",
 	})

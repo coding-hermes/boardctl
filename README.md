@@ -59,7 +59,8 @@ boardctl version                   # prints e.g. "boardctl version 20260903"
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
     --reasoning "Idempotent retry with backoff" --capability-tags go,net
 
-# update a task row (status flip + completion event + header bump)
+# update a task row (status flip + completion event; --commit-hash stays on
+# the task row — the header drift pointer only moves via `header --set-last-commit`)
 boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
     --guard PASS --ci GREEN --summary "retry added (+80/-12)"
 

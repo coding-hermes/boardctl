@@ -345,6 +345,27 @@ func (b *Board) tasksTSFormat(last *Row) TSFormat {
 	return DetectTSLayout(sample)
 }
 
+// headerTSFormat samples the timestamp dialect of the board header: the
+// updated_at field when present, else any other timestamp-bearing header
+// field (last_tick, created_at, started_at, generated_at), else the spec
+// default. Used by SetHeader to stamp updated_at in the dialect the header
+// already speaks (BT-024).
+func (b *Board) headerTSFormat(header *Row) TSFormat {
+	sample := header.String("updated_at")
+	if sample == "" {
+		for _, f := range []string{"last_tick", "created_at", "started_at", "generated_at"} {
+			if v := header.String(f); v != "" {
+				sample = v
+				break
+			}
+		}
+	}
+	if sample == "" {
+		return TSFormat{Layout: DefaultTSLayout}
+	}
+	return DetectTSLayout(sample)
+}
+
 // neutralValue returns a pending-neutral value for a freshly created task
 // row key. depends_on/blocks/capability_tags-style keys keep an array shape;
 // counters zero; everything else nulls.
@@ -385,8 +406,9 @@ type UpdateSpec struct {
 // the key) in the row's own timestamp dialect. Fields the flag sets but the
 // row lacks are appended at the end of the row.
 // Works on topology B too (BT-010): the header is line 1 of tasks.jsonl and
-// is never an update target; with --commit-hash the header's last_commit is
-// bumped IN LINE 1 via SetHeader, leaving the rest of the file untouched.
+// is never an update target. The header's last_commit is the board-edit
+// drift pointer (BT-024) — a task fix commit must NOT overwrite it; the
+// explicit way to move the pointer is `header --set-last-commit` (SetHeader).
 func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
@@ -524,8 +546,9 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 	// README-promised audit trail, appended only after the row rewrite
 	// succeeds. A status flag produces exactly one event: task_completed when
 	// the write form "complete" is set, task_updated for any other vocabulary
-	// value. A commit hash bumps the board header's last_commit (the "header
-	// bump" the README promises) without an extra event.
+	// value. BT-024: a commit hash is TASK-row state only — it must not
+	// overwrite the header's last_commit (the board-edit drift pointer);
+	// `header --set-last-commit` is the explicit drift-pointer update.
 	if spec.Status != nil {
 		etype := "task_updated"
 		if *spec.Status == "complete" {
@@ -537,11 +560,6 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 			Detail: []byte(fmt.Sprintf(`{"status":%q}`, *spec.Status)),
 		}); err != nil {
 			return changed, fmt.Errorf("task row updated but %s event failed: %w", etype, err)
-		}
-	}
-	if spec.CommitHash != nil {
-		if _, err := b.SetHeader(HeaderUpdate{LastCommit: spec.CommitHash}); err != nil {
-			return changed, fmt.Errorf("task row updated but header bump failed: %w", err)
 		}
 	}
 	return changed, nil
@@ -693,9 +711,8 @@ func embedDetail(content []byte, s Style) []byte {
 // number, because such an event IS a completed tick and a stale ticks_total
 // makes the very next `doctor` run fail the BT-013 drift check. No-op when
 // the header already reports n or higher (never regresses the counter).
-// Mirrors the update --commit-hash precedent: a write command keeps its
-// derived header field current. Works on both topologies — SetHeader targets
-// line 1 of board.jsonl (A) or tasks.jsonl (B).
+// Works on both topologies — SetHeader targets line 1 of board.jsonl (A) or
+// tasks.jsonl (B).
 func (b *Board) bumpHeaderTicksTotal(n int64) error {
 	hdr, err := b.HeaderRow()
 	if err != nil {
@@ -720,7 +737,12 @@ type HeaderUpdate struct {
 // SetHeader rewrites ONLY the header row — line 1 of board.jsonl (topology A)
 // or line 1 of tasks.jsonl (topology B) — with the given --set fields; every
 // untouched header field keeps its verbatim bytes and any other lines
-// round-trip byte-identical (asserted before the atomic write).
+// round-trip byte-identical (asserted before the atomic write). On every
+// successful mutation header updated_at is refreshed or added (BT-024) in the
+// header's own timestamp dialect — sampled from its existing updated_at, else
+// another timestamp field on the header, else the spec default — so the
+// header's staleness never misleads drift consumers. Nothing is written when
+// validation fails.
 func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
 	headerPath := b.headerPathFor()
 	lines, err := ReadJSONLLines(headerPath)
@@ -778,6 +800,14 @@ func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
 		if err := set("last_commit", *u.LastCommit); err != nil {
 			return nil, err
 		}
+	}
+	// BT-024: every successful header mutation stamps updated_at (refreshing
+	// it, or adding it when the header never carried the key) so the header's
+	// own freshness never goes stale. The dialect is sampled from the header's
+	// existing updated_at, falling back to any other header timestamp field
+	// and then the spec default.
+	if err := set("updated_at", b.headerTSFormat(header).Now()); err != nil {
+		return nil, err
 	}
 	newLines := make([][]byte, len(lines))
 	copy(newLines, lines)

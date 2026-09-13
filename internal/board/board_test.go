@@ -372,24 +372,38 @@ func TestUpdateNonCompleteStatusWritesUpdatedEvent(t *testing.T) {
 	}
 }
 
-// BT-011: update with --commit-hash must bump the board header's last_commit
-// (the README-promised "header bump") without appending an extra event.
-func TestUpdateCommitHashBumpsHeader(t *testing.T) {
+// BT-024: update with --commit-hash writes the sha ONLY into the task row's
+// commit_hash — the header's last_commit is the board-edit drift pointer and
+// must stay byte-for-byte unchanged.
+func TestUpdateCommitHashLeavesHeaderLastCommitUntouched(t *testing.T) {
 	b := newTestBoard(t)
-	commit := "deadbeef"
-	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{CommitHash: &commit}); err != nil {
-		t.Fatal(err)
-	}
-	raw, err := os.ReadFile(b.headerPath)
+	hdrBefore, err := os.ReadFile(b.headerPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var hdr map[string]any
-	if err := json.Unmarshal(raw, &hdr); err != nil {
+	commit := "deadbeef"
+	changed, err := b.UpdateTask("EXIST-1", UpdateSpec{CommitHash: &commit})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if hdr["last_commit"] != commit {
-		t.Fatalf("last_commit = %v, want %s", hdr["last_commit"], commit)
+	for _, k := range changed {
+		if k == "last_commit" {
+			t.Fatalf("update touched header last_commit via %v", changed)
+		}
+	}
+	hdrAfter, err := os.ReadFile(b.headerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(hdrBefore) != string(hdrAfter) {
+		t.Fatalf("header mutated by commit-hash-only update:\nbefore %s\nafter  %s", hdrBefore, hdrAfter)
+	}
+	var row map[string]any
+	if err := json.Unmarshal(rawLastLine(b.tasksPath), &row); err != nil {
+		t.Fatalf("last task row does not parse: %v (%s)", err, rawLastLine(b.tasksPath))
+	}
+	if row["commit_hash"] != commit {
+		t.Fatalf("task commit_hash = %v, want %s", row["commit_hash"], commit)
 	}
 	// commit-hash-only update: row audit, not a trail event
 	if n := eventLineCount(t, b); n != 1 {
@@ -525,10 +539,11 @@ func TestUpdateTaskOnTopologyB(t *testing.T) {
 	}
 }
 
-// TestUpdateCommitHashBumpsLine1HeaderOnTopologyB: --commit-hash bumps
-// last_commit IN LINE 1 of tasks.jsonl (via SetHeader) while the task rows
-// keep their bytes (the target row's commit_hash aside).
-func TestUpdateCommitHashBumpsLine1HeaderOnTopologyB(t *testing.T) {
+// TestUpdateCommitHashPreservesLine1HeaderOnTopologyB: --commit-hash writes
+// the sha into the TASK row's commit_hash and leaves line 1 (the header)
+// byte-identical — last_commit is the drift pointer, never a task fix commit
+// (BT-024).
+func TestUpdateCommitHashPreservesLine1HeaderOnTopologyB(t *testing.T) {
 	b := newTestBoardB(t)
 	commit := "f00df00"
 	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{CommitHash: &commit}); err != nil {
@@ -543,8 +558,8 @@ func TestUpdateCommitHashBumpsLine1HeaderOnTopologyB(t *testing.T) {
 	if err := json.Unmarshal([]byte(lines[0]), &hdr); err != nil {
 		t.Fatalf("line 1 no longer parses: %v (%s)", err, lines[0])
 	}
-	if hdr["last_commit"] != commit {
-		t.Fatalf("line-1 last_commit = %v, want %s", hdr["last_commit"], commit)
+	if hdr["last_commit"] != "abc1234" {
+		t.Fatalf("line-1 last_commit = %v, want the seeded drift pointer abc1234 (task commit must not overwrite it)", hdr["last_commit"])
 	}
 	if hdr["project"] != "legacy" {
 		t.Fatalf("line-1 header identity lost: %s", lines[0])
