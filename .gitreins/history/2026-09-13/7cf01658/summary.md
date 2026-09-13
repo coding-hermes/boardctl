@@ -1,0 +1,34 @@
+# Verdict: BT-021
+
+**Task:** boardctl serve: loopback uploader serving folder/zip -> multi-board analytics report
+**Evaluated:** 2026-09-13T01:41:00.964088
+**Result:** ✓ PASS
+
+## Pipeline Stages
+
+- ✓ **tier1**
+  -   ✓ secrets: [90m8:38PM[0m [32mINF[0m [1mscanned ~661745 bytes (661.74 KB) in 277ms[0m
+[90m8:38PM[0m [32
+  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	0.450s
+ok  	github.com/coding-hermes/boardctl/in
+- ✓ **tier2**
+  - COMPLETE
+  ✓ Implement section 6.1 serve line and every BT-021 acceptance criterion in section 7.2 of docs/specs/board-analytics-report.md: boardctl serve [-C dir] [--addr 127.0.0.1:8787] with non-loopback --addr refused exit 2; inline uploader page at / accepting multipart folder (webkitdirectory, relative paths) and .zip uploads; zip-slip guarded archive/zip extraction under a fresh temp dir; 512MB cap -> HTTP 413 with server staying up; malformed zip -> 400; every dir at any depth containing tasks.jsonl+events.jsonl registered as a board (max ~50); multi-board payload rendered via the existing render package (tolerant topology A/B, fixture exclusion, compare view, no fork of the renderer); zero writes to uploaded sources or the -C board; loopback-only listener; clean SIGINT shutdown exit 0; go build, vet and full test suite green with new httptest + live curl E2E evidence.: All sub-requirements verified. BUILD/VET/TEST fresh: `go build ./...` exit=0, `go vet ./...` exit=0, `go test -count=1 ./...` exit=0 (ok cmd/boardctl 0.442s, ok internal/board 0.111s, ok internal/render 0.015s); `go test -count=1 -run TestServe -v ./cmd/boardctl/` -> 8/8 PASS. LSP diagnostics 0, dead code 0. LIVE CURL E2E (built /tmp/boardctl): GET / -> 200 with webkitdirectory (serve.go:246); `ss -tlnp` shows LISTEN 127.0.0.1:18787 only; POST zip of topology-A + topology-B boards -> 200, payload len(boards)==2 (e2ea A / e2eb B), compare view present (14 refs), schema board-report/v1; /api/boards returns name/slug/topology/task_total/done/open; SIGINT -> exit 0 with 'serve stopped cleanly; upload temp dirs removed'; malformed zip -> 400 'not a readable zip archive' and next upload 200 (server stays up); 513MB upload -> 413 'payload exceeds the 512 MB cap' and next upload 200; zip-slip ../../evil.txt -> 200 with no /tmp/evil.txt or /evil.txt created and source md5 diff clean; 51 boards -> 413 'upload registers 51 boards; cap is 50' (serve.go:57,340); -C board included and folder upload with relative paths -> 2 boards; non-loopback --addr 0.0.0.0:8787 and 10.0.0.1:8787 -> exit 2 with explicit non-loopback message (serve.go:88-91, main.go errUsage->2). No renderer fork: serve.go imports internal/render and calls render.BuildBoards + render.RenderHTML (serve.go:353,358,519); single internal/render/template.go, no html/template in serve.go. Tolerant topology A/B + fixture exclusion covered by internal/render/load_test.go:56,91 and derive_test.go; serve_test.go:213 uploads fixtures.jsonl. Zero writes to sources confirmed by TestServeFolderUploadMatchesRender fileSnapshot and live md5 diff. Note: no committed live-curl E2E doc/script exists, but the live curl E2E was independently reproduced and passes.
+boardctl serve fully implements §6.1/§7.2 BT-021: build/vet/full test suite green, 8 httptest cases pass, and live curl E2E confirms loopback-only binding, folder+zip upload, multi-board A/B report with compare view, zip-slip defense, 413/400 handling with server staying up, 50-board cap, zero source writes, and clean SIGINT exit 0.
+
+## Summary
+
+Judge Result: BT-021
+
+Stage tier1: PASS
+    ✓ secrets: [90m8:38PM[0m [32mINF[0m [1mscanned ~661745 bytes (661.74 KB) in 277ms[0m
+[90m8:38PM[0m [32
+  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	0.450s
+ok  	github.com/coding-hermes/boardctl/in
+
+Stage tier2: PASS
+  COMPLETE
+  ✓ Implement section 6.1 serve line and every BT-021 acceptance criterion in section 7.2 of docs/specs/board-analytics-report.md: boardctl serve [-C dir] [--addr 127.0.0.1:8787] with non-loopback --addr refused exit 2; inline uploader page at / accepting multipart folder (webkitdirectory, relative paths) and .zip uploads; zip-slip guarded archive/zip extraction under a fresh temp dir; 512MB cap -> HTTP 413 with server staying up; malformed zip -> 400; every dir at any depth containing tasks.jsonl+events.jsonl registered as a board (max ~50); multi-board payload rendered via the existing render package (tolerant topology A/B, fixture exclusion, compare view, no fork of the renderer); zero writes to uploaded sources or the -C board; loopback-only listener; clean SIGINT shutdown exit 0; go build, vet and full test suite green with new httptest + live curl E2E evidence.: All sub-requirements verified. BUILD/VET/TEST fresh: `go build ./...` exit=0, `go vet ./...` exit=0, `go test -count=1 ./...` exit=0 (ok cmd/boardctl 0.442s, ok internal/board 0.111s, ok internal/render 0.015s); `go test -count=1 -run TestServe -v ./cmd/boardctl/` -> 8/8 PASS. LSP diagnostics 0, dead code 0. LIVE CURL E2E (built /tmp/boardctl): GET / -> 200 with webkitdirectory (serve.go:246); `ss -tlnp` shows LISTEN 127.0.0.1:18787 only; POST zip of topology-A + topology-B boards -> 200, payload len(boards)==2 (e2ea A / e2eb B), compare view present (14 refs), schema board-report/v1; /api/boards returns name/slug/topology/task_total/done/open; SIGINT -> exit 0 with 'serve stopped cleanly; upload temp dirs removed'; malformed zip -> 400 'not a readable zip archive' and next upload 200 (server stays up); 513MB upload -> 413 'payload exceeds the 512 MB cap' and next upload 200; zip-slip ../../evil.txt -> 200 with no /tmp/evil.txt or /evil.txt created and source md5 diff clean; 51 boards -> 413 'upload registers 51 boards; cap is 50' (serve.go:57,340); -C board included and folder upload with relative paths -> 2 boards; non-loopback --addr 0.0.0.0:8787 and 10.0.0.1:8787 -> exit 2 with explicit non-loopback message (serve.go:88-91, main.go errUsage->2). No renderer fork: serve.go imports internal/render and calls render.BuildBoards + render.RenderHTML (serve.go:353,358,519); single internal/render/template.go, no html/template in serve.go. Tolerant topology A/B + fixture exclusion covered by internal/render/load_test.go:56,91 and derive_test.go; serve_test.go:213 uploads fixtures.jsonl. Zero writes to sources confirmed by TestServeFolderUploadMatchesRender fileSnapshot and live md5 diff. Note: no committed live-curl E2E doc/script exists, but the live curl E2E was independently reproduced and passes.
+boardctl serve fully implements §6.1/§7.2 BT-021: build/vet/full test suite green, 8 httptest cases pass, and live curl E2E confirms loopback-only binding, folder+zip upload, multi-board A/B report with compare view, zip-slip defense, 413/400 handling with server staying up, 50-board cap, zero source writes, and clean SIGINT exit 0.
+
+Overall: PASS ✓
