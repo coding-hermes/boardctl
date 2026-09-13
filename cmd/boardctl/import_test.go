@@ -25,7 +25,8 @@ func seedImportBoard(t *testing.T) string {
 		"board.jsonl": `{"project": "importtest", "namespace": "ns", "version": 1, "ticks_total": 5, "ticks_idle": 1, "last_commit": null}` + "\n",
 		"tasks.jsonl": `{"id": "QA-T-1", "title": "first", "status": "complete", "priority": "P1", "created_at": "2026-09-01 00:00:00", "completed_at": "2026-09-02 00:00:00", "updated_at": "2026-09-02 00:00:00"}` + "\n" +
 			`{"id": "QA-T-2", "title": "second", "status": "pending", "priority": "P2", "created_at": "2026-09-03 00:00:00", "updated_at": "2026-09-03 00:00:00"}` + "\n" +
-			`{"id": "QA-X-9", "title": "extra done", "status": "complete", "priority": "P3", "created_at": "2026-09-02 00:00:00", "completed_at": "2026-09-03 00:00:00", "updated_at": "2026-09-03 00:00:00"}` + "\n",
+			`{"id": "QA-X-9", "title": "extra done", "status": "complete", "priority": "P3", "created_at": "2026-09-02 00:00:00", "completed_at": "2026-09-03 00:00:00", "updated_at": "2026-09-03 00:00:00"}` + "\n" +
+			`{"id": "QA-FIX", "title": "permanent fixture", "status": "pending", "priority": "P3", "created_at": "2026-09-01 00:00:00", "updated_at": "2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-02 00:00:00","event_type":"task_completed","task_id":"QA-T-1","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":1}` + "\n" +
 			`{"id":2,"timestamp":"2026-09-03 00:30:00","event_type":"idle","task_id":null,"actor":"foreman","detail":null,"tick_number":2}` + "\n",
 		"fixtures.jsonl": `{"id": "QA-FIX", "status": "pending", "active": true}` + "\n",
@@ -174,6 +175,13 @@ func TestImportSameBoardNoop(t *testing.T) {
 	if !strings.Contains(out, "dry-run: nothing written") {
 		t.Fatalf("dry-run output missing nothing-written marker:\n%s", out)
 	}
+	// BT-022 Tier-2: a no-op plan states no file diff and emits no ---/+++ markers.
+	if !strings.Contains(out, "planned diff: no file changes (no-op import)") {
+		t.Fatalf("no-op dry-run output missing no-file-diff line:\n%s", out)
+	}
+	if strings.Contains(out, "\n--- ") {
+		t.Fatalf("no-op dry-run must not emit a file diff header:\n%s", out)
+	}
 	if after := boardFileHashes(t, dir); fmt.Sprint(after) != fmt.Sprint(before) {
 		t.Fatalf("dry-run changed board files:\nbefore %v\nafter  %v", before, after)
 	}
@@ -220,8 +228,8 @@ func TestImportRestoresMissingTasks(t *testing.T) {
 		}
 		kept = append(kept, l)
 	}
-	if len(kept) != 1 {
-		t.Fatalf("expected 1 surviving row after deleting completed tasks, got %d", len(kept))
+	if len(kept) != 2 {
+		t.Fatalf("expected 2 surviving rows after deleting completed tasks, got %d", len(kept))
 	}
 	if err := os.WriteFile(filepath.Join(dbd, "tasks.jsonl"), []byte(strings.Join(kept, "\n")+"\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -244,7 +252,10 @@ func TestImportRestoresMissingTasks(t *testing.T) {
 		t.Fatalf("dry-run wrote to the board:\nbefore %v\nafter  %v", before, after)
 	}
 
-	// Real run appends both rows; validate passes.
+	// Real run appends both rows; validate AND doctor pass. The doctor run
+	// is a REAL pass: the seeded board carries header counters and events,
+	// so the BT-013 drift check, the fixture-orphan check, and the BT-023
+	// id-format check all execute against the imported rows.
 	if _, err := captureStdout(func() {
 		if code := runImport(t, dst, export); code != 0 {
 			t.Fatalf("real import exit = %d, want 0", code)
@@ -253,8 +264,8 @@ func TestImportRestoresMissingTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 	rows := readJSONLLines(t, filepath.Join(dbd, "tasks.jsonl"))
-	if len(rows) != 3 {
-		t.Fatalf("tasks.jsonl has %d rows, want 3", len(rows))
+	if len(rows) != 4 {
+		t.Fatalf("tasks.jsonl has %d rows, want 4", len(rows))
 	}
 	for _, id := range []string{"QA-T-1", "QA-T-2"} {
 		if !importBoardHasID(t, filepath.Join(dbd, "tasks.jsonl"), id) {
@@ -263,6 +274,17 @@ func TestImportRestoresMissingTasks(t *testing.T) {
 	}
 	if code := run([]string{"-C", dst, "validate"}); code != 0 {
 		t.Fatalf("validate after import exit = %d, want 0", code)
+	}
+	doctorOut, err := captureStdout(func() {
+		if code := run([]string{"-C", dst, "doctor"}); code != 0 {
+			t.Fatalf("doctor after import exit = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(doctorOut, "RESULT: OK") || strings.Contains(doctorOut, "[error]") {
+		t.Fatalf("doctor after import must pass with zero errors:\n%s", doctorOut)
 	}
 
 	// Restored rows carry the provenance marker.
@@ -586,8 +608,8 @@ func TestImportDryRunByteIdentityAllFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "2 new tasks") {
-		t.Fatalf("dry-run should plan 2 new tasks:\n%s", out)
+	if !strings.Contains(out, "3 new tasks") {
+		t.Fatalf("dry-run should plan 3 new tasks:\n%s", out)
 	}
 	after := boardFileHashes(t, dst)
 	for _, f := range []string{"tasks.jsonl", "events.jsonl", "board.jsonl", "fixtures.jsonl"} {
@@ -616,6 +638,128 @@ func TestImportPlanSummaryLineFormat(t *testing.T) {
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("plan output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// TestImportDryRunUnifiedDiff pins the BT-022 Tier-2 diff contract: a busy
+// plan (2 new tasks, 1 replayed event, 1 fixture append) renders a valid
+// append-only unified diff — ---/+++ headers per changed file, one hunk per
+// file with exactly the planned "+" rows — while SHA256 proves the dry-run
+// wrote nothing.
+func TestImportDryRunUnifiedDiff(t *testing.T) {
+	src := seedImportBoard(t)
+	sbd := importBoardDir(src)
+	// One extra export event absent from the target, so the events diff has
+	// a replayed row (task_created rows in the export never replay).
+	f, err := os.OpenFile(filepath.Join(sbd, "events.jsonl"), os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(`{"id":3,"timestamp":"2026-09-04 10:00:00","event_type":"task_started","task_id":"QA-T-2","actor":"foreman","detail":null,"tick_number":null}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	export := mustRenderExport(t, src)
+
+	dst := t.TempDir()
+	if err := copyDir(src, dst); err != nil {
+		t.Fatal(err)
+	}
+	dbd := importBoardDir(dst)
+	// Busy plan on the copy: drop a completed task row, one event line, and
+	// empty the fixtures registry (file stays, so the fixture id appends).
+	allTasks := readJSONLLines(t, filepath.Join(dbd, "tasks.jsonl"))
+	kept := allTasks[:1]
+	if err := os.WriteFile(filepath.Join(dbd, "tasks.jsonl"), []byte(strings.Join(kept, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	allEvents := readJSONLLines(t, filepath.Join(dbd, "events.jsonl"))
+	if err := os.WriteFile(filepath.Join(dbd, "events.jsonl"), []byte(strings.Join(allEvents[:1], "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dbd, "fixtures.jsonl"), []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	before := boardFileHashes(t, dst)
+	out, err := captureStdout(func() {
+		if code := runImport(t, dst, export, "--dry-run"); code != 0 {
+			t.Fatalf("dry-run exit = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after := boardFileHashes(t, dst); fmt.Sprint(after) != fmt.Sprint(before) {
+		t.Fatalf("dry-run wrote to the board:\nbefore %v\nafter %v", before, after)
+	}
+
+	// tasks.jsonl: 3 target rows before (1 header-less topology-A task
+	// file), 2 planned appends -> old side ends at 3, new rows QA-T-1 and
+	// QA-X-9 (the target keeps QA-T-2).
+	if !strings.Contains(out, "--- tasks.jsonl\n+++ tasks.jsonl (after import)\n@@ -1,0 +2,3 @@\n") {
+		t.Fatalf("tasks.jsonl hunk missing or wrong shape:\n%s", out)
+	}
+	plusLines := []string{}
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasPrefix(l, "+{") {
+			plusLines = append(plusLines, l)
+		}
+	}
+	if len(plusLines) != 9 { // 3 task rows + (3 create previews + 2 replayed) event rows + 1 fixture row
+		t.Fatalf("expected exactly 9 '+' payload lines in the planned diff, got %d:\n%s", len(plusLines), out)
+	}
+	for _, pl := range plusLines {
+		var row map[string]any
+		if err := json.Unmarshal([]byte(pl[1:]), &row); err != nil {
+			t.Fatalf("diff '+' line is not the planned serialized row: %q (%v)", pl, err)
+		}
+	}
+	// The task '+' rows carry the planned ids and the provenance-stamped
+	// reasoning; the event '+' row is the replayed task_started.
+	sawTask := map[string]bool{}
+	sawStarted := false
+	sawFixture := false
+	for _, pl := range plusLines {
+		var row map[string]any
+		if err := json.Unmarshal([]byte(pl[1:]), &row); err != nil {
+			t.Fatal(err)
+		}
+		switch {
+		case row["event_type"] == "task_started":
+			sawStarted = true
+		case row["id"] == "QA-FIX" && row["title"] == nil && row["event_type"] == nil:
+			// the fixtures.jsonl registry row carries ONLY the id
+			sawFixture = true
+		case row["reasoning"] != nil:
+			if r, _ := row["reasoning"].(string); strings.Contains(r, "boardctl-web-export") {
+				sawTask[row["id"].(string)] = true
+			}
+		}
+	}
+	if !sawTask["QA-T-2"] || !sawTask["QA-X-9"] || !sawTask["QA-FIX"] {
+		t.Fatalf("planned task '+' rows missing or without provenance:\n%s", out)
+	}
+	if !sawStarted {
+		t.Fatalf("replayed task_started event missing from the planned diff:\n%s", out)
+	}
+	if !sawFixture {
+		t.Fatalf("planned fixture '+' row missing from the planned diff:\n%s", out)
+	}
+	// events.jsonl hunk: 1 old row, 5 appended (3 create previews + 2
+	// replayed; the export's own task_created rows are never replayed).
+	if !strings.Contains(out, "--- events.jsonl\n+++ events.jsonl (after import)\n@@ -1,0 +2,5 @@\n") {
+		t.Fatalf("events.jsonl hunk missing or wrong shape:\n%s", out)
+	}
+	// fixtures.jsonl hunk: empty registry (0 old rows), 1 appended id.
+	if !strings.Contains(out, "--- fixtures.jsonl\n+++ fixtures.jsonl (after import)\n@@ -0,0 +1,1 @@\n") {
+		t.Fatalf("fixtures.jsonl hunk missing or wrong shape:\n%s", out)
+	}
+	// No minus-content lines: import is append-only.
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasPrefix(l, "-{") || strings.HasPrefix(l, "-\"") {
+			t.Fatalf("planned diff must be append-only, found a '-' content line: %q", l)
 		}
 	}
 }

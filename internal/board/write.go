@@ -117,6 +117,15 @@ type TaskRowSpec struct {
 	CapabilityTags []string
 	HasTags        bool
 	Force          bool // BT-023: bypass the fleet task-id format check
+
+	// BT-022: prevalidated raw row for the import path. When Raw is set,
+	// Create still performs every check below (id format, duplicate id,
+	// status/priority vocabulary, depends_on existence) but appends these
+	// EXACT bytes instead of building a row from the spec fields — import
+	// must preserve the exported row's key set, key order, and verbatim
+	// values while still speaking create's whole write contract. The raw
+	// line always lands as its own '\n'-terminated line, append-only.
+	Raw []byte
 }
 
 // Create appends a new task row, deep-copying the schema (key set, key
@@ -205,6 +214,42 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 		if len(missing) > 0 {
 			return "", fmt.Errorf("depends_on references nonexistent task id(s): %s — create aborted (create the dependency task first)", strings.Join(missing, ", "))
 		}
+	}
+
+	// BT-022 raw-row path (import): every create check above has passed
+	// (id format, required fields, status/priority vocabulary, duplicate id,
+	// depends_on existence). Append the caller's EXACT bytes — key set, key
+	// order, and values preserved verbatim — instead of building a mirrored
+	// row, then emit the same task_created event every create writes. The
+	// bytes are sanity-checked (parseable object, matching id) before the
+	// append so a mismatched line can never land behind this row's checks.
+	if spec.Raw != nil {
+		raw := bytes.TrimSpace(spec.Raw)
+		if len(raw) == 0 {
+			return "", fmt.Errorf("raw task row is empty — create aborted")
+		}
+		rawRow, err := ParseRow(raw)
+		if err != nil {
+			return "", fmt.Errorf("raw task row is not a parseable JSON object: %w", err)
+		}
+		if rawRow.String("id") != spec.ID {
+			return "", fmt.Errorf("raw task row id %q does not match spec id %q — create aborted", rawRow.String("id"), spec.ID)
+		}
+		if err := appendBytes(b.tasksPath, append(raw, '\n')); err != nil {
+			return "", err
+		}
+		// Same audit-trail contract as the built-row path below: the
+		// task_created event is written only after the row is durably
+		// appended; the row is kept even if the event append fails, but
+		// the error surfaces.
+		if _, err := b.AppendEvent(EventSpec{
+			Type:   "task_created",
+			TaskID: spec.ID,
+			Detail: []byte(fmt.Sprintf(`{"id":%q,"status":%q}`, spec.ID, status)),
+		}); err != nil {
+			return "", fmt.Errorf("task row appended but task_created event failed: %w", err)
+		}
+		return spec.ID, nil
 	}
 
 	var style Style

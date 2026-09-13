@@ -120,28 +120,6 @@ func (w *ImportEventWriter) Append(ev ImportEvent) error {
 	return nil
 }
 
-// AppendImportTaskLine appends one pre-serialized raw task row line to
-// tasks.jsonl (the import path). The line is validated — parseable JSON
-// object carrying an id — BEFORE anything is written; the caller owns the
-// vocabulary, id-format, and style decisions (import preserves the exported
-// row's values and serializes in the target's detected style). The board
-// header is never touched, and the line always lands as its own '\n'-
-// terminated line.
-func (b *Board) AppendImportTaskLine(line []byte) error {
-	trimmed := bytes.TrimSpace(line)
-	if len(trimmed) == 0 {
-		return fmt.Errorf("refusing to append an empty task row")
-	}
-	row, err := ParseRow(trimmed)
-	if err != nil {
-		return fmt.Errorf("refusing to append invalid task row: %w", err)
-	}
-	if row.String("id") == "" {
-		return fmt.Errorf("refusing to append a task row without id")
-	}
-	return appendBytes(b.tasksPath, append(trimmed, '\n'))
-}
-
 // AppendImportFixture appends one imported fixture row — the exported id
 // plus a null-filled mirror of the last fixtures.jsonl row's key set — to
 // an EXISTING fixtures.jsonl. Import never creates fixtures.jsonl (spec

@@ -124,7 +124,11 @@ func cmdImport(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	printImportPlan(os.Stdout, exportPath, imp, targetName, b.Dir, plan)
+	printImportPlan(os.Stdout, exportPath, imp, targetName, b.Dir, plan, fixturesInfo{
+		ids:      plan.fixtures,
+		oldLines: fixturesOldLines(b),
+		path:     b.FixturesPath(),
+	})
 	if *dryRun {
 		fmt.Fprintf(os.Stdout, "dry-run: nothing written\n")
 		return nil
@@ -164,13 +168,42 @@ func boardDisplayName(b *board.Board) string {
 	return filepath.Base(b.Dir)
 }
 
+// canonicalBoardFileNames are the tracked board file names used as diff
+// headers in the plan output (relative to the board dir).
+var canonicalBoardFileNames = map[string]string{
+	"tasks":    "tasks.jsonl",
+	"events":   "events.jsonl",
+	"fixtures": "fixtures.jsonl",
+}
+
+// fixturesOldLines counts the non-empty lines of an existing fixtures.jsonl
+// (0 when absent — import never creates the file).
+func fixturesOldLines(b *board.Board) int {
+	lines, err := board.ReadJSONLLines(b.FixturesPath())
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, l := range lines {
+		if len(bytes.TrimSpace(l)) > 0 {
+			n++
+		}
+	}
+	return n
+}
+
 // plannedTask is one task row import will append. line is fully serialized
 // (target style, provenance stamped, id already renumbered when applies).
+// spec is the board.TaskRowSpec applyImportPlan hands to Board.Create —
+// Create performs its full write contract (required fields, id format,
+// status/priority vocabulary, duplicate-id and depends_on checks) and
+// appends line verbatim via the spec's prevalidated Raw row.
 type plannedTask struct {
 	id       string
 	exportID string // non-empty when the row was renumbered away from this id
 	status   string
 	line     []byte
+	spec     board.TaskRowSpec
 }
 
 // importPlan is the complete preflight result: everything applyImportPlan
@@ -180,9 +213,22 @@ type importPlan struct {
 	identical []string // export ids already on the target byte-identically
 	skipped   []string // export ids skipped (same id, different content)
 
+	// tasksOldLines is the target tasks.jsonl non-empty line count at plan
+	// time — the "-" side of the planned append-only unified diff.
+	tasksOldLines int
+
 	events      []board.ImportEvent
 	fromExport  int // replayed export events
 	taskCreated int // task_created events for the new rows
+
+	// eventsOldLines is the target events.jsonl non-empty line count at
+	// plan time — the "-" side of the planned append-only diff for
+	// events.jsonl. exportTaskCreated counts the export's own task_created
+	// rows (none of which replay: the target-side events are emitted by
+	// Board.Create with fresh ids/dialect), printed so the plan total stays
+	// verifiable against Create's emits.
+	eventsOldLines    int
+	exportTaskCreated int
 
 	fixtures     []string // ids to append to an existing fixtures.jsonl
 	fixturesSkip int      // fixture ids dropped because the target has no fixtures.jsonl
@@ -228,6 +274,7 @@ func buildImportPlan(b *board.Board, bd *importBoard, renumber bool) (*importPla
 	if err != nil {
 		return nil, err
 	}
+	plan.tasksOldLines = len(targetRows)
 	target := map[string]*board.Row{}
 	used := map[string]bool{}
 	for _, r := range targetRows {
@@ -247,6 +294,38 @@ func buildImportPlan(b *board.Board, bd *importBoard, renumber bool) (*importPla
 	if err != nil {
 		return nil, err
 	}
+	// eventsOldLines is the target events.jsonl non-empty line count at plan
+	// time — the "-" side of the planned append-only diff for events.jsonl.
+	// Import never rewrites or deletes event rows, so today's line count is
+	// exactly the old-line count apply's appends start from.
+	eventsLines, err := board.ReadJSONLLines(b.EventsPath())
+	if err != nil {
+		return nil, err
+	}
+	for _, l := range eventsLines {
+		if len(bytes.TrimSpace(l)) > 0 {
+			plan.eventsOldLines++
+		}
+	}
+	// exportEventTypes counts the export's event rows by type; the plan
+	// prints how many task_created events the export itself carries so the
+	// total plan count is verifiable against Create's own emits.
+	exportEventTypes := map[string]int{}
+	for _, raw := range bd.Events {
+		row, err := board.ParseRow(raw)
+		if err != nil {
+			// buildImportPlan's event loop reports this with the exact row
+			// index; here it is only counted for the summary, so tolerate
+			// and let that loop produce the error.
+			continue
+		}
+		etype := row.String("event_type")
+		if etype == "" {
+			etype = "audit"
+		}
+		exportEventTypes[etype]++
+	}
+	plan.exportTaskCreated = exportEventTypes["task_created"]
 
 	// ---- task rows ----
 	for _, raw := range bd.Tasks {
@@ -283,14 +362,14 @@ func buildImportPlan(b *board.Board, bd *importBoard, renumber bool) (*importPla
 				return nil, err
 			}
 			used[newID] = true
-			plan.tasks = append(plan.tasks, plannedTask{id: newID, exportID: id, status: planStatus(row), line: line})
+			plan.tasks = append(plan.tasks, plannedTask{id: newID, exportID: id, status: planStatus(row), line: line, spec: taskRowSpecFor(newID, row, line)})
 			continue
 		}
 		if !board.MatchesFleetTaskID(id) {
 			return nil, fmt.Errorf("export task id %q does not match the fleet id format %s — import aborted", id, board.FleetTaskIDPattern)
 		}
 		used[id] = true
-		plan.tasks = append(plan.tasks, plannedTask{id: id, status: planStatus(row), line: line})
+		plan.tasks = append(plan.tasks, plannedTask{id: id, status: planStatus(row), line: line, spec: taskRowSpecFor(id, row, line)})
 	}
 
 	// ---- events ----
@@ -298,10 +377,19 @@ func buildImportPlan(b *board.Board, bd *importBoard, renumber bool) (*importPla
 	if err != nil {
 		return nil, err
 	}
-	// task_created first (mirrors create: row lands, then its event).
+	// task_created first (mirrors create: row lands, then its event). These
+	// plan rows are PREVIEW-ONLY (apply routes the appends through
+	// Board.Create, which emits the real events), so they are shaped exactly
+	// like AppendEvent writes them: actor defaults to "foreman" and the
+	// detail payload is embedded as a JSON string, not a raw object.
 	for _, t := range plan.tasks {
 		detail := json.RawMessage(fmt.Sprintf(`{"id":%q,"status":%q}`, t.id, t.status))
-		plan.events = append(plan.events, board.ImportEvent{Type: "task_created", TaskID: t.id, Detail: detail})
+		plan.events = append(plan.events, board.ImportEvent{
+			Type:   "task_created",
+			TaskID: t.id,
+			Actor:  "foreman",
+			Detail: json.RawMessage(jsonPreviewString(string(detail))),
+		})
 		plan.taskCreated++
 	}
 	for i, raw := range bd.Events {
@@ -309,15 +397,24 @@ func buildImportPlan(b *board.Board, bd *importBoard, renumber bool) (*importPla
 		if err != nil {
 			return nil, fmt.Errorf("export event row %d: %w", i+1, err)
 		}
+		etype := row.String("event_type")
+		if etype == "" {
+			etype = "audit"
+		}
+		// task_created rows in the export are NEVER replayed: on any import
+		// that appends the task, Board.Create emits the fresh task_created
+		// itself (exactly one per imported row); when the task already
+		// exists the event is either already on the target (fingerprint
+		// dedupe below would drop it) or belongs to history the row-level
+		// no-op preserves. Planning them would double-count against apply.
+		if etype == "task_created" {
+			continue
+		}
 		fp := eventFingerprint(row)
 		if seen[fp] {
 			continue
 		}
 		seen[fp] = true
-		etype := row.String("event_type")
-		if etype == "" {
-			etype = "audit"
-		}
 		if !board.EventTypeVocabulary[etype] {
 			return nil, fmt.Errorf("export event row %d: event type %q not in vocabulary — import aborted (nothing written)", i+1, etype)
 		}
@@ -362,6 +459,68 @@ func planStatus(row *board.Row) string {
 		st = "pending"
 	}
 	return st
+}
+
+// taskRowSpecFor builds the board.TaskRowSpec for one planned import row.
+// The spec is populated from the PARSED export row so Board.Create enforces
+// its full write contract — required fields, fleet id format, status and
+// priority vocabulary, duplicate-id, and depends_on existence — against the
+// planned values, while Raw carries the pre-serialized line (target style,
+// provenance stamped, renumbered id applied) that Create appends verbatim
+// once every check passes.
+func taskRowSpecFor(id string, row *board.Row, line []byte) board.TaskRowSpec {
+	spec := board.TaskRowSpec{
+		ID:     id,
+		Title:  row.String("title"),
+		Status: planStatus(row),
+		Raw:    line,
+	}
+	if row.Get("priority") != nil {
+		spec.Priority = board.NormalizePriority(row.String("priority"))
+	}
+	if cx, ok := row.Int("complexity"); ok {
+		spec.Complexity = &cx
+	}
+	if deps := rowGoStringSlice(row, "depends_on"); deps != nil {
+		spec.DependsOn = deps
+		spec.HasDependsOn = true
+	}
+	if tags := rowGoStringSlice(row, "capability_tags"); tags != nil {
+		spec.CapabilityTags = tags
+		spec.HasTags = true
+	}
+	if r := row.String("reasoning"); r != "" {
+		spec.Reasoning = r
+	}
+	return spec
+}
+
+// rowGoStringSlice decodes a row key holding a JSON array of strings into a
+// []string (nil when the key is absent, null, or not an array). Empty arrays
+// return a non-nil empty slice so HasDependsOn/HasTags still route the key
+// through Create's checks.
+func rowGoStringSlice(row *board.Row, key string) []string {
+	raw := row.Get(key)
+	if raw == nil || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); err != nil {
+		return nil
+	}
+	arr, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(arr))
+	for _, el := range arr {
+		if s, isStr := el.(string); isStr {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // buildImportTaskLine serializes one export task row for the target:
@@ -558,10 +717,63 @@ func targetEventFingerprints(b *board.Board) (map[string]bool, error) {
 	return seen, nil
 }
 
+// fixturesInfo collects what the planned diff needs to know about the
+// fixtures registry: the ids that will be appended and the non-empty line
+// count of the existing fixtures.jsonl (0 when the target has none).
+type fixturesInfo struct {
+	ids      []string
+	oldLines int
+	path     string
+}
+
+// jsonPreviewString encodes a string as a JSON string value exactly the way
+// the board package's serialization does (SetEscapeHTML(false), ASCII
+// passthrough) so the planned diff's preview rows speak the same dialect as
+// the rows apply will write.
+func jsonPreviewString(s string) string {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(s); err != nil {
+		return `""`
+	}
+	return strings.TrimRight(buf.String(), "\n")
+}
+
+// importFileDiff renders the append-only unified diff one planned file
+// produces. Because import only ever appends, the hunk covers the tail of
+// the file: the old side ends at the current last line (oldLines) with zero
+// removed lines, and the new side adds one line per planned row:
+//
+//	--- <path>
+//	+++ <path> (after import)
+//	@@ -<oldLines>,0 +<oldLines+1>,<added> @@
+//	+<planned serialized row>
+func importFileDiff(path string, oldLines int, planned [][]byte) string {
+	if len(planned) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "--- %s\n", path)
+	fmt.Fprintf(&sb, "+++ %s (after import)\n", path)
+	fmt.Fprintf(&sb, "@@ -%d,0 +%d,%d @@\n", oldLines, oldLines+1, len(planned))
+	for _, l := range planned {
+		sb.WriteString("+")
+		sb.Write(l)
+		sb.WriteString("\n")
+	}
+	return sb.String()
+}
+
 // printImportPlan renders the deterministic preflight plan. The summary line
 // matches the spec 7.3 observables exactly ("0 new tasks, 0 updates, 0
-// events", "N new tasks", "N skipped (differs)").
-func printImportPlan(w io.Writer, exportPath string, imp *importExport, targetName, boardDir string, p *importPlan) {
+// events", "N new tasks", "N skipped (differs)"). When the plan appends
+// anything, a unified diff of every planned append is rendered after the
+// summary blocks: because import is append-only, each changed file gets
+// conventional ---/+++ headers and one hunk whose "+" lines are exactly the
+// rows that will land (tasks.jsonl, events.jsonl, and fixtures.jsonl when
+// the plan touches them). A no-op plan states that no file diff applies.
+func printImportPlan(w io.Writer, exportPath string, imp *importExport, targetName, boardDir string, p *importPlan, fx fixturesInfo) {
 	fmt.Fprintf(w, "boardctl import plan for %q (%s)\n", targetName, boardDir)
 	fmt.Fprintf(w, "  export: %s (%s, rendered %s)\n", exportPath, imp.Schema, imp.RenderedAt)
 	fmt.Fprintf(w, "  tasks: %d new, %d identical (no-op), %d skipped (differs)\n", len(p.tasks), len(p.identical), len(p.skipped))
@@ -578,7 +790,8 @@ func printImportPlan(w io.Writer, exportPath string, imp *importExport, targetNa
 			fmt.Fprintf(w, "  + %s new task\n", t.id)
 		}
 	}
-	fmt.Fprintf(w, "  events: %d events appended (%d from export, %d task_created for new rows)\n", len(p.events), p.fromExport, p.taskCreated)
+	fmt.Fprintf(w, "  events: %d events appended (%d from export, %d task_created for new rows; %d task_created rows in the export itself are never replayed — Board.Create emits fresh ones at apply time)\n",
+		len(p.events), p.fromExport, p.taskCreated, p.exportTaskCreated)
 	if p.fixturesSkip > 0 {
 		plural := "s"
 		if p.fixturesSkip == 1 {
@@ -589,27 +802,91 @@ func printImportPlan(w io.Writer, exportPath string, imp *importExport, targetNa
 	if len(p.fixtures) > 0 {
 		fmt.Fprintf(w, "  fixtures: %d appended (%s)\n", len(p.fixtures), strings.Join(p.fixtures, ", "))
 	}
+
+	// Planned file diff (append-only unified diff of everything apply will
+	// write). Deterministic: task rows in plan order, then events in plan
+	// order, then fixture ids in plan order.
+	diff := ""
+	taskLines := make([][]byte, 0, len(p.tasks))
+	for _, t := range p.tasks {
+		taskLines = append(taskLines, t.line)
+	}
+	diff += importFileDiff(canonicalBoardFileNames["tasks"], p.tasksOldLines, taskLines)
+	if len(p.events) > 0 {
+		eventLines := make([][]byte, 0, len(p.events))
+		var sb strings.Builder
+		for _, ev := range p.events {
+			sb.Reset()
+			sb.WriteString("{")
+			fmt.Fprintf(&sb, "\"event_type\": %s,", jsonPreviewString(ev.Type))
+			if ev.TaskID != "" {
+				fmt.Fprintf(&sb, " \"task_id\": %s,", jsonPreviewString(ev.TaskID))
+			} else {
+				sb.WriteString(" \"task_id\": null,")
+			}
+			if ev.Actor != "" {
+				fmt.Fprintf(&sb, " \"actor\": %s,", jsonPreviewString(ev.Actor))
+			} else {
+				sb.WriteString(" \"actor\": null,")
+			}
+			if len(ev.Detail) > 0 {
+				fmt.Fprintf(&sb, " \"detail\": %s", string(bytes.TrimSpace(ev.Detail)))
+			} else {
+				sb.WriteString(" \"detail\": null")
+			}
+			sb.WriteString(" }")
+			eventLines = append(eventLines, []byte(sb.String()))
+		}
+		diff += importFileDiff(canonicalBoardFileNames["events"], p.eventsOldLines, eventLines)
+	}
+	if len(fx.ids) > 0 {
+		fixLines := make([][]byte, 0, len(fx.ids))
+		for _, id := range fx.ids {
+			fixLines = append(fixLines, []byte(fmt.Sprintf("{ \"id\": %s }", jsonPreviewString(id))))
+		}
+		diff += importFileDiff(canonicalBoardFileNames["fixtures"], fx.oldLines, fixLines)
+	}
+	if diff == "" {
+		fmt.Fprintf(w, "planned diff: no file changes (no-op import)\n")
+	} else {
+		fmt.Fprintf(w, "planned diff:\n%s", diff)
+	}
 	fmt.Fprintf(w, "plan: %d new tasks, %d updates, %d events\n", len(p.tasks), 0, len(p.events))
 }
 
-// applyImportPlan writes the plan: task rows, then events (fresh MAX(id)+1
-// ids, target timestamp dialect), then fixture rows. Every write was
-// validated during planning; the header is never touched.
+// applyImportPlan writes the plan: task rows through Board.Create (which
+// enforces its full write contract, appends each pre-serialized raw row, and
+// emits its own task_created event — so apply must NOT append task_created
+// events itself), then the remaining planned events (fresh MAX(id)+1 ids,
+// target timestamp dialect), then fixture rows. Every write was validated
+// during planning; the header is never touched.
 func applyImportPlan(b *board.Board, p *importPlan) error {
 	for _, t := range p.tasks {
-		if err := b.AppendImportTaskLine(t.line); err != nil {
-			return fmt.Errorf("append task %s: %w", t.id, err)
+		if _, err := b.Create(t.spec); err != nil {
+			return fmt.Errorf("create task %s: %w", t.id, err)
 		}
 	}
-	if len(p.events) > 0 {
-		ew, err := b.NewImportEventWriter()
-		if err != nil {
-			return err
+	// Board.Create already emitted one task_created event per imported row;
+	// the replayed export events are appended here. The writer is built
+	// lazily ONCE, after the task rows/events Create wrote, so it sees the
+	// post-create MAX(id) for fresh sequencing. The type filter is an
+	// invariant guard: planning never schedules a task_created append (the
+	// plan-side skip mirrors it), so no imported task can ever end up with
+	// two task_created events.
+	var ew *board.ImportEventWriter
+	for _, ev := range p.events {
+		if ev.Type == "task_created" {
+			continue
 		}
-		for _, ev := range p.events {
-			if err := ew.Append(ev); err != nil {
-				return fmt.Errorf("append event: %w", err)
+		if ew == nil {
+			var err error
+			ew, err = b.NewImportEventWriter()
+			if err != nil {
+				return err
 			}
+		}
+		if err := ew.Append(ev); err != nil {
+			return fmt.Errorf("append event: %w", err)
 		}
 	}
 	for _, fid := range p.fixtures {

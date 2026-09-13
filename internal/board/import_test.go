@@ -50,13 +50,14 @@ func nonEmptyLines(path string) []string {
 	return out
 }
 
-// TestAppendImportTaskLineRoundTrip pins the byte-preserving append
-// contract: the raw line lands verbatim as its own terminated line.
-func TestAppendImportTaskLineRoundTrip(t *testing.T) {
+// TestCreateRawRowRoundTrip pins the BT-022 raw-row create contract: the
+// raw bytes land verbatim as their own terminated line, Board.Create itself
+// emits exactly one task_created event, and the header is untouched.
+func TestCreateRawRowRoundTrip(t *testing.T) {
 	b, bd := seedImportPrimitivesBoard(t)
 	before := nonEmptyLines(filepath.Join(bd, "tasks.jsonl"))
-	line := `{"id": "T-2", "title": "two", "status": "complete", "priority": "P1", "nested": {"b": 1, "a": [1, 2]}}`
-	if err := b.AppendImportTaskLine([]byte(line)); err != nil {
+	line := `{"id": "NT-2", "title": "two", "status": "complete", "priority": "P1", "nested": {"b": 1, "a": [1, 2]}}`
+	if _, err := b.Create(TaskRowSpec{ID: "NT-2", Title: "two", Status: "complete", Priority: "P1", Raw: []byte(line)}); err != nil {
 		t.Fatal(err)
 	}
 	after := nonEmptyLines(filepath.Join(bd, "tasks.jsonl"))
@@ -66,25 +67,80 @@ func TestAppendImportTaskLineRoundTrip(t *testing.T) {
 	if after[len(after)-1] != line {
 		t.Fatalf("appended line not byte-identical:\n got %s\nwant %s", after[len(after)-1], line)
 	}
+	// Exactly one new task_created event, emitted by Create itself.
+	events := nonEmptyLines(filepath.Join(bd, "events.jsonl"))
+	var last struct {
+		ID   int    `json:"id"`
+		Type string `json:"event_type"`
+	}
+	if err := json.Unmarshal([]byte(events[len(events)-1]), &last); err != nil {
+		t.Fatal(err)
+	}
+	if last.Type != "task_created" || last.ID != 3 {
+		t.Fatalf("last event = id %d (%s), want id 3 task_created emitted by Create", last.ID, last.Type)
+	}
 	// Header untouched.
 	hdr := nonEmptyLines(filepath.Join(bd, "board.jsonl"))
-	if len(hdr) != 1 || !strings.Contains(hdr[0], `"project"`) {
+	if len(hdr) != 1 || !strings.Contains(hdr[0], `"project"`) || !strings.Contains(hdr[0], `"ticks_total":2`) {
 		t.Fatal("board.jsonl header changed")
 	}
 }
 
-// TestAppendImportTaskLineRejectsBad pins validation-before-write.
-func TestAppendImportTaskLineRejectsBad(t *testing.T) {
+// TestCreateRawRowDependsOnExistingOK: the raw path accepts a depends_on
+// that exists, appending the raw line verbatim.
+func TestCreateRawRowDependsOnExistingOK(t *testing.T) {
 	b, bd := seedImportPrimitivesBoard(t)
-	before, _ := os.ReadFile(filepath.Join(bd, "tasks.jsonl"))
-	for _, bad := range []string{"", "   ", `[1,2]`, `{"title":"no id"}`, `not json`} {
-		if err := b.AppendImportTaskLine([]byte(bad)); err == nil {
-			t.Fatalf("AppendImportTaskLine(%q) should fail", bad)
+	line := `{"id": "NT-2", "title": "two", "status": "pending", "priority": "P2", "depends_on": ["T-1"]}`
+	if _, err := b.Create(TaskRowSpec{ID: "NT-2", Title: "two", HasDependsOn: true, DependsOn: []string{"T-1"}, Raw: []byte(line)}); err != nil {
+		t.Fatalf("Create with existing dependency rejected: %v", err)
+	}
+	got := nonEmptyLines(filepath.Join(bd, "tasks.jsonl"))
+	if len(got) != 2 || got[1] != line {
+		t.Fatalf("raw row with dependency not appended verbatim:\n got %v\nwant last %s", got, line)
+	}
+}
+
+// TestCreateRawRowChecks pins that EVERY create check fires on the raw path
+// before any byte is written: duplicate id, fleet id format, status and
+// priority vocabulary, required title, depends_on existence, and raw/spec
+// agreement. Ids are fleet-format (NT-*) so each rejection is attributable
+// to ITS check, not masked by the id-format gate.
+func TestCreateRawRowChecks(t *testing.T) {
+	b, bd := seedImportPrimitivesBoard(t)
+	// A fleet-format id already on the board, for the duplicate case.
+	if _, err := b.Create(TaskRowSpec{ID: "NT-1", Title: "dup target", Status: "pending", Priority: "P2"}); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(filepath.Join(bd, "tasks.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	good := `{"id": "NT-2", "title": "two", "status": "pending", "priority": "P2"}`
+	cases := []struct {
+		name string
+		spec TaskRowSpec
+	}{
+		{"duplicate id", TaskRowSpec{ID: "NT-1", Title: "dupe", Raw: []byte(`{"id": "NT-1", "title": "dupe"}`)}},
+		{"id format", TaskRowSpec{ID: "bad id!", Title: "junk", Raw: []byte(`{"id": "bad id!", "title": "junk"}`)}},
+		{"status vocabulary", TaskRowSpec{ID: "NT-2", Title: "two", Status: "completed", Raw: []byte(good)}},
+		{"priority vocabulary", TaskRowSpec{ID: "NT-2", Title: "two", Priority: "banana", Raw: []byte(good)}},
+		{"missing title", TaskRowSpec{ID: "NT-2", Raw: []byte(good)}},
+		{"depends_on existence", TaskRowSpec{ID: "NT-2", Title: "two", HasDependsOn: true, DependsOn: []string{"GHOST-1"}, Raw: []byte(`{"id": "NT-2", "title": "two", "depends_on": ["GHOST-1"]}`)}},
+		{"raw/spec id mismatch", TaskRowSpec{ID: "NT-2", Title: "two", Raw: []byte(`{"id": "T-9", "title": "two"}`)}},
+		{"empty raw", TaskRowSpec{ID: "NT-2", Title: "two", Raw: []byte("   ")}},
+		{"invalid raw json", TaskRowSpec{ID: "NT-2", Title: "two", Raw: []byte("not json")}},
+	}
+	for _, tc := range cases {
+		if _, err := b.Create(tc.spec); err == nil {
+			t.Fatalf("%s: Create accepted a raw row it must reject", tc.name)
 		}
 	}
 	after, _ := os.ReadFile(filepath.Join(bd, "tasks.jsonl"))
 	if string(before) != string(after) {
-		t.Fatal("rejected task lines changed tasks.jsonl")
+		t.Fatal("rejected raw rows changed tasks.jsonl")
+	}
+	if events := nonEmptyLines(filepath.Join(bd, "events.jsonl")); len(events) != 3 {
+		t.Fatalf("rejected raw rows emitted events (%d rows), want only the seed 2 + the NT-1 setup create", len(events))
 	}
 }
 
