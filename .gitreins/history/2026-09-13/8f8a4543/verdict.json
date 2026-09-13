@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-024",
+  "task_title": "update --commit-hash must not overwrite header last_commit; header updates refresh updated_at",
+  "task_criteria": [
+    "Task commit_hash remains on the task row without mutating header last_commit; explicit header --set-last-commit remains supported; every successful SetHeader mutation refreshes an existing header updated_at in its timestamp dialect and preserves untouched bytes for topology A and B; regression tests cover both topologies; go build ./..., go vet ./..., gofmt -l cmd internal empty, go test ./... -count=1 -short, and gitreins guard all pass."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m6:38AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~2528781 bytes (2.53 MB) in 442ms\u001b[0m\n\u001b[90m6:38AM\u001b[0m \u001b[32m\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.463s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m6:38AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~2528781 bytes (2.53 MB) in 442ms\u001b[0m\n\u001b[90m6:38AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.463s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.133s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.015s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Task commit_hash remains on the task row without mutating header last_commit; explicit header --set-last-commit remains supported; every successful SetHeader mutation refreshes an existing header updated_at in its timestamp dialect and preserves untouched bytes for topology A and B; regression tests cover both topologies; go build ./..., go vet ./..., gofmt -l cmd internal empty, go test ./... -count=1 -short, and gitreins guard all pass.: UpdateTask no longer calls SetHeader for CommitHash (internal/board/write.go:562-566 removed the block); commit_hash stays on the task row \u2014 board_test.go TestUpdateCommitHashLeavesHeaderLastCommitUntouched asserts header bytes identical before/after and row commit_hash==deadbeef. Explicit flag intact: cmd/boardctl/main.go:602 fs.String(\"set-last-commit\",...), exercised at cmd/boardctl/main_test.go:303. SetHeader (write.go:801-808) unconditionally calls set(\"updated_at\", b.headerTSFormat(header).Now()) on every successful mutation; headerTSFormat (write.go:348-367) samples existing updated_at, else last_tick/created_at/started_at/generated_at, else DefaultTSLayout. Untouched bytes preserved: write.go:810-817 asserts non-header lines byte-identical before atomicRewrite. Topology A tests: TestSetHeaderRefreshesUpdatedAtTopologyA, TestSetHeaderUpdatedAtDialectPreserved, TestSetHeaderUpdatedAtDialectFromLastTick, TestSetHeaderCombinedFlagsRefreshUpdatedAt, TestUpdateCommitHashLeavesHeaderLastCommitUntouched. Topology B tests: TestSetHeaderRefreshesUpdatedAtOnTopologyB (asserts task row round-trips byte-identical), TestUpdateCommitHashPreservesLine1HeaderOnTopologyB, TestCmdTopologyBFullWorkflow. Command evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `gofmt -l cmd internal` empty (exit 0); `go test ./... -count=1 -short` -> 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.469s / ok .../internal/board 0.126s / ok .../internal/render 0.017s', exit 0; `gitreins guard` -> 'Tier 1 Guards: PASS (test mode: full) ... go_build ok, go_lint ok, go_tests', exit 0. Targeted run of all BT-024/SetHeader/CommitHash tests: all PASS.\nBT-024 fully implemented and verified: task commit_hash no longer touches header last_commit, explicit --set-last-commit works, SetHeader refreshes updated_at in the header's dialect while preserving untouched bytes on both topologies, with regression tests and all build/vet/gofmt/test/guard checks passing.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Task commit_hash remains on the task row without mutating header last_commit; explicit header --set-last-commit remains supported; every successful SetHeader mutation refreshes an existing header updated_at in its timestamp dialect and preserves untouched bytes for topology A and B; regression tests cover both topologies; go build ./..., go vet ./..., gofmt -l cmd internal empty, go test ./... -count=1 -short, and gitreins guard all pass.: UpdateTask no longer calls SetHeader for Co",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Task commit_hash remains on the task row without mutating header last_commit; explicit header --set-last-commit remains supported; every successful SetHeader mutation refreshes an existing header updated_at in its timestamp dialect and preserves untouched bytes for topology A and B; regression tests cover both topologies; go build ./..., go vet ./..., gofmt -l cmd internal empty, go test ./... -count=1 -short, and gitreins guard all pass.",
+                "status": "PASS",
+                "detail": "UpdateTask no longer calls SetHeader for CommitHash (internal/board/write.go:562-566 removed the block); commit_hash stays on the task row \u2014 board_test.go TestUpdateCommitHashLeavesHeaderLastCommitUntouched asserts header bytes identical before/after and row commit_hash==deadbeef. Explicit flag intact: cmd/boardctl/main.go:602 fs.String(\"set-last-commit\",...), exercised at cmd/boardctl/main_test.go:303. SetHeader (write.go:801-808) unconditionally calls set(\"updated_at\", b.headerTSFormat(header).Now()) on every successful mutation; headerTSFormat (write.go:348-367) samples existing updated_at, else last_tick/created_at/started_at/generated_at, else DefaultTSLayout. Untouched bytes preserved: write.go:810-817 asserts non-header lines byte-identical before atomicRewrite. Topology A tests: TestSetHeaderRefreshesUpdatedAtTopologyA, TestSetHeaderUpdatedAtDialectPreserved, TestSetHeaderUpdatedAtDialectFromLastTick, TestSetHeaderCombinedFlagsRefreshUpdatedAt, TestUpdateCommitHashLeavesHeaderLastCommitUntouched. Topology B tests: TestSetHeaderRefreshesUpdatedAtOnTopologyB (asserts task row round-trips byte-identical), TestUpdateCommitHashPreservesLine1HeaderOnTopologyB, TestCmdTopologyBFullWorkflow. Command evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `gofmt -l cmd internal` empty (exit 0); `go test ./... -count=1 -short` -> 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.469s / ok .../internal/board 0.126s / ok .../internal/render 0.017s', exit 0; `gitreins guard` -> 'Tier 1 Guards: PASS (test mode: full) ... go_build ok, go_lint ok, go_tests', exit 0. Targeted run of all BT-024/SetHeader/CommitHash tests: all PASS."
+              }
+            ],
+            "summary": "BT-024 fully implemented and verified: task commit_hash no longer touches header last_commit, explicit --set-last-commit works, SetHeader refreshes updated_at in the header's dialect while preserving untouched bytes on both topologies, with regression tests and all build/vet/gofmt/test/guard checks passing."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-024\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m6:38AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~2528781 bytes (2.53 MB) in 442ms\u001b[0m\n\u001b[90m6:38AM\u001b[0m \u001b[32m\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.463s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Task commit_hash remains on the task row without mutating header last_commit; explicit header --set-last-commit remains supported; every successful SetHeader mutation refreshes an existing header updated_at in its timestamp dialect and preserves untouched bytes for topology A and B; regression tests cover both topologies; go build ./..., go vet ./..., gofmt -l cmd internal empty, go test ./... -count=1 -short, and gitreins guard all pass.: UpdateTask no longer calls SetHeader for CommitHash (internal/board/write.go:562-566 removed the block); commit_hash stays on the task row \u2014 board_test.go TestUpdateCommitHashLeavesHeaderLastCommitUntouched asserts header bytes identical before/after and row commit_hash==deadbeef. Explicit flag intact: cmd/boardctl/main.go:602 fs.String(\"set-last-commit\",...), exercised at cmd/boardctl/main_test.go:303. SetHeader (write.go:801-808) unconditionally calls set(\"updated_at\", b.headerTSFormat(header).Now()) on every successful mutation; headerTSFormat (write.go:348-367) samples existing updated_at, else last_tick/created_at/started_at/generated_at, else DefaultTSLayout. Untouched bytes preserved: write.go:810-817 asserts non-header lines byte-identical before atomicRewrite. Topology A tests: TestSetHeaderRefreshesUpdatedAtTopologyA, TestSetHeaderUpdatedAtDialectPreserved, TestSetHeaderUpdatedAtDialectFromLastTick, TestSetHeaderCombinedFlagsRefreshUpdatedAt, TestUpdateCommitHashLeavesHeaderLastCommitUntouched. Topology B tests: TestSetHeaderRefreshesUpdatedAtOnTopologyB (asserts task row round-trips byte-identical), TestUpdateCommitHashPreservesLine1HeaderOnTopologyB, TestCmdTopologyBFullWorkflow. Command evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `gofmt -l cmd internal` empty (exit 0); `go test ./... -count=1 -short` -> 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.469s / ok .../internal/board 0.126s / ok .../internal/render 0.017s', exit 0; `gitreins guard` -> 'Tier 1 Guards: PASS (test mode: full) ... go_build ok, go_lint ok, go_tests', exit 0. Targeted run of all BT-024/SetHeader/CommitHash tests: all PASS.\nBT-024 fully implemented and verified: task commit_hash no longer touches header last_commit, explicit --set-last-commit works, SetHeader refreshes updated_at in the header's dialect while preserving untouched bytes on both topologies, with regression tests and all build/vet/gofmt/test/guard checks passing.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-13T11:39:57.661704"
+}
