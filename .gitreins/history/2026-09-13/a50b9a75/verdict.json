@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-022",
+  "task_title": "complete import contract remediation",
+  "task_criteria": [
+    "Dry-run emits append-only unified diffs; applyImportPlan calls Board.Create with preserved raw row and exactly one task_created event; automated import test passes validate and doctor."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m3:54PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~765454 bytes (765.45 KB) in 318ms\u001b[0m\n\u001b[90m3:54PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.532s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m3:54PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~765454 bytes (765.45 KB) in 318ms\u001b[0m\n\u001b[90m3:54PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.532s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Dry-run emits append-only unified diffs; applyImportPlan calls Board.Create with preserved raw row and exactly one task_created event; automated import test passes validate and doctor.: (1) Append-only diffs: cmd/boardctl/import.go importFileDiff() emits '--- path / +++ path (after import) / @@ -oldLines,0 +oldLines+1,N @@' with only '+' payload lines; printImportPlan renders diffs for tasks/events/fixtures and prints 'planned diff: no file changes (no-op import)' for no-ops. TestImportDryRunUnifiedDiff asserts exact hunk shapes and that no '-{'/'-\\\"' content lines exist (append-only). (2) applyImportPlan calls b.Create(t.spec) per task; taskRowSpecFor sets spec.Raw to the pre-serialized line; internal/board/write.go Create raw path (lines 224-251) appends spec.Raw verbatim via appendBytes(b.tasksPath, append(raw,'\\n')) after all create checks; TestCreateRawRowRoundTrip confirms byte-identical preservation. (3) Exactly one task_created: Create raw path emits one AppendEvent{Type:\"task_created\"} then returns (write.go:245-251), never reaching the built-row event at line 336; applyImportPlan skips ev.Type==\"task_created\" (import.go:441) and planning skips export task_created rows, so no double-emit. (4) TestImportRestoresMissingTasks runs `run([\"-C\",dst,\"validate\"])` (exit 0) and `run([\"-C\",dst,\"doctor\"])` asserting 'RESULT: OK' with no '[error]'. Ran `go test -count=1 ./...` -> ok cmd/boardctl 0.506s, internal/board 0.126s, internal/render 0.016s; verbose run shows 'RESULT: OK (0 warning(s))' and PASS. go build ./... exit 0, go vet exit 0, LSP diagnostics empty.\nAll BT-022 import contract requirements verified: append-only unified diffs in dry-run, applyImportPlan routes through Board.Create with preserved raw rows emitting exactly one task_created event, and the import test passes validate and doctor (full suite green).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Dry-run emits append-only unified diffs; applyImportPlan calls Board.Create with preserved raw row and exactly one task_created event; automated import test passes validate and doctor.: (1) Append-only diffs: cmd/boardctl/import.go importFileDiff() emits '--- path / +++ path (after import) / @@ -oldLines,0 +oldLines+1,N @@' with only '+' payload lines; printImportPlan renders diffs for tasks/events/fixtures and prints 'planned diff: no file changes (no-op import)' for no-ops. TestIm",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Dry-run emits append-only unified diffs; applyImportPlan calls Board.Create with preserved raw row and exactly one task_created event; automated import test passes validate and doctor.",
+                "status": "PASS",
+                "detail": "(1) Append-only diffs: cmd/boardctl/import.go importFileDiff() emits '--- path / +++ path (after import) / @@ -oldLines,0 +oldLines+1,N @@' with only '+' payload lines; printImportPlan renders diffs for tasks/events/fixtures and prints 'planned diff: no file changes (no-op import)' for no-ops. TestImportDryRunUnifiedDiff asserts exact hunk shapes and that no '-{'/'-\\\"' content lines exist (append-only). (2) applyImportPlan calls b.Create(t.spec) per task; taskRowSpecFor sets spec.Raw to the pre-serialized line; internal/board/write.go Create raw path (lines 224-251) appends spec.Raw verbatim via appendBytes(b.tasksPath, append(raw,'\\n')) after all create checks; TestCreateRawRowRoundTrip confirms byte-identical preservation. (3) Exactly one task_created: Create raw path emits one AppendEvent{Type:\"task_created\"} then returns (write.go:245-251), never reaching the built-row event at line 336; applyImportPlan skips ev.Type==\"task_created\" (import.go:441) and planning skips export task_created rows, so no double-emit. (4) TestImportRestoresMissingTasks runs `run([\"-C\",dst,\"validate\"])` (exit 0) and `run([\"-C\",dst,\"doctor\"])` asserting 'RESULT: OK' with no '[error]'. Ran `go test -count=1 ./...` -> ok cmd/boardctl 0.506s, internal/board 0.126s, internal/render 0.016s; verbose run shows 'RESULT: OK (0 warning(s))' and PASS. go build ./... exit 0, go vet exit 0, LSP diagnostics empty."
+              }
+            ],
+            "summary": "All BT-022 import contract requirements verified: append-only unified diffs in dry-run, applyImportPlan routes through Board.Create with preserved raw rows emitting exactly one task_created event, and the import test passes validate and doctor (full suite green)."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-022\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m3:54PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~765454 bytes (765.45 KB) in 318ms\u001b[0m\n\u001b[90m3:54PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.532s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Dry-run emits append-only unified diffs; applyImportPlan calls Board.Create with preserved raw row and exactly one task_created event; automated import test passes validate and doctor.: (1) Append-only diffs: cmd/boardctl/import.go importFileDiff() emits '--- path / +++ path (after import) / @@ -oldLines,0 +oldLines+1,N @@' with only '+' payload lines; printImportPlan renders diffs for tasks/events/fixtures and prints 'planned diff: no file changes (no-op import)' for no-ops. TestImportDryRunUnifiedDiff asserts exact hunk shapes and that no '-{'/'-\\\"' content lines exist (append-only). (2) applyImportPlan calls b.Create(t.spec) per task; taskRowSpecFor sets spec.Raw to the pre-serialized line; internal/board/write.go Create raw path (lines 224-251) appends spec.Raw verbatim via appendBytes(b.tasksPath, append(raw,'\\n')) after all create checks; TestCreateRawRowRoundTrip confirms byte-identical preservation. (3) Exactly one task_created: Create raw path emits one AppendEvent{Type:\"task_created\"} then returns (write.go:245-251), never reaching the built-row event at line 336; applyImportPlan skips ev.Type==\"task_created\" (import.go:441) and planning skips export task_created rows, so no double-emit. (4) TestImportRestoresMissingTasks runs `run([\"-C\",dst,\"validate\"])` (exit 0) and `run([\"-C\",dst,\"doctor\"])` asserting 'RESULT: OK' with no '[error]'. Ran `go test -count=1 ./...` -> ok cmd/boardctl 0.506s, internal/board 0.126s, internal/render 0.016s; verbose run shows 'RESULT: OK (0 warning(s))' and PASS. go build ./... exit 0, go vet exit 0, LSP diagnostics empty.\nAll BT-022 import contract requirements verified: append-only unified diffs in dry-run, applyImportPlan routes through Board.Create with preserved raw rows emitting exactly one task_created event, and the import test passes validate and doctor (full suite green).\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-13T20:55:03.695215"
+}
