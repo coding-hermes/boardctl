@@ -43,8 +43,62 @@ func buildFromBoard(b *board.Board, opts Options) (*ReportPayload, error) {
 	if err != nil {
 		return nil, err
 	}
-	der := derive(d)
+	return &ReportPayload{
+		Schema:          SchemaName,
+		RenderedAt:      now.Format(time.RFC3339),
+		ReportTimezone:  loc.String(),
+		Boards:          []BoardPayload{newBoardPayload(d)},
+		GeneratedBy:     "boardctl render (board-report/v1)",
+		NoDoneCompleted: noDoneCompletedIDs(d),
+	}, nil
+}
 
+// BuildBoards produces the multi-board board-report/v1 payload for
+// already-resolved boards, preserving order (BT-021: serve's upload path
+// assembles N boards; the 5.6 compare view lights up automatically at >=2).
+// Per-board load problems that the tolerant reader can represent surface as
+// the 5.7 error state on that board's payload; only infrastructure failures
+// (unreadable required file) return an error.
+func BuildBoards(boards []*board.Board, opts Options) (*ReportPayload, error) {
+	now := opts.Now
+	if now.IsZero() {
+		now = time.Now()
+	}
+	loc := opts.Zone
+	if loc == nil {
+		loc = time.Local
+	}
+	now = now.In(loc)
+
+	rp := &ReportPayload{
+		Schema:         SchemaName,
+		RenderedAt:     now.Format(time.RFC3339),
+		ReportTimezone: loc.String(),
+		Boards:         []BoardPayload{},
+		GeneratedBy:    "boardctl serve (board-report/v1)",
+	}
+	noDone := map[string]bool{}
+	for _, b := range boards {
+		if b == nil {
+			continue
+		}
+		d, err := loadBoard(b, now)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", b.Dir, err)
+		}
+		rp.Boards = append(rp.Boards, newBoardPayload(d))
+		for _, id := range noDoneCompletedIDs(d) {
+			noDone[id] = true
+		}
+	}
+	rp.NoDoneCompleted = sortedKeys(noDone)
+	return rp, nil
+}
+
+// newBoardPayload assembles one board's payload entry (shared by the
+// single-board Build path and the multi-board BuildBoards path).
+func newBoardPayload(d *boardData) BoardPayload {
+	der := derive(d)
 	bp := BoardPayload{
 		Name:          d.name,
 		Slug:          d.slug,
@@ -66,20 +120,7 @@ func buildFromBoard(b *board.Board, opts Options) (*ReportPayload, error) {
 	for _, e := range d.events {
 		bp.Events = append(bp.Events, compactRow(e.row))
 	}
-
-	tzName := loc.String()
-	if tzName == "Local" {
-		tzName = "Local"
-	}
-	rp := &ReportPayload{
-		Schema:          SchemaName,
-		RenderedAt:      now.Format(time.RFC3339),
-		ReportTimezone:  tzName,
-		Boards:          []BoardPayload{bp},
-		GeneratedBy:     "boardctl render (board-report/v1)",
-		NoDoneCompleted: noDoneCompletedIDs(d),
-	}
-	return rp, nil
+	return bp
 }
 
 // noDoneCompletedIDs returns the sorted ids of non-fixture tasks with status

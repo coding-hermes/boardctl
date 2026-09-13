@@ -48,6 +48,7 @@ commands:
   version
   stats   [--json] [--all]
   render  [-C dir] [-o out.html] [--tz Zone] [--json out.json]
+  serve   [-C dir] [--addr 127.0.0.1:8787]
 
 -C resolves the board dir: a repo root (looks for .coding-hermes/board),
 .coding-hermes, or the board dir itself. Defaults to the current directory.
@@ -109,6 +110,8 @@ func run(args []string) int {
 		err = cmdStats(boardDir, rest)
 	case "render":
 		err = cmdRender(boardDir, rest)
+	case "serve":
+		err = cmdServe(boardDir, rest)
 	case "help", "-h", "--help":
 		fmt.Fprint(os.Stdout, usageText)
 		return 0
@@ -117,10 +120,11 @@ func run(args []string) int {
 		return 2
 	}
 	if err != nil {
-		// Board-not-found is a usage-level failure (README exit-code
-		// contract: "2 usage/board-not-found"), not a validation failure —
-		// openBoard wraps ErrBoardNotFound with a hint, so match the chain.
-		if errors.Is(err, board.ErrBoardNotFound) {
+		// Board-not-found and flag-level usage failures are usage-level
+		// failures (README exit-code contract: "2 usage/board-not-found").
+		// openBoard wraps ErrBoardNotFound with a hint, so match the chain;
+		// serve's non-loopback --addr refusal arrives as errUsage.
+		if errors.Is(err, board.ErrBoardNotFound) || errors.Is(err, errUsage) {
 			fmt.Fprintf(os.Stderr, "boardctl: %v\n", err)
 			return 2
 		}
