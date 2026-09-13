@@ -48,6 +48,7 @@ commands:
   version
   stats   [--json] [--all]
   render  [-C dir] [-o out.html] [--tz Zone] [--json out.json]
+  import  <export.json> [--dry-run] [--renumber]
   serve   [-C dir] [--addr 127.0.0.1:8787]
 
 -C resolves the board dir: a repo root (looks for .coding-hermes/board),
@@ -110,6 +111,8 @@ func run(args []string) int {
 		err = cmdStats(boardDir, rest)
 	case "render":
 		err = cmdRender(boardDir, rest)
+	case "import":
+		err = cmdImport(boardDir, rest)
 	case "serve":
 		err = cmdServe(boardDir, rest)
 	case "help", "-h", "--help":
