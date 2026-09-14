@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-025",
+  "task_title": "Status vocabulary read-alias policy + normalize path",
+  "task_criteria": [
+    "validate on a real fleet board using todo/done/open statuses must exit 0 with per-row WARNINGS naming the canonical value, while genuinely unknown/ambiguous statuses (e.g. retired) still exit non-zero; 'boardctl update <id> --normalize' rewrites alias status/guard/ci values on the row to canonical form, exit 0, idempotent; write-side vocabulary enforcement unchanged (create/update still reject out-of-vocabulary values); go build ./... && go vet ./... && go test ./... -count=1 green; README documents the alias+normalize policy"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m9:29PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~799450 bytes (799.45 KB) in 306ms\u001b[0m\n\u001b[90m9:29PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.501s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m9:29PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~799450 bytes (799.45 KB) in 306ms\u001b[0m\n\u001b[90m9:29PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.501s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.127s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.015s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 validate on a real fleet board using todo/done/open statuses must exit 0 with per-row WARNINGS naming the canonical value, while genuinely unknown/ambiguous statuses (e.g. retired) still exit non-zero; 'boardctl update <id> --normalize' rewrites alias status/guard/ci values on the row to canonical form, exit 0, idempotent; write-side vocabulary enforcement unchanged (create/update still reject out-of-vocabulary values); go build ./... && go vet ./... && go test ./... -count=1 green; README documents the alias+normalize policy: Empirically verified end-to-end with a built binary on an init'd fleet board. (1) validate with todo/done/open rows: exit 0, per-row warnings e.g. 'tasks.jsonl line 2 (task FEAT-1): status \"todo\" is a read alias for \"pending\" \u2014 canonicalize with boardctl update FEAT-1 --normalize'; adding a 'retired' row produced '[error] ... status \"retired\" not in vocabulary' and EXIT=1 (validate.go:113-127 ResolveStatus branch). (2) 'update FEAT-2 --normalize' rewrote done->complete, exit 0; second run printed 'already canonical \u2014 nothing to rewrite (file untouched)', exit 0 (idempotent); guard/ci normalize confirmed (pass->PASS, green->GREEN) via write.go:651 NormalizeTask; diff showed only the target line changed. (3) Write-side unchanged: create --status done exit 1, update --status todo exit 1, update --status retired exit 1 (write.go:169-174, 515-521). (4) go build ./... => BUILD_OK; go vet ./... => VET_OK; go test ./... -count=1 => ok cmd/boardctl 0.468s, ok internal/board 0.131s, ok internal/render 0.014s (all green); targeted alias/normalize tests all PASS. (5) README.md lines 107-145 document the canonical vocabulary, alias table, warning behavior, and the --normalize fix path. LSP diagnostics: 0.\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 validate on a real fleet board using todo/done/open statuses must exit 0 with per-row WARNINGS naming the canonical value, while genuinely unknown/ambiguous statuses (e.g. retired) still exit non-zero; 'boardctl update <id> --normalize' rewrites alias status/guard/ci values on the row to canonical form, exit 0, idempotent; write-side vocabulary enforcement unchanged (create/update still reject out-of-vocabulary values); go build ./... && go vet ./... && go test ./... -count=1 green;",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "validate on a real fleet board using todo/done/open statuses must exit 0 with per-row WARNINGS naming the canonical value, while genuinely unknown/ambiguous statuses (e.g. retired) still exit non-zero; 'boardctl update <id> --normalize' rewrites alias status/guard/ci values on the row to canonical form, exit 0, idempotent; write-side vocabulary enforcement unchanged (create/update still reject out-of-vocabulary values); go build ./... && go vet ./... && go test ./... -count=1 green; README documents the alias+normalize policy",
+                "status": "PASS",
+                "detail": "Empirically verified end-to-end with a built binary on an init'd fleet board. (1) validate with todo/done/open rows: exit 0, per-row warnings e.g. 'tasks.jsonl line 2 (task FEAT-1): status \"todo\" is a read alias for \"pending\" \u2014 canonicalize with boardctl update FEAT-1 --normalize'; adding a 'retired' row produced '[error] ... status \"retired\" not in vocabulary' and EXIT=1 (validate.go:113-127 ResolveStatus branch). (2) 'update FEAT-2 --normalize' rewrote done->complete, exit 0; second run printed 'already canonical \u2014 nothing to rewrite (file untouched)', exit 0 (idempotent); guard/ci normalize confirmed (pass->PASS, green->GREEN) via write.go:651 NormalizeTask; diff showed only the target line changed. (3) Write-side unchanged: create --status done exit 1, update --status todo exit 1, update --status retired exit 1 (write.go:169-174, 515-521). (4) go build ./... => BUILD_OK; go vet ./... => VET_OK; go test ./... -count=1 => ok cmd/boardctl 0.468s, ok internal/board 0.131s, ok internal/render 0.014s (all green); targeted alias/normalize tests all PASS. (5) README.md lines 107-145 document the canonical vocabulary, alias table, warning behavior, and the --normalize fix path. LSP diagnostics: 0."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-025\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m9:29PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~799450 bytes (799.45 KB) in 306ms\u001b[0m\n\u001b[90m9:29PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.501s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 validate on a real fleet board using todo/done/open statuses must exit 0 with per-row WARNINGS naming the canonical value, while genuinely unknown/ambiguous statuses (e.g. retired) still exit non-zero; 'boardctl update <id> --normalize' rewrites alias status/guard/ci values on the row to canonical form, exit 0, idempotent; write-side vocabulary enforcement unchanged (create/update still reject out-of-vocabulary values); go build ./... && go vet ./... && go test ./... -count=1 green; README documents the alias+normalize policy: Empirically verified end-to-end with a built binary on an init'd fleet board. (1) validate with todo/done/open rows: exit 0, per-row warnings e.g. 'tasks.jsonl line 2 (task FEAT-1): status \"todo\" is a read alias for \"pending\" \u2014 canonicalize with boardctl update FEAT-1 --normalize'; adding a 'retired' row produced '[error] ... status \"retired\" not in vocabulary' and EXIT=1 (validate.go:113-127 ResolveStatus branch). (2) 'update FEAT-2 --normalize' rewrote done->complete, exit 0; second run printed 'already canonical \u2014 nothing to rewrite (file untouched)', exit 0 (idempotent); guard/ci normalize confirmed (pass->PASS, green->GREEN) via write.go:651 NormalizeTask; diff showed only the target line changed. (3) Write-side unchanged: create --status done exit 1, update --status todo exit 1, update --status retired exit 1 (write.go:169-174, 515-521). (4) go build ./... => BUILD_OK; go vet ./... => VET_OK; go test ./... -count=1 => ok cmd/boardctl 0.468s, ok internal/board 0.131s, ok internal/render 0.014s (all green); targeted alias/normalize tests all PASS. (5) README.md lines 107-145 document the canonical vocabulary, alias table, warning behavior, and the --normalize fix path. LSP diagnostics: 0.\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-14T02:29:54.424728"
+}
