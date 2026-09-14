@@ -148,6 +148,12 @@ func openBoard(target string) (*board.Board, error) {
 	b, err := board.Resolve(target)
 	if err != nil {
 		if errors.Is(err, board.ErrBoardNotFound) {
+			// BT-026: when the wrap identifies a partial board (a detected
+			// tasks.jsonl/events.jsonl whose pair is missing) the generic
+			// location hint is noise — the specific diagnosis is the hint.
+			if strings.Contains(err.Error(), " is missing)") {
+				return nil, err
+			}
 			return nil, fmt.Errorf("%w\nhint: pass a repo root (-C <repo>), a .coding-hermes dir, or a board dir containing tasks.jsonl+events.jsonl", err)
 		}
 		return nil, err

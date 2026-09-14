@@ -2,8 +2,10 @@ package board
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +22,10 @@ type Board struct {
 	fixturesPath string // fixtures.jsonl (optional)
 }
 
-// ErrBoardNotFound is wrapped with the directories probed.
+// ErrBoardNotFound is wrapped with the directories probed. It is also the
+// sentinel for a PARTIAL board (tasks.jsonl or events.jsonl present, its pair
+// missing — BT-026), so the CLI keeps the documented exit-2 class for that
+// case while the wrapped text names the detected file and the missing one.
 var ErrBoardNotFound = errors.New("no JSONL foreman board found")
 
 // boardDirCandidates lists the directories Resolve probes for a
@@ -70,6 +75,7 @@ func Resolve(target string) (*Board, error) {
 		return nil, err
 	}
 	cands := boardDirCandidates(abs)
+	var partial string // a candidate holding exactly one of the required pair (BT-026)
 	for _, c := range cands {
 		tasks := filepath.Join(c, "tasks.jsonl")
 		events := filepath.Join(c, "events.jsonl")
@@ -89,6 +95,20 @@ func Resolve(target string) (*Board, error) {
 			}
 			return b, nil
 		}
+		// BT-026: a candidate with exactly one of the pair is a partial /
+		// legacy board, not "nothing here". The FIRST partial candidate
+		// (probing order) wins so the hint points at the shallowest board.
+		if partial == "" {
+			if fileExists(tasks) {
+				partial = fmt.Sprintf("%s (a tasks.jsonl-only board: events.jsonl is missing)", tasks)
+			} else if fileExists(events) {
+				partial = fmt.Sprintf("%s (an events.jsonl-only board: tasks.jsonl is missing)", events)
+			}
+		}
+	}
+	if partial != "" {
+		return nil, fmt.Errorf("%w: %s — found %s",
+			ErrBoardNotFound, target, partial)
 	}
 	return nil, fmt.Errorf("%w: %s (looked for tasks.jsonl+events.jsonl in %s)",
 		ErrBoardNotFound, target, strings.Join(cands, ", "))
@@ -180,6 +200,13 @@ func NonEmptyLines(lines [][]byte) [][]byte {
 
 // IterParsed calls fn for every non-empty line with its parsed ordered Row.
 // Blank lines are skipped. fn may return an error to abort.
+//
+// BT-026: when a line fails to parse with the decoder's EOF signature AND the
+// joined lines form one valid JSON document, the source is pretty-printed
+// JSON — one object spread over multiple physical lines — and the error says
+// so with the migration hint. A truncated file (e.g. cut off mid-object) also
+// fails with EOF but is NOT valid JSON as a whole, so it keeps the plain
+// per-line error; arbitrary corrupt JSON is never mislabeled as valid.
 func IterParsed(lines [][]byte, fn func(row *Row, lineIdx int, raw []byte) error) error {
 	for i, l := range lines {
 		if len(bytes.TrimSpace(l)) == 0 {
@@ -187,6 +214,9 @@ func IterParsed(lines [][]byte, fn func(row *Row, lineIdx int, raw []byte) error
 		}
 		row, err := ParseRow(l)
 		if err != nil {
+			if isEOFJSONErr(err) && wholeFileIsValidJSON(lines) {
+				return fmt.Errorf("line %d: %w (the source is valid JSON, but it is not line-loadable JSONL — JSONL requires one complete JSON object per line; pretty-printed objects span lines. Compact the file to one line per object, e.g. with jq -c)", i+1, err)
+			}
 			return fmt.Errorf("line %d: %w", i+1, err)
 		}
 		if err := fn(row, i, l); err != nil {
@@ -194,6 +224,40 @@ func IterParsed(lines [][]byte, fn func(row *Row, lineIdx int, raw []byte) error
 		}
 	}
 	return nil
+}
+
+// isEOFJSONErr reports whether err is the decoder's EOF-class failure — the
+// signature of a line that ends mid-JSON-value (pretty-printed multi-line
+// JSON, or a truncated file). ParseRow wraps the token error ("not valid
+// JSON: ..."), so match the underlying io.EOF through the chain.
+func isEOFJSONErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, io.EOF) || strings.Contains(err.Error(), "unexpected end of JSON input")
+}
+
+// wholeFileIsValidJSON reports whether the joined non-empty lines parse as
+// exactly ONE complete JSON document (the pretty-print signature: the file is
+// valid JSON, only not line-oriented). Leading whitespace (the "{\n  " first
+// line of pretty output) is fine for the decoder.
+func wholeFileIsValidJSON(lines [][]byte) bool {
+	var joined bytes.Buffer
+	for _, l := range lines {
+		if len(bytes.TrimSpace(l)) == 0 {
+			continue
+		}
+		joined.Write(l)
+		joined.WriteByte('\n')
+	}
+	dec := json.NewDecoder(bytes.NewReader(joined.Bytes()))
+	var v any
+	if err := dec.Decode(&v); err != nil {
+		return false
+	}
+	// exactly one value: anything after it must be whitespace only
+	rest := joined.Bytes()[dec.InputOffset():]
+	return len(bytes.TrimSpace(rest)) == 0
 }
 
 // ReadAllRows parses every non-empty line of a JSONL file into rows. The

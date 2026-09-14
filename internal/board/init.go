@@ -81,7 +81,10 @@ func Init(dir string, opts InitOptions) (boardDir string, wrote []string, err er
 			return boardDir, nil, err
 		}
 		if isHeader {
-			return boardDir, nil, errors.New("tasks.jsonl line 1 looks like a topology-B header (metadata row without a task id) — init is for fresh boards only and this board already exists; topology B is fully writable, and migrating it to topology A (splitting line 1 of tasks.jsonl into board.jsonl) is an optional manual step")
+			// BT-026: name the missing events.jsonl explicitly so a
+			// topology-B (tasks.jsonl-only on disk) board is diagnosed as
+			// partial, not merely refused.
+			return boardDir, nil, errors.New("tasks.jsonl line 1 looks like a topology-B header (metadata row without a task id), and events.jsonl is missing (this board has no JSONL pair) — init is for fresh boards only and this board already exists; topology B is fully writable, and migrating it to topology A (splitting line 1 of tasks.jsonl into board.jsonl, creating events.jsonl) is an optional manual step")
 		}
 	}
 
