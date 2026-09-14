@@ -54,8 +54,12 @@ func (r *Report) HasErrors() bool { return r.Errors() > 0 }
 //   - event ids are ascending with tolerated gaps; duplicate and non-numeric
 //     ids are itemized warnings (benign legacy rows exist on live boards)
 //   - board.jsonl header (topology A) parses with integer counters
-//   - task status is in the vocabulary {pending,in_progress,review,blocked,
-//     complete,failed}; read-side alias "completed" is accepted
+//   - task status: canonical vocabulary {pending,in_progress,review,blocked,
+//     complete,failed} passes; a known read alias (BT-025: completed, done,
+//     todo, open, in-progress/inprogress/in_progress, reopen/reopened) is a
+//     WARNING naming the canonical value — writes still reject aliases, and
+//     `boardctl update <id> --normalize` is the sanctioned fix; anything else
+//     (retired, closed, wip, malformed junk) is an ERROR
 //   - BT-007: guard_result/ci_result values on existing rows are itemized
 //     warnings when free-form (legacy prose tolerated, not failed)
 //   - BT-007: depends_on ids that reference no task row are itemized warnings
@@ -105,9 +109,18 @@ func (b *Board) validateTasks(rep *Report) {
 		st := row.String("status")
 		if st == "" {
 			rep.Add("warn", "tasks.jsonl line %d (task %s): missing status", idx+1, id)
-		} else if !StatusVocabulary[NormalizeStatus(st)] {
-			rep.Add("error", "tasks.jsonl line %d (task %s): status %q not in vocabulary {%s} ('completed' accepted as read alias)",
-				idx+1, id, st, strings.Join(sortedVocab(), ","))
+		} else if canonical, ok, alias := ResolveStatus(st); !ok {
+			// BT-025: not canonical and not a known read alias — stay an
+			// ERROR. Ambiguous spellings (retired, closed, wip, junk) need
+			// a human decision; they are never silently coerced.
+			rep.Add("error", "tasks.jsonl line %d (task %s): status %q not in vocabulary {%s} (accepted read aliases: %s)",
+				idx+1, id, st, strings.Join(sortedVocab(), ","), strings.Join(sortedAliases(), ", "))
+		} else if alias {
+			// BT-025: known read alias — downgrade to a WARNING naming the
+			// canonical value and the sanctioned fix path. Writes still
+			// reject the alias spelling; nothing is auto-fixed on read.
+			rep.Add("warn", "tasks.jsonl line %d (task %s): status %q is a read alias for %q — canonicalize with 'boardctl update %s --normalize'",
+				idx+1, id, st, canonical, id)
 		}
 		// BT-007: guard_result/ci_result values already on boards must be
 		// in the write vocabulary. The canonical form is upper-cased
@@ -323,6 +336,17 @@ func sortedVocab() []string {
 	out := make([]string, 0, len(StatusVocabulary))
 	for k := range StatusVocabulary {
 		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// sortedAliases renders the read-alias table deterministically (as
+// "alias->canonical" pairs) for validate's unknown-status error message.
+func sortedAliases() []string {
+	out := make([]string, 0, len(StatusAliases))
+	for alias, canonical := range StatusAliases {
+		out = append(out, alias+"->"+canonical)
 	}
 	sort.Strings(out)
 	return out

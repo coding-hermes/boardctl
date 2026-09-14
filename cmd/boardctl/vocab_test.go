@@ -174,3 +174,135 @@ func TestCmdValidateFlagsJunkRow(t *testing.T) {
 		t.Fatalf("validate should stay OK (warnings only):\n%s", got)
 	}
 }
+
+// BT-025 CLI: validate on a board using todo/done/open exits 0 with alias
+// warnings (zero errors); `update --status todo` still exits 1 and writes
+// nothing; `update <id> --normalize` canonicalizes the row reporting each
+// rewrite; a second --normalize is an already-canonical no-op.
+func TestCmdUpdateNormalizeAliasWorkflow(t *testing.T) {
+	dir := seedCLIBoard(t)
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	tasksPath := filepath.Join(boardDir, "tasks.jsonl")
+	f, err := os.OpenFile(tasksPath, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(`{"id":"ALIAS-1","title":"alias","status":"todo","priority":"P2","guard_result":"pass","ci_result":null}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// validate: alias rows warn, zero errors, exit 0
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "validate"}); code != 0 {
+			t.Fatalf("validate exit code = %d, want 0 (alias rows warn, not error)", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, `"todo" is a read alias for "pending"`) || !strings.Contains(got, "--normalize") {
+		t.Fatalf("validate missing todo alias warning:\n%s", got)
+	}
+	if !strings.Contains(got, "RESULT: OK") {
+		t.Fatalf("validate should stay OK on alias rows:\n%s", got)
+	}
+
+	// write enforcement unchanged: an alias spelling is still rejected and
+	// writes nothing
+	before, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := run([]string{"-C", dir, "update", "ALIAS-1", "--status", "todo"}); code != 1 {
+		t.Fatalf("update --status todo exit code = %d, want 1 (writes reject aliases)", code)
+	}
+	mid, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(mid) {
+		t.Fatalf("rejected alias write mutated tasks.jsonl:\nbefore %s\nafter  %s", before, mid)
+	}
+
+	// normalize: exactly the dirty fields, reported old -> new
+	got, err = captureStdout(func() {
+		if code := run([]string{"-C", dir, "update", "ALIAS-1", "--normalize"}); code != 0 {
+			t.Fatalf("update --normalize exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, `status "todo" -> "pending"`) || !strings.Contains(got, `guard_result "pass" -> "PASS"`) {
+		t.Fatalf("normalize output missing field reports:\n%s", got)
+	}
+	raw, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"status":"pending"`) || !strings.Contains(string(raw), `"guard_result":"PASS"`) {
+		t.Fatalf("normalize did not canonicalize the row: %s", raw)
+	}
+	if strings.Contains(string(raw), `"todo"`) {
+		t.Fatalf("alias spelling still on disk: %s", raw)
+	}
+
+	// idempotent: second normalize is an already-canonical no-op
+	got, err = captureStdout(func() {
+		if code := run([]string{"-C", dir, "update", "ALIAS-1", "--normalize"}); code != 0 {
+			t.Fatalf("second normalize exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	if !strings.Contains(got, "already canonical") {
+		t.Fatalf("second normalize should report already canonical:\n%s", got)
+	}
+	raw2, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != string(raw2) {
+		t.Fatalf("second normalize rewrote the file:\nbefore %s\nafter  %s", raw, raw2)
+	}
+}
+
+// BT-025 CLI: --normalize refuses an unknown status (exit 1, nothing
+// written) and rejects combination with other change flags.
+func TestCmdUpdateNormalizeRefusesUnknownAndCombo(t *testing.T) {
+	dir := seedCLIBoard(t)
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	tasksPath := filepath.Join(boardDir, "tasks.jsonl")
+	f, err := os.OpenFile(tasksPath, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(`{"id":"OLD-1","title":"retired","status":"retired","priority":"P2"}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := run([]string{"-C", dir, "update", "OLD-1", "--normalize"}); code != 1 {
+		t.Fatalf("normalize of retired exit code = %d, want 1", code)
+	}
+	after, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatalf("refused normalize mutated tasks.jsonl:\nbefore %s\nafter  %s", before, after)
+	}
+	// combination with an explicit change flag is a usage error
+	if code := run([]string{"-C", dir, "update", "EXIST-1", "--normalize", "--status", "complete"}); code != 1 {
+		t.Fatalf("normalize --status combo exit code = %d, want 1", code)
+	}
+}

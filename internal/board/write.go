@@ -441,6 +441,14 @@ type UpdateSpec struct {
 	BlockedReason *string
 	CompletedAt   *string
 	Force         bool // BT-023: bypass the fleet task-id format check on the target id
+	// BT-025: normalize mode — rewrite ONLY the row's status (via the
+	// read-alias table) and guard_result/ci_result (via NormalizeResultValue)
+	// to their canonical forms. Any present field whose value cannot be
+	// resolved fails the whole normalize with nothing written; an
+	// already-canonical row is a no-op (reporting "already canonical" at the
+	// caller). --normalize alone satisfies the change-flag gate and never
+	// requires --force.
+	Normalize bool
 }
 
 // UpdateTask surgically updates ONE task row. Every untouched line of
@@ -572,8 +580,8 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
-	if len(changed) == 0 {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at)")
+	if len(changed) == 0 && !spec.Normalize {
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))
@@ -608,6 +616,146 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 		}
 	}
 	return changed, nil
+}
+
+// fieldChange describes one canonicalization NormalizeTask applied (or found
+// unnecessary) to a field: the raw on-disk spelling and the canonical form.
+type fieldChange struct {
+	Field string
+	Old   string
+	New   string
+}
+
+// NormalizeTask is the BT-025 sanctioned fix path for read-alias drift:
+// rewrite, IN PLACE on the ONE row with the given id, only the status (via
+// the read-alias table) and guard_result/ci_result (via NormalizeResultValue)
+// when their on-disk spelling is not already canonical. Everything else —
+// key order, other fields, every other line — round-trips byte-identical
+// (asserted before the atomic rewrite, same discipline as UpdateTask), and
+// the topology-B line-1 header is never a normalize target.
+//
+// No-op safety: when every present field is already canonical (or none of
+// the three fields exist) the file is NOT written at all and the returned
+// changes are empty — a second --normalize run is therefore a byte-identical
+// no-op (idempotent).
+//
+// Refusal: if a present field's value cannot be resolved (an unknown status
+// such as retired/closed/wip, or a guard/ci value outside its vocabulary),
+// the whole normalize fails naming the field and offending value and NOTHING
+// is written. The row keeps its dirty value: ambiguous statuses need a human
+// decision, not a silent coercion.
+//
+// Unlike UpdateTask this does NOT append an audit event and does NOT refresh
+// updated_at — normalize is a pure spelling repair of values already on the
+// board, not a state transition.
+func (b *Board) NormalizeTask(id string, force bool) ([]fieldChange, error) {
+	lines, err := ReadJSONLLines(b.tasksPath)
+	if err != nil {
+		return nil, err
+	}
+	targetIdx := -1
+	var target *Row
+	if err := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+		if b.skipTaskLine(lines, idx) {
+			return nil // topology B: the header is not a task row
+		}
+		if row.String("id") != id {
+			return nil
+		}
+		if targetIdx != -1 {
+			return fmt.Errorf("task id %q appears on multiple lines (%d and %d) — refusing ambiguous normalize", id, targetIdx+1, idx+1)
+		}
+		targetIdx = idx
+		target = row
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	if targetIdx == -1 {
+		return nil, fmt.Errorf("task %q not found in tasks.jsonl", id)
+	}
+	// BT-023 id format gate, mirroring UpdateTask (--force escape hatch):
+	// normalize targets an EXISTING row, so only rows whose own id is
+	// non-conforming are gated; conforming ids never hit this.
+	if !force {
+		if err := ValidateFleetTaskID(id); err != nil {
+			return nil, err
+		}
+	}
+
+	style := DetectStyle(lines[targetIdx])
+
+	// Pass 1 — classify every present normalize target WITHOUT writing.
+	// A single unresolvable value aborts the whole run before any mutation.
+	var pending []fieldChange
+	if raw := target.String("status"); raw != "" {
+		canonical, ok, _ := ResolveStatus(raw)
+		if !ok {
+			return nil, fmt.Errorf("cannot normalize: status %q is not a canonical value or a known read alias — decide the correct status and set it explicitly with --status", raw)
+		}
+		if canonical != raw {
+			pending = append(pending, fieldChange{Field: "status", Old: raw, New: canonical})
+		}
+	}
+	for _, c := range []struct {
+		key   string
+		vocab map[string]bool
+	}{
+		{"guard_result", GuardResultVocabulary},
+		{"ci_result", CIResultVocabulary},
+	} {
+		raw := target.String(c.key)
+		if raw == "" {
+			continue // absent, null, or never-run
+		}
+		canonical := NormalizeResultValue(raw)
+		if !c.vocab[canonical] {
+			return nil, fmt.Errorf("cannot normalize: %s %q is not in vocabulary {%s} — decide the correct value and set it explicitly", c.key, raw, vocabKeys(c.vocab))
+		}
+		if canonical != raw {
+			pending = append(pending, fieldChange{Field: c.key, Old: raw, New: canonical})
+		}
+	}
+
+	// Pass 2 — nothing to rewrite: report the no-op WITHOUT touching the
+	// file, so a second --normalize run is byte-identical (idempotent).
+	if len(pending) == 0 {
+		return nil, nil
+	}
+
+	// Pass 3 — apply the classified rewrites. The change list comes from the
+	// classification pass, so only fields whose spelling actually changes
+	// are reported and rewritten.
+	for _, ch := range pending {
+		if err := target.SetGoValue(ch.Field, ch.New, style); err != nil {
+			return nil, err
+		}
+	}
+
+	newLines := make([][]byte, len(lines))
+	copy(newLines, lines)
+	newLines[targetIdx] = target.Marshal(style)
+	// Assert every untouched line round-trips byte-identical BEFORE writing
+	// (same discipline as UpdateTask).
+	for i, l := range lines {
+		if i != targetIdx && !bytes.Equal(l, newLines[i]) {
+			return nil, fmt.Errorf("internal error: untouched line %d would change — normalize aborted (nothing written)", i+1)
+		}
+	}
+	if err := atomicRewrite(b.tasksPath, JoinLines(newLines)); err != nil {
+		return nil, err
+	}
+	return pending, nil
+}
+
+// vocabKeys renders a vocabulary map sorted (deterministic error messages).
+func vocabKeys(vocab map[string]bool) string {
+	out := make([]string, 0, len(vocab))
+	for k := range vocab {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return strings.Join(out, ",")
 }
 
 // EventSpec carries the user-supplied event fields.

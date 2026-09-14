@@ -38,7 +38,8 @@ commands:
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
   update  <id> --status complete [--worker-status S] [--commit-hash SHA]
           [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S]
-          [--note S] [--blocked-reason R] [--completed-at TS] [--force]
+          [--note S] [--blocked-reason R] [--completed-at TS] [--normalize]
+          [--force]
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N]
@@ -488,10 +489,16 @@ func cmdUpdate(dir string, args []string) error {
 	note := fs.String("note", "", "foreman_note")
 	blockedReason := fs.String("blocked-reason", "", "blocked_reason")
 	completedAt := fs.String("completed-at", "", "completed_at timestamp")
+	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
+	// to their canonical forms (read-alias fix path). Takes no value, so it
+	// must NOT join the reorderArgs valueFlags list.
+	normalize := fs.Bool("normalize", false, "rewrite status/guard_result/ci_result to canonical forms (read-alias fix path)")
 	force := fs.Bool("force", false, "allow updating rows whose id violates the fleet id format")
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl update <id> --status complete [--force] [flags] [-C dir]\\n") }
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "boardctl update <id> [--status complete] [--normalize] [--force] [flags] [-C dir]\\n")
+	}
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -504,6 +511,32 @@ func cmdUpdate(dir string, args []string) error {
 	b, err := openBoard(dir)
 	if err != nil {
 		return err
+	}
+	// BT-025: --normalize is the sanctioned read-alias fix path — it owns
+	// the whole command when present, because it already rewrites exactly
+	// the fields (status, guard_result, ci_result) an explicit combination
+	// would target, and mixing it with e.g. --status would make the outcome
+	// order-dependent. Any other change flag alongside it is a usage error;
+	// --normalize alone satisfies the change-flag gate and needs no --force
+	// beyond the fleet-id escape hatch.
+	if *normalize {
+		for _, f := range []string{"status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at"} {
+			if fs.Lookup(f).Value.String() != "" {
+				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
+			}
+		}
+		changes, err := b.NormalizeTask(fs.Arg(0), *force)
+		if err != nil {
+			return err
+		}
+		if len(changes) == 0 {
+			fmt.Fprintf(os.Stdout, "task %s already canonical — nothing to rewrite (file untouched)\n", fs.Arg(0))
+			return nil
+		}
+		for _, ch := range changes {
+			fmt.Fprintf(os.Stdout, "normalized task %s: %s %q -> %q\n", fs.Arg(0), ch.Field, ch.Old, ch.New)
+		}
+		return nil
 	}
 	ptr := func(s string) *string {
 		if s == "" {

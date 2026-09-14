@@ -10,8 +10,9 @@ import (
 	"strings"
 )
 
-// StatusVocabulary is the canonical write vocabulary. Rows read as
-// "completed" are accepted everywhere as an alias for "complete".
+// StatusVocabulary is the canonical write vocabulary. Every write surface
+// (create/update/import) rejects anything outside this set — the read-alias
+// policy below never relaxes that.
 var StatusVocabulary = map[string]bool{
 	"pending":     true,
 	"in_progress": true,
@@ -21,11 +22,51 @@ var StatusVocabulary = map[string]bool{
 	"failed":      true,
 }
 
-// NormalizeStatus maps read-side aliases onto the canonical vocabulary:
-// "completed" -> "complete". Unknown statuses pass through unchanged.
+// StatusAliases is the read-alias policy (BT-025): statuses OBSERVED on live
+// fleet boards that unambiguously mean one canonical value. Reads (validate,
+// list, stats, filters) accept these spellings; writes never do — a write
+// must use the canonical form, and validate downgrades an alias hit from an
+// error to a warning naming the canonical value so operators can see (and
+// fix with `boardctl update <id> --normalize`) the drift instead of learning
+// to ignore validate. Lookup keys are the trimmed, lower-cased spelling.
+// Deliberately NOT aliases: ambiguous values such as retired, closed, wip,
+// or malformed junk — those stay unknown and keep failing validate, because
+// coercing them needs a human decision, not a table.
+var StatusAliases = map[string]string{
+	"completed":   "complete",
+	"done":        "complete",
+	"todo":        "pending",
+	"open":        "pending",
+	"in-progress": "in_progress",
+	"inprogress":  "in_progress",
+	"in_progress": "in_progress",
+	"reopen":      "pending",
+	"reopened":    "pending",
+}
+
+// ResolveStatus classifies a raw status spelling for the read path:
+//   - a canonical vocabulary value (or the empty status, which callers treat
+//     as its own "missing" case) -> ok=true, canonical=s, alias=false
+//   - a known alias (case-insensitive, whitespace-trimmed) -> ok=true,
+//     canonical=the canonical form, alias=true
+//   - anything else -> ok=false (unknown: validate errors, write paths reject)
+func ResolveStatus(s string) (canonical string, ok bool, alias bool) {
+	if s == "" || StatusVocabulary[s] {
+		return s, true, false
+	}
+	if c, hit := StatusAliases[strings.ToLower(strings.TrimSpace(s))]; hit {
+		return c, true, true
+	}
+	return s, false, false
+}
+
+// NormalizeStatus maps read-side aliases onto the canonical vocabulary
+// (completed->complete, done->complete, todo/open->pending, hyphen/case
+// variants -> in_progress, reopen/reopened -> pending; see StatusAliases).
+// Canonical and unknown statuses pass through unchanged.
 func NormalizeStatus(s string) string {
-	if s == "completed" {
-		return "complete"
+	if c, ok, _ := ResolveStatus(s); ok {
+		return c
 	}
 	return s
 }

@@ -64,6 +64,10 @@ boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
 boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
     --guard PASS --ci GREEN --summary "retry added (+80/-12)"
 
+# canonicalize one row's status/guard_result/ci_result spelling in place
+# (read-alias fix path; no-op + "already canonical" when nothing is dirty)
+boardctl -C ~/myproject update FEAT-1 --normalize
+
 # append a raw audit event
 boardctl -C ~/myproject event --type audit --tick 42 --detail-text 'tick 42 summary'
 
@@ -99,6 +103,46 @@ to topology A (splitting line 1 of `tasks.jsonl` into `board.jsonl`) is an
 optional modernization, done by hand outside init.
 
 Exit codes: `0` ok, `1` validation failure, `2` usage/board-not-found.
+
+## Status vocabulary and read aliases (BT-025)
+
+boardctl WRITES one canonical status vocabulary:
+
+```
+pending, in_progress, review, blocked, complete, failed
+```
+
+READS additionally accept a fixed alias table (case-insensitive, whitespace
+trimmed), because those spellings exist on live fleet boards and validate
+would otherwise fail the very boards it exists to check:
+
+```
+completed, done                     -> complete
+todo, open, reopen, reopened        -> pending
+in-progress, inprogress             -> in_progress
+```
+
+An alias status is a WARNING on `validate`/`doctor` naming the canonical
+value — e.g. `status "todo" is a read alias for "pending"` — so a board full
+of legacy spellings still validates OK while the drift stays visible.
+Anything NOT canonical and NOT an alias (`retired`, `closed`, `wip`,
+malformed junk) remains an ERROR: ambiguous statuses need a human decision,
+not a silent coercion.
+
+Aliases are read-only: every write surface (`create`, `update`, `import`)
+still rejects them, and nothing is auto-fixed on read. The sanctioned fix
+path is `boardctl update <id> --normalize`, which rewrites that row's
+`status` (via the alias table) and `guard_result`/`ci_result` (upper-cased)
+to their canonical forms in place — every untouched line stays
+byte-identical, it refuses to write anything when a present field cannot be
+resolved, it is a no-op ("already canonical") on a clean row, and it never
+requires `--force`.
+
+```bash
+boardctl -C ~/myproject validate                    # alias rows warn (exit 0)
+boardctl -C ~/myproject update FEAT-1 --status done # exit 1 — writes reject aliases
+boardctl -C ~/myproject update FEAT-1 --normalize   # status "done" -> "complete"
+```
 
 ## Task id format
 
