@@ -285,17 +285,31 @@ function renderBanner(){
     if (n > 0) parts.push(bd.name + ": " + n + " (" + warnSummary(w) + ")");
     total += n;
   });
-  if (total === 0) { b.hidden = true; b.textContent = ""; return; }
+  // BT-027: an upload-level notice (serve sets payload.upload_notice when
+  // the request carried file parts but registered 0 boards) must be
+  // visible even when every rendered board parsed cleanly.
+  var notice = payload.upload_notice || "";
+  if (total === 0 && !notice) { b.hidden = true; b.textContent = ""; return; }
   b.hidden = false; b.textContent = "";
-  b.appendChild(el("strong", null, "Loaded " + boards.map(function(x){return x.name;}).join(", ") + " with " + total + " parse warning" + (total===1?"":"s")));
-  var details = el("span", "muted", " — " + parts.join("; "));
-  b.appendChild(details);
+  var names = boards.map(function(x){return x.name;}).join(", ");
+  var warns = total + " parse warning" + (total===1?"":"s");
+  if (notice) {
+    // The notice LEADS; the usual load summary follows as muted detail.
+    b.appendChild(el("strong", null, notice));
+    var det = " — Loaded " + names + " with " + warns;
+    if (parts.length > 0) det += " — " + parts.join("; ");
+    b.appendChild(el("span", "muted", det));
+  } else {
+    b.appendChild(el("strong", null, "Loaded " + names + " with " + warns));
+    b.appendChild(el("span", "muted", " — " + parts.join("; ")));
+  }
   var btn = el("button", "btn", "show notes");
   btn.setAttribute("aria-expanded", "false");
   var notes = el("div", "bn-notes");
+  var noteCount = 0;
   boards.forEach(function(bd){
     var w = bd.parse_warnings || {};
-    (w.notes || []).forEach(function(n){ notes.appendChild(el("div", null, bd.name + ": " + n)); });
+    (w.notes || []).forEach(function(n){ notes.appendChild(el("div", null, bd.name + ": " + n)); noteCount++; });
   });
   btn.addEventListener("click", function(){
     var open = notes.style.display === "block";
@@ -305,7 +319,8 @@ function renderBanner(){
   });
   var dismiss = el("button", "btn", "dismiss");
   dismiss.addEventListener("click", function(){ b.hidden = true; });
-  b.appendChild(btn); b.appendChild(dismiss); b.appendChild(notes);
+  if (noteCount > 0) b.appendChild(btn); // a notice-only banner has no notes to show
+  b.appendChild(dismiss); b.appendChild(notes);
 }
 function warnSummary(w){
   var a = [];

@@ -170,6 +170,12 @@ type ReportPayload struct {
 	Boards          []BoardPayload `json:"boards"`
 	GeneratedBy     string         `json:"generated_by"`
 	NoDoneCompleted []string       `json:"completed_no_done_ids,omitempty"`
+	// UploadNotice carries an upload-level warning from serve (BT-027):
+	// the request carried file parts but registered 0 boards, so the
+	// rendered report is only the -C board(s). Optional — render/Build
+	// (single-board path) never sets it, so omitempty keeps their payload
+	// byte-compatible with board-report/v1.
+	UploadNotice string `json:"upload_notice,omitempty"`
 }
 
 // fixtureRows / taskRows split the deduped task set.

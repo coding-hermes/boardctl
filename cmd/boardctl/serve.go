@@ -57,6 +57,11 @@ const (
 	maxBoardsPerUpload = 50
 )
 
+// zeroBoardsNotice is the visible report banner (payload upload_notice +
+// #banner lead, BT-027) when a request carried file parts but registered
+// no board while the -C board still renders.
+const zeroBoardsNotice = "0 boards found in upload: a board is a directory containing BOTH tasks.jsonl and events.jsonl"
+
 // cmdServe runs the loopback uploader. Exit codes via the shared contract:
 // 2 usage (non-loopback --addr, bad flag), 1 operational failure, 0 after a
 // clean SIGINT/SIGTERM shutdown.
@@ -337,6 +342,18 @@ func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no board found in upload: a board is a directory containing BOTH tasks.jsonl and events.jsonl", http.StatusBadRequest)
 		return
 	}
+	// BT-027: reaching this point means the request carried at least one
+	// file part (a zero-part request was rejected 400 above), so an upload
+	// that registered 0 boards while -C carries the response must warn
+	// VISIBLY in the report. The old behavior fell through and rendered a
+	// clean-looking report of the -C board only (HTTP 200, no hint), so a
+	// caller posting a mis-named part or a tree without the board pair saw
+	// success. The still-200 verdict is deliberate: the -C board renders,
+	// only the upload contributed nothing.
+	var uploadNotice string
+	if len(boards) == 0 && len(s.cBoards) > 0 {
+		uploadNotice = zeroBoardsNotice
+	}
 	if total > maxBoardsPerUpload {
 		http.Error(w, fmt.Sprintf("upload registers %d boards; cap is %d", total, maxBoardsPerUpload), http.StatusRequestEntityTooLarge)
 		return
@@ -355,6 +372,9 @@ func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "build report: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Empty on every non-serve path (render/Build never sets it; omitempty
+	// keeps those payloads byte-identical to board-report/v1).
+	payload.UploadNotice = uploadNotice
 	html, err := render.RenderHTML(payload)
 	if err != nil {
 		http.Error(w, "render report: "+err.Error(), http.StatusInternalServerError)

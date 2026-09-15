@@ -76,6 +76,36 @@ boardctl -C ~/myproject header --json
 boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
 ```
 
+### serve
+
+`boardctl serve` starts a loopback-only upload server: open it in a browser,
+pick a board folder or a `.zip` of board folders, and get the self-contained
+multi-board HTML report back. Nothing is written to your board files.
+
+```bash
+boardctl serve                       # http://127.0.0.1:8787
+boardctl serve --addr 127.0.0.1:9000 # any loopback host/port; a non-loopback
+                                     # --addr (0.0.0.0, 10.x, a hostname) is
+                                     # refused with exit 2 — serve has no auth
+                                     # and must never leave the machine
+boardctl serve -C ~/myproject        # the -C board is included in every report
+```
+
+The `-C` board, when it resolves, is PREPENDED to every report the server
+renders — reports are always `-C` board first, then uploaded boards, so a
+two-board zip alongside `-C` renders three boards. A `-C` that resolves to
+nothing is fine; the server starts anyway and prints a note.
+
+Every directory that contains BOTH `tasks.jsonl` and `events.jsonl` (at any
+depth, in a folder upload or inside a zip) is registered as a board. When the
+upload registers none — a file posted with the wrong field name, or a folder
+without that pair — the report still renders (the `-C` board if present,
+otherwise HTTP 400) and carries a visible banner notice:
+
+```
+0 boards found in upload: a board is a directory containing BOTH tasks.jsonl and events.jsonl
+```
+
 ## Start a board
 
 A fresh project has no board yet. `init` bootstraps one — it writes the four

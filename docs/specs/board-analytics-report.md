@@ -738,6 +738,16 @@ recomputation.
    renders the multi-board report: two overview cards + the compare section
    with overlaid burn-up and the key-numbers table including `ticks_total`
    and `ticks_idle` per board. Observable: payload `len(boards) == 2`.
+   Clarifying note (BT-027, does not change the criterion): `serve`
+   PREPENDS the `-C` board to every report — combined count is
+   `len(-C boards) + len(uploaded boards)`, `-C` first, uploads appended
+   after. The literal `len(boards) == 2` above therefore assumes `-C`
+   resolves no board (the unit tests construct `newServeServer(nil)` for
+   exactly this reason). When an upload registers 0 boards while `-C`
+   resolves one, the report is still HTTP 200 with only the `-C` board,
+   plus a visible banner notice carried in the payload as optional
+   `upload_notice`: `0 boards found in upload: a board is a directory
+   containing BOTH tasks.jsonl and events.jsonl`.
 4. Folder upload (multi-file `webkitdirectory` POST, relative paths
    preserved) of one board renders the same report as `render -C` on that
    folder. Observable: payload equality on `derived` between the two paths.
