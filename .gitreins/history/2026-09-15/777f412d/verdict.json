@@ -1,0 +1,67 @@
+{
+  "task_id": "BT-028",
+  "task_title": "gofmt is not gated: formatting rot is invisible to CI while vet stays green",
+  "task_criteria": [
+    "Makefile exposes a check-only gofmt gate target; .github/workflows/ci.yml runs the same gate as a failing step; a Go test in the repo runs gofmt and fails on any unformatted .go file so the local gate and CI agree. Live probe: with a deliberately unformatted temp .go file inside the repo the gate exits non-zero, and on the clean tree it exits 0 with empty gofmt -l output."
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m6:42AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~844700 bytes (844.70 KB) in 586ms\u001b[0m\n\u001b[90m6:42AM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.791s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m6:42AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~844700 bytes (844.70 KB) in 586ms\u001b[0m\n\u001b[90m6:42AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.791s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.344s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.070s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Makefile exposes a check-only gofmt gate target; .github/workflows/ci.yml runs the same gate as a failing step; a Go test in the repo runs gofmt and fails on any unformatted .go file so the local gate and CI agree. Live probe: with a deliberately unformatted temp .go file inside the repo the gate exits non-zero, and on the clean tree it exits 0 with empty gofmt -l output.: Makefile:26-27 defines check-only target `fmt-check: go test -count=1 -run TestGofmt ./internal/fmtcheck` (listed in .PHONY at Makefile:12; the writing helper is `fmt` = gofmt -w, so the gate never rewrites). .github/workflows/ci.yml:32-33 has `- name: Gofmt` / `run: go test -count=1 -run TestGofmt ./internal/fmtcheck` \u2014 byte-identical to the Makefile target \u2014 and grep for `continue-on-error`/`if:` in ci.yml returned none, so it is a genuinely failing step. internal/fmtcheck/fmtcheck_test.go TestGofmt calls RepoRoot(cwd)+FindUnformatted(root); fmtcheck.go compares go/format.Source output to on-disk bytes (the same criterion as gofmt -l) and t.Errorf's on any unformatted file, with no testing.Short() skip so it also runs under CI's `go test -short -count=1 ./...`. LIVE PROBE at /home/kara/coding-hermes-boardctl @ 5ff8e2e: clean tree `make fmt-check` -> `ok github.com/coding-hermes/boardctl/internal/fmtcheck 0.033s`, exit=0, and `gofmt -l ./cmd ./internal` -> empty output, exit=0; full `go test -count=1 ./...` -> all 4 packages ok, exit=0. Negative probe with deliberately unformatted internal/fmtcheck/zz_probe_tmp.go: `gofmt -l ./cmd ./internal` -> `internal/fmtcheck/zz_probe_tmp.go`; `make fmt-check` -> `--- FAIL: TestGofmt ... found 1 file(s) not gofmt-clean ... internal/fmtcheck/zz_probe_tmp.go`, exit=2 (`make: *** [Makefile:27: fmt-check] Error 1`); `go test -short -count=1 ./...` -> FAIL on internal/fmtcheck. Temp file removed and `git status --porcelain` clean afterward. Local gate and CI agree by construction via the single shared checker.\ngofmt is now gated identically in the Makefile, CI, and go test via one shared checker; live probes confirm exit 0 with empty gofmt -l on the clean tree and non-zero on a deliberately unformatted file.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Makefile exposes a check-only gofmt gate target; .github/workflows/ci.yml runs the same gate as a failing step; a Go test in the repo runs gofmt and fails on any unformatted .go file so the local gate and CI agree. Live probe: with a deliberately unformatted temp .go file inside the repo the gate exits non-zero, and on the clean tree it exits 0 with empty gofmt -l output.: Makefile:26-27 defines check-only target `fmt-check: go test -count=1 -run TestGofmt ./internal/fmtcheck` (list",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Makefile exposes a check-only gofmt gate target; .github/workflows/ci.yml runs the same gate as a failing step; a Go test in the repo runs gofmt and fails on any unformatted .go file so the local gate and CI agree. Live probe: with a deliberately unformatted temp .go file inside the repo the gate exits non-zero, and on the clean tree it exits 0 with empty gofmt -l output.",
+                "status": "PASS",
+                "detail": "Makefile:26-27 defines check-only target `fmt-check: go test -count=1 -run TestGofmt ./internal/fmtcheck` (listed in .PHONY at Makefile:12; the writing helper is `fmt` = gofmt -w, so the gate never rewrites). .github/workflows/ci.yml:32-33 has `- name: Gofmt` / `run: go test -count=1 -run TestGofmt ./internal/fmtcheck` \u2014 byte-identical to the Makefile target \u2014 and grep for `continue-on-error`/`if:` in ci.yml returned none, so it is a genuinely failing step. internal/fmtcheck/fmtcheck_test.go TestGofmt calls RepoRoot(cwd)+FindUnformatted(root); fmtcheck.go compares go/format.Source output to on-disk bytes (the same criterion as gofmt -l) and t.Errorf's on any unformatted file, with no testing.Short() skip so it also runs under CI's `go test -short -count=1 ./...`. LIVE PROBE at /home/kara/coding-hermes-boardctl @ 5ff8e2e: clean tree `make fmt-check` -> `ok github.com/coding-hermes/boardctl/internal/fmtcheck 0.033s`, exit=0, and `gofmt -l ./cmd ./internal` -> empty output, exit=0; full `go test -count=1 ./...` -> all 4 packages ok, exit=0. Negative probe with deliberately unformatted internal/fmtcheck/zz_probe_tmp.go: `gofmt -l ./cmd ./internal` -> `internal/fmtcheck/zz_probe_tmp.go`; `make fmt-check` -> `--- FAIL: TestGofmt ... found 1 file(s) not gofmt-clean ... internal/fmtcheck/zz_probe_tmp.go`, exit=2 (`make: *** [Makefile:27: fmt-check] Error 1`); `go test -short -count=1 ./...` -> FAIL on internal/fmtcheck. Temp file removed and `git status --porcelain` clean afterward. Local gate and CI agree by construction via the single shared checker."
+              }
+            ],
+            "summary": "gofmt is now gated identically in the Makefile, CI, and go test via one shared checker; live probes confirm exit 0 with empty gofmt -l on the clean tree and non-zero on a deliberately unformatted file."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-028\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m6:42AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~844700 bytes (844.70 KB) in 586ms\u001b[0m\n\u001b[90m6:42AM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.791s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Makefile exposes a check-only gofmt gate target; .github/workflows/ci.yml runs the same gate as a failing step; a Go test in the repo runs gofmt and fails on any unformatted .go file so the local gate and CI agree. Live probe: with a deliberately unformatted temp .go file inside the repo the gate exits non-zero, and on the clean tree it exits 0 with empty gofmt -l output.: Makefile:26-27 defines check-only target `fmt-check: go test -count=1 -run TestGofmt ./internal/fmtcheck` (listed in .PHONY at Makefile:12; the writing helper is `fmt` = gofmt -w, so the gate never rewrites). .github/workflows/ci.yml:32-33 has `- name: Gofmt` / `run: go test -count=1 -run TestGofmt ./internal/fmtcheck` \u2014 byte-identical to the Makefile target \u2014 and grep for `continue-on-error`/`if:` in ci.yml returned none, so it is a genuinely failing step. internal/fmtcheck/fmtcheck_test.go TestGofmt calls RepoRoot(cwd)+FindUnformatted(root); fmtcheck.go compares go/format.Source output to on-disk bytes (the same criterion as gofmt -l) and t.Errorf's on any unformatted file, with no testing.Short() skip so it also runs under CI's `go test -short -count=1 ./...`. LIVE PROBE at /home/kara/coding-hermes-boardctl @ 5ff8e2e: clean tree `make fmt-check` -> `ok github.com/coding-hermes/boardctl/internal/fmtcheck 0.033s`, exit=0, and `gofmt -l ./cmd ./internal` -> empty output, exit=0; full `go test -count=1 ./...` -> all 4 packages ok, exit=0. Negative probe with deliberately unformatted internal/fmtcheck/zz_probe_tmp.go: `gofmt -l ./cmd ./internal` -> `internal/fmtcheck/zz_probe_tmp.go`; `make fmt-check` -> `--- FAIL: TestGofmt ... found 1 file(s) not gofmt-clean ... internal/fmtcheck/zz_probe_tmp.go`, exit=2 (`make: *** [Makefile:27: fmt-check] Error 1`); `go test -short -count=1 ./...` -> FAIL on internal/fmtcheck. Temp file removed and `git status --porcelain` clean afterward. Local gate and CI agree by construction via the single shared checker.\ngofmt is now gated identically in the Makefile, CI, and go test via one shared checker; live probes confirm exit 0 with empty gofmt -l on the clean tree and non-zero on a deliberately unformatted file.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-15T11:43:27.249982"
+}
