@@ -257,6 +257,7 @@ drift.
 ```bash
 go build ./cmd/boardctl
 go test ./...
+make fmt-check   # gofmt gate (CI enforces it too); `make fmt` fixes
 make release   # cross-compile all targets into dist/
 ```
 

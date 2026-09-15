@@ -9,13 +9,22 @@ PLATFORMS := \
 	windows/amd64 \
 	freebsd/amd64
 
-.PHONY: build test vet release clean
+.PHONY: build test vet fmt fmt-check release clean
 
 build:
 	go build -o bin/$(BINARY) $(CMD)
 
 test:
 	go test ./...
+
+# Check-only gofmt gate (never rewrites files). It runs the Go checker in
+# internal/fmtcheck, so the Makefile, CI, and `go test ./...` all enforce the
+# exact same rule over the exact same file set. The writing helper is `fmt`.
+fmt:
+	gofmt -w $(CMD) ./internal
+
+fmt-check:
+	go test -count=1 -run TestGofmt ./internal/fmtcheck
 
 vet:
 	go vet ./...

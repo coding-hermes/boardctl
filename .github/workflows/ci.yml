@@ -29,5 +29,8 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Gofmt
+        run: go test -count=1 -run TestGofmt ./internal/fmtcheck
+
       - name: Test
         run: go test -short -count=1 ./...

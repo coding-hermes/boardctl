@@ -7,3 +7,4 @@ __pycache__/
 dagger.db
 dagger.db-shm
 dagger.db-wal
+.vfs/
