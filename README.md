@@ -13,9 +13,11 @@ The zero-dependency path: grab a static binary from
 [releases](../../releases) (linux/darwin/windows/freebsd × amd64/arm64/arm) —
 no Go toolchain needed. Verify the binary's checksum before running it:
 
+Current release: **v0.1.3**.
+
 ```bash
-curl -sL -o boardctl-linux-amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.2/boardctl-linux-amd64
-curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.2/sha256sums.txt
+curl -sL -o boardctl-linux-amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.3/boardctl-linux-amd64
+curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.3/sha256sums.txt
 sha256sum -c --ignore-missing sha256sums.txt   # verify the binary you downloaded
 chmod +x boardctl-linux-amd64 && ./boardctl-linux-amd64 version
 ```
