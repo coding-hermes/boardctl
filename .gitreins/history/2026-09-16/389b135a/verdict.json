@@ -1,0 +1,64 @@
+{
+  "task_id": "BT-031",
+  "task_title": "cut v0.1.4 release - published v0.1.3 assets still print a build date (20260915)",
+  "task_criteria": [
+    "Cut v0.1.4 from a commit containing 84fa556 (BT-030). README release pins move to v0.1.4 (Current release line + all /releases/download/v0.1.4/ URLs) and make version-check passes. v0.1.4 built via make release from a CLEAN CLONE of the tag (vcs.modified=false, vcs.revision = the tag commit), published with sha256sums.txt, gh release NOT draft and Latest. PROOF: the DOWNLOADED asset from the release URL prints 'boardctl version v0.1.4', sha256sum -c --ignore-missing passes, and boardctl version --json prints version+build v0.1.4."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "18345dab99321ff0216a528f808b2de522d87dfe",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m2:21PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~884227 bytes (884.23 KB) in 325ms\u001b[0m\n\u001b[90m2:21PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.660s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m2:21PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~884227 bytes (884.23 KB) in 325ms\u001b[0m\n\u001b[90m2:21PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.660s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.140s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.004s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n\n(auto-parsed from non-JSON response) All evidence is confirmed. Every element of the single criterion is verified with hard command output.\n\n**Summary of verification:**\n\n| Requirement | Evidence |\n|---|---|\n| v0.1.4 contains 84fa556 | `git merge-base --is-ancestor 84fa556 v0.1.4` \u2192 YES |\n| README Current release line | README.md:16 `C",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n\n(auto-parsed from non-JSON response) All evidence is confirmed. Every element of the single criterion is verified with hard command output.\n\n**Summary of verification:**\n\n| Requirement | Evidence |\n|---|---|\n| v0.1.4 contains 84fa556 | `git merge-base --is-ancestor 84fa556 v0.1.4` \u2192 YES |\n| README Current release line | README.md:16 `C",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [],
+            "summary": "(auto-parsed from non-JSON response) All evidence is confirmed. Every element of the single criterion is verified with hard command output.\n\n**Summary of verification:**\n\n| Requirement | Evidence |\n|---|---|\n| v0.1.4 contains 84fa556 | `git merge-base --is-ancestor 84fa556 v0.1.4` \u2192 YES |\n| README Current release line | README.md:16 `C"
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-031\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m2:21PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~884227 bytes (884.23 KB) in 325ms\u001b[0m\n\u001b[90m2:21PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.660s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n\n(auto-parsed from non-JSON response) All evidence is confirmed. Every element of the single criterion is verified with hard command output.\n\n**Summary of verification:**\n\n| Requirement | Evidence |\n|---|---|\n| v0.1.4 contains 84fa556 | `git merge-base --is-ancestor 84fa556 v0.1.4` \u2192 YES |\n| README Current release line | README.md:16 `C\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-16T19:21:51.769355"
+}
