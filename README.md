@@ -13,11 +13,11 @@ The zero-dependency path: grab a static binary from
 [releases](../../releases) (linux/darwin/windows/freebsd × amd64/arm64/arm) —
 no Go toolchain needed. Verify the binary's checksum before running it:
 
-Current release: **v0.1.3**.
+Current release: **v0.1.4**.
 
 ```bash
-curl -sL -o boardctl-linux-amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.3/boardctl-linux-amd64
-curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.3/sha256sums.txt
+curl -sL -o boardctl-linux-amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.4/boardctl-linux-amd64
+curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.4/sha256sums.txt
 sha256sum -c --ignore-missing sha256sums.txt   # verify the binary you downloaded
 chmod +x boardctl-linux-amd64 && ./boardctl-linux-amd64 version
 ```
@@ -26,8 +26,8 @@ chmod +x boardctl-linux-amd64 && ./boardctl-linux-amd64 version
 ones you did not download (without it, `sha256sum -c` exits 1 on the absent
 files). The downloaded binary must keep its release filename for this to verify.
 
-The last line prints the binary's release identity — for a v0.1.3 asset it
-prints `boardctl version v0.1.3`. Release binaries are stamped from the release
+The last line prints the binary's release identity — for a v0.1.4 asset it
+prints `boardctl version v0.1.4`. Release binaries are stamped from the release
 tag, so the printed version must match the release you downloaded; a bare date
 stamp (e.g. `20260915`) or `dev` means the binary was not cut by `make release`
 from a tagged checkout (see [Development](#development)).
@@ -60,11 +60,11 @@ boardctl -C ~/myproject validate
 boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
                                    # (no .db/.parquet), header vs events ticks,
                                    # fixture orphans
-boardctl version                   # prints e.g. "boardctl version v0.1.3"
+boardctl version                   # prints e.g. "boardctl version v0.1.4"
                                    # (the release tag; a UTC date for release
                                    # builds from untagged checkouts, "dev" for
                                    # unstamped local builds)
-boardctl version --json            # {"version":"v0.1.3","build":"v0.1.3"}
+boardctl version --json            # {"version":"v0.1.4","build":"v0.1.4"}
                                    # ("build" is the raw build stamp)
 
 # create a task row (appends tasks.jsonl + task_created event)
