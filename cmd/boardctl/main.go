@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -46,7 +48,7 @@ commands:
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
   validate
   doctor
-  version
+  version [--json]
   stats   [--json] [--all]
   render  [-C dir] [-o out.html] [--tz Zone] [--json out.json]
   import  <export.json> [--dry-run] [--renumber]
@@ -775,19 +777,84 @@ func cmdDoctor(dir string, args []string) error {
 
 // ---------- version ----------
 
-// cmdVersion prints the stamped version. The Makefile release target injects
-// the real version via -ldflags "-X main.version=..."; plain `go build` /
-// `go install` builds report "dev".
+// moduleVersionRe matches exactly a released semver tag (v0.1.3). It
+// deliberately rejects the OTHER shapes buildinfo carries: pseudo-versions
+// (`v0.1.4-0.<date>-<sha>+dirty`, what a plain `go build` embeds — they are
+// semver-prefixed but are not release tags), "(devel)", date stamps, and ""
+// (`go test` binaries and file-path builds carry no main module).
+var moduleVersionRe = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
+
+// moduleVersion reads the main module version the Go toolchain embeds at
+// link time (the same one `go version -m` reports), verbatim: "" when the
+// build carries no main module at all. It is a package-level var so tests
+// can stub it; CLASSIFICATION happens in releaseVersion via moduleVersionRe,
+// so a stub can never smuggle a non-tag shape past the gate.
+var moduleVersion = func() string {
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	return bi.Main.Version
+}
+
+// releaseVersion returns the release identity to report, by precedence:
+// an explicit tag-shaped stamp (make release VERSION=vX.Y.Z on a tagged
+// checkout — the acceptance override) wins; else the toolchain-embedded
+// module tag (a tagged-checkout build or `go install pkg@vX.Y.Z`); else the
+// explicit stamp as-is (the date from an untagged checkout); else "dev".
+func releaseVersion() string {
+	if moduleVersionRe.MatchString(version) {
+		return version
+	}
+	if mv := moduleVersion(); moduleVersionRe.MatchString(mv) {
+		return mv
+	}
+	if version != "" && version != "dev" {
+		return version
+	}
+	return "dev"
+}
+
+// cmdVersion prints the release identity. The Makefile release target
+// injects it via -ldflags "-X main.version=..." (a vX.Y.Z tag on a tagged
+// checkout, a UTC date on an untagged one); unstamped builds fall back to
+// the toolchain-embedded module version when it is a real vX.Y.Z (so
+// `go install ...@v0.1.3` reports v0.1.3), and to "dev" otherwise.
+//
+// --json emits {"version": <identity>, "build": <main.version stamp>} for
+// scripts; the human line adds "(build <stamp>)" only when the build stamp
+// differs from the reported identity, so the unstamped path keeps its
+// single-value output.
 func cmdVersion(args []string) error {
 	fs := newFlagSet("version")
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl version\n") }
+	asJSON := fs.Bool("json", false, "emit version info as JSON")
+	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl version [--json]\n") }
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
 		return fmt.Errorf("version takes no positional args (got %q)", fs.Arg(0))
 	}
-	fmt.Fprintf(os.Stdout, "boardctl version %s\n", version)
+	v := releaseVersion()
+	if *asJSON {
+		b, err := json.Marshal(struct {
+			Version string `json:"version"`
+			Build   string `json:"build"`
+		}{Version: v, Build: version})
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stdout, "%s\n", b)
+		return nil
+	}
+	// The parenthetical only appears when the raw stamp adds information
+	// beyond the identity (e.g. "v0.1.3 (build 20260915)"); when the stamp
+	// IS the identity — or absent — the line stays single-value.
+	if version != "" && version != "dev" && version != v {
+		fmt.Fprintf(os.Stdout, "boardctl version %s (build %s)\n", v, version)
+		return nil
+	}
+	fmt.Fprintf(os.Stdout, "boardctl version %s\n", v)
 	return nil
 }
 

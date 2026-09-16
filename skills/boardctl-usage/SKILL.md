@@ -69,7 +69,9 @@ boardctl -C R header --set-ticks-total 42 --set-last-commit <sha>
 boardctl init --project myproject          # bootstrap a fresh board: writes
                                            # tasks/events/board/fixtures.jsonl
                                            # + the NEVER-DONE seed row
-boardctl version                           # date-stamp on release builds, "dev" otherwise
+boardctl version                           # release tag on release builds
+                                           # (e.g. "v0.1.3"), "dev" otherwise;
+                                           # --json for scripts
 ```
 
 ## Write vocabularies (all enforced since BT-007)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,9 +30,10 @@ func captureStdout(fn func()) (string, error) {
 	return <-done, nil
 }
 
-// TestVersionDefault verifies the unstamped default: a plain `go build`
-// reports "dev" because the Makefile release target is what stamps
-// main.version via -ldflags.
+// TestVersionDefault verifies the unstamped default of THIS test binary:
+// `go test` links no main module identity, so the plain `go build` fallback
+// is "dev". The full fallback chain is exercised branch-by-branch in
+// TestReleaseVersionTable via the stubbable moduleVersion var.
 func TestVersionDefault(t *testing.T) {
 	if version == "" {
 		t.Fatal("version var must not be empty")
@@ -41,15 +43,39 @@ func TestVersionDefault(t *testing.T) {
 	}
 }
 
+// TestModuleVersionRe pins the vX.Y.Z-prefix rule that decides whether an
+// embedded buildinfo version counts as a release identity: released tags
+// pass; `(devel)`, pseudo-versions, date stamps and junk do not.
+func TestModuleVersionRe(t *testing.T) {
+	tests := []struct {
+		in   string
+		want bool
+	}{
+		{"v0.1.3", true},
+		{"v10.20.30", true},
+		{"v0.1.4-0.20260915175805-c0ef747c44aa+dirty", false}, // pseudo-version
+		{"(devel)", false},
+		{"20260915", false},
+		{"dev", false},
+		{"", false},
+	}
+	for _, tc := range tests {
+		if got := moduleVersionRe.MatchString(tc.in); got != tc.want {
+			t.Errorf("moduleVersionRe(%q) = %v, want %v", tc.in, got, tc.want)
+		}
+	}
+}
+
 // TestCmdVersionOutput verifies cmdVersion prints the stamped version and
 // exits cleanly (run() returns 0), matching the release stamping contract:
 // -ldflags "-X main.version=$(VERSION)" must be observable on stdout.
 func TestCmdVersionOutput(t *testing.T) {
 	// Stamp through the same mechanism the Makefile uses, so the test
 	// exercises the -X injection target itself.
-	orig := version
+	origV, origMV := version, moduleVersion
 	version = "20260903"
-	t.Cleanup(func() { version = orig })
+	moduleVersion = func() string { return "" } // date stamp: no module identity
+	t.Cleanup(func() { version, moduleVersion = origV, origMV })
 
 	got, err := captureStdout(func() {
 		if code := run([]string{"version"}); code != 0 {
@@ -62,6 +88,120 @@ func TestCmdVersionOutput(t *testing.T) {
 	want := "boardctl version 20260903\n"
 	if got != want {
 		t.Fatalf("version output = %q, want %q", got, want)
+	}
+}
+
+// TestCmdVersionTaggedBuild reproduces the BT-030 live evidence shape: a
+// date-stamped binary carrying a real module tag must surface the tag with
+// the stamp in parentheses — exactly what the published v0.1.3 asset lacked.
+func TestCmdVersionTaggedBuild(t *testing.T) {
+	origV, origMV := version, moduleVersion
+	version = "20260915"
+	moduleVersion = func() string { return "v0.1.3" }
+	t.Cleanup(func() { version, moduleVersion = origV, origMV })
+
+	got, err := captureStdout(func() {
+		if code := run([]string{"version"}); code != 0 {
+			t.Fatalf("run(version) exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	want := "boardctl version v0.1.3 (build 20260915)\n"
+	if got != want {
+		t.Fatalf("version output = %q, want %q", got, want)
+	}
+}
+
+// TestCmdVersionUnstampedModuleBuild: an unstamped build (version=="dev")
+// whose toolchain DID embed a real vX.Y.Z (the `go install pkg@vX.Y.Z` path)
+// reports the tag — the release identity survives without a re-stamp.
+func TestCmdVersionUnstampedModuleBuild(t *testing.T) {
+	origV, origMV := version, moduleVersion
+	version = "dev"
+	moduleVersion = func() string { return "v0.1.3" }
+	t.Cleanup(func() { version, moduleVersion = origV, origMV })
+
+	got, err := captureStdout(func() {
+		if code := run([]string{"version"}); code != 0 {
+			t.Fatalf("run(version) exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	want := "boardctl version v0.1.3\n"
+	if got != want {
+		t.Fatalf("version output = %q, want %q", got, want)
+	}
+}
+
+// TestCmdVersionJSON pins the machine-readable contract: version is the
+// release identity, build is the raw main.version stamp ("dev" when
+// unstamped). A script must be able to `jq -r .version` this output.
+func TestCmdVersionJSON(t *testing.T) {
+	origV, origMV := version, moduleVersion
+	version = "20260915"
+	moduleVersion = func() string { return "v0.1.3" }
+	t.Cleanup(func() { version, moduleVersion = origV, origMV })
+
+	got, err := captureStdout(func() {
+		if code := run([]string{"version", "--json"}); code != 0 {
+			t.Fatalf("run(version --json) exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatalf("captureStdout: %v", err)
+	}
+	var parsed struct {
+		Version string `json:"version"`
+		Build   string `json:"build"`
+	}
+	if err := json.Unmarshal([]byte(got), &parsed); err != nil {
+		t.Fatalf("version --json output %q is not valid JSON: %v", got, err)
+	}
+	if parsed.Version != "v0.1.3" {
+		t.Errorf("json .version = %q, want %q", parsed.Version, "v0.1.3")
+	}
+	if parsed.Build != "20260915" {
+		t.Errorf("json .build = %q, want %q", parsed.Build, "20260915")
+	}
+}
+
+// TestReleaseVersionTable drives releaseVersion() across every stamp ×
+// module-identity combination, including the pseudo-version shape observed
+// on go1.26 (`go build` embeds v0.1.4-0.<date>-<sha>+dirty, not (devel) —
+// a pseudo-version is not a release identity and must never be reported).
+func TestReleaseVersionTable(t *testing.T) {
+	const pseudo = "v0.1.4-0.20260915175805-c0ef747c44aa+dirty"
+	tests := []struct {
+		name      string
+		stamp     string
+		modVer    string
+		wantIdent string
+	}{
+		{name: "date stamp, no module id", stamp: "20260903", modVer: "", wantIdent: "20260903"},
+		{name: "date stamp + pseudo-version keeps stamp", stamp: "20260903", modVer: pseudo, wantIdent: "20260903"},
+		{name: "date stamp + real tag surfaces tag", stamp: "20260915", modVer: "v0.1.3", wantIdent: "v0.1.3"},
+		{name: "tag stamp wins over module tag", stamp: "v9.9.9", modVer: "v0.1.3", wantIdent: "v9.9.9"},
+		{name: "tag stamp, no module id", stamp: "v9.9.9", modVer: "", wantIdent: "v9.9.9"},
+		{name: "dev + real tag reports tag", stamp: "dev", modVer: "v0.1.3", wantIdent: "v0.1.3"},
+		{name: "dev + pseudo-version stays dev", stamp: "dev", modVer: pseudo, wantIdent: "dev"},
+		{name: "dev + nothing stays dev", stamp: "dev", modVer: "", wantIdent: "dev"},
+		{name: "empty stamp + real tag reports tag", stamp: "", modVer: "v0.1.3", wantIdent: "v0.1.3"},
+		{name: "empty stamp + nothing stays dev", stamp: "", modVer: "", wantIdent: "dev"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			origV, origMV := version, moduleVersion
+			version, moduleVersion = tc.stamp, func() string { return tc.modVer }
+			t.Cleanup(func() { version, moduleVersion = origV, origMV })
+
+			if got := releaseVersion(); got != tc.wantIdent {
+				t.Errorf("releaseVersion() = %q, want %q", got, tc.wantIdent)
+			}
+		})
 	}
 }
 
