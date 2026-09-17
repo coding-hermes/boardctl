@@ -312,7 +312,7 @@ func (b *Board) validateFixtures(rep *Report, path string) {
 	}
 	seen := map[string]int{}
 	count := 0
-	IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+	ierr := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
 		count++
 		id := row.String("id")
 		if id == "" {
@@ -326,8 +326,8 @@ func (b *Board) validateFixtures(rep *Report, path string) {
 		}
 		return nil
 	})
-	if err != nil {
-		rep.Add("error", "fixtures.jsonl: %v", err)
+	if ierr != nil {
+		rep.Add("error", "fixtures.jsonl: %v", ierr)
 	}
 	rep.Fixtures = count
 }

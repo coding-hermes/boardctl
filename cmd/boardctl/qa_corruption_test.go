@@ -34,14 +34,17 @@ import (
 // dagger.db sitting in the project root) and must stay byte-identical and
 // unmentioned throughout.
 //
-// KNOWN GAP (discovered by this slice, deliberately NOT asserted here):
-// `boardctl validate` SILENTLY PASSES a truncated fixtures.jsonl —
-// validateFixtures (internal/board/validate.go) calls IterParsed but never
-// captures its error, so parse failures in fixtures.jsonl produce no finding
-// and exit 0 (siblings validateTasks/validateEvents do capture it). Fixing
-// that is foreman-owned production work outside this test-only slice. The
-// fixtures case below therefore proves corruption DETECTION through a real
-// reader command (`show`), which does fail with the target file named.
+// GAP CLOSED (BT-032, this file's validate table now covers fixtures.jsonl):
+// the KNOWN GAP recorded below was a real defect — `boardctl validate`
+// SILENTLY PASSED a truncated fixtures.jsonl because validateFixtures
+// (internal/board/validate.go) called IterParsed without capturing its
+// error, so parse failures produced no finding and exit 0 (siblings
+// validateTasks/validateEvents did capture it). Discovered by QA-BOARDCTL-001
+// (commit f447943), which moved the fixtures case out of the validate table
+// into TestQACorruptionFixturesDetectedViaReader rather than enshrine the
+// silent pass. BT-032 captures the error in validateFixtures, restores the
+// fixtures.jsonl case to the TestQACorruption table, and keeps the
+// reader-path test as complementary coverage.
 
 // qaBoardDir returns the board dir the CLI resolves under a repo root.
 func qaBoardDir(repo string) string {
@@ -210,8 +213,9 @@ func qaTruncateFirstLine(t *testing.T, path string) []byte {
 }
 
 // TestQACorruption: corrupt exactly ONE named board JSONL per case (tasks,
-// events, header) on a disposable board and hold the real CLI validate to
-// its contract. Not parallel (in-process stdout capture); runs under -short.
+// events, header, fixtures) on a disposable board and hold the real CLI
+// validate to its contract. Not parallel (in-process stdout capture); runs
+// under -short.
 func TestQACorruption(t *testing.T) {
 	cases := []struct {
 		name string
@@ -220,6 +224,7 @@ func TestQACorruption(t *testing.T) {
 		{"tasks_jsonl_truncated_row", "tasks.jsonl"},
 		{"events_jsonl_truncated_row", "events.jsonl"},
 		{"header_board_jsonl_truncated_row", "board.jsonl"},
+		{"fixtures_jsonl_truncated_row", "fixtures.jsonl"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -281,14 +286,15 @@ func TestQACorruption(t *testing.T) {
 	}
 }
 
-// TestQACorruptionFixturesDetectedViaReader covers the fourth canonical file:
-// a truncated fixtures.jsonl must be detectable with a nonzero exit and a
-// diagnostic naming the target file. Detection is proven through the real
-// reader path (`show` on a registry fixture id — tasks.jsonl misses, so the
-// fixtures.jsonl read is exercised), NOT through validate: validate currently
-// silently passes corrupt fixtures.jsonl (validateFixtures drops IterParsed's
-// error — see the file-header KNOWN GAP note), and asserting that defect as
-// correct behavior is exactly what this slice must not do.
+// TestQACorruptionFixturesDetectedViaReader covers the fourth canonical file
+// through the reader path: a truncated fixtures.jsonl must be detectable with
+// a nonzero exit and a diagnostic naming the target file when a real read
+// command hits it (`show` on a registry fixture id — tasks.jsonl misses, so
+// the fixtures.jsonl read is exercised). The validate-side coverage for this
+// file lives in the TestQACorruption table (BT-032 closed the silent-pass
+// gap — see the file-header GAP CLOSED note); this test stays as
+// complementary coverage of the reader path itself, which fails
+// independently of validate.
 func TestQACorruptionFixturesDetectedViaReader(t *testing.T) {
 	dir := qaSeedValidBoard(t)
 	bd := qaBoardDir(dir)
