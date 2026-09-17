@@ -1,0 +1,70 @@
+{
+  "task_id": "BT-032",
+  "task_title": "validate must fail loudly on a corrupt fixtures.jsonl",
+  "task_criteria": [
+    "boardctl validate exits 1 and prints an itemized error naming fixtures.jsonl when a fixtures.jsonl row is truncated mid-JSON (the IterParsed error is captured in validateFixtures exactly like validateTasks/validateEvents); a regression test in cmd/boardctl/qa_corruption_test.go corrupts ONLY fixtures.jsonl on a disposable t.TempDir board through the real run() and asserts exit 1 + 'fixtures.jsonl' + RESULT: FAIL, then proves zero-write and restore-to-clean; the fix is proven load-bearing by reverting only the production line and observing the new test FAIL; go build, go vet, go test ./... -count=1 -short, make fmt-check all pass."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "f2bee5c363de6f2d506e69189304a8ba384afd8a",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m3:09AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~914392 bytes (914.39 KB) in 351ms\u001b[0m\n\u001b[90m3:09AM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.539s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m3:09AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~914392 bytes (914.39 KB) in 351ms\u001b[0m\n\u001b[90m3:09AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.539s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.147s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.041s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 boardctl validate exits 1 and prints an itemized error naming fixtures.jsonl when a fixtures.jsonl row is truncated mid-JSON (the IterParsed error is captured in validateFixtures exactly like validateTasks/validateEvents); a regression test in cmd/boardctl/qa_corruption_test.go corrupts ONLY fixtures.jsonl on a disposable t.TempDir board through the real run() and asserts exit 1 + 'fixtures.jsonl' + RESULT: FAIL, then proves zero-write and restore-to-clean; the fix is proven load-bearing by reverting only the production line and observing the new test FAIL; go build, go vet, go test ./... -count=1 -short, make fmt-check all pass.: Production fix: internal/board/validate.go:315 `ierr := IterParsed(lines, ...)` and :328-330 `if ierr != nil { rep.Add(\"error\", \"fixtures.jsonl: %v\", ierr) }` \u2014 identical pattern to validateTasks (validate.go:96) and validateEvents (validate.go:216). Regression test: cmd/boardctl/qa_corruption_test.go TestQACorruption table adds {\"fixtures_jsonl_truncated_row\",\"fixtures.jsonl\"}; qaSeedValidBoard uses t.TempDir (line 66) and drives the real run() via qaRunCLI (line 117); qaTruncateFirstLine corrupts only the target and qaChangedFiles asserts exactly [fixtures.jsonl] changed; asserts code==1, strings.Contains(out, tc.file), strings.Contains(out,\"RESULT: FAIL\"); zero-write proven by qaBoardFileHashes(afterMut) vs afterValidate with len(changed)==0; restore-to-clean by os.WriteFile(target, orig) then validate exit 0 and hashes equal the clean baseline. Load-bearing proof: in a copy at /tmp/bt032check I reverted ONLY the production line (ierr := IterParsed -> IterParsed, ierr -> err) and the test FAILED: 'qa_corruption_test.go:251: validate with corrupted fixtures.jsonl exit code = 0, want 1 ... RESULT: OK (0 warning(s))'; copy deleted. Commands run fresh: `go build ./...` exit 0; `go vet ./...` exit 0; `go test ./... -count=1 -short` -> ok cmd/boardctl 0.541s, ok internal/board 0.151s, ok internal/fmtcheck 0.041s, ok internal/render 0.015s, ok internal/versioncheck 0.004s (all ok, no FAIL); `make fmt-check` -> ok internal/fmtcheck 0.033s, exit 0. Verbose run confirms `--- PASS: TestQACorruption/fixtures_jsonl_truncated_row`. Docs updated: docs/dogfood/qa-corruption.md:67 'Known gap DISCOVERED by QA-BOARDCTL-001 \u2014 FIXED by BT-032'.\nvalidateFixtures now captures the IterParsed error and reports fixtures.jsonl; the new TestQACorruption fixtures case passes on the fixed code and fails (exit 0, want 1) when only the production line is reverted, with build/vet/test/fmt-check all green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 boardctl validate exits 1 and prints an itemized error naming fixtures.jsonl when a fixtures.jsonl row is truncated mid-JSON (the IterParsed error is captured in validateFixtures exactly like validateTasks/validateEvents); a regression test in cmd/boardctl/qa_corruption_test.go corrupts ONLY fixtures.jsonl on a disposable t.TempDir board through the real run() and asserts exit 1 + 'fixtures.jsonl' + RESULT: FAIL, then proves zero-write and restore-to-clean; the fix is proven load-bearing by reverting only the production line and observing the new test FAIL; go build, go vet, go test ./... -count=1 -short, make fmt-check all pass.: Production fix: internal/board/validate.go:315 `ierr := IterParsed(lines, ...)` and :328-330 `if ierr != nil { rep.Add(\"error\", \"fixtures.jsonl: %v\", ierr) }` \u2014 identical pattern to validateTasks (validate.go:96) and validateEvents (validate.go:216). Regression test: cmd/boardctl/qa_corruption_test.go TestQACorruption table adds {\"fixtures_jsonl_truncated_row\",\"fixtures.jsonl\"}; qaSeedValidBoard uses t.TempDir (line 66) and drives the real run() via qaRunCLI (line 117); qaTruncateFirstLine corrupts only the target and qaChangedFiles asserts exactly [fixtures.jsonl] changed; asserts code==1, strings.Contains(out, tc.file), strings.Contains(out,\"RESULT: FAIL\"); zero-write proven by qaBoardFileHashes(afterMut) vs afterValidate with len(changed)==0; restore-to-clean by os.WriteFile(target, orig) then validate exit 0 and hashes equal the clean baseline. Load-bearing proof: in a copy at /tmp/bt032check I reverted ONLY the production line (ierr := IterParsed -> IterParsed, ierr -> err) and the test FAILED: 'qa_corruption_test.go:251: validate with corrupted fixtures.jsonl exit code = 0, want 1 ... RESULT: OK (0 warning(s))'; copy deleted. Commands run fresh: `go build ./...` exit 0; `go vet ./...` exit 0; `go test ./... -count=1 -short` -> ok cmd/boardctl 0.541s, ok internal/board 0.151s, ok internal/fmtcheck 0.041s, ok internal/render 0.015s, ok internal/versioncheck 0.004s (all ok, no FAIL); `make fmt-check` -> ok internal/fmtcheck 0.033s, exit 0. Verbose run confirms `--- PASS: TestQACorruption/fixtures_jsonl_truncated_row`. Docs updated: docs/dogfood/qa-corruption.md:67 'Known gap DISCOVERED by QA-BOARDCTL-001 \u2014 FIXED by BT-032'.\nvalidateFixtures now captures the IterParsed error and reports fixtures.jsonl; the new TestQACorruption fixtures case passes on the fixed code and fails (exit 0, want 1) when only the production line is reverted, with build/vet/test/fmt-check all green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "boardctl validate exits 1 and prints an itemized error naming fixtures.jsonl when a fixtures.jsonl row is truncated mid-JSON (the IterParsed error is captured in validateFixtures exactly like validateTasks/validateEvents); a regression test in cmd/boardctl/qa_corruption_test.go corrupts ONLY fixtures.jsonl on a disposable t.TempDir board through the real run() and asserts exit 1 + 'fixtures.jsonl' + RESULT: FAIL, then proves zero-write and restore-to-clean; the fix is proven load-bearing by reverting only the production line and observing the new test FAIL; go build, go vet, go test ./... -count=1 -short, make fmt-check all pass.",
+                "status": "PASS",
+                "detail": "Production fix: internal/board/validate.go:315 `ierr := IterParsed(lines, ...)` and :328-330 `if ierr != nil { rep.Add(\"error\", \"fixtures.jsonl: %v\", ierr) }` \u2014 identical pattern to validateTasks (validate.go:96) and validateEvents (validate.go:216). Regression test: cmd/boardctl/qa_corruption_test.go TestQACorruption table adds {\"fixtures_jsonl_truncated_row\",\"fixtures.jsonl\"}; qaSeedValidBoard uses t.TempDir (line 66) and drives the real run() via qaRunCLI (line 117); qaTruncateFirstLine corrupts only the target and qaChangedFiles asserts exactly [fixtures.jsonl] changed; asserts code==1, strings.Contains(out, tc.file), strings.Contains(out,\"RESULT: FAIL\"); zero-write proven by qaBoardFileHashes(afterMut) vs afterValidate with len(changed)==0; restore-to-clean by os.WriteFile(target, orig) then validate exit 0 and hashes equal the clean baseline. Load-bearing proof: in a copy at /tmp/bt032check I reverted ONLY the production line (ierr := IterParsed -> IterParsed, ierr -> err) and the test FAILED: 'qa_corruption_test.go:251: validate with corrupted fixtures.jsonl exit code = 0, want 1 ... RESULT: OK (0 warning(s))'; copy deleted. Commands run fresh: `go build ./...` exit 0; `go vet ./...` exit 0; `go test ./... -count=1 -short` -> ok cmd/boardctl 0.541s, ok internal/board 0.151s, ok internal/fmtcheck 0.041s, ok internal/render 0.015s, ok internal/versioncheck 0.004s (all ok, no FAIL); `make fmt-check` -> ok internal/fmtcheck 0.033s, exit 0. Verbose run confirms `--- PASS: TestQACorruption/fixtures_jsonl_truncated_row`. Docs updated: docs/dogfood/qa-corruption.md:67 'Known gap DISCOVERED by QA-BOARDCTL-001 \u2014 FIXED by BT-032'."
+              }
+            ],
+            "summary": "validateFixtures now captures the IterParsed error and reports fixtures.jsonl; the new TestQACorruption fixtures case passes on the fixed code and fails (exit 0, want 1) when only the production line is reverted, with build/vet/test/fmt-check all green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-032\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m3:09AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~914392 bytes (914.39 KB) in 351ms\u001b[0m\n\u001b[90m3:09AM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.539s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 boardctl validate exits 1 and prints an itemized error naming fixtures.jsonl when a fixtures.jsonl row is truncated mid-JSON (the IterParsed error is captured in validateFixtures exactly like validateTasks/validateEvents); a regression test in cmd/boardctl/qa_corruption_test.go corrupts ONLY fixtures.jsonl on a disposable t.TempDir board through the real run() and asserts exit 1 + 'fixtures.jsonl' + RESULT: FAIL, then proves zero-write and restore-to-clean; the fix is proven load-bearing by reverting only the production line and observing the new test FAIL; go build, go vet, go test ./... -count=1 -short, make fmt-check all pass.: Production fix: internal/board/validate.go:315 `ierr := IterParsed(lines, ...)` and :328-330 `if ierr != nil { rep.Add(\"error\", \"fixtures.jsonl: %v\", ierr) }` \u2014 identical pattern to validateTasks (validate.go:96) and validateEvents (validate.go:216). Regression test: cmd/boardctl/qa_corruption_test.go TestQACorruption table adds {\"fixtures_jsonl_truncated_row\",\"fixtures.jsonl\"}; qaSeedValidBoard uses t.TempDir (line 66) and drives the real run() via qaRunCLI (line 117); qaTruncateFirstLine corrupts only the target and qaChangedFiles asserts exactly [fixtures.jsonl] changed; asserts code==1, strings.Contains(out, tc.file), strings.Contains(out,\"RESULT: FAIL\"); zero-write proven by qaBoardFileHashes(afterMut) vs afterValidate with len(changed)==0; restore-to-clean by os.WriteFile(target, orig) then validate exit 0 and hashes equal the clean baseline. Load-bearing proof: in a copy at /tmp/bt032check I reverted ONLY the production line (ierr := IterParsed -> IterParsed, ierr -> err) and the test FAILED: 'qa_corruption_test.go:251: validate with corrupted fixtures.jsonl exit code = 0, want 1 ... RESULT: OK (0 warning(s))'; copy deleted. Commands run fresh: `go build ./...` exit 0; `go vet ./...` exit 0; `go test ./... -count=1 -short` -> ok cmd/boardctl 0.541s, ok internal/board 0.151s, ok internal/fmtcheck 0.041s, ok internal/render 0.015s, ok internal/versioncheck 0.004s (all ok, no FAIL); `make fmt-check` -> ok internal/fmtcheck 0.033s, exit 0. Verbose run confirms `--- PASS: TestQACorruption/fixtures_jsonl_truncated_row`. Docs updated: docs/dogfood/qa-corruption.md:67 'Known gap DISCOVERED by QA-BOARDCTL-001 \u2014 FIXED by BT-032'.\nvalidateFixtures now captures the IterParsed error and reports fixtures.jsonl; the new TestQACorruption fixtures case passes on the fixed code and fails (exit 0, want 1) when only the production line is reverted, with build/vet/test/fmt-check all green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-17T08:10:16.822372"
+}

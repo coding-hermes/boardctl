@@ -1,0 +1,70 @@
+{
+  "task_id": "QA-BOARDCTL-001",
+  "task_title": "Replace vacuous boardctl corruption coverage with isolated JSONL CLI tests; track external harness remainder",
+  "task_criteria": [
+    "Add repeatable CLI regression coverage in cmd/boardctl/qa_corruption_test.go using only disposable temporary boards, covering malformed tasks/events/header/fixtures JSONL with nonzero exit and target-file diagnostic, a clean baseline, and byte-preservation on validation. A decoy dagger.db remains unchanged and is not used as project state. Document the invocation and explicitly leave the external bunker-qa server flag and allocation-capacity issues unresolved; do not claim the external QA harness is fixed. go build, go vet and fresh short tests pass."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "f447943efe115100ba958aaada3dd070282e5e0c",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m3:00AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~911150 bytes (911.15 KB) in 320ms\u001b[0m\n\u001b[90m3:00AM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.508s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m3:00AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~911150 bytes (911.15 KB) in 320ms\u001b[0m\n\u001b[90m3:00AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.508s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.129s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.037s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Add repeatable CLI regression coverage in cmd/boardctl/qa_corruption_test.go using only disposable temporary boards, covering malformed tasks/events/header/fixtures JSONL with nonzero exit and target-file diagnostic, a clean baseline, and byte-preservation on validation. A decoy dagger.db remains unchanged and is not used as project state. Document the invocation and explicitly leave the external bunker-qa server flag and allocation-capacity issues unresolved; do not claim the external QA harness is fixed. go build, go vet and fresh short tests pass.: cmd/boardctl/qa_corruption_test.go (402 lines) uses only t.TempDir disposable boards (qaSeedValidBoard:61-95). TestQACorruption (216-278) table covers tasks.jsonl/events.jsonl/board.jsonl: corrupts exactly one named file, asserts validate exit==1, diagnostic names target file, RESULT: FAIL, no dagger.db mention, zero writes via sha256 snapshot hashing (qaBoardFileHashes:148, qaChangedFiles:170), restore returns clean. fixtures.jsonl covered by TestQACorruptionFixturesDetectedViaReader (291) via real `show` reader path (main.go:400 searches tasks.jsonl+fixtures.jsonl), exit 1 + target-file diagnostic. Clean baseline TestQACorruptionCleanBaseline (350) exit 0/RESULT: OK. Byte-preservation proven load-bearing by TestQACorruptionNoWriteAssertionDetectsWrites (379). Decoy planted at repo root dir/dagger.db (line 88), NOT in board dir .coding-hermes/board/ \u2014 asserted byte-identical (qaDecoyUnchanged:186) and never mentioned. docs/dogfood/qa-corruption.md documents invocation (lines 39-43) and explicitly leaves external items UNRESOLVED (lines 87-99: harness *.db glob, bunker-qa.sh --server, bunker capacity \u2014 all 'Unfixed', 'not claimed fixed'). Fresh command output: `go build ./...` exit 0; `go vet ./...` exit 0; `go test ./... -count=1 -short` exit 0 (ok cmd/boardctl 0.466s, ok internal/board, ok internal/fmtcheck, ok internal/render, ok internal/versioncheck); `go test ./cmd/boardctl -run TestQACorruption -count=1 -v` \u2192 4 tests/6 subtests all PASS; gofmt -l clean; make fmt-check exit 0.\nAll deliverables verified: isolated t.TempDir CLI corruption tests for tasks/events/header/fixtures JSONL with nonzero exit + target-file diagnostics, clean baseline, byte-preservation, unchanged dagger.db decoy, documented invocation and explicitly unresolved external harness items; go build, go vet and fresh short tests all pass.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Add repeatable CLI regression coverage in cmd/boardctl/qa_corruption_test.go using only disposable temporary boards, covering malformed tasks/events/header/fixtures JSONL with nonzero exit and target-file diagnostic, a clean baseline, and byte-preservation on validation. A decoy dagger.db remains unchanged and is not used as project state. Document the invocation and explicitly leave the external bunker-qa server flag and allocation-capacity issues unresolved; do not claim the external QA harness is fixed. go build, go vet and fresh short tests pass.: cmd/boardctl/qa_corruption_test.go (402 lines) uses only t.TempDir disposable boards (qaSeedValidBoard:61-95). TestQACorruption (216-278) table covers tasks.jsonl/events.jsonl/board.jsonl: corrupts exactly one named file, asserts validate exit==1, diagnostic names target file, RESULT: FAIL, no dagger.db mention, zero writes via sha256 snapshot hashing (qaBoardFileHashes:148, qaChangedFiles:170), restore returns clean. fixtures.jsonl covered by TestQACorruptionFixturesDetectedViaReader (291) via real `show` reader path (main.go:400 searches tasks.jsonl+fixtures.jsonl), exit 1 + target-file diagnostic. Clean baseline TestQACorruptionCleanBaseline (350) exit 0/RESULT: OK. Byte-preservation proven load-bearing by TestQACorruptionNoWriteAssertionDetectsWrites (379). Decoy planted at repo root dir/dagger.db (line 88), NOT in board dir .coding-hermes/board/ \u2014 asserted byte-identical (qaDecoyUnchanged:186) and never mentioned. docs/dogfood/qa-corruption.md documents invocation (lines 39-43) and explicitly leaves external items UNRESOLVED (lines 87-99: harness *.db glob, bunker-qa.sh --server, bunker capacity \u2014 all 'Unfixed', 'not claimed fixed'). Fresh command output: `go build ./...` exit 0; `go vet ./...` exit 0; `go test ./... -count=1 -short` exit 0 (ok cmd/boardctl 0.466s, ok internal/board, ok internal/fmtcheck, ok internal/render, ok internal/versioncheck); `go test ./cmd/boardctl -run TestQACorruption -count=1 -v` \u2192 4 tests/6 subtests all PASS; gofmt -l clean; make fmt-check exit 0.\nAll deliverables verified: isolated t.TempDir CLI corruption tests for tasks/events/header/fixtures JSONL with nonzero exit + target-file diagnostics, clean baseline, byte-preservation, unchanged dagger.db decoy, documented invocation and explicitly unresolved external harness items; go build, go vet and fresh short tests all pass.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Add repeatable CLI regression coverage in cmd/boardctl/qa_corruption_test.go using only disposable temporary boards, covering malformed tasks/events/header/fixtures JSONL with nonzero exit and target-file diagnostic, a clean baseline, and byte-preservation on validation. A decoy dagger.db remains unchanged and is not used as project state. Document the invocation and explicitly leave the external bunker-qa server flag and allocation-capacity issues unresolved; do not claim the external QA harness is fixed. go build, go vet and fresh short tests pass.",
+                "status": "PASS",
+                "detail": "cmd/boardctl/qa_corruption_test.go (402 lines) uses only t.TempDir disposable boards (qaSeedValidBoard:61-95). TestQACorruption (216-278) table covers tasks.jsonl/events.jsonl/board.jsonl: corrupts exactly one named file, asserts validate exit==1, diagnostic names target file, RESULT: FAIL, no dagger.db mention, zero writes via sha256 snapshot hashing (qaBoardFileHashes:148, qaChangedFiles:170), restore returns clean. fixtures.jsonl covered by TestQACorruptionFixturesDetectedViaReader (291) via real `show` reader path (main.go:400 searches tasks.jsonl+fixtures.jsonl), exit 1 + target-file diagnostic. Clean baseline TestQACorruptionCleanBaseline (350) exit 0/RESULT: OK. Byte-preservation proven load-bearing by TestQACorruptionNoWriteAssertionDetectsWrites (379). Decoy planted at repo root dir/dagger.db (line 88), NOT in board dir .coding-hermes/board/ \u2014 asserted byte-identical (qaDecoyUnchanged:186) and never mentioned. docs/dogfood/qa-corruption.md documents invocation (lines 39-43) and explicitly leaves external items UNRESOLVED (lines 87-99: harness *.db glob, bunker-qa.sh --server, bunker capacity \u2014 all 'Unfixed', 'not claimed fixed'). Fresh command output: `go build ./...` exit 0; `go vet ./...` exit 0; `go test ./... -count=1 -short` exit 0 (ok cmd/boardctl 0.466s, ok internal/board, ok internal/fmtcheck, ok internal/render, ok internal/versioncheck); `go test ./cmd/boardctl -run TestQACorruption -count=1 -v` \u2192 4 tests/6 subtests all PASS; gofmt -l clean; make fmt-check exit 0."
+              }
+            ],
+            "summary": "All deliverables verified: isolated t.TempDir CLI corruption tests for tasks/events/header/fixtures JSONL with nonzero exit + target-file diagnostics, clean baseline, byte-preservation, unchanged dagger.db decoy, documented invocation and explicitly unresolved external harness items; go build, go vet and fresh short tests all pass."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-001\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m3:00AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~911150 bytes (911.15 KB) in 320ms\u001b[0m\n\u001b[90m3:00AM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.508s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Add repeatable CLI regression coverage in cmd/boardctl/qa_corruption_test.go using only disposable temporary boards, covering malformed tasks/events/header/fixtures JSONL with nonzero exit and target-file diagnostic, a clean baseline, and byte-preservation on validation. A decoy dagger.db remains unchanged and is not used as project state. Document the invocation and explicitly leave the external bunker-qa server flag and allocation-capacity issues unresolved; do not claim the external QA harness is fixed. go build, go vet and fresh short tests pass.: cmd/boardctl/qa_corruption_test.go (402 lines) uses only t.TempDir disposable boards (qaSeedValidBoard:61-95). TestQACorruption (216-278) table covers tasks.jsonl/events.jsonl/board.jsonl: corrupts exactly one named file, asserts validate exit==1, diagnostic names target file, RESULT: FAIL, no dagger.db mention, zero writes via sha256 snapshot hashing (qaBoardFileHashes:148, qaChangedFiles:170), restore returns clean. fixtures.jsonl covered by TestQACorruptionFixturesDetectedViaReader (291) via real `show` reader path (main.go:400 searches tasks.jsonl+fixtures.jsonl), exit 1 + target-file diagnostic. Clean baseline TestQACorruptionCleanBaseline (350) exit 0/RESULT: OK. Byte-preservation proven load-bearing by TestQACorruptionNoWriteAssertionDetectsWrites (379). Decoy planted at repo root dir/dagger.db (line 88), NOT in board dir .coding-hermes/board/ \u2014 asserted byte-identical (qaDecoyUnchanged:186) and never mentioned. docs/dogfood/qa-corruption.md documents invocation (lines 39-43) and explicitly leaves external items UNRESOLVED (lines 87-99: harness *.db glob, bunker-qa.sh --server, bunker capacity \u2014 all 'Unfixed', 'not claimed fixed'). Fresh command output: `go build ./...` exit 0; `go vet ./...` exit 0; `go test ./... -count=1 -short` exit 0 (ok cmd/boardctl 0.466s, ok internal/board, ok internal/fmtcheck, ok internal/render, ok internal/versioncheck); `go test ./cmd/boardctl -run TestQACorruption -count=1 -v` \u2192 4 tests/6 subtests all PASS; gofmt -l clean; make fmt-check exit 0.\nAll deliverables verified: isolated t.TempDir CLI corruption tests for tasks/events/header/fixtures JSONL with nonzero exit + target-file diagnostics, clean baseline, byte-preservation, unchanged dagger.db decoy, documented invocation and explicitly unresolved external harness items; go build, go vet and fresh short tests all pass.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-17T08:01:32.990202"
+}
