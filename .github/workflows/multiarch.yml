@@ -1,0 +1,20 @@
+name: Multi-Arch
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  multiarch:
+    # Org standard: coding-hermes/.github/.github/workflows/go-multiarch.yml
+    uses: coding-hermes/.github/.github/workflows/go-multiarch.yml@main
+    with:
+      binary: boardctl
+      main: ./cmd/boardctl
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      packages: write   # required by the reusable workflow's optional docker job
