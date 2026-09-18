@@ -13,7 +13,7 @@ PLATFORMS := \
 	windows/amd64 \
 	freebsd/amd64
 
-.PHONY: build test vet fmt fmt-check version-check release clean
+.PHONY: build test vet fmt fmt-check version-check vuln-check release clean
 
 build:
 	go build -o bin/$(BINARY) $(CMD)
@@ -36,6 +36,15 @@ fmt-check:
 # surfaces (the "Current release:" line and every /releases/download/ URL).
 version-check:
 	go test -count=1 -run TestVersioncheck ./internal/versioncheck
+
+# BT-033: dependency-vulnerability gate (check-only, never rewrites go.mod).
+# It runs the Go checker in internal/vulncheck, which shells out to
+# govulncheck and FAILS on any reachable finding (exit 3) or on a broken scan
+# (any other non-zero exit). CI installs govulncheck@v1.7.0 and runs this
+# byte-identical command; see internal/vulncheck for the full contract.
+# Local runs need the tool: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+vuln-check:
+	go test -count=1 -run TestVulncheck ./internal/vulncheck
 
 vet:
 	go vet ./...

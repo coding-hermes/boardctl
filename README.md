@@ -271,8 +271,31 @@ go build ./cmd/boardctl
 go test ./...
 make fmt-check        # gofmt gate (CI enforces it too); `make fmt` fixes
 make version-check    # README release-pin gate (CI enforces it too)
+make vuln-check       # dependency-vulnerability gate (CI enforces it too)
 make release          # cross-compile all targets into dist/
 ```
+
+`make vuln-check` (BT-033) runs `govulncheck` over the module and fails on any
+reachable vulnerability, or on a scan that did not complete. A non-zero exit
+that is neither 0 (clean) nor 3 (findings) is reported as a `TOOL-ERROR` —
+never silently accepted as a pass. Failures name the vulnerability ids and the
+version that fixes each one. Local runs need the pinned scanner:
+
+```bash
+go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+```
+
+CI installs that same pinned version in its own step, so the check runs (and
+never skips) on every push and PR. `GOVULNCHECK=/path/to/binary` overrides the
+PATH lookup.
+
+The toolchain requirement: go.mod declares `go 1.26.6`. The Go 1.26.5 standard
+library shipped reachable advisories that 1.26.6 fixes — `net/http`
+(GO-2026-6089), `crypto/tls` (GO-2026-6090) and `encoding/asn1`
+(GO-2026-5972) — so a lower `go` directive, or a build with an older
+toolchain, fails this gate. With `GOTOOLCHAIN=auto` (the default) the pinned
+patch toolchain is fetched automatically. Do not lower the directive to
+silence the gate; raise it to the patched release instead.
 
 `make release` is the only sanctioned path for cutting a release — it builds
 every target and generates `dist/sha256sums.txt`, which must be uploaded as a

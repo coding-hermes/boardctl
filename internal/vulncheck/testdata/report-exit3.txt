@@ -1,0 +1,36 @@
+=== Symbol Results ===
+
+Vulnerability #1: GO-2026-6090
+    Limit handshake messages we are willing to accept post-handshake in
+    crypto/tls
+  More info: https://pkg.go.dev/vuln/GO-2026-6090
+  Standard library
+    Found in: crypto/tls@go1.26.5
+    Fixed in: crypto/tls@go1.26.6
+    Example traces found:
+      #1: cmd/boardctl/serve.go:125:36: boardctl.cmdServe calls http.Server.Serve, which eventually calls tls.Conn.HandshakeContext
+      #2: internal/render/report.go:76:29: render.BuildBoards calls time.Location.String, which eventually calls tls.Conn.Read
+
+Vulnerability #2: GO-2026-6089
+    Apply ReadHeaderTimeout when doing unencrypted HTTP/2 check in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6089
+  Standard library
+    Found in: net/http@go1.26.5
+    Fixed in: net/http@go1.26.6
+    Example traces found:
+      #1: cmd/boardctl/serve.go:125:36: boardctl.cmdServe calls http.Server.Serve
+
+Vulnerability #3: GO-2026-5972
+    Enforce maximum recursion depth in encoding/asn1
+  More info: https://pkg.go.dev/vuln/GO-2026-5972
+  Standard library
+    Found in: encoding/asn1@go1.26.5
+    Fixed in: encoding/asn1@go1.26.6
+    Example traces found:
+      #1: internal/render/report.go:76:29: render.BuildBoards calls time.Location.String, which eventually calls asn1.Unmarshal
+
+Your code is affected by 3 vulnerabilities from the Go standard library.
+This scan also found 3 vulnerabilities in packages you import and 2
+vulnerabilities in modules you require, but your code doesn't appear to call
+these vulnerabilities.
+Use '-show verbose' for more details.
