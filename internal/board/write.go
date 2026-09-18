@@ -17,6 +17,33 @@ func (e *ErrDuplicateTaskID) Error() string {
 	return fmt.Sprintf("task id %q already exists in tasks.jsonl — create aborted", e.ID)
 }
 
+// ErrDuplicateFinding is returned by Create when the incoming row is the same
+// FINDING as an already-open row (SG-126). The id is fresh and the title may be
+// a recycled or suffix-variant spelling, which is exactly how QA/dogfood lanes
+// used to grow the board 3-8x; the normalized fingerprint (title + reasoning)
+// is what decides. Callers distinguish it from ErrDuplicateTaskID: a duplicate
+// id is a key clash, a duplicate finding is a re-detection that belongs on the
+// existing row as evidence. --force files the variant deliberately.
+type ErrDuplicateFinding struct {
+	ID          string // id the caller attempted to create
+	ExistingID  string // open row that already carries this fingerprint
+	Fingerprint string
+}
+
+func (e *ErrDuplicateFinding) Error() string {
+	return fmt.Sprintf("DUPLICATE-SUPPRESSED: %s matches fingerprint %s — the finding is already open (normalized title+reasoning match); evidence the existing row instead of refiling it, or pass --force to file it as a variant", e.ExistingID, e.Fingerprint)
+}
+
+// duplicateEvidenceDetail is the payload of the task_evidence event a
+// suppressed create writes. It is the durable record of the suppression: the
+// board gains an audit line, never another row.
+type duplicateEvidenceDetail struct {
+	ExistingTaskID string         `json:"existing_task_id"`
+	NewIDAttempted string         `json:"new_id_attempted"`
+	Fingerprint    string         `json:"fingerprint"`
+	Evidence       *EvidenceEntry `json:"evidence,omitempty"`
+}
+
 func vocabList() string {
 	var ks []string
 	for k := range StatusVocabulary {
@@ -117,6 +144,10 @@ type TaskRowSpec struct {
 	CapabilityTags []string
 	HasTags        bool
 	Force          bool // BT-023: bypass the fleet task-id format check
+	// SG-126: optional run identifier recorded as evidence on the new row
+	// (detail.evidence[].run_id) and on a suppressed duplicate's
+	// task_evidence event.
+	EvidenceRunID string
 
 	// BT-022: prevalidated raw row for the import path. When Raw is set,
 	// Create still performs every check below (id format, duplicate id,
@@ -213,6 +244,28 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 		}
 		if len(missing) > 0 {
 			return "", fmt.Errorf("depends_on references nonexistent task id(s): %s — create aborted (create the dependency task first)", strings.Join(missing, ", "))
+		}
+	}
+
+	// SG-126 finding-fingerprint dedupe gate. Deliberately on the BUILT-row
+	// path only: the raw path (import) rehydrates exported rows verbatim and
+	// keeps its byte-for-byte round-trip contract, so it neither fingerprints
+	// nor suppresses. --force is the deliberate variant escape hatch (a foreman
+	// filing a genuinely different row that happens to share a title).
+	if spec.Raw == nil && !spec.Force {
+		fp := FindingFingerprint(spec.Title, spec.Reasoning)
+		if existing := openFingerprintIndex(rows)[fp]; existing != "" {
+			// The suppression is a durable fact: the task_evidence event is
+			// written BEFORE the error is returned, because the event is the
+			// only artifact proving the lane re-detected the finding (the board
+			// itself must not grow a row). An event-append failure surfaces
+			// alongside the duplicate rather than hiding it.
+			evErr := b.appendEvidenceEvent(existing, spec, fp, last)
+			dup := &ErrDuplicateFinding{ID: spec.ID, ExistingID: existing, Fingerprint: fp}
+			if evErr != nil {
+				return "", fmt.Errorf("%w (task_evidence audit event failed: %v)", dup, evErr)
+			}
+			return "", dup
 		}
 	}
 
@@ -325,6 +378,21 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 		}
 	}
 
+	// SG-126: stamp the new row with its finding fingerprint (plus run evidence
+	// when the caller named a run) so the NEXT re-detection of this finding is
+	// suppressed instead of refiled. An object-form detail keeps every unknown
+	// key verbatim; a prose detail is carried under "text" so nothing is lost.
+	pd := ParseFindingDetail(row.Get("detail"))
+	pd = pd.withFingerprint(FindingFingerprint(spec.Title, spec.Reasoning))
+	if spec.EvidenceRunID != "" {
+		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: nowStr}})
+	}
+	enc, encErr := EncodeFindingDetail(pd, style)
+	if encErr != nil {
+		return "", encErr
+	}
+	row.SetRaw("detail", enc)
+
 	line := append(row.Marshal(style), '\n')
 	if err := appendBytes(b.tasksPath, line); err != nil {
 		return "", err
@@ -341,6 +409,33 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 		return "", fmt.Errorf("task row appended but task_created event failed: %w", err)
 	}
 	return spec.ID, nil
+}
+
+// appendEvidenceEvent records a suppressed duplicate create as a task_evidence
+// event on the EXISTING row, so `boardctl show <id> --events` lists every
+// re-detection of that finding. This is the durable artifact of the SG-126
+// gate: the row count does not grow, the evidence does.
+func (b *Board) appendEvidenceEvent(existing string, spec TaskRowSpec, fingerprint string, last *Row) error {
+	ts := b.tasksTSFormat(last).Now()
+	payload := duplicateEvidenceDetail{
+		ExistingTaskID: existing,
+		NewIDAttempted: spec.ID,
+		Fingerprint:    fingerprint,
+		Evidence:       &EvidenceEntry{RunID: spec.EvidenceRunID, TS: ts},
+	}
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(payload); err != nil {
+		return err
+	}
+	_, err := b.AppendEvent(EventSpec{
+		Type:   "task_evidence",
+		TaskID: existing,
+		Actor:  "boardctl",
+		Detail: bytes.TrimSpace(buf.Bytes()),
+	})
+	return err
 }
 
 // lastTaskRow parses tasks.jsonl, returning all task rows and the last one.

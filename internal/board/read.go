@@ -115,6 +115,7 @@ var EventTypeVocabulary = map[string]bool{
 	"task_completed":    true,
 	"task_created":      true,
 	"task_dispatched":   true,
+	"task_evidence":     true,
 	"task_started":      true,
 	"task_updated":      true,
 	"task_verified":     true,
@@ -262,6 +263,36 @@ func (b *Board) ShowTask(id string) (row *Row, file string, err error) {
 		}
 	}
 	return nil, "", nil
+}
+
+// OpenFingerprints returns id -> stored finding fingerprint for every OPEN
+// row (see OpenFindingStatuses) whose detail carries one. Rows written before
+// SG-126 have no fingerprint and are grandfathered: they stay open and
+// visible, they simply never match an incoming finding. The first occurrence
+// in file order wins when two open rows somehow share a fingerprint.
+func (b *Board) OpenFingerprints() (map[string]string, error) {
+	rows, err := b.TaskRows()
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for _, r := range rows {
+		if !RowIsOpenFinding(r) {
+			continue
+		}
+		fp := StoredFingerprint(r)
+		if fp == "" {
+			continue
+		}
+		id := r.String("id")
+		if id == "" {
+			continue
+		}
+		if _, seen := out[id]; !seen {
+			out[id] = fp
+		}
+	}
+	return out, nil
 }
 
 // EventsForTask returns events whose top-level task_id equals id, in file

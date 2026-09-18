@@ -38,6 +38,7 @@ commands:
   show    <id> [--events]
   create  --id ID --title T [--priority P2] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
+          [--evidence-run-id RUN]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--worker-status S] [--commit-hash SHA]
           [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S]
           [--note S] [--blocked-reason R] [--completed-at TS] [--normalize]
@@ -138,6 +139,14 @@ func run(args []string) int {
 		if errors.As(err, &dup) {
 			fmt.Fprintf(os.Stderr, "boardctl: %v\n", err)
 			return 1
+		}
+		// SG-126: a suppressed duplicate finding is a DISPATCHER-detectable
+		// outcome, not a plain failure — print the machine-readable line bare
+		// (no "boardctl:" prefix) and use exit 2 so a lane can branch on it.
+		var dupFinding *board.ErrDuplicateFinding
+		if errors.As(err, &dupFinding) {
+			fmt.Fprintf(os.Stderr, "%v\n", dupFinding)
+			return 2
 		}
 		fmt.Fprintf(os.Stderr, "boardctl: %v\n", err)
 		return 1
@@ -426,7 +435,7 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "evidence-run-id"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
@@ -435,10 +444,13 @@ func cmdCreate(dir string, args []string) error {
 	dependsOn := fs.String("depends-on", "", "comma-separated dependency ids")
 	reasoning := fs.String("reasoning", "", "reasoning note")
 	capTags := fs.String("capability-tags", "", "comma-separated capability tags")
-	force := fs.Bool("force", false, "write the id even if it violates the fleet id format")
+	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence (SG-126)")
+	force := fs.Bool("force", false, "write the id even if it violates the fleet id format (also files a duplicate finding as a variant)")
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--force] [flags] [-C dir]\\n") }
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--force] [flags] [-C dir]\\n")
+	}
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -453,14 +465,15 @@ func cmdCreate(dir string, args []string) error {
 		return err
 	}
 	spec := board.TaskRowSpec{
-		ID:           *id,
-		Title:        *title,
-		Status:       *status,
-		Priority:     *priority,
-		Reasoning:    *reasoning,
-		HasDependsOn: *dependsOn != "",
-		HasTags:      *capTags != "",
-		Force:        *force,
+		ID:            *id,
+		Title:         *title,
+		Status:        *status,
+		Priority:      *priority,
+		Reasoning:     *reasoning,
+		HasDependsOn:  *dependsOn != "",
+		HasTags:       *capTags != "",
+		Force:         *force,
+		EvidenceRunID: *evidenceRunID,
 	}
 	if spec.HasDependsOn {
 		spec.DependsOn = splitCSV(*dependsOn)

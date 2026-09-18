@@ -2,6 +2,7 @@ package board
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"regexp"
 	"strings"
@@ -562,4 +563,555 @@ func TestSetHeaderCombinedFlagsRefreshUpdatedAt(t *testing.T) {
 	if !fresh.After(stale) {
 		t.Fatalf("updated_at = %q, want refreshed past the seeded %s", got, stale)
 	}
+}
+
+// ---------- SG-126: finding-fingerprint dedupe ----------
+
+// seedFindingBoard writes a topology-A board whose tasks.jsonl holds the given
+// raw task rows (one JSON object per line, exactly as passed) and returns the
+// resolved board. Used to plant rows the create path would never write (an
+// open row with no fingerprint, pre-existing duplicate groups).
+func seedFindingBoard(t *testing.T, taskLines ...string) *Board {
+	t.Helper()
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl":  strings.Join(taskLines, "\n") + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234"}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+// taskLineByID returns the tasks.jsonl line whose id matches, verbatim.
+func taskLineByID(t *testing.T, b *Board, id string) string {
+	t.Helper()
+	raw, err := os.ReadFile(b.TasksPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range strings.Split(string(raw), "\n") {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		var row map[string]any
+		if err := json.Unmarshal([]byte(l), &row); err != nil {
+			t.Fatalf("tasks.jsonl line does not parse: %v (%s)", err, l)
+		}
+		if row["id"] == id {
+			return l
+		}
+	}
+	t.Fatalf("task %s not found in tasks.jsonl", id)
+	return ""
+}
+
+// taskRowByID returns the parsed tasks.jsonl row (as a generic map).
+func taskRowByID(t *testing.T, b *Board, id string) map[string]any {
+	t.Helper()
+	var row map[string]any
+	if err := json.Unmarshal([]byte(taskLineByID(t, b, id)), &row); err != nil {
+		t.Fatal(err)
+	}
+	return row
+}
+
+// lastEventRaw returns the last events.jsonl line parsed as a map.
+func lastEventRaw(t *testing.T, b *Board) map[string]any {
+	t.Helper()
+	raw, err := os.ReadFile(b.EventsPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var last string
+	for _, l := range strings.Split(string(raw), "\n") {
+		if strings.TrimSpace(l) != "" {
+			last = l
+		}
+	}
+	var e map[string]any
+	if err := json.Unmarshal([]byte(last), &e); err != nil {
+		t.Fatalf("last event line does not parse: %v (%s)", err, last)
+	}
+	return e
+}
+
+// eventDetailMap decodes an event row's detail (a JSON STRING carrying JSON)
+// into a generic map.
+func eventDetailMap(t *testing.T, e map[string]any) map[string]any {
+	t.Helper()
+	s, _ := e["detail"].(string)
+	if s == "" {
+		t.Fatalf("event detail is not a JSON string: %v", e["detail"])
+	}
+	var out map[string]any
+	if err := json.Unmarshal([]byte(s), &out); err != nil {
+		t.Fatalf("event detail is not JSON: %v (%s)", err, s)
+	}
+	return out
+}
+
+// detailFingerprint extracts detail.fingerprint from a parsed task row.
+func detailFingerprint(t *testing.T, row map[string]any) string {
+	t.Helper()
+	d, ok := row["detail"].(map[string]any)
+	if !ok {
+		t.Fatalf("row detail is not the SG-126 envelope object: %v", row["detail"])
+	}
+	fp, _ := d["fingerprint"].(string)
+	if fp == "" {
+		t.Fatalf("row detail carries no fingerprint: %v", d)
+	}
+	return fp
+}
+
+// SG-126 normalizer: lowercase, strip the recycled finding-id prefix, collapse
+// whitespace, strip trailing recurrence / run-id markers.
+func TestNormalizeFindingTextStripsRecycledTokens(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"[P2] Widget crashes on empty input", "[p2] widget crashes on empty input"},
+		{"QA-CRIER-3 [P2] Widget crashes on empty input", "[p2] widget crashes on empty input"},
+		{"DF-AI-PLAYS-POKE-12 [P2] Widget crashes on empty input", "[p2] widget crashes on empty input"},
+		{"DOGFOOD-MESH-1 [P2] Widget crashes", "[p2] widget crashes"},
+		{"[P2] Widget crashes (recurrence 3)", "[p2] widget crashes"},
+		{"[P2] Widget crashes (3rd)", "[p2] widget crashes"},
+		{"[P2] Widget crashes [run-id-7]", "[p2] widget crashes"},
+		{"[P2] Widget crashes [run-id-7] (recurrence 2)", "[p2] widget crashes"},
+		{"[P2]  Widget   crashes\non  empty input", "[p2] widget crashes on empty input"},
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := NormalizeFindingText(c.in); got != c.want {
+			t.Errorf("NormalizeFindingText(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+	// the separator keeps the two halves from colliding across the boundary
+	a := FindingFingerprint("ab", "c")
+	b := FindingFingerprint("a", "bc")
+	if a == b {
+		t.Errorf("fingerprint(%q,%q) == fingerprint(%q,%q) — the 0x1F separator is not doing its job", "ab", "c", "a", "bc")
+	}
+	if a != FindingFingerprint("AB", "C") {
+		t.Error("fingerprint must be case-insensitive after normalization")
+	}
+}
+
+// SG-126: object-form reasoning (qa-dagger rows carry {"note": ...}) is
+// fingerprinted on the note, and a row whose reasoning is an object can be
+// compared against a plain-string reasoning in a later create.
+func TestRowFindingReasoningHandlesObjectForm(t *testing.T) {
+	row, err := ParseRow([]byte(`{"id":"QA-X-1","title":"t","reasoning":{"note":"QA foreman cycle 2026-09-10"}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := RowFindingReasoning(row); got != "QA foreman cycle 2026-09-10" {
+		t.Fatalf("RowFindingReasoning(object) = %q", got)
+	}
+	plain, err := ParseRow([]byte(`{"id":"QA-X-2","title":"t","reasoning":"QA foreman cycle 2026-09-10"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if FindingFingerprintForRow(row) != FindingFingerprintForRow(plain) {
+		t.Error("object-form and string-form reasoning with the same note must fingerprint identically")
+	}
+	nullRow, err := ParseRow([]byte(`{"id":"QA-X-3","title":"t","reasoning":null}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := RowFindingReasoning(nullRow); got != "" {
+		t.Fatalf("null reasoning = %q, want empty", got)
+	}
+}
+
+// SG-126 AC2: re-filing a finding under a fresh, suffix-variant id is REFUSED
+// before anything is written, and the refusal is recorded as a task_evidence
+// event on the existing row (the board gains an audit line, not a row).
+func TestCreate_DedupeOnFingerprint(t *testing.T) {
+	b := newTestBoard(t)
+	title := "[P2] Widget crashes on empty input"
+	reasoning := "probe: curl returns 500 on empty payload"
+	if _, err := b.Create(TaskRowSpec{ID: "QA-TEST-1", Title: title, Reasoning: reasoning, EvidenceRunID: "run-1"}); err != nil {
+		t.Fatalf("first filing rejected: %v", err)
+	}
+	fp := detailFingerprint(t, taskRowByID(t, b, "QA-TEST-1"))
+	lineABefore := taskLineByID(t, b, "QA-TEST-1")
+	tasksBefore := boardLineCount(t, b.TasksPath())
+	eventsBefore := boardLineCount(t, b.EventsPath())
+
+	// Same finding: recycled id prefix on the title, recurrence suffix, and
+	// whitespace-only differences in the reasoning.
+	_, err := b.Create(TaskRowSpec{
+		ID:        "QA-TEST-2",
+		Title:     "QA-TEST-9 " + title + " (recurrence 2)",
+		Reasoning: "probe:   curl returns\n500 on empty payload",
+	})
+	if err == nil {
+		t.Fatal("re-filed finding accepted — the fingerprint gate did not fire")
+	}
+	var dup *ErrDuplicateFinding
+	if !errors.As(err, &dup) {
+		t.Fatalf("error type = %T (%v), want *ErrDuplicateFinding", err, err)
+	}
+	if dup.ExistingID != "QA-TEST-1" {
+		t.Fatalf("ExistingID = %q, want QA-TEST-1", dup.ExistingID)
+	}
+	if dup.Fingerprint != fp {
+		t.Fatalf("Fingerprint = %q, want %q (the stored digest)", dup.Fingerprint, fp)
+	}
+	if want := "DUPLICATE-SUPPRESSED: QA-TEST-1 matches fingerprint " + fp; !strings.Contains(err.Error(), want) {
+		t.Fatalf("error message %q does not start the machine-readable line %q", err.Error(), want)
+	}
+
+	// The board did not grow, and the existing row is byte-identical.
+	if n := boardLineCount(t, b.TasksPath()); n != tasksBefore {
+		t.Fatalf("tasks.jsonl grew from %d to %d lines on a suppressed duplicate", tasksBefore, n)
+	}
+	if got := taskLineByID(t, b, "QA-TEST-1"); got != lineABefore {
+		t.Fatalf("existing row was rewritten by a suppressed create:\n got %s\nwant %s", got, lineABefore)
+	}
+
+	// The suppression is durable: exactly one task_evidence event on the
+	// existing row, carrying both ids and the fingerprint.
+	if n := boardLineCount(t, b.EventsPath()); n != eventsBefore+1 {
+		t.Fatalf("events.jsonl has %d lines, want %d (exactly one task_evidence event)", n, eventsBefore+1)
+	}
+	e := lastEventRaw(t, b)
+	if e["event_type"] != "task_evidence" {
+		t.Fatalf("event_type = %v, want task_evidence", e["event_type"])
+	}
+	if e["task_id"] != "QA-TEST-1" {
+		t.Fatalf("event task_id = %v, want the EXISTING row QA-TEST-1", e["task_id"])
+	}
+	d := eventDetailMap(t, e)
+	if d["existing_task_id"] != "QA-TEST-1" || d["new_id_attempted"] != "QA-TEST-2" || d["fingerprint"] != fp {
+		t.Fatalf("task_evidence detail wrong: %v", d)
+	}
+	ev, ok := d["evidence"].(map[string]any)
+	if !ok {
+		t.Fatalf("task_evidence detail carries no evidence object: %v", d)
+	}
+	if ts, _ := ev["ts"].(string); ts == "" {
+		t.Fatalf("evidence has no ts: %v", ev)
+	}
+
+	// The open-fingerprint index the gate consults sees exactly the one row.
+	fps, err := b.OpenFingerprints()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fps) != 1 || fps["QA-TEST-1"] != fp {
+		t.Fatalf("OpenFingerprints() = %v, want {QA-TEST-1: %s}", fps, fp)
+	}
+}
+
+// SG-126 AC3: a pre-existing OPEN row with no fingerprint is grandfathered —
+// it stays open and visible but never produces a false match, so the new
+// filing lands.
+func TestCreate_GrandfatherExistingOpenRow(t *testing.T) {
+	title := "[P1] Legacy finding filed before fingerprints existed"
+	reasoning := "cell detail: spawn failed"
+	b := seedFindingBoard(t,
+		`{"id":"QA-LEGACY-1","title":"`+title+`","status":"pending","priority":"P1","reasoning":"`+reasoning+`"}`,
+	)
+	if fps, err := b.OpenFingerprints(); err != nil || len(fps) != 0 {
+		t.Fatalf("seeded legacy row unexpectedly fingerprinted: %v (%v)", fps, err)
+	}
+	tasksBefore := boardLineCount(t, b.TasksPath())
+
+	got, err := b.Create(TaskRowSpec{ID: "QA-NEW-1", Title: title, Reasoning: reasoning})
+	if err != nil {
+		t.Fatalf("create against a grandfathered open row was refused: %v", err)
+	}
+	if got != "QA-NEW-1" {
+		t.Fatalf("created id = %q, want QA-NEW-1", got)
+	}
+	if n := boardLineCount(t, b.TasksPath()); n != tasksBefore+1 {
+		t.Fatalf("tasks.jsonl has %d lines, want %d", n, tasksBefore+1)
+	}
+	// the legacy row is untouched and still unfingerprinted
+	legacy := taskRowByID(t, b, "QA-LEGACY-1")
+	if legacy["detail"] != nil {
+		t.Fatalf("grandfathered row was rewritten: %v", legacy["detail"])
+	}
+	// the NEW row is fingerprinted, so the NEXT re-file is suppressed
+	if fp := detailFingerprint(t, taskRowByID(t, b, "QA-NEW-1")); fp == "" {
+		t.Fatal("new row carries no fingerprint")
+	}
+	if _, err := b.Create(TaskRowSpec{ID: "QA-NEW-2", Title: title, Reasoning: reasoning}); err == nil {
+		t.Fatal("second re-file accepted after the finding became fingerprinted")
+	}
+}
+
+// SG-126 AC4: --force files a variant deliberately, and the variant is itself
+// fingerprinted so a later accidental re-file of it is still caught.
+func TestCreate_ForceOverride(t *testing.T) {
+	b := newTestBoard(t)
+	title := "[P2] Widget crashes on empty input"
+	reasoning := "probe: curl returns 500"
+	if _, err := b.Create(TaskRowSpec{ID: "QA-TEST-1", Title: title, Reasoning: reasoning}); err != nil {
+		t.Fatal(err)
+	}
+	fp := detailFingerprint(t, taskRowByID(t, b, "QA-TEST-1"))
+	if _, err := b.Create(TaskRowSpec{ID: "QA-TEST-2", Title: title, Reasoning: reasoning, Force: true}); err != nil {
+		t.Fatalf("--force duplicate filing refused: %v", err)
+	}
+	tasks, err := b.TaskRows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]bool{}
+	for _, r := range tasks {
+		ids[r.String("id")] = true
+	}
+	if !ids["QA-TEST-1"] || !ids["QA-TEST-2"] {
+		t.Fatalf("forced variant did not land: board ids %v (want QA-TEST-1 and QA-TEST-2)", ids)
+	}
+	if got := detailFingerprint(t, taskRowByID(t, b, "QA-TEST-2")); got != fp {
+		t.Fatalf("forced row fingerprint = %q, want %q (variants are still fingerprinted)", got, fp)
+	}
+	// the forced create is an ordinary create: its event is task_created
+	if e := lastEventRaw(t, b); e["event_type"] != "task_created" {
+		t.Fatalf("last event = %v, want task_created", e["event_type"])
+	}
+}
+
+// SG-126 AC5: the backfill collapses a 3-row fingerprint collision into ONE
+// open row plus two closed rows whose worker_summary names the kept id, carries
+// the merged evidence onto the kept row, and writes one audit event per group.
+func TestDedupeBackfill_MergesCollisions(t *testing.T) {
+	finding := `"title":"[P3] run_battery FAIL — port pool exhausted","reasoning":"cell detail: no free port ranges"`
+	b := seedFindingBoard(t,
+		`{"id":"QA-BF-1","status":"pending","priority":"P3",`+finding+`}`,
+		`{"id":"OTHER-1","status":"complete","priority":"P2","title":"unrelated","reasoning":"nope"}`,
+		`{"id":"QA-BF-2","status":"pending","priority":"P3",`+finding+`}`,
+		`{"id":"QA-BF-3","status":"in_progress","priority":"P3",`+finding+`}`,
+		`{"id":"QA-BF-4","status":"complete","priority":"P3",`+finding+`}`,
+	)
+	otherBefore := taskLineByID(t, b, "OTHER-1")
+	closedBefore := taskLineByID(t, b, "QA-BF-4")
+	eventsBefore := boardLineCount(t, b.EventsPath())
+
+	rep, err := b.DedupeBackfill(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Groups) != 1 {
+		t.Fatalf("merge groups = %d, want 1 (%+v)", len(rep.Groups), rep.Groups)
+	}
+	g := rep.Groups[0]
+	if g.Kept != "QA-BF-1" {
+		t.Fatalf("kept = %q, want the earliest filing QA-BF-1", g.Kept)
+	}
+	if strings.Join(g.Merged, ",") != "QA-BF-2,QA-BF-3" {
+		t.Fatalf("merged = %v, want [QA-BF-2 QA-BF-3]", g.Merged)
+	}
+	if g.Fingerprint == "" {
+		t.Fatal("merge group carries no fingerprint")
+	}
+
+	// kept row: still open, still the same finding, now carries the merged
+	// rows' evidence.
+	kept := taskRowByID(t, b, "QA-BF-1")
+	if kept["status"] != "pending" {
+		t.Fatalf("kept row status = %v, want pending", kept["status"])
+	}
+	kd, _ := kept["detail"].(map[string]any)
+	if kd["fingerprint"] != g.Fingerprint {
+		t.Fatalf("kept row fingerprint = %v, want %s", kd["fingerprint"], g.Fingerprint)
+	}
+	ev, _ := kd["evidence"].([]any)
+	if len(ev) != 2 {
+		t.Fatalf("kept row evidence = %v, want one entry per merged row", kd["evidence"])
+	}
+	seen := map[string]bool{}
+	for _, e := range ev {
+		em, _ := e.(map[string]any)
+		id, _ := em["task_id"].(string)
+		seen[id] = true
+	}
+	if !seen["QA-BF-2"] || !seen["QA-BF-3"] {
+		t.Fatalf("merged evidence does not name both merged rows: %v", ev)
+	}
+
+	// merged-away rows: complete, summary names the kept id, completed_at set.
+	for _, id := range []string{"QA-BF-2", "QA-BF-3"} {
+		row := taskRowByID(t, b, id)
+		if row["status"] != "complete" {
+			t.Fatalf("%s status = %v, want complete", id, row["status"])
+		}
+		summary, _ := row["worker_summary"].(string)
+		if !strings.HasPrefix(summary, "merged into QA-BF-1: dedupe backfill ") {
+			t.Fatalf("%s worker_summary = %q, want \"merged into QA-BF-1: dedupe backfill <date>\"", id, summary)
+		}
+		if ts, _ := row["completed_at"].(string); ts == "" {
+			t.Fatalf("%s has no completed_at", id)
+		}
+	}
+
+	// untouched lines round-trip byte-identical: a closed row with the same
+	// finding is NOT a merge candidate, and an unrelated row is not rewritten.
+	if got := taskLineByID(t, b, "QA-BF-4"); got != closedBefore {
+		t.Fatalf("closed row was rewritten:\n got %s\nwant %s", got, closedBefore)
+	}
+	if got := taskLineByID(t, b, "OTHER-1"); got != otherBefore {
+		t.Fatalf("unrelated row was rewritten:\n got %s\nwant %s", got, otherBefore)
+	}
+
+	// exactly one audit event, naming kept + merged + fingerprint
+	if n := boardLineCount(t, b.EventsPath()); n != eventsBefore+1 {
+		t.Fatalf("events.jsonl has %d lines, want %d", n, eventsBefore+1)
+	}
+	e := lastEventRaw(t, b)
+	if e["event_type"] != "audit" || e["task_id"] != "QA-BF-1" {
+		t.Fatalf("audit event wrong: %v", e)
+	}
+	d := eventDetailMap(t, e)
+	if d["action"] != "dedupe-backfill" || d["kept"] != "QA-BF-1" || d["fingerprint"] != g.Fingerprint {
+		t.Fatalf("audit detail wrong: %v", d)
+	}
+	merged, _ := d["merged"].([]any)
+	if len(merged) != 2 || merged[0] != "QA-BF-2" || merged[1] != "QA-BF-3" {
+		t.Fatalf("audit merged = %v, want [QA-BF-2 QA-BF-3]", d["merged"])
+	}
+
+	// idempotence: a second apply finds nothing to collapse and writes nothing.
+	tasksAfter := mustRead(t, b.TasksPath())
+	eventsAfter := mustRead(t, b.EventsPath())
+	rep2, err := b.DedupeBackfill(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep2.Groups) != 0 || len(rep2.Fingerprinted) != 0 {
+		t.Fatalf("second apply is not a no-op: %+v", rep2)
+	}
+	if string(mustRead(t, b.TasksPath())) != string(tasksAfter) || string(mustRead(t, b.EventsPath())) != string(eventsAfter) {
+		t.Fatal("second apply rewrote a file")
+	}
+}
+
+// SG-126 AC6: the dry run reports the identical collapse and leaves BOTH files
+// byte-identical — no fingerprints, no merges, no audit events.
+func TestDedupeBackfill_DryRunIsIdempotent(t *testing.T) {
+	finding := `"title":"[P1] Leak fix not deployed","reasoning":"bunker version -> 0.1.3"`
+	b := seedFindingBoard(t,
+		`{"id":"QA-BF-1","status":"pending","priority":"P1",`+finding+`}`,
+		`{"id":"QA-BF-2","status":"pending","priority":"P1",`+finding+`}`,
+		`{"id":"QA-BF-3","status":"pending","priority":"P1",`+finding+`}`,
+	)
+	tasksBefore := mustRead(t, b.TasksPath())
+	eventsBefore := mustRead(t, b.EventsPath())
+
+	rep, err := b.DedupeBackfill(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Groups) != 1 || rep.Groups[0].Kept != "QA-BF-1" {
+		t.Fatalf("dry-run report does not describe the collapse: %+v", rep.Groups)
+	}
+	if len(rep.MergedAway) != 2 {
+		t.Fatalf("dry-run merged-away = %v, want 2 ids", rep.MergedAway)
+	}
+	if !rep.Changed() {
+		t.Fatal("dry-run report claims nothing to do while a group exists")
+	}
+	if string(mustRead(t, b.TasksPath())) != string(tasksBefore) {
+		t.Fatal("dry run rewrote tasks.jsonl")
+	}
+	if string(mustRead(t, b.EventsPath())) != string(eventsBefore) {
+		t.Fatal("dry run wrote an audit event")
+	}
+	// and the report is stable across runs
+	rep2, err := b.DedupeBackfill(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep2.Groups) != 1 || rep2.Groups[0].Kept != rep.Groups[0].Kept {
+		t.Fatalf("dry-run report is not deterministic: %+v vs %+v", rep.Groups, rep2.Groups)
+	}
+}
+
+// SG-126 regression (found on real boards): live QA boards put the SAME id on
+// several lines, so the collapse must select group members by LINE INDEX. An
+// id-keyed selection would treat both same-id rows as "kept" and merge neither,
+// leaving the duplicate open while the report claimed a merge.
+func TestDedupeBackfill_DuplicateIDsCollapse(t *testing.T) {
+	finding := `"title":"[P2] Untracked .vfs cache stray in the repo","reasoning":"git status shows .vfs/"`
+	b := seedFindingBoard(t,
+		`{"id":"QA-DUP-1","status":"pending","priority":"P2",`+finding+`}`,
+		`{"id":"QA-DUP-1","status":"pending","priority":"P2",`+finding+`}`,
+	)
+	rep, err := b.DedupeBackfill(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Groups) != 1 {
+		t.Fatalf("merge groups = %d, want 1 (%+v)", len(rep.Groups), rep.Groups)
+	}
+	g := rep.Groups[0]
+	if !g.DuplicateIDs {
+		t.Fatalf("group with two same-id rows not flagged DuplicateIDs: %+v", g)
+	}
+	if g.KeptLine != 1 || len(g.MergedLines) != 1 || g.MergedLines[0] != 2 {
+		t.Fatalf("group lines = kept %d merged %v, want kept 1 merged [2]", g.KeptLine, g.MergedLines)
+	}
+	if g.Kept != "QA-DUP-1" || len(g.Merged) != 1 || g.Merged[0] != "QA-DUP-1" {
+		t.Fatalf("group ids = kept %q merged %v", g.Kept, g.Merged)
+	}
+
+	// exactly one of the two same-id rows is left OPEN; the other is complete.
+	raw, err := os.ReadFile(b.TasksPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var openCount, closedCount int
+	for _, l := range strings.Split(string(raw), "\n") {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		var row map[string]any
+		if err := json.Unmarshal([]byte(l), &row); err != nil {
+			t.Fatal(err)
+		}
+		if row["id"] != "QA-DUP-1" {
+			continue
+		}
+		switch row["status"] {
+		case "pending":
+			openCount++
+		case "complete":
+			closedCount++
+			summary, _ := row["worker_summary"].(string)
+			if !strings.HasPrefix(summary, "merged into QA-DUP-1: dedupe backfill ") {
+				t.Fatalf("merged same-id row summary = %q", summary)
+			}
+		default:
+			t.Fatalf("unexpected status %v", row["status"])
+		}
+	}
+	if openCount != 1 || closedCount != 1 {
+		t.Fatalf("same-id group left %d open / %d closed, want 1 / 1", openCount, closedCount)
+	}
+
+	// the audit event disambiguates by line
+	d := eventDetailMap(t, lastEventRaw(t, b))
+	if d["kept_line"] != float64(1) {
+		t.Fatalf("audit kept_line = %v, want 1", d["kept_line"])
+	}
+	ml, _ := d["merged_lines"].([]any)
+	if len(ml) != 1 || ml[0] != float64(2) {
+		t.Fatalf("audit merged_lines = %v, want [2]", d["merged_lines"])
+	}
+}
+
+// mustRead reads a file or fails the test.
+func mustRead(t *testing.T, path string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }

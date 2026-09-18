@@ -67,9 +67,13 @@ boardctl version                   # prints e.g. "boardctl version v0.1.5"
 boardctl version --json            # {"version":"v0.1.5","build":"v0.1.5"}
                                    # ("build" is the raw build stamp)
 
-# create a task row (appends tasks.jsonl + task_created event)
+# create a task row (appends tasks.jsonl + task_created event).
+# A re-detected finding is REFUSED (exit 2) unless --force; see
+# "Finding fingerprints" below.
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
     --reasoning "Idempotent retry with backoff" --capability-tags go,net
+boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
+    --reasoning "Idempotent retry with backoff" --evidence-run-id qa-2026-09-18T04:11Z
 
 # update a task row (status flip + completion event; --commit-hash stays on
 # the task row — the header drift pointer only moves via `header --set-last-commit`)
@@ -212,6 +216,52 @@ boardctl -C ~/myproject create --id "bad id!" --title x --force  # written
 boardctl -C ~/myproject doctor    # ... task id "bad id!" does not match ... (warn)
 ```
 
+## Finding fingerprints (SG-126)
+
+QA and dogfood lanes used to re-file the same finding 3-8x: a fresh id against
+a recycled title, so every `create` succeeded and the board grew while the real
+finding count stayed flat. Board rows now carry a **finding fingerprint** — a
+SHA-256 over the normalized `title` + `reasoning` (lowercased, leading
+`QA-<PROJ>-N`/`DF-<PROJ>-N`/`DOGFOOD-<PROJ>-N` prefix stripped, whitespace
+collapsed, trailing `(recurrence N)` / `(Nth)` / `[run-id-N]` stripped).
+
+The digest lives INSIDE the existing `detail` field — no new column, no
+migration — with the original prose preserved:
+
+```json
+"detail": {"fingerprint":"9f2c…","evidence":[{"run_id":"qa-…","ts":"…"}],"text":"original prose"}
+```
+
+`create` refuses a row whose fingerprint is already OPEN, prints
+
+```
+DUPLICATE-SUPPRESSED: <existing-id> matches fingerprint <hex>
+```
+
+on stderr and exits **2** (a plain failure is exit 1), and records the
+re-detection as a `task_evidence` event on the existing row — the board gains
+an audit line, never another row. Evidence the existing row with
+`--evidence-run-id RUN` instead of refiling; `--force` files a deliberate
+variant (still fingerprinted, so a later accidental re-file is caught). Rows
+written before this rule have no fingerprint and are grandfathered: still open
+and visible, they simply never match an incoming filing. An open row is
+`pending`, `in_progress`, `dispatched`, `blocked`, or `review` — anything else
+never suppresses a create.
+
+Existing duplicate groups are collapsed by the one-shot backfill, which is
+**dry-run by default**, runs on exactly ONE board (`--board-dir` is required —
+there is no fleet sweep), and refuses a board whose lane is not in `--lanes`:
+
+```bash
+dedupe-board --board-dir ~/myproject            # report only, zero writes
+dedupe-board --board-dir ~/myproject --apply    # collapse the groups
+```
+
+Per group (≥ 2 open rows sharing a fingerprint) it keeps the earliest row, closes
+the rest with `worker_summary="merged into <kept>: dedupe backfill <date>"`,
+carries the merged evidence onto the kept row, and writes one `audit` event.
+Full rules: [`docs/board-fingerprint-rules.md`](docs/board-fingerprint-rules.md).
+
 ## Board topology
 
 ```
@@ -242,7 +292,9 @@ git diffs stay minimal and byte-stable.
 | Path | Purpose |
 |------|---------|
 | `cmd/boardctl/` | CLI entrypoint (`main.go`) |
+| `cmd/dedupe-board/` | SG-126 one-shot dedupe backfill (dry-run by default) |
 | `internal/board/` | Board engine — read/write/validate/doctor/init plus JSONL style handling |
+| `docs/board-fingerprint-rules.md` | Finding-fingerprint rule, evidence-over-refile, backfill usage |
 | `.coding-hermes/board/` | This repo's own dogfood board (`tasks.jsonl`, `events.jsonl`, `board.jsonl`, `fixtures.jsonl`) |
 | `docs/dogfood/` | Dogfood diagnostics and integration notes |
 | `skills/boardctl-usage/` | Fleet skill: how agents drive `boardctl` |
