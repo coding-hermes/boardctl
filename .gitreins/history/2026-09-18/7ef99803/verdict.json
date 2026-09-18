@@ -1,0 +1,70 @@
+{
+  "task_id": "BT-034",
+  "task_title": "cut v0.1.5 so the published binaries stop shipping the vulnerable go1.26.5 toolchain",
+  "task_criteria": [
+    "AC1 README pin line + both download URLs name v0.1.5 and make version-check exits 0. AC2 gh release view v0.1.5 shows 8 assets non-draft and releases/latest resolves v0.1.5. AC3 the DOWNLOADED v0.1.5 linux-amd64 asset reports go build info go1.26.6 (not go1.26.5) with vcs.revision == the v0.1.5 tag commit and vcs.modified=false, with the v0.1.4 go1.26.5 state as the before/after pair. AC4 sha256sum -c passes on the downloaded assets and the asset answers 'boardctl version v0.1.5'. AC5 0 unpushed and the remote tag resolves to the released commit. AC6 go build/vet/test -short/make fmt-check/make version-check/make vuln-check green and gofmt -l clean. AC7 no repo-root boardctl binary and .coding-hermes/board/* in no commit."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "f9b40415f1642bc3493c821f711e923e09537b8c",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m9:47PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~951960 bytes (951.96 KB) in 396ms\u001b[0m\n\u001b[90m9:47PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.596s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m9:47PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~951960 bytes (951.96 KB) in 396ms\u001b[0m\n\u001b[90m9:47PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.596s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.050s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.172s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 AC1 README pin line + both download URLs name v0.1.5 and make version-check exits 0. AC2 gh release view v0.1.5 shows 8 assets non-draft and releases/latest resolves v0.1.5. AC3 the DOWNLOADED v0.1.5 linux-amd64 asset reports go build info go1.26.6 (not go1.26.5) with vcs.revision == the v0.1.5 tag commit and vcs.modified=false, with the v0.1.4 go1.26.5 state as the before/after pair. AC4 sha256sum -c passes on the downloaded assets and the asset answers 'boardctl version v0.1.5'. AC5 0 unpushed and the remote tag resolves to the released commit. AC6 go build/vet/test -short/make fmt-check/make version-check/make vuln-check green and gofmt -l clean. AC7 no repo-root boardctl binary and .coding-hermes/board/* in no commit.: AC1: README.md:16 'Current release: **v0.1.5**.'; README.md:19-20 both URLs https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/{boardctl-linux-amd64,sha256sums.txt}; `make version-check` -> 'ok github.com/coding-hermes/boardctl/internal/versioncheck 0.002s', EXIT=0. AC2: `gh release view v0.1.5` -> draft:false, prerelease:false, 8 assets (darwin-amd64/arm64, freebsd-amd64, linux-amd64/arm/arm64, windows-amd64.exe, sha256sums.txt); `gh api repos/coding-hermes/boardctl/releases/latest --jq .tag_name` -> v0.1.5. AC3: downloaded v0.1.5 linux-amd64, `go version -m` -> 'go1.26.6', vcs.revision=f9b40415f1642bc3493c821f711e923e09537b8c (== `git rev-parse v0.1.5`), vcs.modified=false; v0.1.4 asset -> 'go1.26.5' (before/after pair confirmed). AC4: `sha256sum -c --ignore-missing sha256sums.txt` -> 'boardctl-linux-amd64: OK', SHA_EXIT=0; `./boardctl-linux-amd64 version` -> 'boardctl version v0.1.5'. AC5: `git rev-list --count origin/main..HEAD` = 0; `git ls-remote origin refs/tags/v0.1.5` -> f9b40415f1642bc3493c821f711e923e09537b8c == released commit (origin/main also f9b4041). AC6: go build ./... BUILD=0; go vet ./... VET=0; go test -short ./... TEST_EXIT=0 (all 6 pkgs ok); make fmt-check FMTCHECK=0; make version-check EXIT=0; make vuln-check VULNCHECK=0; `gofmt -l ./cmd ./internal` empty (clean). AC7: no repo-root boardctl binary (`ls boardctl` -> No such file; `git ls-files | grep '^boardctl$'` empty; no commit ever added it); the BT-034 commit f9b4041 touches only README.md \u2014 no .coding-hermes/board/* path in it. (.coding-hermes/board/*.jsonl are tracked by design as the project's own board data across all prior commits, not a stray artifact introduced here.)\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 AC1 README pin line + both download URLs name v0.1.5 and make version-check exits 0. AC2 gh release view v0.1.5 shows 8 assets non-draft and releases/latest resolves v0.1.5. AC3 the DOWNLOADED v0.1.5 linux-amd64 asset reports go build info go1.26.6 (not go1.26.5) with vcs.revision == the v0.1.5 tag commit and vcs.modified=false, with the v0.1.4 go1.26.5 state as the before/after pair. AC4 sha256sum -c passes on the downloaded assets and the asset answers 'boardctl version v0.1.5'. AC5 0 unpushed and the remote tag resolves to the released commit. AC6 go build/vet/test -short/make fmt-check/make version-check/make vuln-check green and gofmt -l clean. AC7 no repo-root boardctl binary and .coding-hermes/board/* in no commit.: AC1: README.md:16 'Current release: **v0.1.5**.'; README.md:19-20 both URLs https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/{boardctl-linux-amd64,sha256sums.txt}; `make version-check` -> 'ok github.com/coding-hermes/boardctl/internal/versioncheck 0.002s', EXIT=0. AC2: `gh release view v0.1.5` -> draft:false, prerelease:false, 8 assets (darwin-amd64/arm64, freebsd-amd64, linux-amd64/arm/arm64, windows-amd64.exe, sha256sums.txt); `gh api repos/coding-hermes/boardctl/releases/latest --jq .tag_name` -> v0.1.5. AC3: downloaded v0.1.5 linux-amd64, `go version -m` -> 'go1.26.6', vcs.revision=f9b40415f1642bc3493c821f711e923e09537b8c (== `git rev-parse v0.1.5`), vcs.modified=false; v0.1.4 asset -> 'go1.26.5' (before/after pair confirmed). AC4: `sha256sum -c --ignore-missing sha256sums.txt` -> 'boardctl-linux-amd64: OK', SHA_EXIT=0; `./boardctl-linux-amd64 version` -> 'boardctl version v0.1.5'. AC5: `git rev-list --count origin/main..HEAD` = 0; `git ls-remote origin refs/tags/v0.1.5` -> f9b40415f1642bc3493c821f711e923e09537b8c == released commit (origin/main also f9b4041). AC6: go build ./... BUILD=0; go vet ./... VET=0; go test -short ./... TEST_EXIT=0 (all 6 pkgs ok); make fmt-check FMTCHECK=0; make version-check EXIT=0; make vuln-check VULNCHECK=0; `gofmt -l ./cmd ./internal` empty (clean). AC7: no repo-root boardctl binary (`ls boardctl` -> No such file; `git ls-files | grep '^boardctl$'` empty; no commit ever added it); the BT-034 commit f9b4041 touches only README.md \u2014 no .coding-hermes/board/* path in it. (.coding-hermes/board/*.jsonl are tracked by design as the project's own board data across all prior commits, not a stray artifact introduced here.)\n",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "AC1 README pin line + both download URLs name v0.1.5 and make version-check exits 0. AC2 gh release view v0.1.5 shows 8 assets non-draft and releases/latest resolves v0.1.5. AC3 the DOWNLOADED v0.1.5 linux-amd64 asset reports go build info go1.26.6 (not go1.26.5) with vcs.revision == the v0.1.5 tag commit and vcs.modified=false, with the v0.1.4 go1.26.5 state as the before/after pair. AC4 sha256sum -c passes on the downloaded assets and the asset answers 'boardctl version v0.1.5'. AC5 0 unpushed and the remote tag resolves to the released commit. AC6 go build/vet/test -short/make fmt-check/make version-check/make vuln-check green and gofmt -l clean. AC7 no repo-root boardctl binary and .coding-hermes/board/* in no commit.",
+                "status": "PASS",
+                "detail": "AC1: README.md:16 'Current release: **v0.1.5**.'; README.md:19-20 both URLs https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/{boardctl-linux-amd64,sha256sums.txt}; `make version-check` -> 'ok github.com/coding-hermes/boardctl/internal/versioncheck 0.002s', EXIT=0. AC2: `gh release view v0.1.5` -> draft:false, prerelease:false, 8 assets (darwin-amd64/arm64, freebsd-amd64, linux-amd64/arm/arm64, windows-amd64.exe, sha256sums.txt); `gh api repos/coding-hermes/boardctl/releases/latest --jq .tag_name` -> v0.1.5. AC3: downloaded v0.1.5 linux-amd64, `go version -m` -> 'go1.26.6', vcs.revision=f9b40415f1642bc3493c821f711e923e09537b8c (== `git rev-parse v0.1.5`), vcs.modified=false; v0.1.4 asset -> 'go1.26.5' (before/after pair confirmed). AC4: `sha256sum -c --ignore-missing sha256sums.txt` -> 'boardctl-linux-amd64: OK', SHA_EXIT=0; `./boardctl-linux-amd64 version` -> 'boardctl version v0.1.5'. AC5: `git rev-list --count origin/main..HEAD` = 0; `git ls-remote origin refs/tags/v0.1.5` -> f9b40415f1642bc3493c821f711e923e09537b8c == released commit (origin/main also f9b4041). AC6: go build ./... BUILD=0; go vet ./... VET=0; go test -short ./... TEST_EXIT=0 (all 6 pkgs ok); make fmt-check FMTCHECK=0; make version-check EXIT=0; make vuln-check VULNCHECK=0; `gofmt -l ./cmd ./internal` empty (clean). AC7: no repo-root boardctl binary (`ls boardctl` -> No such file; `git ls-files | grep '^boardctl$'` empty; no commit ever added it); the BT-034 commit f9b4041 touches only README.md \u2014 no .coding-hermes/board/* path in it. (.coding-hermes/board/*.jsonl are tracked by design as the project's own board data across all prior commits, not a stray artifact introduced here.)"
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-034\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m9:47PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~951960 bytes (951.96 KB) in 396ms\u001b[0m\n\u001b[90m9:47PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.596s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 AC1 README pin line + both download URLs name v0.1.5 and make version-check exits 0. AC2 gh release view v0.1.5 shows 8 assets non-draft and releases/latest resolves v0.1.5. AC3 the DOWNLOADED v0.1.5 linux-amd64 asset reports go build info go1.26.6 (not go1.26.5) with vcs.revision == the v0.1.5 tag commit and vcs.modified=false, with the v0.1.4 go1.26.5 state as the before/after pair. AC4 sha256sum -c passes on the downloaded assets and the asset answers 'boardctl version v0.1.5'. AC5 0 unpushed and the remote tag resolves to the released commit. AC6 go build/vet/test -short/make fmt-check/make version-check/make vuln-check green and gofmt -l clean. AC7 no repo-root boardctl binary and .coding-hermes/board/* in no commit.: AC1: README.md:16 'Current release: **v0.1.5**.'; README.md:19-20 both URLs https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/{boardctl-linux-amd64,sha256sums.txt}; `make version-check` -> 'ok github.com/coding-hermes/boardctl/internal/versioncheck 0.002s', EXIT=0. AC2: `gh release view v0.1.5` -> draft:false, prerelease:false, 8 assets (darwin-amd64/arm64, freebsd-amd64, linux-amd64/arm/arm64, windows-amd64.exe, sha256sums.txt); `gh api repos/coding-hermes/boardctl/releases/latest --jq .tag_name` -> v0.1.5. AC3: downloaded v0.1.5 linux-amd64, `go version -m` -> 'go1.26.6', vcs.revision=f9b40415f1642bc3493c821f711e923e09537b8c (== `git rev-parse v0.1.5`), vcs.modified=false; v0.1.4 asset -> 'go1.26.5' (before/after pair confirmed). AC4: `sha256sum -c --ignore-missing sha256sums.txt` -> 'boardctl-linux-amd64: OK', SHA_EXIT=0; `./boardctl-linux-amd64 version` -> 'boardctl version v0.1.5'. AC5: `git rev-list --count origin/main..HEAD` = 0; `git ls-remote origin refs/tags/v0.1.5` -> f9b40415f1642bc3493c821f711e923e09537b8c == released commit (origin/main also f9b4041). AC6: go build ./... BUILD=0; go vet ./... VET=0; go test -short ./... TEST_EXIT=0 (all 6 pkgs ok); make fmt-check FMTCHECK=0; make version-check EXIT=0; make vuln-check VULNCHECK=0; `gofmt -l ./cmd ./internal` empty (clean). AC7: no repo-root boardctl binary (`ls boardctl` -> No such file; `git ls-files | grep '^boardctl$'` empty; no commit ever added it); the BT-034 commit f9b4041 touches only README.md \u2014 no .coding-hermes/board/* path in it. (.coding-hermes/board/*.jsonl are tracked by design as the project's own board data across all prior commits, not a stray artifact introduced here.)\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T02:47:49.900764"
+}

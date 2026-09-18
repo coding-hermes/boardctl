@@ -1,0 +1,64 @@
+{
+  "task_id": "BT-033",
+  "task_title": "toolchain vuln + no gate: go.mod go 1.26 (vulnerable go1.26.5 toolchain) with 3 reachable stdlib vulns and no govulncheck gate",
+  "task_criteria": [
+    "AC1 govulncheck ./... exits 0 'No vulnerabilities found.' at HEAD, with the BEFORE state (exit 3: GO-2026-6089 net/http, GO-2026-6090 crypto/tls, GO-2026-5972 encoding/asn1) quoted. AC2 go version inside the module = go1.26.6 and go.mod 'go 1.26.6'. AC3 make vuln-check exits 0. AC4 the gate is load-bearing (RED revert probe on the exit-3->FAIL mapping, stated explicitly). AC5 go build ./... + go vet ./... + go test ./... -count=1 -short + make fmt-check + make version-check all green. AC6 gofmt -l cmd internal empty. AC7 no new go.mod requirements, go mod verify OK. CI has a Vulnerability-check step that installs a PINNED govulncheck and runs the same command as make vuln-check."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "08655c4b4cb386ab2275856f8f699aef80d1e1c1",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: \u001b[90m9:41PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~951960 bytes (951.96 KB) in 345ms\u001b[0m\n\u001b[90m9:41PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.531s\nok  \tgithub.com/coding-hermes/boardctl/in",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "\u001b[90m9:41PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~951960 bytes (951.96 KB) in 345ms\u001b[0m\n\u001b[90m9:41PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.531s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.134s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.041s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.722s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n\n(auto-parsed from non-JSON response) All criteria verified with live command output. Working tree restored to HEAD (no probe residue), no LSP diagnostics.\n\n{\"verdict\":\"COMPLETE\",\"items\":[{\"criterion\":\"AC1 govulncheck ./... exits 0 'No vulnerabilities found.' at HEAD, with the BEFORE state (exit 3: GO-2026-6089 net/http, GO-2026-6090 cr",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n\n(auto-parsed from non-JSON response) All criteria verified with live command output. Working tree restored to HEAD (no probe residue), no LSP diagnostics.\n\n{\"verdict\":\"COMPLETE\",\"items\":[{\"criterion\":\"AC1 govulncheck ./... exits 0 'No vulnerabilities found.' at HEAD, with the BEFORE state (exit 3: GO-2026-6089 net/http, GO-2026-6090 cr",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [],
+            "summary": "(auto-parsed from non-JSON response) All criteria verified with live command output. Working tree restored to HEAD (no probe residue), no LSP diagnostics.\n\n{\"verdict\":\"COMPLETE\",\"items\":[{\"criterion\":\"AC1 govulncheck ./... exits 0 'No vulnerabilities found.' at HEAD, with the BEFORE state (exit 3: GO-2026-6089 net/http, GO-2026-6090 cr"
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-033\n\nStage tier1: PASS\n    \u2713 secrets: \u001b[90m9:41PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mscanned ~951960 bytes (951.96 KB) in 345ms\u001b[0m\n\u001b[90m9:41PM\u001b[0m \u001b[32\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.531s\nok  \tgithub.com/coding-hermes/boardctl/in\n\nStage tier2: PASS\n  COMPLETE\n\n(auto-parsed from non-JSON response) All criteria verified with live command output. Working tree restored to HEAD (no probe residue), no LSP diagnostics.\n\n{\"verdict\":\"COMPLETE\",\"items\":[{\"criterion\":\"AC1 govulncheck ./... exits 0 'No vulnerabilities found.' at HEAD, with the BEFORE state (exit 3: GO-2026-6089 net/http, GO-2026-6090 cr\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T02:42:37.230171"
+}
