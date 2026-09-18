@@ -1,0 +1,20 @@
+name: Multi-Arch
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  multiarch:
+    # PILOT: pinned to the feature branch while the org workflow is in review.
+    # Flip to @main once coding-hermes/.github#1 lands.
+    uses: coding-hermes/.github/.github/workflows/go-multiarch.yml@feat/go-multiarch-ci
+    with:
+      binary: boardctl
+      main: ./cmd/boardctl
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
