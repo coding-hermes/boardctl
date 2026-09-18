@@ -13,11 +13,11 @@ The zero-dependency path: grab a static binary from
 [releases](../../releases) (linux/darwin/windows/freebsd × amd64/arm64/arm) —
 no Go toolchain needed. Verify the binary's checksum before running it:
 
-Current release: **v0.1.4**.
+Current release: **v0.1.5**.
 
 ```bash
-curl -sL -o boardctl-linux-amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.4/boardctl-linux-amd64
-curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.4/sha256sums.txt
+curl -sL -o boardctl-linux-amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/boardctl-linux-amd64
+curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/sha256sums.txt
 sha256sum -c --ignore-missing sha256sums.txt   # verify the binary you downloaded
 chmod +x boardctl-linux-amd64 && ./boardctl-linux-amd64 version
 ```
@@ -26,8 +26,8 @@ chmod +x boardctl-linux-amd64 && ./boardctl-linux-amd64 version
 ones you did not download (without it, `sha256sum -c` exits 1 on the absent
 files). The downloaded binary must keep its release filename for this to verify.
 
-The last line prints the binary's release identity — for a v0.1.4 asset it
-prints `boardctl version v0.1.4`. Release binaries are stamped from the release
+The last line prints the binary's release identity — for a v0.1.5 asset it
+prints `boardctl version v0.1.5`. Release binaries are stamped from the release
 tag, so the printed version must match the release you downloaded; a bare date
 stamp (e.g. `20260915`) or `dev` means the binary was not cut by `make release`
 from a tagged checkout (see [Development](#development)).
@@ -60,11 +60,11 @@ boardctl -C ~/myproject validate
 boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
                                    # (no .db/.parquet), header vs events ticks,
                                    # fixture orphans
-boardctl version                   # prints e.g. "boardctl version v0.1.4"
+boardctl version                   # prints e.g. "boardctl version v0.1.5"
                                    # (the release tag; a UTC date for release
                                    # builds from untagged checkouts, "dev" for
                                    # unstamped local builds)
-boardctl version --json            # {"version":"v0.1.4","build":"v0.1.4"}
+boardctl version --json            # {"version":"v0.1.5","build":"v0.1.5"}
                                    # ("build" is the raw build stamp)
 
 # create a task row (appends tasks.jsonl + task_created event)
@@ -309,13 +309,13 @@ The release identity must flow from the git tag into every shipped binary —
 the published v0.1.3 assets stamped `20260915` (a build date) instead of the
 release, which is exactly what this procedure prevents:
 
-1. Tag the release commit and push the tag: `git tag v0.1.4 && git push origin v0.1.4`.
+1. Tag the release commit and push the tag: `git tag v0.1.5 && git push origin v0.1.5`.
 2. `make release` from that tagged checkout. VERSION resolves via
    `git describe --tags --abbrev=0` (a UTC date only on checkouts with no
    tags), and every binary reports it: `./dist/boardctl-linux-amd64 version`
-   prints `boardctl version v0.1.4`. If the repo HAS tags but VERSION
+   prints `boardctl version v0.1.5`. If the repo HAS tags but VERSION
    resolved to a non-tag, the target FAILS instead of silently shipping a
-   date stamp; `make release VERSION=v0.1.4` overrides deliberately.
+   date stamp; `make release VERSION=v0.1.5` overrides deliberately.
 3. `make version-check` — verifies every release surface in README.md (the
    `Current release: **vX.Y.Z**` line and every `/releases/download/<tag>/`
    install URL) names the SAME tag, failing with the drifted values otherwise.
@@ -325,7 +325,7 @@ release, which is exactly what this procedure prevents:
    `dist/*` including `sha256sums.txt` as release assets.
 
 Scripts read the identity as JSON: `boardctl version --json` prints
-`{"version":"v0.1.4","build":"v0.1.4"}` — `build` is the raw build stamp and
+`{"version":"v0.1.5","build":"v0.1.5"}` — `build` is the raw build stamp and
 differs from `version` only when a binary was hand-stamped with a non-tag
 value while carrying an embedded tag.
 
