@@ -8,9 +8,8 @@ on:
 
 jobs:
   multiarch:
-    # PILOT: pinned to the feature branch while the org workflow is in review.
-    # Flip to @main once coding-hermes/.github#1 lands.
-    uses: coding-hermes/.github/.github/workflows/go-multiarch.yml@feat/go-multiarch-ci
+    # Org standard: coding-hermes/.github/.github/workflows/go-multiarch.yml
+    uses: coding-hermes/.github/.github/workflows/go-multiarch.yml@main
     with:
       binary: boardctl
       main: ./cmd/boardctl
