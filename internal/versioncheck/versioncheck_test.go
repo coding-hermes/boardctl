@@ -1,10 +1,22 @@
 package versioncheck
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
+)
+
+// The three files that carry the published asset naming + platform set, and the
+// released CLI name (the workflow's `binary:` input).
+const (
+	makefileName = "Makefile"
+	workflowName = ".github/workflows/multiarch.yml"
+	binaryName   = "boardctl"
 )
 
 // goodREADME is the shape the repo's real README has: one pin line, two
@@ -140,4 +152,125 @@ func TestVersioncheck(t *testing.T) {
 	if err := Check(readme); err != nil {
 		t.Fatalf("repo README failed the release-pin check:\n%v", err)
 	}
+	checkReleaseSurfaces(t, root)
 }
+
+// checkReleaseSurfaces pins the ONE published naming + platform set across the
+// three surfaces that must agree (BT-036). A tag-push cut and a `make release`
+// cut are supposed to be interchangeable, so the install block README documents,
+// the names the Makefile writes, and the platform list the CI workflow builds
+// cannot drift apart — that drift is what published a release whose asset names
+// README's `curl` block could not fetch.
+func checkReleaseSurfaces(t *testing.T, root string) {
+	t.Helper()
+
+	surfaces, err := ReadSurfaces(filepath.Join(root, READMEName))
+	if err != nil {
+		t.Fatalf("ReadSurfaces: %v", err)
+	}
+	if len(surfaces.PinTags) == 0 {
+		t.Fatal("no Current release pin line to read the published tag from")
+	}
+	tag := surfaces.PinTags[0]
+
+	readme := readRepoFile(t, root, READMEName)
+	mk := readRepoFile(t, root, makefileName)
+	wf := readRepoFile(t, root, workflowName)
+
+	// 1. README downloads exactly the names the release publishes: the
+	//    underscore asset form and the SHA256SUMS checksum file.
+	for _, want := range []string{
+		fmt.Sprintf("/releases/download/%s/%s_linux_amd64", tag, binaryName),
+		fmt.Sprintf("/releases/download/%s/SHA256SUMS", tag),
+	} {
+		if !strings.Contains(readme, want) {
+			t.Errorf("README install block does not download %q — the documented assets and the published assets must be the same set", want)
+		}
+	}
+	for _, stale := range []string{"sha256sums.txt", binaryName + "-linux-", binaryName + "-darwin-", binaryName + "-windows-", binaryName + "-freebsd-"} {
+		if strings.Contains(readme, stale) {
+			t.Errorf("README still names the retired asset spelling %q", stale)
+		}
+	}
+
+	// 2. `make release` writes those same names and the same checksum file.
+	if !strings.Contains(mk, "> SHA256SUMS") {
+		t.Errorf("Makefile release target does not write SHA256SUMS")
+	}
+	if !strings.Contains(mk, "$${os}_$${arch}") {
+		t.Errorf("Makefile release target does not build <binary>_${os}_${arch}: underscore names need brace-quoted shell variables, because `$os_$arch` parses as the shell variable `os_` and silently drops the arch")
+	}
+
+	// 3. The CI cut and the local cut build the SAME platforms in the SAME order.
+	want := makefilePlatforms(t, mk)
+	got := workflowPlatforms(t, wf)
+	if !slices.Equal(got, want) {
+		t.Errorf("CI platforms %v do not match the Makefile PLATFORMS %v — a tag-push cut would publish a different platform set than `make release`", got, want)
+	}
+
+	// 4. The tag push must actually trigger the workflow: a branches-only push
+	//    filter skips tag refs, so the Release job (tag refs only) never runs.
+	if !strings.Contains(wf, "tags:") {
+		t.Errorf("workflow %s has no `tags:` trigger — pushing a release tag would not run the release job at all", workflowName)
+	}
+}
+
+// readRepoFile reads one repo-relative file or fails the test.
+func readRepoFile(t *testing.T, root, rel string) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root, rel))
+	if err != nil {
+		t.Fatalf("read %s: %v", rel, err)
+	}
+	return string(data)
+}
+
+// makefilePlatforms extracts the GOOS/GOARCH list from the Makefile's
+// `PLATFORMS := \` continuation lines (tab-indented, backslash-continued).
+func makefilePlatforms(t *testing.T, mk string) []string {
+	t.Helper()
+	lines := strings.Split(mk, "\n")
+	start := -1
+	for i, l := range lines {
+		if strings.HasPrefix(l, "PLATFORMS :=") {
+			start = i + 1
+			break
+		}
+	}
+	if start == -1 {
+		t.Fatalf("Makefile has no PLATFORMS list")
+	}
+	var out []string
+	for _, l := range lines[start:] {
+		if !strings.HasPrefix(l, "	") {
+			break
+		}
+		for _, f := range strings.Fields(l) {
+			if f == `\` {
+				continue
+			}
+			out = append(out, f)
+		}
+	}
+	if len(out) == 0 {
+		t.Fatalf("Makefile PLATFORMS list is empty")
+	}
+	return out
+}
+
+// workflowPlatforms parses the workflow's explicit `platforms:` JSON array.
+func workflowPlatforms(t *testing.T, wf string) []string {
+	t.Helper()
+	m := workflowPlatformsRe.FindStringSubmatch(wf)
+	if m == nil {
+		t.Fatalf("workflow %s has no explicit `platforms: '[…]'` input — it would build the reusable workflow's default platform set instead of the Makefile's", workflowName)
+	}
+	var out []string
+	if err := json.Unmarshal([]byte(m[1]), &out); err != nil {
+		t.Fatalf("workflow platforms %s is not a JSON array: %v", m[1], err)
+	}
+	return out
+}
+
+// workflowPlatformsRe matches the single-quoted JSON platforms input.
+var workflowPlatformsRe = regexp.MustCompile(`(?m)^\s*platforms: '(\[[^']*\])'`)

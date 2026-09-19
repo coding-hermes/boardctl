@@ -49,6 +49,12 @@ vuln-check:
 vet:
 	go vet ./...
 
+# BT-036: the asset names this target emits are the CI names — the org
+# multi-arch workflow (.github/workflows/multiarch.yml) builds
+# `${binary}_${goos}_${goarch}${ext}` and publishes dist/SHA256SUMS, so a
+# `make release` cut and a tag-push cut are interchangeable byte-name-for-name.
+# Changing PLATFORMS means changing the workflow's `platforms:` input too.
+#
 # BT-030 guard: fail loudly instead of silently shipping a date-stamped
 # release when the repo HAS tags — that is exactly the v0.1.3 bug this
 # task fixes (published binaries said 20260915, not v0.1.3). Escaping the
@@ -62,6 +68,7 @@ release: test
 		fi; \
 	fi
 	@echo "== release VERSION=$(VERSION)"
+	@rm -rf $(DIST)   # a stale dist/ would ship leftover names as extra assets
 	@mkdir -p $(DIST)
 	@for platform in $(PLATFORMS); do \
 		os=$${platform%/*}; arch=$${platform#*/}; \
@@ -69,9 +76,9 @@ release: test
 		echo "== $$os/$$arch"; \
 		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -trimpath \
 			-ldflags "-s -w -X main.version=$(VERSION)" \
-			-o $(DIST)/$(BINARY)-$$os-$$arch$$ext $(CMD) || exit 1; \
+			-o $(DIST)/$(BINARY)_$${os}_$${arch}$${ext} $(CMD) || exit 1; \
 	done
-	@cd $(DIST) && sha256sum $(BINARY)-* > sha256sums.txt
+	@cd $(DIST) && sha256sum $(BINARY)_* > SHA256SUMS
 	@echo "release artifacts in $(DIST)/"
 
 clean:

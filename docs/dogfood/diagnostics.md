@@ -124,10 +124,10 @@ Second dogfood run against HEAD `237e594` (post v0.1.2). Full report:
   validate+doctor OK on the cloned board, init→create→update smoke OK.
   One lesson for future dogfooders: never `git add -A` a board copy —
   the untracked `board.db` comes along and doctor (correctly) fails it.
-- **Skipped-leg reminder:** `sha256sums.txt` from the README flow only
+- **Skipped-leg reminder:** `SHA256SUMS` from the README flow only
   verifies files still present; if a release ever drops the checksum
   asset again (the v0.1.1 failure, BT-008), `curl -sL` writes the 404
-  JSON page to `sha256sums.txt` and `sha256sum -c` fails with
+  JSON page to `SHA256SUMS` and `sha256sum -c` fails with
   "no file was verified" — that failure mode is the canary, not noise.
 
 ## What a new agent should check when picking this project up

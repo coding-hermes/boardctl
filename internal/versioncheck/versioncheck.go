@@ -13,6 +13,13 @@
 //   - the `Current release: **vX.Y.Z**` pin line
 //   - every `/releases/download/<tag>/` asset URL in the install block
 //
+// In-process, TestVersioncheck additionally pins the ONE published asset-naming
+// and platform set across the three surfaces that must agree (BT-036): README's
+// install block downloads (`<binary>_<goos>_<goarch>`, `SHA256SUMS`), the
+// Makefile `release` target that writes them, and the CI workflow's `platforms:`
+// input plus its tag trigger. Drift there is what shipped a release whose asset
+// names README's `curl` block could not fetch.
+//
 // This package is a CHECK, never a rewriter: nothing here modifies files.
 // It is pure filesystem + string work: no network calls, no git invocation
 // (CI checkouts are shallow and may lack tags; the README is always there).

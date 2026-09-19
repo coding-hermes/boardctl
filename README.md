@@ -10,29 +10,35 @@ no cache files, no parity probes. What git tracks is what you get.
 ## Install
 
 The zero-dependency path: grab a static binary from
-[releases](../../releases) (linux/darwin/windows/freebsd × amd64/arm64/arm) —
-no Go toolchain needed. Verify the binary's checksum before running it:
+[releases](../../releases) (linux amd64/arm64/arm, darwin amd64/arm64, windows
+amd64, freebsd amd64) — no Go toolchain needed. Verify the binary's checksum
+before running it:
 
-Current release: **v0.1.5**.
+Current release: **v0.1.6**.
 
 ```bash
-curl -sL -o boardctl-linux-amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/boardctl-linux-amd64
-curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/sha256sums.txt
-sha256sum -c --ignore-missing sha256sums.txt   # verify the binary you downloaded
-chmod +x boardctl-linux-amd64 && ./boardctl-linux-amd64 version
+curl -sL -o boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.6/boardctl_linux_amd64
+curl -sL -o SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/v0.1.6/SHA256SUMS
+sha256sum -c --ignore-missing SHA256SUMS   # verify the binary you downloaded
+chmod +x boardctl_linux_amd64 && ./boardctl_linux_amd64 version
 ```
 
-`sha256sums.txt` lists every published platform, so `--ignore-missing` skips the
+Assets are named `<binary>_<goos>_<goarch>` (underscores; `.exe` on windows,
+e.g. `boardctl_windows_amd64.exe`) plus the `SHA256SUMS` checksum file. Both cut
+paths emit exactly these names: the tag-push CI cut and the offline
+`make release` (see [Cutting a release](#cutting-a-release-bt-030)).
+
+`SHA256SUMS` lists every published platform, so `--ignore-missing` skips the
 ones you did not download (without it, `sha256sum -c` exits 1 on the absent
 files). The downloaded binary must keep its release filename for this to verify.
 
-The last line prints the binary's release identity — for a v0.1.5 asset it
-prints `boardctl version v0.1.5`. Release binaries are stamped from the release
+The last line prints the binary's release identity — for a v0.1.6 asset it
+prints `boardctl version v0.1.6`. Release binaries are stamped from the release
 tag, so the printed version must match the release you downloaded; a bare date
-stamp (e.g. `20260915`) or `dev` means the binary was not cut by `make release`
-from a tagged checkout (see [Development](#development)).
+stamp (e.g. `20260915`) or `dev` means the binary was not cut from a tagged
+checkout (see [Development](#development)).
 
-Move `boardctl` somewhere on your `PATH` (or invoke it as `./boardctl-linux-amd64`).
+Move `boardctl` somewhere on your `PATH` (or invoke it as `./boardctl_linux_amd64`).
 
 With a Go toolchain, `go install` works too:
 
@@ -60,11 +66,11 @@ boardctl -C ~/myproject validate
 boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
                                    # (no .db/.parquet), header vs events ticks,
                                    # fixture orphans
-boardctl version                   # prints e.g. "boardctl version v0.1.5"
+boardctl version                   # prints e.g. "boardctl version v0.1.6"
                                    # (the release tag; a UTC date for release
                                    # builds from untagged checkouts, "dev" for
                                    # unstamped local builds)
-boardctl version --json            # {"version":"v0.1.5","build":"v0.1.5"}
+boardctl version --json            # {"version":"v0.1.6","build":"v0.1.6"}
                                    # ("build" is the raw build stamp)
 
 # create a task row (appends tasks.jsonl + task_created event).
@@ -257,6 +263,13 @@ dedupe-board --board-dir ~/myproject            # report only, zero writes
 dedupe-board --board-dir ~/myproject --apply    # collapse the groups
 ```
 
+`dedupe-board` is **source-only** — it is a second entrypoint, not a release
+asset (every published asset is the `boardctl` CLI). Install it from the module:
+
+```bash
+go install github.com/coding-hermes/boardctl/cmd/dedupe-board@latest
+```
+
 Per group (≥ 2 open rows sharing a fingerprint) it keeps the earliest row, closes
 the rest with `worker_summary="merged into <kept>: dedupe backfill <date>"`,
 carries the merged evidence onto the kept row, and writes one `audit` event.
@@ -292,7 +305,7 @@ git diffs stay minimal and byte-stable.
 | Path | Purpose |
 |------|---------|
 | `cmd/boardctl/` | CLI entrypoint (`main.go`) |
-| `cmd/dedupe-board/` | SG-126 one-shot dedupe backfill (dry-run by default) |
+| `cmd/dedupe-board/` | SG-126 one-shot dedupe backfill (dry-run by default; source-only — `go install github.com/coding-hermes/boardctl/cmd/dedupe-board@latest`) |
 | `internal/board/` | Board engine — read/write/validate/doctor/init plus JSONL style handling |
 | `docs/board-fingerprint-rules.md` | Finding-fingerprint rule, evidence-over-refile, backfill usage |
 | `.coding-hermes/board/` | This repo's own dogfood board (`tasks.jsonl`, `events.jsonl`, `board.jsonl`, `fixtures.jsonl`) |
@@ -324,7 +337,7 @@ go test ./...
 make fmt-check        # gofmt gate (CI enforces it too); `make fmt` fixes
 make version-check    # README release-pin gate (CI enforces it too)
 make vuln-check       # dependency-vulnerability gate (CI enforces it too)
-make release          # cross-compile all targets into dist/
+make release          # cross-compile all targets into dist/ (same asset names + SHA256SUMS the CI cut publishes)
 ```
 
 `make vuln-check` (BT-033) runs `govulncheck` over the module and fails on any
@@ -349,35 +362,56 @@ toolchain, fails this gate. With `GOTOOLCHAIN=auto` (the default) the pinned
 patch toolchain is fetched automatically. Do not lower the directive to
 silence the gate; raise it to the patched release instead.
 
-`make release` is the only sanctioned path for cutting a release — it builds
-every target and generates `dist/sha256sums.txt`, which must be uploaded as a
-release asset alongside the binaries. Cutting a release by hand (tag + manual
-asset upload) skips the checksum file; that is how v0.1.1 shipped without one
-(BT-008).
+Cutting a release is one command: push a `vX.Y.Z` tag. The repo's
+[`.github/workflows/multiarch.yml`](.github/workflows/multiarch.yml) calls the
+org reusable multi-arch workflow (`coding-hermes/.github`), which cross-builds
+every published target, writes `SHA256SUMS`, attests build provenance and
+creates the GitHub release. `make release` is the offline/local equivalent and
+emits the SAME asset names (see the procedure below). Never cut a release by
+hand (tag + manual asset upload) without its checksum file — that is how v0.1.1
+shipped without one (BT-008).
 
 ### Cutting a release (BT-030)
 
 The release identity must flow from the git tag into every shipped binary —
 the published v0.1.3 assets stamped `20260915` (a build date) instead of the
-release, which is exactly what this procedure prevents:
+release, which is exactly what this procedure prevents. The tag-push CI path is
+the primary cut:
 
-1. Tag the release commit and push the tag: `git tag v0.1.5 && git push origin v0.1.5`.
-2. `make release` from that tagged checkout. VERSION resolves via
-   `git describe --tags --abbrev=0` (a UTC date only on checkouts with no
-   tags), and every binary reports it: `./dist/boardctl-linux-amd64 version`
-   prints `boardctl version v0.1.5`. If the repo HAS tags but VERSION
-   resolved to a non-tag, the target FAILS instead of silently shipping a
-   date stamp; `make release VERSION=v0.1.5` overrides deliberately.
-3. `make version-check` — verifies every release surface in README.md (the
+1. Move every README release surface to the new tag — the
    `Current release: **vX.Y.Z**` line and every `/releases/download/<tag>/`
-   install URL) names the SAME tag, failing with the drifted values otherwise.
-   CI runs the identical check on every push and PR.
-4. Update README's release pins to the new tag (the `Current release:` line
-   and the install `curl` URLs), re-run `make version-check`, then upload
-   `dist/*` including `sha256sums.txt` as release assets.
+   install URL — then run `make version-check`, which FAILS naming the drifted
+   values until they all agree (CI runs the identical check on every push and
+   PR). Commit and push `main`.
+2. Tag the release commit and push the tag:
+   `git tag v0.1.6 && git push origin v0.1.6`. The tag push triggers
+   `.github/workflows/multiarch.yml`, whose Release job runs on tag refs only:
+   it cross-builds the platform set in the workflow's `platforms:` input
+   (`boardctl_<goos>_<goarch>`, `.exe` on windows), writes `SHA256SUMS`,
+   attests provenance, and publishes the release. Push the branch too — the
+   Release job runs on the tag ref and the tag must point at a pushed commit.
+3. Verify the published release: `gh release view v0.1.6` lists the seven
+   platform binaries plus `SHA256SUMS`; then download per the install block and
+   confirm the identity — `./boardctl_linux_amd64 version` prints
+   `boardctl version v0.1.6`.
+4. Offline / local equivalent, when CI cannot publish: `make release` from the
+   tagged checkout. VERSION resolves via `git describe --tags --abbrev=0` (a UTC
+   date only on checkouts with no tags), and every binary reports it:
+   `./dist/boardctl_linux_amd64 version` prints `boardctl version v0.1.6`. If
+   the repo HAS tags but VERSION resolved to a non-tag, the target FAILS instead
+   of silently shipping a date stamp; `make release VERSION=v0.1.6` overrides
+   deliberately. It writes the same underscore names and `dist/SHA256SUMS` the
+   CI job publishes, so publish them verbatim:
+
+   ```bash
+   gh release create v0.1.6 --title v0.1.6 --generate-notes --verify-tag dist/*
+   ```
+
+   Never delete and re-push a tag to re-cut a release: that re-drafts the
+   published release.
 
 Scripts read the identity as JSON: `boardctl version --json` prints
-`{"version":"v0.1.5","build":"v0.1.5"}` — `build` is the raw build stamp and
+`{"version":"v0.1.6","build":"v0.1.6"}` — `build` is the raw build stamp and
 differs from `version` only when a binary was hand-stamped with a non-tag
 value while carrying an embedded tag.
 

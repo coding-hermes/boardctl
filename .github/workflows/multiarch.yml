@@ -3,6 +3,10 @@ name: Multi-Arch
 on:
   push:
     branches: [main]
+    # The tag push IS the release cut: the reusable workflow's release job only
+    # runs on a tag ref, so without this trigger a `git push origin vX.Y.Z`
+    # would never publish anything.
+    tags: ["v*"]
   pull_request:
     branches: [main]
 
@@ -13,6 +17,14 @@ jobs:
     with:
       binary: boardctl
       main: ./cmd/boardctl
+      # Makefile parity: the reusable workflow's default platform list drops
+      # linux/arm and freebsd/amd64 (and adds windows/arm64), so the CI release
+      # would publish a different platform set than `make release`. Keep these
+      # two lists identical; the asset name is generated as
+      # ${binary}_${goos}_${goarch}${ext} (underscores, .exe on windows) and the
+      # checksum file is SHA256SUMS — the same names README's install block
+      # downloads and `make release` writes into dist/.
+      platforms: '["linux/amd64","linux/arm64","linux/arm","darwin/amd64","darwin/arm64","windows/amd64","freebsd/amd64"]'
     permissions:
       contents: write
       id-token: write
