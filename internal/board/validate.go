@@ -249,7 +249,17 @@ func (b *Board) validateEvents(rep *Report) error {
 // Works in BOTH topologies (BT-010): the header is read via headerPathFor —
 // board.jsonl line 1 on topology A, tasks.jsonl line 1 on topology B — with
 // findings worded for whichever file carries it.
+//
+// BT-037: a HEADERLESS board (no board.jsonl, tasks.jsonl line 1 is an
+// ordinary task row) has no header to check. Reading that task row as if it
+// were a header invented three false "not an integer counter" errors on a
+// clean board, so the counter checks are skipped with ONE informational line
+// instead.
 func (b *Board) validateHeader(rep *Report) error {
+	if !b.HasHeader() {
+		rep.Add("warn", "headerless board (no board.jsonl): tasks.jsonl line 1 is a task row, not board metadata — no header to validate; header counter checks skipped")
+		return nil
+	}
 	headerPath := b.headerPathFor()
 	name := filepath.Base(headerPath)
 	lines, err := ReadJSONLLines(headerPath)

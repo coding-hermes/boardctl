@@ -104,7 +104,34 @@ boardctl -C ~/myproject event --type audit --tick 42 --detail-text 'tick 42 summ
 # read/patch the board.jsonl header
 boardctl -C ~/myproject header --json
 boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
+# on a board with NO header (no board.jsonl and line 1 of tasks.jsonl is a
+# task row) both forms refuse with "no header on this board" (exit 1) —
+# nothing is written, so a header write can never land in a task row
 ```
+
+### Headerless boards
+
+A board can hold just `tasks.jsonl` + `events.jsonl` with no `board.jsonl` and
+no metadata row — line 1 is an ordinary task row (real case:
+`coding-hermes-tools`). That is a **headerless** board: it has no header to
+read and no header row to rewrite.
+
+```
+boardctl -C <dir> header --set-ticks-total 90   # refused, exit 1,
+                                                # "no header on this board"
+boardctl -C <dir> header --json                 # refused the same way
+boardctl -C <dir> validate                      # exit 0 with one
+                                                # [warn] headerless board
+                                                # (no board.jsonl) line
+```
+
+Reads are unaffected (`list`, `show`, `stats`, `render`, `doctor`, `create`,
+`update`, `event` all work — line 1 is enumerated as the task it is), and
+`validate`/`doctor` skip the header counter checks with that one note instead
+of reporting a task row as a malformed header. Both the refusal and the note
+are gated on line 1's SHAPE: a legacy **topology-B** board (line 1 *is* a
+header object) stays fully writable, and the write path additionally refuses to
+stamp header keys into any row carrying `id`/`title`/`status`.
 
 ### serve
 
@@ -351,6 +378,14 @@ Both topologies are FULLY WRITABLE (BT-010): on topology B the header is read
 from and rewritten on line 1 of `tasks.jsonl`, task rows are appended after
 it, and `validate`/`doctor` check the line-1 header counters the same way
 they do on topology A. `init` remains for fresh boards only.
+
+A third, degenerate layout is a **HEADERLESS** board: no `board.jsonl` AND
+line 1 of `tasks.jsonl` is not a header object but an ordinary task row. It
+has no header, so `header` refuses to read or write one (exit 1, "no header on
+this board"), `validate`/`doctor` note it and skip the header counter checks,
+and every other command treats line 1 as the task it is. The distinction from
+topology B is line 1's SHAPE, and the write path refuses on top of it: a
+header key is never written into a row carrying `id`/`title`/`status`.
 
 Writes are append-only for `events.jsonl`; task-row updates rewrite
 `tasks.jsonl` preserving each line's original serialization style (detected

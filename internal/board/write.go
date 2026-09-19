@@ -1066,7 +1066,15 @@ func embedDetail(content []byte, s Style) []byte {
 // the header already reports n or higher (never regresses the counter).
 // Works on both topologies — SetHeader targets line 1 of board.jsonl (A) or
 // tasks.jsonl (B).
+//
+// BT-037: on a HEADERLESS board there is no counter to keep fresh, so this is
+// a no-op — `event --tick` must still append to such a board (the event row
+// is the record), never fail because a header bump was attempted in a file
+// full of task rows.
 func (b *Board) bumpHeaderTicksTotal(n int64) error {
+	if !b.HasHeader() {
+		return nil
+	}
 	hdr, err := b.HeaderRow()
 	if err != nil {
 		return err
@@ -1096,7 +1104,17 @@ type HeaderUpdate struct {
 // another timestamp field on the header, else the spec default — so the
 // header's staleness never misleads drift consumers. Nothing is written when
 // validation fails.
+//
+// BT-037: on a HEADERLESS board (no board.jsonl, line 1 of tasks.jsonl is an
+// ordinary task row) this REFUSES with ErrNoHeader — the whole point of the
+// function is byte-preserving surgery on non-target rows, and rewriting line 1
+// there would corrupt a task. The refusal is unconditional, below the
+// task-shape guard, so no topology verdict can route a header key into a row
+// that carries id/title/status.
 func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
+	if !b.HasHeader() {
+		return nil, b.noHeaderError()
+	}
 	headerPath := b.headerPathFor()
 	lines, err := ReadJSONLLines(headerPath)
 	if err != nil {
@@ -1118,6 +1136,14 @@ func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
 	}
 	if header == nil {
 		return nil, fmt.Errorf("%s is empty", filepath.Base(headerPath))
+	}
+	// BT-037 hard guard: never stamp header keys into a row that carries task
+	// identity keys. Belt and braces behind HasHeader — if a board was
+	// classified topology B because line 1 was unparseable at resolve time
+	// yet parses now as a task row, this still refuses before any mutation.
+	if rowIsTaskShape(header) {
+		return nil, fmt.Errorf("%w: line %d of %s is the TASK row %q (it carries id/title/status) — refusing to write header keys (ticks_total/ticks_idle/last_commit/updated_at) into a task row",
+			ErrNoHeader, headerIdx+1, filepath.Base(headerPath), header.String("id"))
 	}
 	if u.TicksTotal == nil && u.TicksIdle == nil && u.LastCommit == nil {
 		return nil, fmt.Errorf("header requires at least one --set flag (--set-ticks-total/--set-ticks-idle/--set-last-commit)")

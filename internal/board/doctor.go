@@ -101,7 +101,16 @@ func findRepoRoot(dir string) string {
 // Events without a numeric tick_number (legacy rows) are ignored;
 // header/event read failures are skipped because Validate already itemized
 // them.
+//
+// BT-037: a HEADERLESS board has no counters to compare, so the cross-check
+// is skipped with a note naming why — the drift ERROR (which would propose
+// `boardctl header --set-ticks-total`, a command that now refuses) must never
+// be emitted for a board that carries no header.
 func (b *Board) doctorHeaderVsEvents(rep *Report) {
+	if !b.HasHeader() {
+		rep.Add("warn", "headerless board (no board.jsonl): no header counters to compare — header-vs-events tick drift checks skipped")
+		return
+	}
 	rows, _, err := ReadAllRows(b.eventsPath)
 	if err != nil {
 		return // validate already reported the events read failure

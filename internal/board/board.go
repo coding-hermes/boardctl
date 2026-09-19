@@ -1,6 +1,7 @@
 package board
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -20,6 +21,12 @@ type Board struct {
 	tasksPath    string // tasks.jsonl
 	eventsPath   string // events.jsonl
 	fixturesPath string // fixtures.jsonl (optional)
+
+	// headerless marks a board with NO board.jsonl whose tasks.jsonl line 1
+	// is not header-shaped (BT-037) — a board holding just task rows. The
+	// topology stays "B" (there is no board.jsonl), but header reads and
+	// writes refuse instead of treating line 1 of tasks.jsonl as the header.
+	headerless bool
 }
 
 // ErrBoardNotFound is wrapped with the directories probed. It is also the
@@ -27,6 +34,13 @@ type Board struct {
 // missing — BT-026), so the CLI keeps the documented exit-2 class for that
 // case while the wrapped text names the detected file and the missing one.
 var ErrBoardNotFound = errors.New("no JSONL foreman board found")
+
+// ErrNoHeader is the sentinel for a HEADERLESS board: no board.jsonl AND
+// tasks.jsonl line 1 is an ordinary task row rather than board metadata
+// (BT-037). Such a board has no header to read and no header row to rewrite,
+// so every header operation refuses loudly instead of stamping header keys
+// (ticks_total/ticks_idle/last_commit/updated_at) into a TASK row.
+var ErrNoHeader = errors.New("no header on this board")
 
 // boardDirCandidates lists the directories Resolve probes for a
 // tasks.jsonl+events.jsonl pair, in order. For an ordinary target (a repo
@@ -91,7 +105,16 @@ func Resolve(target string) (*Board, error) {
 				b.Topology = "A"
 				b.headerPath = header
 			} else {
+				// BT-037: topology B means "the header is line 1 of
+				// tasks.jsonl" — but only when that line is header-SHAPED.
+				// A board with no board.jsonl whose line 1 is an ordinary
+				// task row is HEADERLESS: classifying it as writable
+				// topology B is exactly what let `header --set-*` rewrite a
+				// task row. Reads keep working (task enumeration skips line
+				// 1 only when it IS header-shaped), header operations
+				// refuse.
 				b.Topology = "B"
+				b.headerless = !boardHasLineOneHeader(tasks)
 			}
 			return b, nil
 		}
@@ -119,6 +142,48 @@ func fileExists(p string) bool {
 	return err == nil && !st.IsDir()
 }
 
+// firstNonBlankLine returns the first non-blank line of a file, trimmed of
+// surrounding whitespace and without its terminating newline. ok is false for
+// an unreadable, empty, or all-blank file. Only the first line is read, so the
+// probe stays cheap on large boards.
+func firstNonBlankLine(path string) ([]byte, bool) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, false
+	}
+	defer f.Close()
+	r := bufio.NewReader(f)
+	for {
+		line, err := r.ReadBytes('\n')
+		if trimmed := bytes.TrimSpace(line); len(trimmed) > 0 {
+			return trimmed, true
+		}
+		if err != nil {
+			return nil, false
+		}
+	}
+}
+
+// boardHasLineOneHeader reports whether line 1 of tasks.jsonl is a board
+// header row (metadata without a task id) — the topology-B header location.
+//
+// An empty/all-blank file has no header. An UNPARSEABLE line 1 is reported as
+// "yes" on purpose: it is not classified as headerless, so the read and write
+// paths surface the parse failure itself (the pretty-printed-JSON hint, a
+// truncated line, ...) instead of masking it with a shape verdict, and
+// SetHeader's task-row guard still refuses to touch any row carrying task keys.
+func boardHasLineOneHeader(tasksPath string) bool {
+	line, ok := firstNonBlankLine(tasksPath)
+	if !ok {
+		return false
+	}
+	row, err := ParseRow(line)
+	if err != nil {
+		return true
+	}
+	return rowIsHeaderShape(row)
+}
+
 // TasksPath / EventsPath / HeaderPath / FixturesPath expose the tracked file
 // paths (fixtures is "" when absent).
 func (b *Board) TasksPath() string  { return b.tasksPath }
@@ -138,8 +203,34 @@ func (b *Board) FixturesPath() string {
 // topology-B header).
 func (b *Board) IsTopologyA() bool { return b.Topology == "A" }
 
+// HasHeader reports whether the board carries a header row: always true on
+// topology A (board.jsonl), and on topology B only when line 1 of
+// tasks.jsonl is header-shaped. A board with neither (no board.jsonl, line 1
+// is a task row — BT-037) is HEADERLESS: reads still work, header operations
+// refuse.
+func (b *Board) HasHeader() bool { return !b.headerless }
+
+// noHeaderError builds the "no header on this board" refusal for a headerless
+// board, naming the file and the task row that a header operation would
+// otherwise corrupt.
+func (b *Board) noHeaderError() error {
+	name := filepath.Base(b.tasksPath)
+	if line, ok := firstNonBlankLine(b.tasksPath); ok {
+		if row, err := ParseRow(line); err == nil {
+			if id := row.String("id"); id != "" {
+				return fmt.Errorf("%w: %s holds no board.jsonl and line 1 of %s is the TASK row %q — a header operation there would rewrite that task row, so it is refused (create a board.jsonl header, or run 'boardctl init' on a fresh board)",
+					ErrNoHeader, b.Dir, name, id)
+			}
+		}
+	}
+	return fmt.Errorf("%w: %s holds no board.jsonl and line 1 of %s is not a board header row — nothing to read or rewrite (create a board.jsonl header, or run 'boardctl init' on a fresh board)",
+		ErrNoHeader, b.Dir, name)
+}
+
 // headerPathFor returns the file that carries the board header: board.jsonl
-// on topology A, tasks.jsonl (line 1) on topology B.
+// on topology A, tasks.jsonl (line 1) on topology B. It is only meaningful
+// when HasHeader() is true — callers that write must check first (SetHeader
+// does), because on a headerless board this path is a file full of TASK rows.
 func (b *Board) headerPathFor() string {
 	if b.IsTopologyA() {
 		return b.headerPath
@@ -154,6 +245,13 @@ func (b *Board) headerPathFor() string {
 func rowIsHeaderShape(row *Row) bool {
 	return row.String("id") == "" &&
 		(row.Has("project") || row.Has("namespace") || row.Has("version") || row.Has("ticks_total"))
+}
+
+// rowIsTaskShape reports whether a parsed row carries task identity keys.
+// BT-037: SetHeader's hard guard uses it — a header rewrite must never land
+// in a row that also holds id/title/status, whatever the topology says.
+func rowIsTaskShape(row *Row) bool {
+	return row.Has("id") || row.Has("title") || row.Has("status")
 }
 
 // skipTaskLine reports whether the raw line at lines[idx] is a header row
@@ -283,7 +381,14 @@ func ReadAllRows(path string) (rows []*Row, raws [][]byte, err error) {
 // metadata row that shares the file with the task rows. BT-010: topology B
 // is fully writable (SetHeader rewrites line 1 in place), so the header is
 // read the same way in both topologies.
+//
+// BT-037: a HEADERLESS board (no board.jsonl, line 1 of tasks.jsonl is a task
+// row) has no header to read — it fails with ErrNoHeader rather than handing
+// a task row back as if it were the header.
 func (b *Board) HeaderRow() (*Row, error) {
+	if !b.HasHeader() {
+		return nil, b.noHeaderError()
+	}
 	path := b.headerPathFor()
 	lines, err := ReadJSONLLines(path)
 	if err != nil {
