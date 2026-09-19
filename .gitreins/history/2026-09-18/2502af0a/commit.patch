@@ -1,0 +1,1991 @@
+commit 562659e06024ff15c5405f41effe76710be86ef0
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 18 07:13:47 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 18 07:13:47 2026 -0500
+
+    feat(board): SG-126 finding-fingerprint dedupe gate + one-shot backfill
+    
+    QA/dogfood lanes re-filed the same finding 3-8x: a fresh id against a
+    recycled (or suffix-variant) title, so every create succeeded and the board
+    grew while the real finding count stayed flat. Rows now carry a finding
+    fingerprint — sha256hex(normalize(title) || 0x1F || normalize(reasoning)) —
+    stored INSIDE the existing detail field (no new column, no migration, no
+    change to any other field), with the row's original prose preserved under
+    "text" and unknown keys of an object-form detail kept verbatim.
+    
+    - Board.Create refuses a row whose fingerprint is already OPEN and returns
+      *ErrDuplicateFinding (existing id + digest) instead of appending. The
+      refusal is durable: a task_evidence event lands on the EXISTING row
+      ({"existing_task_id","new_id_attempted","fingerprint","evidence":
+      {"run_id","ts"}}). --force still files a variant deliberately (the variant
+      is fingerprinted too, so a later accidental re-file is caught). Fresh rows
+      are fingerprinted at create time; --evidence-run-id records the run.
+    - normalize(): lowercase, strip a leading recycled QA-/DF-/DOGFOOD-<PROJ>-N
+      token, collapse whitespace, strip trailing (recurrence N) / (Nth) /
+      [run-id-N] markers; a leading priority tag stays part of the identity, so
+      an escalation is a distinct finding.
+    - Both live reasoning shapes are handled: plain string, and the qa-dagger
+      object form {"note": ...}.
+    - The import/raw path is untouched: exported rows still land byte-for-byte,
+      so export/import round-trip semantics are unchanged.
+    - OpenFindingStatuses = pending, in_progress, dispatched, blocked, review.
+      Anything else (complete, failed, duplicate, an unknown spelling) never
+      suppresses a create — the gate fails open.
+    - OpenFingerprints() (read.go) exposes id -> stored digest for the gate;
+      task_evidence joins the event-type vocabulary.
+    
+    cmd/dedupe-board: the one-shot backfill for the duplicates already on disk.
+    DRY-RUN by default, ONE board per run (--board-dir is required; there is no
+    fleet sweep), --lanes is a guard that refuses any other lane (exit 2). Per
+    collision group it keeps the EARLIEST row, closes the rest with
+    worker_summary "merged into <kept>: dedupe backfill <date>", carries the
+    merged rows' evidence onto the kept row, and appends one audit event per
+    group. Group members are selected by LINE INDEX, not by id: live QA boards
+    repeat an id across several lines (11 of the 11 merged-away rows on
+    hivemind-work are same-id rows), so an id-keyed selection would keep both and
+    merge neither. Untouched lines round-trip byte-identical (asserted before the
+    write) and a second --apply is a no-op.
+    
+    Tests (internal/board/write_test.go): dedupe-on-fingerprint (suffix-variant
+    re-file refused, existing row byte-identical, exactly one task_evidence
+    event), grandfathered open row (no false match), --force override, backfill
+    merge of a 3-row group (kept/merged/evidence/audit + closed and unrelated
+    lines byte-identical + idempotent re-apply), dry-run byte-idempotence,
+    duplicate-id collapse by line index, and normalizer / object-reasoning units.
+    
+    Verification: go build ./... , go vet ./... , gofmt clean, go test -short
+    -count=1 ./... all green (7 new tests + 2 units). RED proof: reverting only
+    the Create gate makes TestCreate_DedupeOnFingerprint and
+    TestCreate_GrandfatherExistingOpenRow fail naming the missing suppression
+    (TestCreate_ForceOverride still passes); restored byte-identical, then green.
+    golangci-lint reports the same 49 pre-existing issues as HEAD (errcheck 42,
+    staticcheck 5, unused 2) and none in the new files. Live evidence: the gate
+    through the built CLI on a scratch board (exit 2 + the bare
+    DUPLICATE-SUPPRESSED line on stderr, 0 new rows, 1 task_evidence event); a
+    read-only dry-run sweep over 45 fleet boards found real collision groups on
+    hivemind-work (9), musterflow (2), rabbit-hole (1) and hermes-canopy (1) —
+    musterflow and rabbit-hole are paused lanes named in the 09-16 re-enable
+    report — and fail-closed (exit 1, no writes) on the three boards that do not
+    parse (consensus, ring-runner, speclang), each of which already fails
+    boardctl validate at HEAD.
+    
+    Addresses SCHED-GAP-126.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ README.md                       |  54 +++-
+ cmd/boardctl/main.go            |  35 ++-
+ cmd/dedupe-board/main.go        | 164 ++++++++++++
+ docs/board-fingerprint-rules.md | 150 +++++++++++
+ internal/board/backfill.go      | 315 +++++++++++++++++++++++
+ internal/board/fingerprint.go   | 343 +++++++++++++++++++++++++
+ internal/board/read.go          |  31 +++
+ internal/board/write.go         |  95 +++++++
+ internal/board/write_test.go    | 552 ++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 1727 insertions(+), 12 deletions(-)
+
+diff --git a/README.md b/README.md
+index 8831f97..2d95655 100644
+--- a/README.md
++++ b/README.md
+@@ -67,9 +67,13 @@ boardctl version                   # prints e.g. "boardctl version v0.1.5"
+ boardctl version --json            # {"version":"v0.1.5","build":"v0.1.5"}
+                                    # ("build" is the raw build stamp)
+ 
+-# create a task row (appends tasks.jsonl + task_created event)
++# create a task row (appends tasks.jsonl + task_created event).
++# A re-detected finding is REFUSED (exit 2) unless --force; see
++# "Finding fingerprints" below.
+ boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
+     --reasoning "Idempotent retry with backoff" --capability-tags go,net
++boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
++    --reasoning "Idempotent retry with backoff" --evidence-run-id qa-2026-09-18T04:11Z
+ 
+ # update a task row (status flip + completion event; --commit-hash stays on
+ # the task row — the header drift pointer only moves via `header --set-last-commit`)
+@@ -212,6 +216,52 @@ boardctl -C ~/myproject create --id "bad id!" --title x --force  # written
+ boardctl -C ~/myproject doctor    # ... task id "bad id!" does not match ... (warn)
+ ```
+ 
++## Finding fingerprints (SG-126)
++
++QA and dogfood lanes used to re-file the same finding 3-8x: a fresh id against
++a recycled title, so every `create` succeeded and the board grew while the real
++finding count stayed flat. Board rows now carry a **finding fingerprint** — a
++SHA-256 over the normalized `title` + `reasoning` (lowercased, leading
++`QA-<PROJ>-N`/`DF-<PROJ>-N`/`DOGFOOD-<PROJ>-N` prefix stripped, whitespace
++collapsed, trailing `(recurrence N)` / `(Nth)` / `[run-id-N]` stripped).
++
++The digest lives INSIDE the existing `detail` field — no new column, no
++migration — with the original prose preserved:
++
++```json
++"detail": {"fingerprint":"9f2c…","evidence":[{"run_id":"qa-…","ts":"…"}],"text":"original prose"}
++```
++
++`create` refuses a row whose fingerprint is already OPEN, prints
++
++```
++DUPLICATE-SUPPRESSED: <existing-id> matches fingerprint <hex>
++```
++
++on stderr and exits **2** (a plain failure is exit 1), and records the
++re-detection as a `task_evidence` event on the existing row — the board gains
++an audit line, never another row. Evidence the existing row with
++`--evidence-run-id RUN` instead of refiling; `--force` files a deliberate
++variant (still fingerprinted, so a later accidental re-file is caught). Rows
++written before this rule have no fingerprint and are grandfathered: still open
++and visible, they simply never match an incoming filing. An open row is
++`pending`, `in_progress`, `dispatched`, `blocked`, or `review` — anything else
++never suppresses a create.
++
++Existing duplicate groups are collapsed by the one-shot backfill, which is
++**dry-run by default**, runs on exactly ONE board (`--board-dir` is required —
++there is no fleet sweep), and refuses a board whose lane is not in `--lanes`:
++
++```bash
++dedupe-board --board-dir ~/myproject            # report only, zero writes
++dedupe-board --board-dir ~/myproject --apply    # collapse the groups
++```
++
++Per group (≥ 2 open rows sharing a fingerprint) it keeps the earliest row, closes
++the rest with `worker_summary="merged into <kept>: dedupe backfill <date>"`,
++carries the merged evidence onto the kept row, and writes one `audit` event.
++Full rules: [`docs/board-fingerprint-rules.md`](docs/board-fingerprint-rules.md).
++
+ ## Board topology
+ 
+ ```
+@@ -242,7 +292,9 @@ git diffs stay minimal and byte-stable.
+ | Path | Purpose |
+ |------|---------|
+ | `cmd/boardctl/` | CLI entrypoint (`main.go`) |
++| `cmd/dedupe-board/` | SG-126 one-shot dedupe backfill (dry-run by default) |
+ | `internal/board/` | Board engine — read/write/validate/doctor/init plus JSONL style handling |
++| `docs/board-fingerprint-rules.md` | Finding-fingerprint rule, evidence-over-refile, backfill usage |
+ | `.coding-hermes/board/` | This repo's own dogfood board (`tasks.jsonl`, `events.jsonl`, `board.jsonl`, `fixtures.jsonl`) |
+ | `docs/dogfood/` | Dogfood diagnostics and integration notes |
+ | `skills/boardctl-usage/` | Fleet skill: how agents drive `boardctl` |
+diff --git a/cmd/boardctl/main.go b/cmd/boardctl/main.go
+index 4155d80..6e8d729 100644
+--- a/cmd/boardctl/main.go
++++ b/cmd/boardctl/main.go
+@@ -38,6 +38,7 @@ commands:
+   show    <id> [--events]
+   create  --id ID --title T [--priority P2] [--complexity N] [--depends-on a,b]
+           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
++          [--evidence-run-id RUN]   (a re-detected finding is REFUSED with exit 2)
+   update  <id> --status complete [--worker-status S] [--commit-hash SHA]
+           [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S]
+           [--note S] [--blocked-reason R] [--completed-at TS] [--normalize]
+@@ -139,6 +140,14 @@ func run(args []string) int {
+ 			fmt.Fprintf(os.Stderr, "boardctl: %v\n", err)
+ 			return 1
+ 		}
++		// SG-126: a suppressed duplicate finding is a DISPATCHER-detectable
++		// outcome, not a plain failure — print the machine-readable line bare
++		// (no "boardctl:" prefix) and use exit 2 so a lane can branch on it.
++		var dupFinding *board.ErrDuplicateFinding
++		if errors.As(err, &dupFinding) {
++			fmt.Fprintf(os.Stderr, "%v\n", dupFinding)
++			return 2
++		}
+ 		fmt.Fprintf(os.Stderr, "boardctl: %v\n", err)
+ 		return 1
+ 	}
+@@ -426,7 +435,7 @@ func cmdShow(dir string, args []string) error {
+ 
+ func cmdCreate(dir string, args []string) error {
+ 	fs := newFlagSet("create")
+-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags"))
++	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "evidence-run-id"))
+ 	id := fs.String("id", "", "task id (required)")
+ 	title := fs.String("title", "", "task title (required)")
+ 	status := fs.String("status", "pending", "status (write vocabulary)")
+@@ -435,10 +444,13 @@ func cmdCreate(dir string, args []string) error {
+ 	dependsOn := fs.String("depends-on", "", "comma-separated dependency ids")
+ 	reasoning := fs.String("reasoning", "", "reasoning note")
+ 	capTags := fs.String("capability-tags", "", "comma-separated capability tags")
+-	force := fs.Bool("force", false, "write the id even if it violates the fleet id format")
++	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence (SG-126)")
++	force := fs.Bool("force", false, "write the id even if it violates the fleet id format (also files a duplicate finding as a variant)")
+ 	var cdir string
+ 	addCFlag(fs, &cdir)
+-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--force] [flags] [-C dir]\\n") }
++	fs.Usage = func() {
++		fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--force] [flags] [-C dir]\\n")
++	}
+ 	if err := fs.Parse(args); err != nil {
+ 		return err
+ 	}
+@@ -453,14 +465,15 @@ func cmdCreate(dir string, args []string) error {
+ 		return err
+ 	}
+ 	spec := board.TaskRowSpec{
+-		ID:           *id,
+-		Title:        *title,
+-		Status:       *status,
+-		Priority:     *priority,
+-		Reasoning:    *reasoning,
+-		HasDependsOn: *dependsOn != "",
+-		HasTags:      *capTags != "",
+-		Force:        *force,
++		ID:            *id,
++		Title:         *title,
++		Status:        *status,
++		Priority:      *priority,
++		Reasoning:     *reasoning,
++		HasDependsOn:  *dependsOn != "",
++		HasTags:       *capTags != "",
++		Force:         *force,
++		EvidenceRunID: *evidenceRunID,
+ 	}
+ 	if spec.HasDependsOn {
+ 		spec.DependsOn = splitCSV(*dependsOn)
+diff --git a/cmd/dedupe-board/main.go b/cmd/dedupe-board/main.go
+new file mode 100644
+index 0000000..ad92611
+--- /dev/null
++++ b/cmd/dedupe-board/main.go
+@@ -0,0 +1,164 @@
++// Command dedupe-board is the one-shot SG-126 backfill for coding-hermes
++// JSONL foreman boards.
++//
++// QA and dogfood lanes re-filed the same finding 3-8x before boardctl learned
++// to fingerprint them; those duplicate rows are still open on the affected
++// boards. This tool collapses each collision group:
++//
++//   - every open row without a finding fingerprint gains one;
++//   - each group of >= 2 open rows sharing a fingerprint keeps the EARLIEST row
++//     and closes the rest (status=complete, worker_summary "merged into <kept>:
++//     dedupe backfill <date>", completed_at now);
++//   - the merged-away rows' evidence is carried onto the kept row;
++//   - one `audit` event per group records kept / merged / fingerprint.
++//
++// Safety rails, in order of importance:
++//
++//  1. It runs on ONE board at a time: --board-dir is REQUIRED (a repo root, a
++//     .coding-hermes dir, or a board dir). There is no fleet-wide sweep, so it
++//     can never touch a board the operator did not name.
++//  2. DRY-RUN by default. Nothing is written — no rows, no fingerprints, no
++//     audit events — until --apply is passed.
++//  3. --lanes <a,b,c> is a guard, not a target: when given, the resolved
++//     board's lane (header project/namespace, else the repo dir name) must be
++//     in the list or the run refuses with exit 2.
++//
++// Exit codes: 0 success (dry-run included), 1 runtime error, 2 usage / refusal.
++package main
++
++import (
++	"encoding/json"
++	"errors"
++	"flag"
++	"fmt"
++	"os"
++	"strings"
++
++	"github.com/coding-hermes/boardctl/internal/board"
++)
++
++func main() {
++	os.Exit(run(os.Args[1:]))
++}
++
++func run(args []string) int {
++	fs := flag.NewFlagSet("dedupe-board", flag.ContinueOnError)
++	fs.SetOutput(os.Stderr)
++	boardDir := fs.String("board-dir", "", "board dir, .coding-hermes dir, or repo root (REQUIRED — one board per run)")
++	apply := fs.Bool("apply", false, "write the changes (default: dry-run, nothing is written)")
++	lanes := fs.String("lanes", "", "comma-separated lane names allowed to be touched (guard; refuses any other board)")
++	asJSON := fs.Bool("json", false, "emit the report as JSON")
++	fs.Usage = func() {
++		fmt.Fprint(os.Stderr, `dedupe-board — SG-126 one-shot board-collapse (default: dry-run)
++
++usage:
++  dedupe-board --board-dir <path> [--apply] [--lanes a,b,c] [--json]
++
++flags:
++`)
++		fs.PrintDefaults()
++	}
++	if err := fs.Parse(args); err != nil {
++		return 2
++	}
++	if fs.NArg() > 0 {
++		fmt.Fprintf(os.Stderr, "dedupe-board: takes no positional args (got %q)\n", fs.Arg(0))
++		return 2
++	}
++	if *boardDir == "" {
++		fmt.Fprintln(os.Stderr, "dedupe-board: --board-dir is required (one board per run — this tool never sweeps the fleet)")
++		return 2
++	}
++	b, err := board.Resolve(*boardDir)
++	if err != nil {
++		if errors.Is(err, board.ErrBoardNotFound) {
++			fmt.Fprintf(os.Stderr, "dedupe-board: %v\n", err)
++			return 2
++		}
++		fmt.Fprintf(os.Stderr, "dedupe-board: %v\n", err)
++		return 2
++	}
++
++	lane := b.LaneName()
++	if *lanes != "" {
++		allowed := map[string]bool{}
++		for _, l := range strings.Split(*lanes, ",") {
++			if l = strings.TrimSpace(strings.ToLower(l)); l != "" {
++				allowed[l] = true
++			}
++		}
++		if !allowed[strings.ToLower(lane)] {
++			fmt.Fprintf(os.Stderr, "dedupe-board: refusing to touch board %s (lane %q) — it is not in --lanes %s\n", b.TasksPath(), lane, *lanes)
++			return 2
++		}
++	}
++
++	rep, err := b.DedupeBackfill(*apply)
++	if err != nil {
++		fmt.Fprintf(os.Stderr, "dedupe-board: %v\n", err)
++		return 1
++	}
++
++	if *asJSON {
++		out := struct {
++			Lane string `json:"lane"`
++			*board.DedupeReport
++		}{Lane: lane, DedupeReport: rep}
++		enc := json.NewEncoder(os.Stdout)
++		enc.SetIndent("", "  ")
++		if err := enc.Encode(out); err != nil {
++			fmt.Fprintf(os.Stderr, "dedupe-board: %v\n", err)
++			return 1
++		}
++		return 0
++	}
++
++	fmt.Printf("lane:  %s\n", lane)
++	fmt.Printf("board: %s\n", rep.BoardPath)
++	fmt.Printf("open rows: %d (already fingerprinted: %d, gained: %d)\n", rep.OpenRows, rep.AlreadySet, len(rep.Fingerprinted))
++	if len(rep.Drifted) > 0 {
++		fmt.Printf("drift: %d open row(s) whose stored fingerprint no longer matches a recompute: %s\n", len(rep.Drifted), strings.Join(rep.Drifted, ", "))
++	}
++	fmt.Printf("merge groups: %d (rows merged away: %d)\n", len(rep.Groups), len(rep.MergedAway))
++	for _, g := range rep.Groups {
++		note := ""
++		if g.DuplicateIDs {
++			note = "  [ids repeated in this group — line numbers identify the rows]"
++		}
++		fmt.Printf("  %s  keep %s (line %d)  merge %s%s\n",
++			shortFingerprint(g.Fingerprint), g.Kept, g.KeptLine, mergedLabel(g), note)
++	}
++	if !*apply {
++		fmt.Println("DRY-RUN — no files written (pass --apply to collapse)")
++		return 0
++	}
++	if !rep.Changed() {
++		fmt.Println("nothing to do — board already collapsed (no files written)")
++		return 0
++	}
++	fmt.Println("applied — tasks.jsonl rewritten in place, one audit event per merge group")
++	return 0
++}
++
++// shortFingerprint abbreviates a hex digest for human output (the JSON report
++// carries the full value).
++func shortFingerprint(fp string) string {
++	if len(fp) <= 12 {
++		return fp
++	}
++	return fp[:12] + "…"
++}
++
++// mergedLabel renders a group's merged-away rows as "<id> (line N), …" so a
++// board that reuses an id on several lines stays readable.
++func mergedLabel(g board.DedupeMerge) string {
++	parts := make([]string, 0, len(g.Merged))
++	for i, id := range g.Merged {
++		if i < len(g.MergedLines) {
++			parts = append(parts, fmt.Sprintf("%s (line %d)", id, g.MergedLines[i]))
++			continue
++		}
++		parts = append(parts, id)
++	}
++	return strings.Join(parts, ", ")
++}
+diff --git a/docs/board-fingerprint-rules.md b/docs/board-fingerprint-rules.md
+new file mode 100644
+index 0000000..2408eba
+--- /dev/null
++++ b/docs/board-fingerprint-rules.md
+@@ -0,0 +1,150 @@
++# Board finding fingerprints (SG-126)
++
++QA and dogfood lanes used to re-file the same finding 3-8x. The lane detected
++the same symptom on a new tick, picked a fresh id, recycled (or lightly
++reworded) the title, and appended another row. Every create succeeded, so the
++board grew while the real finding count stayed flat — operators paging the
++board saw noise, and re-enable audits read the lanes as churn.
++
++The fix is a **finding fingerprint** plus a gate on the create path.
++
++## The rule
++
++A finding's identity is a SHA-256 over its **normalized** title and reasoning:
++
++```
++fingerprint = sha256hex( normalize(title) || 0x1F || normalize(reasoning) )
++```
++
++`normalize()` is deliberately small and total (it never errors, so the write
++gate and the backfill always agree byte-for-byte):
++
++| step | what it does | example |
++|---|---|---|
++| lowercase | `strings.ToLower` | `Widget CRASH` → `widget crash` |
++| strip id prefix | drops a leading recycled finding-id token (`QA-<PROJ>-N `, `DF-<PROJ>-N `, `DOGFOOD-<PROJ>-N `) | `QA-CRIER-3 [P2] Widget crash` → `[p2] widget crash` |
++| collapse whitespace | every whitespace run (spaces, tabs, newlines) becomes one space | `probe:  curl returns\n500` → `probe: curl returns 500` |
++| strip trailing markers | removes `(recurrence N)`, `(Nth)` and `[run-id-N]` suffixes, repeatedly | `Widget crash [run-id-7] (recurrence 2)` → `widget crash` |
++
++The `0x1F` unit separator between the halves prevents a cross-boundary
++collision: `("ab","c")` and `("a","bc")` hash differently.
++
++Deliberately **not** normalized:
++
++- a leading priority tag — `[P1]` and `[P3]` produce **different**
++  fingerprints, so escalating a symptom is a distinct row (use `--force` when
++  you want to file a variant anyway);
++- object-form `reasoning` (`{"note":"QA foreman cycle …"}` on qa-dagger rows)
++  is fingerprinted on its `note` member — the human-readable half — falling
++  back to the canonical JSON when there is no note.
++
++## Where it is stored
++
++The fingerprint is **advisory metadata inside the existing `detail` field** —
++the board schema is git-tracked JSONL and gains no new column:
++
++```json
++"detail": {
++  "fingerprint": "9f2c…",
++  "evidence": [{"run_id": "qa-2026-09-18T04:11Z", "ts": "2026-09-18T04:12:07Z"}],
++  "text": "cell detail: spawn failed (original prose, when the row had any)"
++}
++```
++
++`detail` keeps its original prose under `text`, and if a row's detail was
++already a JSON object, every unknown key is preserved verbatim. Rows written
++before this rule carry no fingerprint: they are **grandfathered** — still open
++and visible, they simply never match an incoming filing (they are picked up by
++the backfill below).
++
++## Evidence over refile
++
++When the same finding is detected again, **do not refile it**. Either:
++
++1. run the create anyway and let the gate refuse it — the refusal is recorded
++   as a `task_evidence` event on the existing row, so the re-detection is
++   counted rather than lost:
++
++   ```
++   $ boardctl create --id QA-CRIER-9 --title "QA-CRIER-3 [P2] Widget crash" --reasoning "probe:  curl returns
++   500"
++   DUPLICATE-SUPPRESSED: QA-CRIER-3 matches fingerprint 9f2c… — the finding is already open …
++   $ echo $?
++   2
++   ```
++
++   Exit code **2** and a `DUPLICATE-SUPPRESSED: <existing-id> matches fingerprint
++   <hex>` line on stderr make it dispatcher-detectable (a plain failure is
++   exit 1). `boardctl show <existing-id> --events` lists every re-detection.
++
++2. or attach the run as evidence explicitly, which stamps the new row's
++   `detail.evidence[].run_id`:
++
++   ```
++   $ boardctl create --id QA-CRIER-9 --title "…" --reasoning "…" --evidence-run-id qa-2026-09-18T04:11Z
++   ```
++
++**A genuinely different row that happens to share a title is filed with
++`--force`:**
++
++```
++$ boardctl create --id QA-CRIER-9 --title "[P2] Widget crash" --reasoning "probe: curl returns 500" --force
++```
++
++The forced variant still gets fingerprinted, so a later *accidental* re-file of
++it is caught.
++
++The gate never runs on the import path (`boardctl import`): imported rows land
++byte-for-byte as exported and the export/import round trip is unchanged.
++
++## Collapsing the duplicates that already exist
++
++Old boards still hold their collision groups. `dedupe-board` is the one-shot
++backfill:
++
++```
++# always start with the dry run — it writes nothing at all
++$ dedupe-board --board-dir ~/crier
++lane:  crier
++board: /home/kara/crier/.coding-hermes/board/tasks.jsonl
++open rows: 12 (already fingerprinted: 0, gained: 12)
++merge groups: 2 (rows merged away: 3)
++  9f2c1a8b0e44  keep QA-CRIER-3  merge QA-CRIER-9, QA-CRIER-11
++DRY-RUN — no files written (pass --apply to collapse)
++
++$ dedupe-board --board-dir ~/crier --lanes crier --apply
++```
++
++What `--apply` does, per collision group (≥ 2 open rows sharing a fingerprint):
++
++- keeps the **earliest** row (append-only file order = filing order);
++- closes the others with `status=complete`,
++  `worker_summary="merged into <kept>: dedupe backfill <date>"`,
++  `completed_at=<now>`;
++- carries the merged-away rows' evidence onto the kept row (one entry per
++  merged row) so the re-observation count survives;
++- appends ONE `audit` event per group:
++  `{"action":"dedupe-backfill","kept":"…","merged":["…","…"],"fingerprint":"…"}`.
++
++Every other line of `tasks.jsonl` round-trips byte-identical (asserted before
++the write), and a second `--apply` is a no-op.
++
++Rails, in order of importance:
++
++1. **One board per run.** `--board-dir` is required; there is no fleet sweep,
++   so the tool can never touch a board the operator did not name.
++2. **Dry-run by default.** No rows, no fingerprints, no audit events until
++   `--apply`.
++3. **`--lanes a,b,c` is a guard, not a target.** When given, the board's lane
++   (header `project`/`namespace`, else the repo directory name) must be in the
++   list or the run refuses with exit 2.
++
++Exit codes: `0` success (dry run included), `1` runtime error, `2` usage or
++lane refusal.
++
++## Open rows
++
++A row counts as open for dedupe when its status is `pending`, `in_progress`,
++`dispatched`, `blocked`, or `review`. Anything else — `complete`, `failed`,
++`duplicate`, an unknown or legacy spelling — never suppresses an incoming
++filing: the tool fails open rather than silently swallowing a create.
+diff --git a/internal/board/backfill.go b/internal/board/backfill.go
+new file mode 100644
+index 0000000..735ae3f
+--- /dev/null
++++ b/internal/board/backfill.go
+@@ -0,0 +1,315 @@
++package board
++
++import (
++	"bytes"
++	"fmt"
++	"path/filepath"
++	"strings"
++	"time"
++)
++
++// SG-126 one-shot backfill.
++//
++// Boards written before the fingerprint rule carry duplicate findings: the same
++// normalized title+reasoning filed 3-8x, all still open. DedupeBackfill
++// collapses each such collision group:
++//
++//   - every OPEN row without a fingerprint gains one (computed from its own
++//     title + reasoning), so future filings are suppressed;
++//   - each group of >= 2 open rows sharing a fingerprint keeps the EARLIEST
++//     row (append-only file order == filing order) and closes the rest with
++//     status=complete, worker_summary "merged into <kept>: dedupe backfill
++//     <date>", completed_at now;
++//   - the merged-away rows' evidence is appended to the kept row's detail, so
++//     the re-observation count survives the collapse;
++//   - one `audit` event per merge group records kept / merged / fingerprint.
++//
++// dry-run (apply=false) computes the identical report and writes NOTHING —
++// neither tasks.jsonl nor events.jsonl is touched. apply=true is idempotent:
++// a second run finds every open row fingerprinted and no collision groups, so
++// it writes nothing either.
++//
++// Group members are identified by LINE INDEX, never by id: live QA/dogfood
++// boards carry the same id on several lines (a per-cycle id slot reused by
++// later ticks), so an id-keyed selection would keep two rows and silently skip
++// the merge. Report entries therefore carry the line numbers alongside the ids,
++// and a group whose members share an id is flagged.
++//
++// Every untouched line round-trips byte-identical (same discipline as
++// UpdateTask): the pre-write assertion aborts the whole run if any line other
++// than an intended target would change.
++
++// DedupeMerge is one collapsed collision group. Kept/Merged are the ids (the
++// audit-event shape); the line numbers disambiguate boards that reuse an id on
++// several rows.
++type DedupeMerge struct {
++	Kept         string   `json:"kept"`
++	KeptLine     int      `json:"kept_line"`
++	Merged       []string `json:"merged"`
++	MergedLines  []int    `json:"merged_lines"`
++	Fingerprint  string   `json:"fingerprint"`
++	DuplicateIDs bool     `json:"duplicate_ids,omitempty"`
++}
++
++// DedupeReport is the result of one backfill run. Summary only counts; nothing
++// here is invented — every list is derived from the parsed board.
++type DedupeReport struct {
++	BoardPath     string        `json:"board_path"`
++	Apply         bool          `json:"apply"`
++	OpenRows      int           `json:"open_rows"`
++	AlreadySet    int           `json:"already_fingerprinted"`
++	Fingerprinted []string      `json:"fingerprinted"` // open rows that gained one
++	Drifted       []string      `json:"drifted"`       // stored fingerprint != recomputed
++	Groups        []DedupeMerge `json:"groups"`
++	MergedAway    []string      `json:"merged_away"`
++}
++
++// Changed reports whether the run has anything to write.
++func (r *DedupeReport) Changed() bool {
++	return len(r.Fingerprinted) > 0 || len(r.Groups) > 0 || len(r.Drifted) > 0
++}
++
++// findingRow is one parsed task row plus its file line index and effective
++// fingerprint.
++type findingRow struct {
++	idx      int
++	id       string
++	row      *Row
++	stored   string
++	computed string
++	open     bool
++}
++
++func (f *findingRow) fingerprint() string {
++	if f.stored != "" {
++		return f.stored
++	}
++	return f.computed
++}
++
++// DedupeBackfill runs (or previews) the SG-126 dedupe collapse on this board.
++func (b *Board) DedupeBackfill(apply bool) (*DedupeReport, error) {
++	lines, err := ReadJSONLLines(b.tasksPath)
++	if err != nil {
++		return nil, err
++	}
++	rep := &DedupeReport{BoardPath: b.tasksPath, Apply: apply}
++
++	var entries []*findingRow
++	err = IterParsed(lines, func(row *Row, idx int, _ []byte) error {
++		if b.skipTaskLine(lines, idx) {
++			return nil // topology B: the header is not a task row
++		}
++		id := row.String("id")
++		if id == "" {
++			return nil
++		}
++		entries = append(entries, &findingRow{
++			idx:      idx,
++			id:       id,
++			row:      row,
++			stored:   StoredFingerprint(row),
++			computed: FindingFingerprintForRow(row),
++			open:     RowIsOpenFinding(row),
++		})
++		return nil
++	})
++	if err != nil {
++		return nil, fmt.Errorf("%s: %w", b.tasksPath, err)
++	}
++
++	// Pass 1 — classify. Nothing is mutated here.
++	byFingerprint := map[string][]*findingRow{}
++	for _, f := range entries {
++		if !f.open {
++			continue
++		}
++		rep.OpenRows++
++		if f.stored == "" {
++			rep.Fingerprinted = append(rep.Fingerprinted, f.id)
++		} else {
++			rep.AlreadySet++
++			if f.stored != f.computed {
++				// A stored fingerprint that no longer matches its own row is
++				// reported, never silently rewritten: the stored value is the
++				// one the gate already matched against.
++				rep.Drifted = append(rep.Drifted, f.id)
++			}
++		}
++		byFingerprint[f.fingerprint()] = append(byFingerprint[f.fingerprint()], f)
++	}
++	var groupRows [][]*findingRow
++	for _, fp := range SortedKeys(byFingerprint) {
++		members := byFingerprint[fp]
++		if len(members) < 2 {
++			continue
++		}
++		g := DedupeMerge{
++			Kept:        members[0].id,
++			KeptLine:    members[0].idx + 1,
++			Fingerprint: fp,
++		}
++		seenID := map[string]bool{members[0].id: true}
++		for _, m := range members[1:] {
++			g.Merged = append(g.Merged, m.id)
++			g.MergedLines = append(g.MergedLines, m.idx+1)
++			if seenID[m.id] {
++				g.DuplicateIDs = true
++			}
++			seenID[m.id] = true
++			rep.MergedAway = append(rep.MergedAway, m.id)
++		}
++		rep.Groups = append(rep.Groups, g)
++		groupRows = append(groupRows, members)
++	}
++
++	// Pass 2 — dry-run stops here: the report is the whole product.
++	if !apply {
++		return rep, nil
++	}
++
++	newLines := make([][]byte, len(lines))
++	copy(newLines, lines)
++	tsf := b.tasksTSFormat(lastTaskOf(entries))
++	now := tsf.Now()
++	today := time.Now().UTC().Format("2006-01-02")
++
++	// planned holds the line indexes the run intends to rewrite; the untouched
++	// assertion below is scoped to exactly this set.
++	planned := map[int]bool{}
++
++	// Fingerprint-only write-back for every open row that lacks one.
++	for _, f := range entries {
++		if !f.open || f.stored != "" {
++			continue
++		}
++		pd := ParseFindingDetail(f.row.Get("detail")).withFingerprint(f.computed)
++		enc, err := EncodeFindingDetail(pd, DetectStyle(lines[f.idx]))
++		if err != nil {
++			return nil, err
++		}
++		f.row.SetRaw("detail", enc)
++		newLines[f.idx] = f.row.Marshal(DetectStyle(lines[f.idx]))
++		planned[f.idx] = true
++	}
++
++	// Collapse each group: keep the earliest row (lowest line index), close the
++	// rest, carry the merged rows' evidence onto the kept row.
++	for _, members := range groupRows {
++		kept := members[0]
++		style := DetectStyle(lines[kept.idx])
++		pd := ParseFindingDetail(kept.row.Get("detail"))
++		if pd.Finding.Fingerprint == "" {
++			pd = pd.withFingerprint(kept.fingerprint())
++		}
++		var carried []EvidenceEntry
++		for _, m := range members[1:] {
++			carried = append(carried, ParseFindingDetail(m.row.Get("detail")).Finding.Evidence...)
++			carried = append(carried, EvidenceEntry{TaskID: m.id, TS: now})
++		}
++		pd = pd.withEvidence(carried)
++		enc, err := EncodeFindingDetail(pd, style)
++		if err != nil {
++			return nil, err
++		}
++		kept.row.SetRaw("detail", enc)
++		newLines[kept.idx] = kept.row.Marshal(style)
++		planned[kept.idx] = true
++
++		for _, m := range members[1:] {
++			mstyle := DetectStyle(lines[m.idx])
++			summary := fmt.Sprintf("merged into %s: dedupe backfill %s", kept.id, today)
++			if err := m.row.SetGoValue("status", "complete", mstyle); err != nil {
++				return nil, err
++			}
++			if err := m.row.SetGoValue("worker_summary", summary, mstyle); err != nil {
++				return nil, err
++			}
++			if err := m.row.SetGoValue("completed_at", now, mstyle); err != nil {
++				return nil, err
++			}
++			if m.row.Has("updated_at") {
++				if err := m.row.SetGoValue("updated_at", now, mstyle); err != nil {
++					return nil, err
++				}
++			}
++			newLines[m.idx] = m.row.Marshal(mstyle)
++			planned[m.idx] = true
++		}
++	}
++
++	// Assert every line the run did not intend to touch round-trips
++	// byte-identical BEFORE writing.
++	for i, l := range lines {
++		if !bytes.Equal(l, newLines[i]) && !planned[i] {
++			return nil, fmt.Errorf("internal error: untouched line %d would change — dedupe aborted (nothing written)", i+1)
++		}
++	}
++	if err := atomicRewrite(b.tasksPath, JoinLines(newLines)); err != nil {
++		return nil, err
++	}
++
++	// One audit event per merge group, AFTER the row rewrite succeeded.
++	for _, g := range rep.Groups {
++		var buf bytes.Buffer
++		buf.WriteString(`{"action":"dedupe-backfill","kept":`)
++		buf.Write(jsonString(g.Kept, DefaultStyle()))
++		buf.WriteString(`,"kept_line":`)
++		fmt.Fprintf(&buf, "%d", g.KeptLine)
++		buf.WriteString(`,"merged":[`)
++		for i, id := range g.Merged {
++			if i > 0 {
++				buf.WriteString(",")
++			}
++			buf.Write(jsonString(id, DefaultStyle()))
++		}
++		buf.WriteString(`],"merged_lines":[`)
++		for i, ln := range g.MergedLines {
++			if i > 0 {
++				buf.WriteString(",")
++			}
++			fmt.Fprintf(&buf, "%d", ln)
++		}
++		buf.WriteString(`],"fingerprint":`)
++		buf.Write(jsonString(g.Fingerprint, DefaultStyle()))
++		buf.WriteString(`}`)
++		if _, err := b.AppendEvent(EventSpec{
++			Type:   "audit",
++			TaskID: g.Kept,
++			Actor:  "boardctl",
++			Detail: buf.Bytes(),
++		}); err != nil {
++			return rep, fmt.Errorf("board rewritten but dedupe-backfill audit event failed: %w", err)
++		}
++	}
++	return rep, nil
++}
++
++// lastTaskOf returns the last parsed task row (the board's serialization
++// dialect sample), or nil for an empty board.
++func lastTaskOf(entries []*findingRow) *Row {
++	if len(entries) == 0 {
++		return nil
++	}
++	return entries[len(entries)-1].row
++}
++
++// LaneName derives the lane a board belongs to: the header's project (or
++// namespace) when the board carries one, else the directory name of the repo
++// the board lives in (…/<lane>/.coding-hermes/board). Used by the backfill CLI
++// to refuse a board the operator did not name.
++func (b *Board) LaneName() string {
++	if hdr, err := b.HeaderRow(); err == nil {
++		if p := strings.TrimSpace(hdr.String("project")); p != "" {
++			return p
++		}
++		if n := strings.TrimSpace(hdr.String("namespace")); n != "" {
++			return n
++		}
++	}
++	dir := filepath.Dir(b.Dir)
++	if filepath.Base(dir) == ".coding-hermes" {
++		return filepath.Base(filepath.Dir(dir))
++	}
++	return filepath.Base(dir)
++}
+diff --git a/internal/board/fingerprint.go b/internal/board/fingerprint.go
+new file mode 100644
+index 0000000..91db08a
+--- /dev/null
++++ b/internal/board/fingerprint.go
+@@ -0,0 +1,343 @@
++package board
++
++import (
++	"bytes"
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"regexp"
++	"strings"
++)
++
++// SG-126 board-row dedupe.
++//
++// QA and dogfood lanes re-filed the same finding 3-8x because the append path
++// took a fresh id against a recycled (or suffix-variant) title and never asked
++// the open board whether the finding was already there. The result is board
++// churn: operators paging the board see noise, and re-enable audits read the
++// lanes as idle-but-busy.
++//
++// The fix is a FINDING FINGERPRINT: a normalized digest over the row's
++// title + reasoning. It is advisory metadata stored INSIDE the existing detail
++// field (the board schema is git-tracked JSONL and gains no new column), so:
++//
++//	detail = {"fingerprint":"<sha256hex>","evidence":[{"run_id":...,"ts":...}]}
++//
++// A write path refuses to create an open duplicate of a fingerprinted finding
++// (ErrDuplicateFinding) and records the suppression as a task_evidence EVENT —
++// the board grows one audit line instead of one more row. Rows written before
++// this rule carry no fingerprint and are GRANDFATHERED: they stay open and
++// visible, they simply never match an incoming finding.
++
++// findingFingerprintSep is the unit separator joining the two normalized
++// halves. It cannot occur inside normalized text (strings.Fields collapses all
++// whitespace, and control bytes never survive a JSON string in practice), so
++// digest("ab"||sep||"c") can never collide with digest("abc").
++const findingFingerprintSep = '\x1f'
++
++var (
++	// findingIDPrefixRe strips a leading finding-id token such as
++	// "QA-CRIER-3 ", "DF-AI-PLAYS-POKE-12 " or "DOGFOOD-MESH-1 " — the id is
++	// recycled per cycle, so it must not be part of the identity.
++	findingIDPrefixRe = regexp.MustCompile(`^(?:qa|df|dogfood)-[a-z0-9-]+-\d+\s+`)
++
++	// findingRecurrenceRe strips a trailing recurrence marker: "(recurrence 3)",
++	// "(recurrence: 3)", "(3rd)" — the marker counts re-detections, it is not
++	// part of the finding.
++	findingRecurrenceRe = regexp.MustCompile(`\s*\(\s*(?:recurrence\s*:?\s*\d+|\d+(?:st|nd|rd|th))\s*\)\s*$`)
++
++	// findingRunIDRe strips a trailing "[run-id-N]" marker (the lane's run
++	// counter, likewise recycled).
++	findingRunIDRe = regexp.MustCompile(`\s*\[\s*run-id-[a-z0-9-]+\s*\]\s*$`)
++)
++
++// NormalizeFindingText canonicalizes one half of a finding identity: lowercase,
++// strip a leading finding-id prefix, collapse every whitespace run to a single
++// space, strip trailing recurrence / run-id markers. Deliberately simple and
++// total (never errors) so both the write gate and the backfill agree on the
++// identity byte for byte.
++//
++// NOT normalized on purpose: a leading priority tag ("[P1] ") stays part of the
++// fingerprint, so an escalation of the same symptom is a DIFFERENT finding and
++// earns its own row.
++func NormalizeFindingText(s string) string {
++	s = strings.ToLower(strings.TrimSpace(s))
++	s = findingIDPrefixRe.ReplaceAllString(s, "")
++	s = strings.Join(strings.Fields(s), " ")
++	// Strip trailing markers repeatedly: a title can carry both a run-id and a
++	// recurrence suffix ("... [run-id-4] (recurrence 2)").
++	for i := 0; i < 4; i++ {
++		trimmed := findingRunIDRe.ReplaceAllString(s, "")
++		trimmed = findingRecurrenceRe.ReplaceAllString(trimmed, "")
++		if trimmed == s {
++			break
++		}
++		s = trimmed
++	}
++	return strings.Join(strings.Fields(s), " ")
++}
++
++// FindingFingerprint is the SHA-256 (hex) of the normalized title, the unit
++// separator, and the normalized reasoning.
++func FindingFingerprint(title, reasoning string) string {
++	h := sha256.New()
++	h.Write([]byte(NormalizeFindingText(title)))
++	h.Write([]byte{findingFingerprintSep})
++	h.Write([]byte(NormalizeFindingText(reasoning)))
++	return hex.EncodeToString(h.Sum(nil))
++}
++
++// RowFindingReasoning renders a task row's reasoning field as the plain text
++// that participates in the fingerprint. Live boards carry BOTH shapes: a plain
++// string (crier/dogfood rows) and an object such as {"note":"QA foreman cycle
++// …"} (qa-dagger rows). An object-form reasoning is fingerprinted on its "note"
++// member when present (the human-readable half), else on its canonical JSON;
++// null/absent contributes nothing.
++func RowFindingReasoning(row *Row) string {
++	raw := row.Get("reasoning")
++	if len(raw) == 0 {
++		return ""
++	}
++	trimmed := bytes.TrimSpace(raw)
++	if bytes.Equal(trimmed, []byte("null")) {
++		return ""
++	}
++	var s string
++	if err := json.Unmarshal(trimmed, &s); err == nil {
++		return s
++	}
++	var obj map[string]json.RawMessage
++	if err := json.Unmarshal(trimmed, &obj); err == nil {
++		if note, ok := obj["note"]; ok {
++			var ns string
++			if err := json.Unmarshal(note, &ns); err == nil {
++				return ns
++			}
++		}
++		var v any
++		if err := json.Unmarshal(trimmed, &v); err == nil {
++			if b, err := json.Marshal(v); err == nil {
++				return string(b)
++			}
++		}
++	}
++	return string(trimmed)
++}
++
++// FindingFingerprintForRow recomputes a row's fingerprint from its OWN stored
++// title and reasoning. Used by the backfill (rows written before the rule) and
++// to detect drift against a stored fingerprint.
++func FindingFingerprintForRow(row *Row) string {
++	return FindingFingerprint(row.String("title"), RowFindingReasoning(row))
++}
++
++// OpenFindingStatuses is the set of statuses that count as an OPEN finding.
++// Positive list on purpose: an unknown or legacy spelling (e.g. "duplicate",
++// "retired") never suppresses an incoming create — fail open, never silently
++// swallow a filing.
++//
++// "dispatched" is not a write-vocabulary status but live boards carry it (a
++// scheduler-dispatched row that has not been picked up yet); blocked/review are
++// open work by definition, so a re-detected finding on them is still a
++// duplicate.
++var OpenFindingStatuses = map[string]bool{
++	"pending":     true,
++	"in_progress": true,
++	"dispatched":  true,
++	"blocked":     true,
++	"review":      true,
++}
++
++// RowIsOpenFinding reports whether a task row counts as open for dedupe.
++func RowIsOpenFinding(row *Row) bool {
++	return OpenFindingStatuses[strings.ToLower(strings.TrimSpace(row.String("status")))]
++}
++
++// EvidenceEntry is one recorded re-observation of a finding: the run that saw
++// it again (and, for a backfill merge, the row it was merged away from).
++type EvidenceEntry struct {
++	RunID  string `json:"run_id,omitempty"`
++	TS     string `json:"ts,omitempty"`
++	TaskID string `json:"task_id,omitempty"`
++}
++
++// FindingDetail is the SG-126 metadata carried inside a task row's detail
++// field. Text preserves the row's original detail prose so the envelope is
++// lossless for humans.
++type FindingDetail struct {
++	Fingerprint string          `json:"fingerprint,omitempty"`
++	Evidence    []EvidenceEntry `json:"evidence,omitempty"`
++	Text        string          `json:"text,omitempty"`
++}
++
++// parsedDetail is the classified form of a row's raw detail value.
++type parsedDetail struct {
++	Finding FindingDetail
++	// Extra holds the unknown keys of an object-form detail verbatim, so a
++	// write-back never discards another producer's payload.
++	Extra map[string]json.RawMessage
++	// Object reports that the detail is object-shaped: the next write keeps
++	// object form (merging our keys) instead of wrapping prose into "text".
++	Object bool
++}
++
++func (p parsedDetail) withFingerprint(fp string) parsedDetail {
++	p.Finding.Fingerprint = fp
++	return p
++}
++
++// withEvidence appends entries, skipping ones already present (idempotent
++// merges: a re-run of the backfill adds nothing).
++func (p parsedDetail) withEvidence(entries []EvidenceEntry) parsedDetail {
++	for _, e := range entries {
++		if e == (EvidenceEntry{}) {
++			continue
++		}
++		dup := false
++		for _, have := range p.Finding.Evidence {
++			if have == e {
++				dup = true
++				break
++			}
++		}
++		if !dup {
++			p.Finding.Evidence = append(p.Finding.Evidence, e)
++		}
++	}
++	return p
++}
++
++// ParseFindingDetail classifies a task row's raw detail value. It tolerates the
++// three shapes live boards carry:
++//
++//	null / absent           -> empty
++//	JSON object             -> envelope (our keys) + Extra (every other key,
++//	                           preserved verbatim for the next write)
++//	JSON string             -> if the string itself parses as an envelope
++//	                           object, that object (a hand-written string
++//	                           envelope); otherwise plain prose in Text
++//	anything else (array,
++//	  number, bool)         -> canonical JSON kept in Text
++func ParseFindingDetail(raw json.RawMessage) parsedDetail {
++	if len(raw) == 0 {
++		return parsedDetail{}
++	}
++	trimmed := bytes.TrimSpace(raw)
++	if bytes.Equal(trimmed, []byte("null")) {
++		return parsedDetail{}
++	}
++	var s string
++	if err := json.Unmarshal(trimmed, &s); err == nil {
++		if p, ok := parseDetailObject([]byte(s)); ok {
++			return p
++		}
++		return parsedDetail{Finding: FindingDetail{Text: s}}
++	}
++	if p, ok := parseDetailObject(trimmed); ok {
++		return p
++	}
++	var v any
++	if err := json.Unmarshal(trimmed, &v); err == nil {
++		if b, err := json.Marshal(v); err == nil {
++			return parsedDetail{Finding: FindingDetail{Text: string(b)}}
++		}
++	}
++	return parsedDetail{Finding: FindingDetail{Text: string(trimmed)}}
++}
++
++// parseDetailObject converts a JSON object into a parsedDetail. ok=false when
++// the bytes are not a JSON object at all (prose / array / scalar).
++func parseDetailObject(b []byte) (parsedDetail, bool) {
++	trimmed := bytes.TrimSpace(b)
++	if len(trimmed) == 0 || trimmed[0] != '{' {
++		return parsedDetail{}, false
++	}
++	var all map[string]json.RawMessage
++	if err := json.Unmarshal(trimmed, &all); err != nil {
++		return parsedDetail{}, false
++	}
++	p := parsedDetail{Object: true, Extra: map[string]json.RawMessage{}}
++	for k, v := range all {
++		switch k {
++		case "fingerprint":
++			var fp string
++			if err := json.Unmarshal(v, &fp); err == nil {
++				p.Finding.Fingerprint = fp
++			} else {
++				p.Extra[k] = v
++			}
++		case "evidence":
++			var ev []EvidenceEntry
++			if err := json.Unmarshal(v, &ev); err == nil {
++				p.Finding.Evidence = ev
++			} else {
++				p.Extra[k] = v
++			}
++		case "text":
++			var t string
++			if err := json.Unmarshal(v, &t); err == nil {
++				p.Finding.Text = t
++			} else {
++				p.Extra[k] = v
++			}
++		default:
++			p.Extra[k] = v
++		}
++	}
++	return p, true
++}
++
++// EncodeFindingDetail renders a parsedDetail back to a JSON value in the
++// board's own serialization style. An object-form detail keeps every unknown
++// key verbatim (sorted for determinism); prose is carried under "text".
++func EncodeFindingDetail(p parsedDetail, style Style) ([]byte, error) {
++	row := &Row{Vals: map[string]json.RawMessage{}}
++	if p.Object {
++		for _, k := range SortedKeys(p.Extra) {
++			row.SetRaw(k, p.Extra[k])
++		}
++	}
++	if p.Finding.Fingerprint != "" {
++		row.SetRaw("fingerprint", jsonString(p.Finding.Fingerprint, style))
++	}
++	if len(p.Finding.Evidence) > 0 {
++		enc, err := encodeValue(p.Finding.Evidence, style)
++		if err != nil {
++			return nil, err
++		}
++		row.SetRaw("evidence", enc)
++	}
++	if p.Finding.Text != "" {
++		row.SetRaw("text", jsonString(p.Finding.Text, style))
++	}
++	if len(row.Keys) == 0 {
++		return []byte("null"), nil
++	}
++	return row.Marshal(style), nil
++}
++
++// StoredFingerprint returns the fingerprint a row already carries in its detail
++// ("" when it has none — a grandfathered row).
++func StoredFingerprint(row *Row) string {
++	return ParseFindingDetail(row.Get("detail")).Finding.Fingerprint
++}
++
++// openFingerprintIndex maps stored fingerprint -> id for every OPEN row that
++// carries one. The first occurrence in file order wins, so the earliest filing
++// of a finding is the one a new duplicate is matched against.
++func openFingerprintIndex(rows []*Row) map[string]string {
++	idx := map[string]string{}
++	for _, r := range rows {
++		if !RowIsOpenFinding(r) {
++			continue
++		}
++		fp := StoredFingerprint(r)
++		if fp == "" {
++			continue
++		}
++		if _, seen := idx[fp]; !seen {
++			idx[fp] = r.String("id")
++		}
++	}
++	return idx
++}
+diff --git a/internal/board/read.go b/internal/board/read.go
+index b1f0f48..fd3d9a4 100644
+--- a/internal/board/read.go
++++ b/internal/board/read.go
+@@ -115,6 +115,7 @@ var EventTypeVocabulary = map[string]bool{
+ 	"task_completed":    true,
+ 	"task_created":      true,
+ 	"task_dispatched":   true,
++	"task_evidence":     true,
+ 	"task_started":      true,
+ 	"task_updated":      true,
+ 	"task_verified":     true,
+@@ -264,6 +265,36 @@ func (b *Board) ShowTask(id string) (row *Row, file string, err error) {
+ 	return nil, "", nil
+ }
+ 
++// OpenFingerprints returns id -> stored finding fingerprint for every OPEN
++// row (see OpenFindingStatuses) whose detail carries one. Rows written before
++// SG-126 have no fingerprint and are grandfathered: they stay open and
++// visible, they simply never match an incoming finding. The first occurrence
++// in file order wins when two open rows somehow share a fingerprint.
++func (b *Board) OpenFingerprints() (map[string]string, error) {
++	rows, err := b.TaskRows()
++	if err != nil {
++		return nil, err
++	}
++	out := map[string]string{}
++	for _, r := range rows {
++		if !RowIsOpenFinding(r) {
++			continue
++		}
++		fp := StoredFingerprint(r)
++		if fp == "" {
++			continue
++		}
++		id := r.String("id")
++		if id == "" {
++			continue
++		}
++		if _, seen := out[id]; !seen {
++			out[id] = fp
++		}
++	}
++	return out, nil
++}
++
+ // EventsForTask returns events whose top-level task_id equals id, in file
+ // order (detail is opaque; task_id matching is top-level only).
+ func (b *Board) EventsForTask(id string) ([]*Row, error) {
+diff --git a/internal/board/write.go b/internal/board/write.go
+index fa64807..6070d37 100644
+--- a/internal/board/write.go
++++ b/internal/board/write.go
+@@ -17,6 +17,33 @@ func (e *ErrDuplicateTaskID) Error() string {
+ 	return fmt.Sprintf("task id %q already exists in tasks.jsonl — create aborted", e.ID)
+ }
+ 
++// ErrDuplicateFinding is returned by Create when the incoming row is the same
++// FINDING as an already-open row (SG-126). The id is fresh and the title may be
++// a recycled or suffix-variant spelling, which is exactly how QA/dogfood lanes
++// used to grow the board 3-8x; the normalized fingerprint (title + reasoning)
++// is what decides. Callers distinguish it from ErrDuplicateTaskID: a duplicate
++// id is a key clash, a duplicate finding is a re-detection that belongs on the
++// existing row as evidence. --force files the variant deliberately.
++type ErrDuplicateFinding struct {
++	ID          string // id the caller attempted to create
++	ExistingID  string // open row that already carries this fingerprint
++	Fingerprint string
++}
++
++func (e *ErrDuplicateFinding) Error() string {
++	return fmt.Sprintf("DUPLICATE-SUPPRESSED: %s matches fingerprint %s — the finding is already open (normalized title+reasoning match); evidence the existing row instead of refiling it, or pass --force to file it as a variant", e.ExistingID, e.Fingerprint)
++}
++
++// duplicateEvidenceDetail is the payload of the task_evidence event a
++// suppressed create writes. It is the durable record of the suppression: the
++// board gains an audit line, never another row.
++type duplicateEvidenceDetail struct {
++	ExistingTaskID string         `json:"existing_task_id"`
++	NewIDAttempted string         `json:"new_id_attempted"`
++	Fingerprint    string         `json:"fingerprint"`
++	Evidence       *EvidenceEntry `json:"evidence,omitempty"`
++}
++
+ func vocabList() string {
+ 	var ks []string
+ 	for k := range StatusVocabulary {
+@@ -117,6 +144,10 @@ type TaskRowSpec struct {
+ 	CapabilityTags []string
+ 	HasTags        bool
+ 	Force          bool // BT-023: bypass the fleet task-id format check
++	// SG-126: optional run identifier recorded as evidence on the new row
++	// (detail.evidence[].run_id) and on a suppressed duplicate's
++	// task_evidence event.
++	EvidenceRunID string
+ 
+ 	// BT-022: prevalidated raw row for the import path. When Raw is set,
+ 	// Create still performs every check below (id format, duplicate id,
+@@ -216,6 +247,28 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
+ 		}
+ 	}
+ 
++	// SG-126 finding-fingerprint dedupe gate. Deliberately on the BUILT-row
++	// path only: the raw path (import) rehydrates exported rows verbatim and
++	// keeps its byte-for-byte round-trip contract, so it neither fingerprints
++	// nor suppresses. --force is the deliberate variant escape hatch (a foreman
++	// filing a genuinely different row that happens to share a title).
++	if spec.Raw == nil && !spec.Force {
++		fp := FindingFingerprint(spec.Title, spec.Reasoning)
++		if existing := openFingerprintIndex(rows)[fp]; existing != "" {
++			// The suppression is a durable fact: the task_evidence event is
++			// written BEFORE the error is returned, because the event is the
++			// only artifact proving the lane re-detected the finding (the board
++			// itself must not grow a row). An event-append failure surfaces
++			// alongside the duplicate rather than hiding it.
++			evErr := b.appendEvidenceEvent(existing, spec, fp, last)
++			dup := &ErrDuplicateFinding{ID: spec.ID, ExistingID: existing, Fingerprint: fp}
++			if evErr != nil {
++				return "", fmt.Errorf("%w (task_evidence audit event failed: %v)", dup, evErr)
++			}
++			return "", dup
++		}
++	}
++
+ 	// BT-022 raw-row path (import): every create check above has passed
+ 	// (id format, required fields, status/priority vocabulary, duplicate id,
+ 	// depends_on existence). Append the caller's EXACT bytes — key set, key
+@@ -325,6 +378,21 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
+ 		}
+ 	}
+ 
++	// SG-126: stamp the new row with its finding fingerprint (plus run evidence
++	// when the caller named a run) so the NEXT re-detection of this finding is
++	// suppressed instead of refiled. An object-form detail keeps every unknown
++	// key verbatim; a prose detail is carried under "text" so nothing is lost.
++	pd := ParseFindingDetail(row.Get("detail"))
++	pd = pd.withFingerprint(FindingFingerprint(spec.Title, spec.Reasoning))
++	if spec.EvidenceRunID != "" {
++		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: nowStr}})
++	}
++	enc, encErr := EncodeFindingDetail(pd, style)
++	if encErr != nil {
++		return "", encErr
++	}
++	row.SetRaw("detail", enc)
++
+ 	line := append(row.Marshal(style), '\n')
+ 	if err := appendBytes(b.tasksPath, line); err != nil {
+ 		return "", err
+@@ -343,6 +411,33 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
+ 	return spec.ID, nil
+ }
+ 
++// appendEvidenceEvent records a suppressed duplicate create as a task_evidence
++// event on the EXISTING row, so `boardctl show <id> --events` lists every
++// re-detection of that finding. This is the durable artifact of the SG-126
++// gate: the row count does not grow, the evidence does.
++func (b *Board) appendEvidenceEvent(existing string, spec TaskRowSpec, fingerprint string, last *Row) error {
++	ts := b.tasksTSFormat(last).Now()
++	payload := duplicateEvidenceDetail{
++		ExistingTaskID: existing,
++		NewIDAttempted: spec.ID,
++		Fingerprint:    fingerprint,
++		Evidence:       &EvidenceEntry{RunID: spec.EvidenceRunID, TS: ts},
++	}
++	var buf bytes.Buffer
++	enc := json.NewEncoder(&buf)
++	enc.SetEscapeHTML(false)
++	if err := enc.Encode(payload); err != nil {
++		return err
++	}
++	_, err := b.AppendEvent(EventSpec{
++		Type:   "task_evidence",
++		TaskID: existing,
++		Actor:  "boardctl",
++		Detail: bytes.TrimSpace(buf.Bytes()),
++	})
++	return err
++}
++
+ // lastTaskRow parses tasks.jsonl, returning all task rows and the last one.
+ // Topology B: line 1 is the board header (metadata, no task id) and is
+ // skipped — it must never become the mirror template nor part of the
+diff --git a/internal/board/write_test.go b/internal/board/write_test.go
+index 38eb9df..9111554 100644
+--- a/internal/board/write_test.go
++++ b/internal/board/write_test.go
+@@ -2,6 +2,7 @@ package board
+ 
+ import (
+ 	"encoding/json"
++	"errors"
+ 	"os"
+ 	"regexp"
+ 	"strings"
+@@ -563,3 +564,554 @@ func TestSetHeaderCombinedFlagsRefreshUpdatedAt(t *testing.T) {
+ 		t.Fatalf("updated_at = %q, want refreshed past the seeded %s", got, stale)
+ 	}
+ }
++
++// ---------- SG-126: finding-fingerprint dedupe ----------
++
++// seedFindingBoard writes a topology-A board whose tasks.jsonl holds the given
++// raw task rows (one JSON object per line, exactly as passed) and returns the
++// resolved board. Used to plant rows the create path would never write (an
++// open row with no fingerprint, pre-existing duplicate groups).
++func seedFindingBoard(t *testing.T, taskLines ...string) *Board {
++	t.Helper()
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl":  strings.Join(taskLines, "\n") + "\n",
++		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
++		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234"}` + "\n",
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	return b
++}
++
++// taskLineByID returns the tasks.jsonl line whose id matches, verbatim.
++func taskLineByID(t *testing.T, b *Board, id string) string {
++	t.Helper()
++	raw, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, l := range strings.Split(string(raw), "\n") {
++		if strings.TrimSpace(l) == "" {
++			continue
++		}
++		var row map[string]any
++		if err := json.Unmarshal([]byte(l), &row); err != nil {
++			t.Fatalf("tasks.jsonl line does not parse: %v (%s)", err, l)
++		}
++		if row["id"] == id {
++			return l
++		}
++	}
++	t.Fatalf("task %s not found in tasks.jsonl", id)
++	return ""
++}
++
++// taskRowByID returns the parsed tasks.jsonl row (as a generic map).
++func taskRowByID(t *testing.T, b *Board, id string) map[string]any {
++	t.Helper()
++	var row map[string]any
++	if err := json.Unmarshal([]byte(taskLineByID(t, b, id)), &row); err != nil {
++		t.Fatal(err)
++	}
++	return row
++}
++
++// lastEventRaw returns the last events.jsonl line parsed as a map.
++func lastEventRaw(t *testing.T, b *Board) map[string]any {
++	t.Helper()
++	raw, err := os.ReadFile(b.EventsPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	var last string
++	for _, l := range strings.Split(string(raw), "\n") {
++		if strings.TrimSpace(l) != "" {
++			last = l
++		}
++	}
++	var e map[string]any
++	if err := json.Unmarshal([]byte(last), &e); err != nil {
++		t.Fatalf("last event line does not parse: %v (%s)", err, last)
++	}
++	return e
++}
++
++// eventDetailMap decodes an event row's detail (a JSON STRING carrying JSON)
++// into a generic map.
++func eventDetailMap(t *testing.T, e map[string]any) map[string]any {
++	t.Helper()
++	s, _ := e["detail"].(string)
++	if s == "" {
++		t.Fatalf("event detail is not a JSON string: %v", e["detail"])
++	}
++	var out map[string]any
++	if err := json.Unmarshal([]byte(s), &out); err != nil {
++		t.Fatalf("event detail is not JSON: %v (%s)", err, s)
++	}
++	return out
++}
++
++// detailFingerprint extracts detail.fingerprint from a parsed task row.
++func detailFingerprint(t *testing.T, row map[string]any) string {
++	t.Helper()
++	d, ok := row["detail"].(map[string]any)
++	if !ok {
++		t.Fatalf("row detail is not the SG-126 envelope object: %v", row["detail"])
++	}
++	fp, _ := d["fingerprint"].(string)
++	if fp == "" {
++		t.Fatalf("row detail carries no fingerprint: %v", d)
++	}
++	return fp
++}
++
++// SG-126 normalizer: lowercase, strip the recycled finding-id prefix, collapse
++// whitespace, strip trailing recurrence / run-id markers.
++func TestNormalizeFindingTextStripsRecycledTokens(t *testing.T) {
++	cases := []struct{ in, want string }{
++		{"[P2] Widget crashes on empty input", "[p2] widget crashes on empty input"},
++		{"QA-CRIER-3 [P2] Widget crashes on empty input", "[p2] widget crashes on empty input"},
++		{"DF-AI-PLAYS-POKE-12 [P2] Widget crashes on empty input", "[p2] widget crashes on empty input"},
++		{"DOGFOOD-MESH-1 [P2] Widget crashes", "[p2] widget crashes"},
++		{"[P2] Widget crashes (recurrence 3)", "[p2] widget crashes"},
++		{"[P2] Widget crashes (3rd)", "[p2] widget crashes"},
++		{"[P2] Widget crashes [run-id-7]", "[p2] widget crashes"},
++		{"[P2] Widget crashes [run-id-7] (recurrence 2)", "[p2] widget crashes"},
++		{"[P2]  Widget   crashes\non  empty input", "[p2] widget crashes on empty input"},
++		{"", ""},
++	}
++	for _, c := range cases {
++		if got := NormalizeFindingText(c.in); got != c.want {
++			t.Errorf("NormalizeFindingText(%q) = %q, want %q", c.in, got, c.want)
++		}
++	}
++	// the separator keeps the two halves from colliding across the boundary
++	a := FindingFingerprint("ab", "c")
++	b := FindingFingerprint("a", "bc")
++	if a == b {
++		t.Errorf("fingerprint(%q,%q) == fingerprint(%q,%q) — the 0x1F separator is not doing its job", "ab", "c", "a", "bc")
++	}
++	if a != FindingFingerprint("AB", "C") {
++		t.Error("fingerprint must be case-insensitive after normalization")
++	}
++}
++
++// SG-126: object-form reasoning (qa-dagger rows carry {"note": ...}) is
++// fingerprinted on the note, and a row whose reasoning is an object can be
++// compared against a plain-string reasoning in a later create.
++func TestRowFindingReasoningHandlesObjectForm(t *testing.T) {
++	row, err := ParseRow([]byte(`{"id":"QA-X-1","title":"t","reasoning":{"note":"QA foreman cycle 2026-09-10"}}`))
++	if err != nil {
++		t.Fatal(err)
++	}
++	if got := RowFindingReasoning(row); got != "QA foreman cycle 2026-09-10" {
++		t.Fatalf("RowFindingReasoning(object) = %q", got)
++	}
++	plain, err := ParseRow([]byte(`{"id":"QA-X-2","title":"t","reasoning":"QA foreman cycle 2026-09-10"}`))
++	if err != nil {
++		t.Fatal(err)
++	}
++	if FindingFingerprintForRow(row) != FindingFingerprintForRow(plain) {
++		t.Error("object-form and string-form reasoning with the same note must fingerprint identically")
++	}
++	nullRow, err := ParseRow([]byte(`{"id":"QA-X-3","title":"t","reasoning":null}`))
++	if err != nil {
++		t.Fatal(err)
++	}
++	if got := RowFindingReasoning(nullRow); got != "" {
++		t.Fatalf("null reasoning = %q, want empty", got)
++	}
++}
++
++// SG-126 AC2: re-filing a finding under a fresh, suffix-variant id is REFUSED
++// before anything is written, and the refusal is recorded as a task_evidence
++// event on the existing row (the board gains an audit line, not a row).
++func TestCreate_DedupeOnFingerprint(t *testing.T) {
++	b := newTestBoard(t)
++	title := "[P2] Widget crashes on empty input"
++	reasoning := "probe: curl returns 500 on empty payload"
++	if _, err := b.Create(TaskRowSpec{ID: "QA-TEST-1", Title: title, Reasoning: reasoning, EvidenceRunID: "run-1"}); err != nil {
++		t.Fatalf("first filing rejected: %v", err)
++	}
++	fp := detailFingerprint(t, taskRowByID(t, b, "QA-TEST-1"))
++	lineABefore := taskLineByID(t, b, "QA-TEST-1")
++	tasksBefore := boardLineCount(t, b.TasksPath())
++	eventsBefore := boardLineCount(t, b.EventsPath())
++
++	// Same finding: recycled id prefix on the title, recurrence suffix, and
++	// whitespace-only differences in the reasoning.
++	_, err := b.Create(TaskRowSpec{
++		ID:        "QA-TEST-2",
++		Title:     "QA-TEST-9 " + title + " (recurrence 2)",
++		Reasoning: "probe:   curl returns\n500 on empty payload",
++	})
++	if err == nil {
++		t.Fatal("re-filed finding accepted — the fingerprint gate did not fire")
++	}
++	var dup *ErrDuplicateFinding
++	if !errors.As(err, &dup) {
++		t.Fatalf("error type = %T (%v), want *ErrDuplicateFinding", err, err)
++	}
++	if dup.ExistingID != "QA-TEST-1" {
++		t.Fatalf("ExistingID = %q, want QA-TEST-1", dup.ExistingID)
++	}
++	if dup.Fingerprint != fp {
++		t.Fatalf("Fingerprint = %q, want %q (the stored digest)", dup.Fingerprint, fp)
++	}
++	if want := "DUPLICATE-SUPPRESSED: QA-TEST-1 matches fingerprint " + fp; !strings.Contains(err.Error(), want) {
++		t.Fatalf("error message %q does not start the machine-readable line %q", err.Error(), want)
++	}
++
++	// The board did not grow, and the existing row is byte-identical.
++	if n := boardLineCount(t, b.TasksPath()); n != tasksBefore {
++		t.Fatalf("tasks.jsonl grew from %d to %d lines on a suppressed duplicate", tasksBefore, n)
++	}
++	if got := taskLineByID(t, b, "QA-TEST-1"); got != lineABefore {
++		t.Fatalf("existing row was rewritten by a suppressed create:\n got %s\nwant %s", got, lineABefore)
++	}
++
++	// The suppression is durable: exactly one task_evidence event on the
++	// existing row, carrying both ids and the fingerprint.
++	if n := boardLineCount(t, b.EventsPath()); n != eventsBefore+1 {
++		t.Fatalf("events.jsonl has %d lines, want %d (exactly one task_evidence event)", n, eventsBefore+1)
++	}
++	e := lastEventRaw(t, b)
++	if e["event_type"] != "task_evidence" {
++		t.Fatalf("event_type = %v, want task_evidence", e["event_type"])
++	}
++	if e["task_id"] != "QA-TEST-1" {
++		t.Fatalf("event task_id = %v, want the EXISTING row QA-TEST-1", e["task_id"])
++	}
++	d := eventDetailMap(t, e)
++	if d["existing_task_id"] != "QA-TEST-1" || d["new_id_attempted"] != "QA-TEST-2" || d["fingerprint"] != fp {
++		t.Fatalf("task_evidence detail wrong: %v", d)
++	}
++	ev, ok := d["evidence"].(map[string]any)
++	if !ok {
++		t.Fatalf("task_evidence detail carries no evidence object: %v", d)
++	}
++	if ts, _ := ev["ts"].(string); ts == "" {
++		t.Fatalf("evidence has no ts: %v", ev)
++	}
++
++	// The open-fingerprint index the gate consults sees exactly the one row.
++	fps, err := b.OpenFingerprints()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(fps) != 1 || fps["QA-TEST-1"] != fp {
++		t.Fatalf("OpenFingerprints() = %v, want {QA-TEST-1: %s}", fps, fp)
++	}
++}
++
++// SG-126 AC3: a pre-existing OPEN row with no fingerprint is grandfathered —
++// it stays open and visible but never produces a false match, so the new
++// filing lands.
++func TestCreate_GrandfatherExistingOpenRow(t *testing.T) {
++	title := "[P1] Legacy finding filed before fingerprints existed"
++	reasoning := "cell detail: spawn failed"
++	b := seedFindingBoard(t,
++		`{"id":"QA-LEGACY-1","title":"`+title+`","status":"pending","priority":"P1","reasoning":"`+reasoning+`"}`,
++	)
++	if fps, err := b.OpenFingerprints(); err != nil || len(fps) != 0 {
++		t.Fatalf("seeded legacy row unexpectedly fingerprinted: %v (%v)", fps, err)
++	}
++	tasksBefore := boardLineCount(t, b.TasksPath())
++
++	got, err := b.Create(TaskRowSpec{ID: "QA-NEW-1", Title: title, Reasoning: reasoning})
++	if err != nil {
++		t.Fatalf("create against a grandfathered open row was refused: %v", err)
++	}
++	if got != "QA-NEW-1" {
++		t.Fatalf("created id = %q, want QA-NEW-1", got)
++	}
++	if n := boardLineCount(t, b.TasksPath()); n != tasksBefore+1 {
++		t.Fatalf("tasks.jsonl has %d lines, want %d", n, tasksBefore+1)
++	}
++	// the legacy row is untouched and still unfingerprinted
++	legacy := taskRowByID(t, b, "QA-LEGACY-1")
++	if legacy["detail"] != nil {
++		t.Fatalf("grandfathered row was rewritten: %v", legacy["detail"])
++	}
++	// the NEW row is fingerprinted, so the NEXT re-file is suppressed
++	if fp := detailFingerprint(t, taskRowByID(t, b, "QA-NEW-1")); fp == "" {
++		t.Fatal("new row carries no fingerprint")
++	}
++	if _, err := b.Create(TaskRowSpec{ID: "QA-NEW-2", Title: title, Reasoning: reasoning}); err == nil {
++		t.Fatal("second re-file accepted after the finding became fingerprinted")
++	}
++}
++
++// SG-126 AC4: --force files a variant deliberately, and the variant is itself
++// fingerprinted so a later accidental re-file of it is still caught.
++func TestCreate_ForceOverride(t *testing.T) {
++	b := newTestBoard(t)
++	title := "[P2] Widget crashes on empty input"
++	reasoning := "probe: curl returns 500"
++	if _, err := b.Create(TaskRowSpec{ID: "QA-TEST-1", Title: title, Reasoning: reasoning}); err != nil {
++		t.Fatal(err)
++	}
++	fp := detailFingerprint(t, taskRowByID(t, b, "QA-TEST-1"))
++	if _, err := b.Create(TaskRowSpec{ID: "QA-TEST-2", Title: title, Reasoning: reasoning, Force: true}); err != nil {
++		t.Fatalf("--force duplicate filing refused: %v", err)
++	}
++	tasks, err := b.TaskRows()
++	if err != nil {
++		t.Fatal(err)
++	}
++	ids := map[string]bool{}
++	for _, r := range tasks {
++		ids[r.String("id")] = true
++	}
++	if !ids["QA-TEST-1"] || !ids["QA-TEST-2"] {
++		t.Fatalf("forced variant did not land: board ids %v (want QA-TEST-1 and QA-TEST-2)", ids)
++	}
++	if got := detailFingerprint(t, taskRowByID(t, b, "QA-TEST-2")); got != fp {
++		t.Fatalf("forced row fingerprint = %q, want %q (variants are still fingerprinted)", got, fp)
++	}
++	// the forced create is an ordinary create: its event is task_created
++	if e := lastEventRaw(t, b); e["event_type"] != "task_created" {
++		t.Fatalf("last event = %v, want task_created", e["event_type"])
++	}
++}
++
++// SG-126 AC5: the backfill collapses a 3-row fingerprint collision into ONE
++// open row plus two closed rows whose worker_summary names the kept id, carries
++// the merged evidence onto the kept row, and writes one audit event per group.
++func TestDedupeBackfill_MergesCollisions(t *testing.T) {
++	finding := `"title":"[P3] run_battery FAIL — port pool exhausted","reasoning":"cell detail: no free port ranges"`
++	b := seedFindingBoard(t,
++		`{"id":"QA-BF-1","status":"pending","priority":"P3",`+finding+`}`,
++		`{"id":"OTHER-1","status":"complete","priority":"P2","title":"unrelated","reasoning":"nope"}`,
++		`{"id":"QA-BF-2","status":"pending","priority":"P3",`+finding+`}`,
++		`{"id":"QA-BF-3","status":"in_progress","priority":"P3",`+finding+`}`,
++		`{"id":"QA-BF-4","status":"complete","priority":"P3",`+finding+`}`,
++	)
++	otherBefore := taskLineByID(t, b, "OTHER-1")
++	closedBefore := taskLineByID(t, b, "QA-BF-4")
++	eventsBefore := boardLineCount(t, b.EventsPath())
++
++	rep, err := b.DedupeBackfill(true)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(rep.Groups) != 1 {
++		t.Fatalf("merge groups = %d, want 1 (%+v)", len(rep.Groups), rep.Groups)
++	}
++	g := rep.Groups[0]
++	if g.Kept != "QA-BF-1" {
++		t.Fatalf("kept = %q, want the earliest filing QA-BF-1", g.Kept)
++	}
++	if strings.Join(g.Merged, ",") != "QA-BF-2,QA-BF-3" {
++		t.Fatalf("merged = %v, want [QA-BF-2 QA-BF-3]", g.Merged)
++	}
++	if g.Fingerprint == "" {
++		t.Fatal("merge group carries no fingerprint")
++	}
++
++	// kept row: still open, still the same finding, now carries the merged
++	// rows' evidence.
++	kept := taskRowByID(t, b, "QA-BF-1")
++	if kept["status"] != "pending" {
++		t.Fatalf("kept row status = %v, want pending", kept["status"])
++	}
++	kd, _ := kept["detail"].(map[string]any)
++	if kd["fingerprint"] != g.Fingerprint {
++		t.Fatalf("kept row fingerprint = %v, want %s", kd["fingerprint"], g.Fingerprint)
++	}
++	ev, _ := kd["evidence"].([]any)
++	if len(ev) != 2 {
++		t.Fatalf("kept row evidence = %v, want one entry per merged row", kd["evidence"])
++	}
++	seen := map[string]bool{}
++	for _, e := range ev {
++		em, _ := e.(map[string]any)
++		id, _ := em["task_id"].(string)
++		seen[id] = true
++	}
++	if !seen["QA-BF-2"] || !seen["QA-BF-3"] {
++		t.Fatalf("merged evidence does not name both merged rows: %v", ev)
++	}
++
++	// merged-away rows: complete, summary names the kept id, completed_at set.
++	for _, id := range []string{"QA-BF-2", "QA-BF-3"} {
++		row := taskRowByID(t, b, id)
++		if row["status"] != "complete" {
++			t.Fatalf("%s status = %v, want complete", id, row["status"])
++		}
++		summary, _ := row["worker_summary"].(string)
++		if !strings.HasPrefix(summary, "merged into QA-BF-1: dedupe backfill ") {
++			t.Fatalf("%s worker_summary = %q, want \"merged into QA-BF-1: dedupe backfill <date>\"", id, summary)
++		}
++		if ts, _ := row["completed_at"].(string); ts == "" {
++			t.Fatalf("%s has no completed_at", id)
++		}
++	}
++
++	// untouched lines round-trip byte-identical: a closed row with the same
++	// finding is NOT a merge candidate, and an unrelated row is not rewritten.
++	if got := taskLineByID(t, b, "QA-BF-4"); got != closedBefore {
++		t.Fatalf("closed row was rewritten:\n got %s\nwant %s", got, closedBefore)
++	}
++	if got := taskLineByID(t, b, "OTHER-1"); got != otherBefore {
++		t.Fatalf("unrelated row was rewritten:\n got %s\nwant %s", got, otherBefore)
++	}
++
++	// exactly one audit event, naming kept + merged + fingerprint
++	if n := boardLineCount(t, b.EventsPath()); n != eventsBefore+1 {
++		t.Fatalf("events.jsonl has %d lines, want %d", n, eventsBefore+1)
++	}
++	e := lastEventRaw(t, b)
++	if e["event_type"] != "audit" || e["task_id"] != "QA-BF-1" {
++		t.Fatalf("audit event wrong: %v", e)
++	}
++	d := eventDetailMap(t, e)
++	if d["action"] != "dedupe-backfill" || d["kept"] != "QA-BF-1" || d["fingerprint"] != g.Fingerprint {
++		t.Fatalf("audit detail wrong: %v", d)
++	}
++	merged, _ := d["merged"].([]any)
++	if len(merged) != 2 || merged[0] != "QA-BF-2" || merged[1] != "QA-BF-3" {
++		t.Fatalf("audit merged = %v, want [QA-BF-2 QA-BF-3]", d["merged"])
++	}
++
++	// idempotence: a second apply finds nothing to collapse and writes nothing.
++	tasksAfter := mustRead(t, b.TasksPath())
++	eventsAfter := mustRead(t, b.EventsPath())
++	rep2, err := b.DedupeBackfill(true)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(rep2.Groups) != 0 || len(rep2.Fingerprinted) != 0 {
++		t.Fatalf("second apply is not a no-op: %+v", rep2)
++	}
++	if string(mustRead(t, b.TasksPath())) != string(tasksAfter) || string(mustRead(t, b.EventsPath())) != string(eventsAfter) {
++		t.Fatal("second apply rewrote a file")
++	}
++}
++
++// SG-126 AC6: the dry run reports the identical collapse and leaves BOTH files
++// byte-identical — no fingerprints, no merges, no audit events.
++func TestDedupeBackfill_DryRunIsIdempotent(t *testing.T) {
++	finding := `"title":"[P1] Leak fix not deployed","reasoning":"bunker version -> 0.1.3"`
++	b := seedFindingBoard(t,
++		`{"id":"QA-BF-1","status":"pending","priority":"P1",`+finding+`}`,
++		`{"id":"QA-BF-2","status":"pending","priority":"P1",`+finding+`}`,
++		`{"id":"QA-BF-3","status":"pending","priority":"P1",`+finding+`}`,
++	)
++	tasksBefore := mustRead(t, b.TasksPath())
++	eventsBefore := mustRead(t, b.EventsPath())
++
++	rep, err := b.DedupeBackfill(false)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(rep.Groups) != 1 || rep.Groups[0].Kept != "QA-BF-1" {
++		t.Fatalf("dry-run report does not describe the collapse: %+v", rep.Groups)
++	}
++	if len(rep.MergedAway) != 2 {
++		t.Fatalf("dry-run merged-away = %v, want 2 ids", rep.MergedAway)
++	}
++	if !rep.Changed() {
++		t.Fatal("dry-run report claims nothing to do while a group exists")
++	}
++	if string(mustRead(t, b.TasksPath())) != string(tasksBefore) {
++		t.Fatal("dry run rewrote tasks.jsonl")
++	}
++	if string(mustRead(t, b.EventsPath())) != string(eventsBefore) {
++		t.Fatal("dry run wrote an audit event")
++	}
++	// and the report is stable across runs
++	rep2, err := b.DedupeBackfill(false)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(rep2.Groups) != 1 || rep2.Groups[0].Kept != rep.Groups[0].Kept {
++		t.Fatalf("dry-run report is not deterministic: %+v vs %+v", rep.Groups, rep2.Groups)
++	}
++}
++
++// SG-126 regression (found on real boards): live QA boards put the SAME id on
++// several lines, so the collapse must select group members by LINE INDEX. An
++// id-keyed selection would treat both same-id rows as "kept" and merge neither,
++// leaving the duplicate open while the report claimed a merge.
++func TestDedupeBackfill_DuplicateIDsCollapse(t *testing.T) {
++	finding := `"title":"[P2] Untracked .vfs cache stray in the repo","reasoning":"git status shows .vfs/"`
++	b := seedFindingBoard(t,
++		`{"id":"QA-DUP-1","status":"pending","priority":"P2",`+finding+`}`,
++		`{"id":"QA-DUP-1","status":"pending","priority":"P2",`+finding+`}`,
++	)
++	rep, err := b.DedupeBackfill(true)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(rep.Groups) != 1 {
++		t.Fatalf("merge groups = %d, want 1 (%+v)", len(rep.Groups), rep.Groups)
++	}
++	g := rep.Groups[0]
++	if !g.DuplicateIDs {
++		t.Fatalf("group with two same-id rows not flagged DuplicateIDs: %+v", g)
++	}
++	if g.KeptLine != 1 || len(g.MergedLines) != 1 || g.MergedLines[0] != 2 {
++		t.Fatalf("group lines = kept %d merged %v, want kept 1 merged [2]", g.KeptLine, g.MergedLines)
++	}
++	if g.Kept != "QA-DUP-1" || len(g.Merged) != 1 || g.Merged[0] != "QA-DUP-1" {
++		t.Fatalf("group ids = kept %q merged %v", g.Kept, g.Merged)
++	}
++
++	// exactly one of the two same-id rows is left OPEN; the other is complete.
++	raw, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	var openCount, closedCount int
++	for _, l := range strings.Split(string(raw), "\n") {
++		if strings.TrimSpace(l) == "" {
++			continue
++		}
++		var row map[string]any
++		if err := json.Unmarshal([]byte(l), &row); err != nil {
++			t.Fatal(err)
++		}
++		if row["id"] != "QA-DUP-1" {
++			continue
++		}
++		switch row["status"] {
++		case "pending":
++			openCount++
++		case "complete":
++			closedCount++
++			summary, _ := row["worker_summary"].(string)
++			if !strings.HasPrefix(summary, "merged into QA-DUP-1: dedupe backfill ") {
++				t.Fatalf("merged same-id row summary = %q", summary)
++			}
++		default:
++			t.Fatalf("unexpected status %v", row["status"])
++		}
++	}
++	if openCount != 1 || closedCount != 1 {
++		t.Fatalf("same-id group left %d open / %d closed, want 1 / 1", openCount, closedCount)
++	}
++
++	// the audit event disambiguates by line
++	d := eventDetailMap(t, lastEventRaw(t, b))
++	if d["kept_line"] != float64(1) {
++		t.Fatalf("audit kept_line = %v, want 1", d["kept_line"])
++	}
++	ml, _ := d["merged_lines"].([]any)
++	if len(ml) != 1 || ml[0] != float64(2) {
++		t.Fatalf("audit merged_lines = %v, want [2]", d["merged_lines"])
++	}
++}
++
++// mustRead reads a file or fails the test.
++func mustRead(t *testing.T, path string) []byte {
++	t.Helper()
++	b, err := os.ReadFile(path)
++	if err != nil {
++		t.Fatal(err)
++	}
++	return b
++}

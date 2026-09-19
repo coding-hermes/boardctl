@@ -1,0 +1,520 @@
+commit 9f437bc614c94aa9812168be61a2761941c7cd4d
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sat Sep 19 04:34:44 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sat Sep 19 04:35:10 2026 -0500
+
+    release: cut v0.1.6 — one published naming + platform set across README/Makefile/CI. Addresses BT-036.
+    
+    BT-036: the published v0.1.5 asset (vcs.revision f9b40415) predates the SG-126
+    fingerprint gate, and the three release surfaces disagreed about what a release
+    even contains. This commit reconciles them to ONE naming + platform set and
+    moves the pins to the tag being cut.
+    
+    Naming/platform agreement (deliverable A):
+    - .github/workflows/multiarch.yml passes an explicit `platforms:` input. The org
+      reusable workflow's default list drops linux/arm and freebsd/amd64 (and adds
+      windows/arm64), so a tag-push cut published a different platform set than
+      `make release`. The list now matches the Makefile's PLATFORMS in the same
+      order, so both cut paths are interchangeable name-for-name.
+    - Makefile `release` emits the CI names — boardctl_<goos>_<goarch>[.exe] plus
+      dist/SHA256SUMS — instead of hyphen names + sha256sums.txt. The BT-030
+      VERSION/tag guard is untouched. Two defects surfaced by actually running it:
+      (1) `$(BINARY)_$os_$arch` is parsed by the shell as the variable `os_`, so the
+      arch was silently DROPPED and 7 platforms collapsed onto 4 files; the shell
+      variables are brace-quoted now (`$${os}_$${arch}`). (2) `make release` never
+      cleared dist/, so a leftover hyphen-named binary would have been published as
+      an extra asset alongside the new names; the recipe removes dist/ first.
+    - README's install block downloads the names that actually exist (underscore
+      assets + SHA256SUMS), the platform claim names the published set (linux
+      amd64/arm64/arm, darwin amd64/arm64, windows amd64, freebsd amd64), and
+      "Cutting a release" now documents the CI tag-push as the primary cut path with
+      `make release` as the offline/local equivalent (same names, `gh release
+      create ... dist/*` line included). The retired "make release is the only
+      sanctioned path" claim is replaced.
+    
+    The CI cut could not have fired at all before this commit: the workflow's push
+    trigger was branches-only, and GitHub skips tag refs when only `branches:` is
+    defined, while the reusable workflow's Release job runs on tag refs only. Added
+    `tags: ["v*"]`.
+    
+    dedupe-board (deliverable B): documented honestly as source-only — every
+    published asset is the boardctl CLI — with its acquisition path
+    (`go install github.com/coding-hermes/boardctl/cmd/dedupe-board@latest`) next to
+    the usage lines and marked source-only in the repository-layout table. No claim
+    that it ships in a release asset.
+    
+    Pins (deliverable D): every README release surface moves to v0.1.6 — the
+    `Current release:` line, both install URLs, the version/--json examples and the
+    release procedure — so `make version-check` passes.
+    
+    Regression guard: internal/versioncheck's TestVersioncheck is already the
+    in-process release-surface gate shared by three enforcement surfaces (`make
+    version-check`, the CI "Version-check" step with the byte-identical command, and
+    plain `go test ./...`), so the new assertions went there rather than into a new
+    package or a fourth gate: README must download the underscore asset + SHA256SUMS
+    for the pinned tag and must not name the retired spellings; the Makefile must
+    build `_${os}_${arch}` names and write SHA256SUMS; the workflow's platform list
+    must equal the Makefile's PLATFORMS in order; the workflow must keep a `tags:`
+    trigger. RED-proved by mutating each surface in turn (hyphen names,
+    sha256sums.txt, a one-entry platform drift, a removed tags: trigger): each one
+    FAILS the gate naming the surface, the unmutated control is green, and both
+    files were restored byte-identically (sha256 verified).
+    
+    Verified before commit: go build ./..., go vet ./..., go test -count=1 -short
+    ./... all ok; make fmt-check, make version-check, make vuln-check green;
+    gofmt -l cmd internal prints nothing; `make release` emits the 7 underscore
+    binaries + dist/SHA256SUMS and dist/boardctl_linux_amd64 prints "boardctl
+    version v0.1.5" (the pre-cut tag, correct — v0.1.6 is created by this commit's
+    tag).
+    
+    Cut path: `git tag v0.1.6` on this commit, then push the branch and the tag; the
+    Release job cross-builds the 7 platforms, writes SHA256SUMS, attests provenance
+    and publishes the release. The published-asset proof (sha256sum -c, `version`
+    -> v0.1.6, go version -m vcs.revision == the tag commit) is recorded in the
+    foreman tick record.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ .github/workflows/multiarch.yml            |  12 +++
+ Makefile                                   |  11 ++-
+ README.md                                  | 110 +++++++++++++++---------
+ docs/dogfood/diagnostics.md                |   4 +-
+ internal/versioncheck/versioncheck.go      |   7 ++
+ internal/versioncheck/versioncheck_test.go | 133 +++++++++++++++++++++++++++++
+ 6 files changed, 235 insertions(+), 42 deletions(-)
+
+diff --git a/.github/workflows/multiarch.yml b/.github/workflows/multiarch.yml
+index be342ba..cafcc8c 100644
+--- a/.github/workflows/multiarch.yml
++++ b/.github/workflows/multiarch.yml
+@@ -3,6 +3,10 @@ name: Multi-Arch
+ on:
+   push:
+     branches: [main]
++    # The tag push IS the release cut: the reusable workflow's release job only
++    # runs on a tag ref, so without this trigger a `git push origin vX.Y.Z`
++    # would never publish anything.
++    tags: ["v*"]
+   pull_request:
+     branches: [main]
+ 
+@@ -13,6 +17,14 @@ jobs:
+     with:
+       binary: boardctl
+       main: ./cmd/boardctl
++      # Makefile parity: the reusable workflow's default platform list drops
++      # linux/arm and freebsd/amd64 (and adds windows/arm64), so the CI release
++      # would publish a different platform set than `make release`. Keep these
++      # two lists identical; the asset name is generated as
++      # ${binary}_${goos}_${goarch}${ext} (underscores, .exe on windows) and the
++      # checksum file is SHA256SUMS — the same names README's install block
++      # downloads and `make release` writes into dist/.
++      platforms: '["linux/amd64","linux/arm64","linux/arm","darwin/amd64","darwin/arm64","windows/amd64","freebsd/amd64"]'
+     permissions:
+       contents: write
+       id-token: write
+diff --git a/Makefile b/Makefile
+index 167ac0f..ae12f5b 100644
+--- a/Makefile
++++ b/Makefile
+@@ -49,6 +49,12 @@ vuln-check:
+ vet:
+ 	go vet ./...
+ 
++# BT-036: the asset names this target emits are the CI names — the org
++# multi-arch workflow (.github/workflows/multiarch.yml) builds
++# `${binary}_${goos}_${goarch}${ext}` and publishes dist/SHA256SUMS, so a
++# `make release` cut and a tag-push cut are interchangeable byte-name-for-name.
++# Changing PLATFORMS means changing the workflow's `platforms:` input too.
++#
+ # BT-030 guard: fail loudly instead of silently shipping a date-stamped
+ # release when the repo HAS tags — that is exactly the v0.1.3 bug this
+ # task fixes (published binaries said 20260915, not v0.1.3). Escaping the
+@@ -62,6 +68,7 @@ release: test
+ 		fi; \
+ 	fi
+ 	@echo "== release VERSION=$(VERSION)"
++	@rm -rf $(DIST)   # a stale dist/ would ship leftover names as extra assets
+ 	@mkdir -p $(DIST)
+ 	@for platform in $(PLATFORMS); do \
+ 		os=$${platform%/*}; arch=$${platform#*/}; \
+@@ -69,9 +76,9 @@ release: test
+ 		echo "== $$os/$$arch"; \
+ 		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -trimpath \
+ 			-ldflags "-s -w -X main.version=$(VERSION)" \
+-			-o $(DIST)/$(BINARY)-$$os-$$arch$$ext $(CMD) || exit 1; \
++			-o $(DIST)/$(BINARY)_$${os}_$${arch}$${ext} $(CMD) || exit 1; \
+ 	done
+-	@cd $(DIST) && sha256sum $(BINARY)-* > sha256sums.txt
++	@cd $(DIST) && sha256sum $(BINARY)_* > SHA256SUMS
+ 	@echo "release artifacts in $(DIST)/"
+ 
+ clean:
+diff --git a/README.md b/README.md
+index 2d95655..5befa5f 100644
+--- a/README.md
++++ b/README.md
+@@ -10,29 +10,35 @@ no cache files, no parity probes. What git tracks is what you get.
+ ## Install
+ 
+ The zero-dependency path: grab a static binary from
+-[releases](../../releases) (linux/darwin/windows/freebsd × amd64/arm64/arm) —
+-no Go toolchain needed. Verify the binary's checksum before running it:
++[releases](../../releases) (linux amd64/arm64/arm, darwin amd64/arm64, windows
++amd64, freebsd amd64) — no Go toolchain needed. Verify the binary's checksum
++before running it:
+ 
+-Current release: **v0.1.5**.
++Current release: **v0.1.6**.
+ 
+ ```bash
+-curl -sL -o boardctl-linux-amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/boardctl-linux-amd64
+-curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v0.1.5/sha256sums.txt
+-sha256sum -c --ignore-missing sha256sums.txt   # verify the binary you downloaded
+-chmod +x boardctl-linux-amd64 && ./boardctl-linux-amd64 version
++curl -sL -o boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.6/boardctl_linux_amd64
++curl -sL -o SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/v0.1.6/SHA256SUMS
++sha256sum -c --ignore-missing SHA256SUMS   # verify the binary you downloaded
++chmod +x boardctl_linux_amd64 && ./boardctl_linux_amd64 version
+ ```
+ 
+-`sha256sums.txt` lists every published platform, so `--ignore-missing` skips the
++Assets are named `<binary>_<goos>_<goarch>` (underscores; `.exe` on windows,
++e.g. `boardctl_windows_amd64.exe`) plus the `SHA256SUMS` checksum file. Both cut
++paths emit exactly these names: the tag-push CI cut and the offline
++`make release` (see [Cutting a release](#cutting-a-release-bt-030)).
++
++`SHA256SUMS` lists every published platform, so `--ignore-missing` skips the
+ ones you did not download (without it, `sha256sum -c` exits 1 on the absent
+ files). The downloaded binary must keep its release filename for this to verify.
+ 
+-The last line prints the binary's release identity — for a v0.1.5 asset it
+-prints `boardctl version v0.1.5`. Release binaries are stamped from the release
++The last line prints the binary's release identity — for a v0.1.6 asset it
++prints `boardctl version v0.1.6`. Release binaries are stamped from the release
+ tag, so the printed version must match the release you downloaded; a bare date
+-stamp (e.g. `20260915`) or `dev` means the binary was not cut by `make release`
+-from a tagged checkout (see [Development](#development)).
++stamp (e.g. `20260915`) or `dev` means the binary was not cut from a tagged
++checkout (see [Development](#development)).
+ 
+-Move `boardctl` somewhere on your `PATH` (or invoke it as `./boardctl-linux-amd64`).
++Move `boardctl` somewhere on your `PATH` (or invoke it as `./boardctl_linux_amd64`).
+ 
+ With a Go toolchain, `go install` works too:
+ 
+@@ -60,11 +66,11 @@ boardctl -C ~/myproject validate
+ boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
+                                    # (no .db/.parquet), header vs events ticks,
+                                    # fixture orphans
+-boardctl version                   # prints e.g. "boardctl version v0.1.5"
++boardctl version                   # prints e.g. "boardctl version v0.1.6"
+                                    # (the release tag; a UTC date for release
+                                    # builds from untagged checkouts, "dev" for
+                                    # unstamped local builds)
+-boardctl version --json            # {"version":"v0.1.5","build":"v0.1.5"}
++boardctl version --json            # {"version":"v0.1.6","build":"v0.1.6"}
+                                    # ("build" is the raw build stamp)
+ 
+ # create a task row (appends tasks.jsonl + task_created event).
+@@ -257,6 +263,13 @@ dedupe-board --board-dir ~/myproject            # report only, zero writes
+ dedupe-board --board-dir ~/myproject --apply    # collapse the groups
+ ```
+ 
++`dedupe-board` is **source-only** — it is a second entrypoint, not a release
++asset (every published asset is the `boardctl` CLI). Install it from the module:
++
++```bash
++go install github.com/coding-hermes/boardctl/cmd/dedupe-board@latest
++```
++
+ Per group (≥ 2 open rows sharing a fingerprint) it keeps the earliest row, closes
+ the rest with `worker_summary="merged into <kept>: dedupe backfill <date>"`,
+ carries the merged evidence onto the kept row, and writes one `audit` event.
+@@ -292,7 +305,7 @@ git diffs stay minimal and byte-stable.
+ | Path | Purpose |
+ |------|---------|
+ | `cmd/boardctl/` | CLI entrypoint (`main.go`) |
+-| `cmd/dedupe-board/` | SG-126 one-shot dedupe backfill (dry-run by default) |
++| `cmd/dedupe-board/` | SG-126 one-shot dedupe backfill (dry-run by default; source-only — `go install github.com/coding-hermes/boardctl/cmd/dedupe-board@latest`) |
+ | `internal/board/` | Board engine — read/write/validate/doctor/init plus JSONL style handling |
+ | `docs/board-fingerprint-rules.md` | Finding-fingerprint rule, evidence-over-refile, backfill usage |
+ | `.coding-hermes/board/` | This repo's own dogfood board (`tasks.jsonl`, `events.jsonl`, `board.jsonl`, `fixtures.jsonl`) |
+@@ -324,7 +337,7 @@ go test ./...
+ make fmt-check        # gofmt gate (CI enforces it too); `make fmt` fixes
+ make version-check    # README release-pin gate (CI enforces it too)
+ make vuln-check       # dependency-vulnerability gate (CI enforces it too)
+-make release          # cross-compile all targets into dist/
++make release          # cross-compile all targets into dist/ (same asset names + SHA256SUMS the CI cut publishes)
+ ```
+ 
+ `make vuln-check` (BT-033) runs `govulncheck` over the module and fails on any
+@@ -349,35 +362,56 @@ toolchain, fails this gate. With `GOTOOLCHAIN=auto` (the default) the pinned
+ patch toolchain is fetched automatically. Do not lower the directive to
+ silence the gate; raise it to the patched release instead.
+ 
+-`make release` is the only sanctioned path for cutting a release — it builds
+-every target and generates `dist/sha256sums.txt`, which must be uploaded as a
+-release asset alongside the binaries. Cutting a release by hand (tag + manual
+-asset upload) skips the checksum file; that is how v0.1.1 shipped without one
+-(BT-008).
++Cutting a release is one command: push a `vX.Y.Z` tag. The repo's
++[`.github/workflows/multiarch.yml`](.github/workflows/multiarch.yml) calls the
++org reusable multi-arch workflow (`coding-hermes/.github`), which cross-builds
++every published target, writes `SHA256SUMS`, attests build provenance and
++creates the GitHub release. `make release` is the offline/local equivalent and
++emits the SAME asset names (see the procedure below). Never cut a release by
++hand (tag + manual asset upload) without its checksum file — that is how v0.1.1
++shipped without one (BT-008).
+ 
+ ### Cutting a release (BT-030)
+ 
+ The release identity must flow from the git tag into every shipped binary —
+ the published v0.1.3 assets stamped `20260915` (a build date) instead of the
+-release, which is exactly what this procedure prevents:
+-
+-1. Tag the release commit and push the tag: `git tag v0.1.5 && git push origin v0.1.5`.
+-2. `make release` from that tagged checkout. VERSION resolves via
+-   `git describe --tags --abbrev=0` (a UTC date only on checkouts with no
+-   tags), and every binary reports it: `./dist/boardctl-linux-amd64 version`
+-   prints `boardctl version v0.1.5`. If the repo HAS tags but VERSION
+-   resolved to a non-tag, the target FAILS instead of silently shipping a
+-   date stamp; `make release VERSION=v0.1.5` overrides deliberately.
+-3. `make version-check` — verifies every release surface in README.md (the
++release, which is exactly what this procedure prevents. The tag-push CI path is
++the primary cut:
++
++1. Move every README release surface to the new tag — the
+    `Current release: **vX.Y.Z**` line and every `/releases/download/<tag>/`
+-   install URL) names the SAME tag, failing with the drifted values otherwise.
+-   CI runs the identical check on every push and PR.
+-4. Update README's release pins to the new tag (the `Current release:` line
+-   and the install `curl` URLs), re-run `make version-check`, then upload
+-   `dist/*` including `sha256sums.txt` as release assets.
++   install URL — then run `make version-check`, which FAILS naming the drifted
++   values until they all agree (CI runs the identical check on every push and
++   PR). Commit and push `main`.
++2. Tag the release commit and push the tag:
++   `git tag v0.1.6 && git push origin v0.1.6`. The tag push triggers
++   `.github/workflows/multiarch.yml`, whose Release job runs on tag refs only:
++   it cross-builds the platform set in the workflow's `platforms:` input
++   (`boardctl_<goos>_<goarch>`, `.exe` on windows), writes `SHA256SUMS`,
++   attests provenance, and publishes the release. Push the branch too — the
++   Release job runs on the tag ref and the tag must point at a pushed commit.
++3. Verify the published release: `gh release view v0.1.6` lists the seven
++   platform binaries plus `SHA256SUMS`; then download per the install block and
++   confirm the identity — `./boardctl_linux_amd64 version` prints
++   `boardctl version v0.1.6`.
++4. Offline / local equivalent, when CI cannot publish: `make release` from the
++   tagged checkout. VERSION resolves via `git describe --tags --abbrev=0` (a UTC
++   date only on checkouts with no tags), and every binary reports it:
++   `./dist/boardctl_linux_amd64 version` prints `boardctl version v0.1.6`. If
++   the repo HAS tags but VERSION resolved to a non-tag, the target FAILS instead
++   of silently shipping a date stamp; `make release VERSION=v0.1.6` overrides
++   deliberately. It writes the same underscore names and `dist/SHA256SUMS` the
++   CI job publishes, so publish them verbatim:
++
++   ```bash
++   gh release create v0.1.6 --title v0.1.6 --generate-notes --verify-tag dist/*
++   ```
++
++   Never delete and re-push a tag to re-cut a release: that re-drafts the
++   published release.
+ 
+ Scripts read the identity as JSON: `boardctl version --json` prints
+-`{"version":"v0.1.5","build":"v0.1.5"}` — `build` is the raw build stamp and
++`{"version":"v0.1.6","build":"v0.1.6"}` — `build` is the raw build stamp and
+ differs from `version` only when a binary was hand-stamped with a non-tag
+ value while carrying an embedded tag.
+ 
+diff --git a/docs/dogfood/diagnostics.md b/docs/dogfood/diagnostics.md
+index edf4731..eb65f40 100644
+--- a/docs/dogfood/diagnostics.md
++++ b/docs/dogfood/diagnostics.md
+@@ -124,10 +124,10 @@ Second dogfood run against HEAD `237e594` (post v0.1.2). Full report:
+   validate+doctor OK on the cloned board, init→create→update smoke OK.
+   One lesson for future dogfooders: never `git add -A` a board copy —
+   the untracked `board.db` comes along and doctor (correctly) fails it.
+-- **Skipped-leg reminder:** `sha256sums.txt` from the README flow only
++- **Skipped-leg reminder:** `SHA256SUMS` from the README flow only
+   verifies files still present; if a release ever drops the checksum
+   asset again (the v0.1.1 failure, BT-008), `curl -sL` writes the 404
+-  JSON page to `sha256sums.txt` and `sha256sum -c` fails with
++  JSON page to `SHA256SUMS` and `sha256sum -c` fails with
+   "no file was verified" — that failure mode is the canary, not noise.
+ 
+ ## What a new agent should check when picking this project up
+diff --git a/internal/versioncheck/versioncheck.go b/internal/versioncheck/versioncheck.go
+index aca4cf5..9213ae5 100644
+--- a/internal/versioncheck/versioncheck.go
++++ b/internal/versioncheck/versioncheck.go
+@@ -13,6 +13,13 @@
+ //   - the `Current release: **vX.Y.Z**` pin line
+ //   - every `/releases/download/<tag>/` asset URL in the install block
+ //
++// In-process, TestVersioncheck additionally pins the ONE published asset-naming
++// and platform set across the three surfaces that must agree (BT-036): README's
++// install block downloads (`<binary>_<goos>_<goarch>`, `SHA256SUMS`), the
++// Makefile `release` target that writes them, and the CI workflow's `platforms:`
++// input plus its tag trigger. Drift there is what shipped a release whose asset
++// names README's `curl` block could not fetch.
++//
+ // This package is a CHECK, never a rewriter: nothing here modifies files.
+ // It is pure filesystem + string work: no network calls, no git invocation
+ // (CI checkouts are shallow and may lack tags; the README is always there).
+diff --git a/internal/versioncheck/versioncheck_test.go b/internal/versioncheck/versioncheck_test.go
+index 3ce164a..c79ccd4 100644
+--- a/internal/versioncheck/versioncheck_test.go
++++ b/internal/versioncheck/versioncheck_test.go
+@@ -1,12 +1,24 @@
+ package versioncheck
+ 
+ import (
++	"encoding/json"
++	"fmt"
+ 	"os"
+ 	"path/filepath"
++	"regexp"
++	"slices"
+ 	"strings"
+ 	"testing"
+ )
+ 
++// The three files that carry the published asset naming + platform set, and the
++// released CLI name (the workflow's `binary:` input).
++const (
++	makefileName = "Makefile"
++	workflowName = ".github/workflows/multiarch.yml"
++	binaryName   = "boardctl"
++)
++
+ // goodREADME is the shape the repo's real README has: one pin line, two
+ // download URLs, all naming the same tag.
+ const goodREADME = `# sample
+@@ -140,4 +152,125 @@ func TestVersioncheck(t *testing.T) {
+ 	if err := Check(readme); err != nil {
+ 		t.Fatalf("repo README failed the release-pin check:\n%v", err)
+ 	}
++	checkReleaseSurfaces(t, root)
++}
++
++// checkReleaseSurfaces pins the ONE published naming + platform set across the
++// three surfaces that must agree (BT-036). A tag-push cut and a `make release`
++// cut are supposed to be interchangeable, so the install block README documents,
++// the names the Makefile writes, and the platform list the CI workflow builds
++// cannot drift apart — that drift is what published a release whose asset names
++// README's `curl` block could not fetch.
++func checkReleaseSurfaces(t *testing.T, root string) {
++	t.Helper()
++
++	surfaces, err := ReadSurfaces(filepath.Join(root, READMEName))
++	if err != nil {
++		t.Fatalf("ReadSurfaces: %v", err)
++	}
++	if len(surfaces.PinTags) == 0 {
++		t.Fatal("no Current release pin line to read the published tag from")
++	}
++	tag := surfaces.PinTags[0]
++
++	readme := readRepoFile(t, root, READMEName)
++	mk := readRepoFile(t, root, makefileName)
++	wf := readRepoFile(t, root, workflowName)
++
++	// 1. README downloads exactly the names the release publishes: the
++	//    underscore asset form and the SHA256SUMS checksum file.
++	for _, want := range []string{
++		fmt.Sprintf("/releases/download/%s/%s_linux_amd64", tag, binaryName),
++		fmt.Sprintf("/releases/download/%s/SHA256SUMS", tag),
++	} {
++		if !strings.Contains(readme, want) {
++			t.Errorf("README install block does not download %q — the documented assets and the published assets must be the same set", want)
++		}
++	}
++	for _, stale := range []string{"sha256sums.txt", binaryName + "-linux-", binaryName + "-darwin-", binaryName + "-windows-", binaryName + "-freebsd-"} {
++		if strings.Contains(readme, stale) {
++			t.Errorf("README still names the retired asset spelling %q", stale)
++		}
++	}
++
++	// 2. `make release` writes those same names and the same checksum file.
++	if !strings.Contains(mk, "> SHA256SUMS") {
++		t.Errorf("Makefile release target does not write SHA256SUMS")
++	}
++	if !strings.Contains(mk, "$${os}_$${arch}") {
++		t.Errorf("Makefile release target does not build <binary>_${os}_${arch}: underscore names need brace-quoted shell variables, because `$os_$arch` parses as the shell variable `os_` and silently drops the arch")
++	}
++
++	// 3. The CI cut and the local cut build the SAME platforms in the SAME order.
++	want := makefilePlatforms(t, mk)
++	got := workflowPlatforms(t, wf)
++	if !slices.Equal(got, want) {
++		t.Errorf("CI platforms %v do not match the Makefile PLATFORMS %v — a tag-push cut would publish a different platform set than `make release`", got, want)
++	}
++
++	// 4. The tag push must actually trigger the workflow: a branches-only push
++	//    filter skips tag refs, so the Release job (tag refs only) never runs.
++	if !strings.Contains(wf, "tags:") {
++		t.Errorf("workflow %s has no `tags:` trigger — pushing a release tag would not run the release job at all", workflowName)
++	}
++}
++
++// readRepoFile reads one repo-relative file or fails the test.
++func readRepoFile(t *testing.T, root, rel string) string {
++	t.Helper()
++	data, err := os.ReadFile(filepath.Join(root, rel))
++	if err != nil {
++		t.Fatalf("read %s: %v", rel, err)
++	}
++	return string(data)
++}
++
++// makefilePlatforms extracts the GOOS/GOARCH list from the Makefile's
++// `PLATFORMS := \` continuation lines (tab-indented, backslash-continued).
++func makefilePlatforms(t *testing.T, mk string) []string {
++	t.Helper()
++	lines := strings.Split(mk, "\n")
++	start := -1
++	for i, l := range lines {
++		if strings.HasPrefix(l, "PLATFORMS :=") {
++			start = i + 1
++			break
++		}
++	}
++	if start == -1 {
++		t.Fatalf("Makefile has no PLATFORMS list")
++	}
++	var out []string
++	for _, l := range lines[start:] {
++		if !strings.HasPrefix(l, "	") {
++			break
++		}
++		for _, f := range strings.Fields(l) {
++			if f == `\` {
++				continue
++			}
++			out = append(out, f)
++		}
++	}
++	if len(out) == 0 {
++		t.Fatalf("Makefile PLATFORMS list is empty")
++	}
++	return out
++}
++
++// workflowPlatforms parses the workflow's explicit `platforms:` JSON array.
++func workflowPlatforms(t *testing.T, wf string) []string {
++	t.Helper()
++	m := workflowPlatformsRe.FindStringSubmatch(wf)
++	if m == nil {
++		t.Fatalf("workflow %s has no explicit `platforms: '[…]'` input — it would build the reusable workflow's default platform set instead of the Makefile's", workflowName)
++	}
++	var out []string
++	if err := json.Unmarshal([]byte(m[1]), &out); err != nil {
++		t.Fatalf("workflow platforms %s is not a JSON array: %v", m[1], err)
++	}
++	return out
+ }
++
++// workflowPlatformsRe matches the single-quoted JSON platforms input.
++var workflowPlatformsRe = regexp.MustCompile(`(?m)^\s*platforms: '(\[[^']*\])'`)
