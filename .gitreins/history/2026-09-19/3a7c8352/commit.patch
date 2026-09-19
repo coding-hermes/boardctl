@@ -1,0 +1,1033 @@
+commit 5f5a799f42cbc349609a8b2a71097659da65d3e1
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sat Sep 19 09:28:54 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sat Sep 19 09:28:54 2026 -0500
+
+    fix(board): header --set-* refuses on headerless boards instead of corrupting the first task row — line 1 shape now gates topology-B header writes and validate header checks. Addresses BT-037.
+    
+    MEASURED (2026-09-19, on a copy of the real /home/kara/coding-hermes-tools
+    board: tasks.jsonl + events.jsonl, no board.jsonl, line 1 = task CHT-001).
+    
+    Pre-fix (binary built from a1e123e):
+      header --set-ticks-total 90   -> exit 0, "header updated (line 1 of
+                                       tasks.jsonl)"
+      tasks.jsonl sha256            -> 3f41f48a... -> fe66bd86...
+      CHT-001                       -> 9 keys -> 10, ticks_total:90, rewritten
+                                       updated_at (the reported corruption)
+      validate                      -> exit 1 with THREE false errors
+                                       "tasks.jsonl header: version/ticks_total/
+                                       ticks_idle is not an integer counter"
+    
+    Post-fix (same fixture, same command):
+      exit 1, stderr: 'no header on this board: ... line 1 of tasks.jsonl is the
+      TASK row "CHT-001" — a header operation there would rewrite that task row';
+      tasks.jsonl sha256 identical before/after (5583768e... on the live copy) and
+      the first row still has its 9 keys; validate exits 0 with one informational
+      line "headerless board (no board.jsonl)" and none of the false errors.
+    
+    CHANGE
+    - Resolve(): topology B (no board.jsonl) is only claimed when line 1 of
+      tasks.jsonl is header-SHAPED (reuses rowIsHeaderShape); otherwise the board
+      is HEADERLESS (Topology stays "B", HasHeader() is false). Reads are
+      untouched — task enumeration already skips line 1 only when it IS a header.
+    - HeaderRow()/SetHeader() refuse on a headerless board with the ErrNoHeader
+      sentinel ("no header on this board", naming the task row), so the CLI exits 1
+      and nothing is written. bumpHeaderTicksTotal() is a no-op there, so
+      `event --tick N` still appends instead of failing on a counter it cannot own.
+    - Hard guard: SetHeader additionally refuses to stamp header keys into any row
+      carrying id/title/status (rowIsTaskShape) — belt and braces over the
+      classification, covering a board.jsonl that holds a task row.
+    - validate/doctor: one informational headerless line and the header counter /
+      drift checks skipped, instead of validating a task row as the header.
+    - An UNPARSEABLE line 1 is deliberately NOT classified headerless: it keeps
+      surfacing the parser's own diagnosis (pretty-printed/truncated JSON) while
+      the shape guard still blocks the write.
+    
+    VERIFICATION
+    - 17 new tests (10 internal/board, 7 cmd/boardctl): headerless fixture for the
+      header --set-* refusal (exit non-zero + sha256 byte-identity), the validate
+      informational path, the hard-guard RED case (classification defeated, guard
+      still fires), topology-A task-row guard case, reads/create/event still
+      working, empty tasks.jsonl, and unparseable-line-1 not masking parse errors.
+    - RED proven by disabling only the guards: pre-fix behaviour returns (SetHeader
+      err=nil, sha changed, 9 -> 10 keys, validate 2 false errors; CLI: header
+      --set exits 0, header --json prints the task row, validate/doctor exit 1,
+      event --tick rewrites tasks.jsonl).
+    - Real topology-B board (header-shaped line 1): header --set-ticks-total 7
+      still exits 0 and rewrites ONLY line 1; existing topology-B tests unmoved.
+      Topology-A (boardctl's own board): header --set + validate unchanged, only
+      board.jsonl touched.
+    - Fleet sweep on copies: coding-hermes-tools 3 false errors -> exit 0 with the
+      headerless note; dexdat-memory 3 false errors -> 0 (its 26 duplicate-id
+      errors are real and untouched). 4 other scan hits are partial boards (no
+      events.jsonl) and do not resolve, unchanged by this fix.
+    - go build ./... + go vet ./... clean; go test ./... -count=1 -short green;
+      gofmt clean; gitreins guard PASS (test mode: full, go_tests passed).
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ README.md                                 |  35 +++
+ cmd/boardctl/bt037_headerless_cli_test.go | 234 ++++++++++++++++++
+ internal/board/board.go                   | 107 +++++++-
+ internal/board/bt037_headerless_test.go   | 388 ++++++++++++++++++++++++++++++
+ internal/board/doctor.go                  |   9 +
+ internal/board/validate.go                |  10 +
+ internal/board/write.go                   |  26 ++
+ 7 files changed, 808 insertions(+), 1 deletion(-)
+
+diff --git a/README.md b/README.md
+index 40fbe1e..b9cd3aa 100644
+--- a/README.md
++++ b/README.md
+@@ -104,8 +104,35 @@ boardctl -C ~/myproject event --type audit --tick 42 --detail-text 'tick 42 summ
+ # read/patch the board.jsonl header
+ boardctl -C ~/myproject header --json
+ boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
++# on a board with NO header (no board.jsonl and line 1 of tasks.jsonl is a
++# task row) both forms refuse with "no header on this board" (exit 1) —
++# nothing is written, so a header write can never land in a task row
+ ```
+ 
++### Headerless boards
++
++A board can hold just `tasks.jsonl` + `events.jsonl` with no `board.jsonl` and
++no metadata row — line 1 is an ordinary task row (real case:
++`coding-hermes-tools`). That is a **headerless** board: it has no header to
++read and no header row to rewrite.
++
++```
++boardctl -C <dir> header --set-ticks-total 90   # refused, exit 1,
++                                                # "no header on this board"
++boardctl -C <dir> header --json                 # refused the same way
++boardctl -C <dir> validate                      # exit 0 with one
++                                                # [warn] headerless board
++                                                # (no board.jsonl) line
++```
++
++Reads are unaffected (`list`, `show`, `stats`, `render`, `doctor`, `create`,
++`update`, `event` all work — line 1 is enumerated as the task it is), and
++`validate`/`doctor` skip the header counter checks with that one note instead
++of reporting a task row as a malformed header. Both the refusal and the note
++are gated on line 1's SHAPE: a legacy **topology-B** board (line 1 *is* a
++header object) stays fully writable, and the write path additionally refuses to
++stamp header keys into any row carrying `id`/`title`/`status`.
++
+ ### serve
+ 
+ `boardctl serve` starts a loopback-only upload server: open it in a browser,
+@@ -352,6 +379,14 @@ from and rewritten on line 1 of `tasks.jsonl`, task rows are appended after
+ it, and `validate`/`doctor` check the line-1 header counters the same way
+ they do on topology A. `init` remains for fresh boards only.
+ 
++A third, degenerate layout is a **HEADERLESS** board: no `board.jsonl` AND
++line 1 of `tasks.jsonl` is not a header object but an ordinary task row. It
++has no header, so `header` refuses to read or write one (exit 1, "no header on
++this board"), `validate`/`doctor` note it and skip the header counter checks,
++and every other command treats line 1 as the task it is. The distinction from
++topology B is line 1's SHAPE, and the write path refuses on top of it: a
++header key is never written into a row carrying `id`/`title`/`status`.
++
+ Writes are append-only for `events.jsonl`; task-row updates rewrite
+ `tasks.jsonl` preserving each line's original serialization style (detected
+ per-board: sorted vs insertion-order keys, compact vs spaced separators) so
+diff --git a/cmd/boardctl/bt037_headerless_cli_test.go b/cmd/boardctl/bt037_headerless_cli_test.go
+new file mode 100644
+index 0000000..c726898
+--- /dev/null
++++ b/cmd/boardctl/bt037_headerless_cli_test.go
+@@ -0,0 +1,234 @@
++package main
++
++import (
++	"crypto/sha256"
++	"encoding/hex"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++// BT-037 CLI coverage: a HEADERLESS board (tasks.jsonl + events.jsonl, NO
++// board.jsonl, line 1 an ordinary task row — the measured coding-hermes-tools
++// shape) must REFUSE header --set-* with a non-zero exit and keep tasks.jsonl
++// byte-identical, while validate reports an informational headerless line
++// instead of inventing 'not an integer counter' errors from the task row.
++// The package-level contract is pinned in internal/board (bt037_headerless_test.go).
++//
++// A headerless board and a REAL topology-B board (seedCLITopologyBBoard, whose
++// line 1 IS a header) differ only by line 1's shape — the topology-B workflow
++// tests in main_test.go stay green and are the counter-case to these.
++
++func seedCLIHeaderlessBoard(t *testing.T) string {
++	t.Helper()
++	dir := t.TempDir()
++	boardDir := filepath.Join(dir, ".coding-hermes", "board")
++	if err := os.MkdirAll(boardDir, 0o755); err != nil {
++		t.Fatal(err)
++	}
++	files := map[string]string{
++		"tasks.jsonl": `{"id":"CHT-001","title":"Bootstrap","status":"complete","priority":"P1","created_at":"2026-09-17T01:20:00-05:00","reasoning":"First row.","updated_at":"2026-09-17T02:49:50-05:00","completed_at":"2026-09-17T02:49:50-05:00","attributes":{"tick":"t1"}}` + "\n" +
++			`{"id":"CHT-002","title":"Diff3","status":"pending","priority":"P2","updated_at":"2026-09-17T03:00:00-05:00"}` + "\n",
++		"events.jsonl": `{"id":1,"timestamp":"2026-09-17 01:20:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
++	}
++	for name, content := range files {
++		if err := os.WriteFile(filepath.Join(boardDir, name), []byte(content), 0o644); err != nil {
++			t.Fatal(err)
++		}
++	}
++	return dir
++}
++
++func cliFileSHA(t *testing.T, path string) string {
++	t.Helper()
++	data, err := os.ReadFile(path)
++	if err != nil {
++		t.Fatal(err)
++	}
++	sum := sha256.Sum256(data)
++	return hex.EncodeToString(sum[:])
++}
++
++// TestCmdHeaderlessHeaderSetRefused is acceptance criterion 1 at the CLI:
++// non-zero exit, explicit 'no header' error, tasks.jsonl sha256 unchanged.
++func TestCmdHeaderlessHeaderSetRefused(t *testing.T) {
++	dir := seedCLIHeaderlessBoard(t)
++	tasksPath := filepath.Join(dir, ".coding-hermes", "board", "tasks.jsonl")
++	before := cliFileSHA(t, tasksPath)
++
++	var code int
++	stderr, err := captureStderr(func() {
++		code = run([]string{"-C", dir, "header", "--set-ticks-total", "90"})
++	})
++	if err != nil {
++		t.Fatalf("captureStderr: %v", err)
++	}
++	if code == 0 {
++		t.Fatalf("header --set-ticks-total on a headerless board exited 0 (stderr: %s)", stderr)
++	}
++	if !strings.Contains(stderr, "no header on this board") {
++		t.Fatalf("error does not say 'no header on this board': %q", stderr)
++	}
++	if !strings.Contains(stderr, "CHT-001") {
++		t.Fatalf("error does not name the task row it protected: %q", stderr)
++	}
++	if after := cliFileSHA(t, tasksPath); after != before {
++		t.Fatalf("tasks.jsonl changed under a refused header write:\nbefore %s\nafter  %s", before, after)
++	}
++	// the corrupted shape BT-037 was filed for: line 1 grew a header counter
++	raw, err := os.ReadFile(tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	line1 := strings.SplitN(string(raw), "\n", 2)[0]
++	if strings.Contains(line1, "ticks_total") {
++		t.Fatalf("header counter written into the first task row: %s", line1)
++	}
++}
++
++// TestCmdHeaderlessHeaderReadRefused: reading the header of a board that has
++// none must not print a task row as if it were the header.
++func TestCmdHeaderlessHeaderReadRefused(t *testing.T) {
++	dir := seedCLIHeaderlessBoard(t)
++	var code int
++	var out string
++	stderr, err := captureStderr(func() {
++		out, _ = captureStdout(func() {
++			code = run([]string{"-C", dir, "header", "--json"})
++		})
++	})
++	if err != nil {
++		t.Fatalf("captureStderr: %v", err)
++	}
++	if code == 0 {
++		t.Fatalf("header --json on a headerless board exited 0 (stdout %q)", out)
++	}
++	if !strings.Contains(stderr, "no header on this board") {
++		t.Fatalf("error %q does not say 'no header on this board'", stderr)
++	}
++	if strings.Contains(out, `"title"`) || strings.Contains(out, "CHT-001") {
++		t.Fatalf("a task row was printed as the board header: %q", out)
++	}
++}
++
++// TestCmdHeaderlessValidateInformational is acceptance criterion 2: exit 0,
++// the informational headerless line, no false counter errors.
++func TestCmdHeaderlessValidateInformational(t *testing.T) {
++	dir := seedCLIHeaderlessBoard(t)
++	var code int
++	got, err := captureStdout(func() {
++		code = run([]string{"-C", dir, "validate"})
++	})
++	if err != nil {
++		t.Fatalf("captureStdout: %v", err)
++	}
++	if code != 0 {
++		t.Fatalf("validate on a clean headerless board exit code = %d, want 0\noutput:\n%s", code, got)
++	}
++	if !strings.Contains(got, "headerless board (no board.jsonl)") {
++		t.Fatalf("validate did not report the headerless board:\n%s", got)
++	}
++	if strings.Contains(got, "not an integer counter") {
++		t.Fatalf("validate validated a task row as the header:\n%s", got)
++	}
++	if strings.Contains(got, "header:") {
++		t.Fatalf("validate emitted header findings:\n%s", got)
++	}
++	if !strings.Contains(got, "RESULT: OK") {
++		t.Fatalf("validate should stay OK on a headerless board:\n%s", got)
++	}
++	if !strings.Contains(got, "2 tasks, 1 events") {
++		t.Fatalf("validate did not count BOTH task rows (line 1 is a task):\n%s", got)
++	}
++}
++
++// TestCmdHeaderlessDoctorGreen: doctor skips the header cross-checks with a
++// note and stays green.
++func TestCmdHeaderlessDoctorGreen(t *testing.T) {
++	dir := seedCLIHeaderlessBoard(t)
++	var code int
++	got, err := captureStdout(func() {
++		code = run([]string{"-C", dir, "doctor"})
++	})
++	if err != nil {
++		t.Fatalf("captureStdout: %v", err)
++	}
++	if code != 0 || strings.Contains(got, "RESULT: FAIL") {
++		t.Fatalf("doctor on a headerless board exit code = %d\noutput:\n%s", code, got)
++	}
++	if !strings.Contains(got, "header-vs-events tick drift checks skipped") {
++		t.Fatalf("doctor did not note the skipped header check:\n%s", got)
++	}
++	if strings.Contains(got, "[error]") {
++		t.Fatalf("doctor emitted errors on a clean headerless board:\n%s", got)
++	}
++}
++
++// TestCmdHeaderlessEventTickUnchanged: `event --tick` still appends on a
++// board with no header, and never touches tasks.jsonl.
++func TestCmdHeaderlessEventTickUnchanged(t *testing.T) {
++	dir := seedCLIHeaderlessBoard(t)
++	tasksPath := filepath.Join(dir, ".coding-hermes", "board", "tasks.jsonl")
++	before := cliFileSHA(t, tasksPath)
++	if code := run([]string{"-C", dir, "event", "--type", "tick", "--tick", "52"}); code != 0 {
++		t.Fatalf("event --tick on a headerless board exit code = %d, want 0", code)
++	}
++	if after := cliFileSHA(t, tasksPath); after != before {
++		t.Fatalf("event --tick rewrote tasks.jsonl on a headerless board:\nbefore %s\nafter  %s", before, after)
++	}
++}
++
++// TestCmdHeaderlessListAndShowRead: the headerless classification must not
++// restrict reads — list and show still see every task row.
++func TestCmdHeaderlessListAndShowRead(t *testing.T) {
++	dir := seedCLIHeaderlessBoard(t)
++	var code int
++	got, err := captureStdout(func() {
++		code = run([]string{"-C", dir, "list", "--json", "--all"})
++	})
++	if err != nil {
++		t.Fatalf("captureStdout: %v", err)
++	}
++	if code != 0 {
++		t.Fatalf("list on a headerless board exit code = %d, want 0\noutput:\n%s", code, got)
++	}
++	for _, id := range []string{"CHT-001", "CHT-002"} {
++		if !strings.Contains(got, id) {
++			t.Fatalf("list output is missing %s:\n%s", id, got)
++		}
++	}
++	if code := run([]string{"-C", dir, "show", "CHT-001"}); code != 0 {
++		t.Fatalf("show CHT-001 on a headerless board exit code = %d, want 0", code)
++	}
++}
++
++// TestCmdHeaderlessArchiveWritesStillWork pins the rest of the write path on
++// the same board: create appends after the last task row and leaves line 1
++// byte-identical.
++func TestCmdHeaderlessArchiveWritesStillWork(t *testing.T) {
++	dir := seedCLIHeaderlessBoard(t)
++	tasksPath := filepath.Join(dir, ".coding-hermes", "board", "tasks.jsonl")
++	raw, err := os.ReadFile(tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	line1 := strings.SplitN(string(raw), "\n", 2)[0]
++	if code := run([]string{"-C", dir, "create", "--id", "CHT-003", "--title", "Patch", "--priority", "P2"}); code != 0 {
++		t.Fatalf("create on a headerless board exit code = %d, want 0", code)
++	}
++	raw, err = os.ReadFile(tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
++	if len(lines) != 3 {
++		t.Fatalf("tasks.jsonl has %d rows, want 3", len(lines))
++	}
++	if lines[0] != line1 {
++		t.Fatalf("create mutated line 1:\n got %s\nwant %s", lines[0], line1)
++	}
++	if !strings.Contains(lines[2], `"CHT-003"`) {
++		t.Fatalf("create appended the wrong row: %s", lines[2])
++	}
++}
+diff --git a/internal/board/board.go b/internal/board/board.go
+index 127d9d2..1959e21 100644
+--- a/internal/board/board.go
++++ b/internal/board/board.go
+@@ -1,6 +1,7 @@
+ package board
+ 
+ import (
++	"bufio"
+ 	"bytes"
+ 	"encoding/json"
+ 	"errors"
+@@ -20,6 +21,12 @@ type Board struct {
+ 	tasksPath    string // tasks.jsonl
+ 	eventsPath   string // events.jsonl
+ 	fixturesPath string // fixtures.jsonl (optional)
++
++	// headerless marks a board with NO board.jsonl whose tasks.jsonl line 1
++	// is not header-shaped (BT-037) — a board holding just task rows. The
++	// topology stays "B" (there is no board.jsonl), but header reads and
++	// writes refuse instead of treating line 1 of tasks.jsonl as the header.
++	headerless bool
+ }
+ 
+ // ErrBoardNotFound is wrapped with the directories probed. It is also the
+@@ -28,6 +35,13 @@ type Board struct {
+ // case while the wrapped text names the detected file and the missing one.
+ var ErrBoardNotFound = errors.New("no JSONL foreman board found")
+ 
++// ErrNoHeader is the sentinel for a HEADERLESS board: no board.jsonl AND
++// tasks.jsonl line 1 is an ordinary task row rather than board metadata
++// (BT-037). Such a board has no header to read and no header row to rewrite,
++// so every header operation refuses loudly instead of stamping header keys
++// (ticks_total/ticks_idle/last_commit/updated_at) into a TASK row.
++var ErrNoHeader = errors.New("no header on this board")
++
+ // boardDirCandidates lists the directories Resolve probes for a
+ // tasks.jsonl+events.jsonl pair, in order. For an ordinary target (a repo
+ // root or a board dir) that is: the target itself, its .coding-hermes, then
+@@ -91,7 +105,16 @@ func Resolve(target string) (*Board, error) {
+ 				b.Topology = "A"
+ 				b.headerPath = header
+ 			} else {
++				// BT-037: topology B means "the header is line 1 of
++				// tasks.jsonl" — but only when that line is header-SHAPED.
++				// A board with no board.jsonl whose line 1 is an ordinary
++				// task row is HEADERLESS: classifying it as writable
++				// topology B is exactly what let `header --set-*` rewrite a
++				// task row. Reads keep working (task enumeration skips line
++				// 1 only when it IS header-shaped), header operations
++				// refuse.
+ 				b.Topology = "B"
++				b.headerless = !boardHasLineOneHeader(tasks)
+ 			}
+ 			return b, nil
+ 		}
+@@ -119,6 +142,48 @@ func fileExists(p string) bool {
+ 	return err == nil && !st.IsDir()
+ }
+ 
++// firstNonBlankLine returns the first non-blank line of a file, trimmed of
++// surrounding whitespace and without its terminating newline. ok is false for
++// an unreadable, empty, or all-blank file. Only the first line is read, so the
++// probe stays cheap on large boards.
++func firstNonBlankLine(path string) ([]byte, bool) {
++	f, err := os.Open(path)
++	if err != nil {
++		return nil, false
++	}
++	defer f.Close()
++	r := bufio.NewReader(f)
++	for {
++		line, err := r.ReadBytes('\n')
++		if trimmed := bytes.TrimSpace(line); len(trimmed) > 0 {
++			return trimmed, true
++		}
++		if err != nil {
++			return nil, false
++		}
++	}
++}
++
++// boardHasLineOneHeader reports whether line 1 of tasks.jsonl is a board
++// header row (metadata without a task id) — the topology-B header location.
++//
++// An empty/all-blank file has no header. An UNPARSEABLE line 1 is reported as
++// "yes" on purpose: it is not classified as headerless, so the read and write
++// paths surface the parse failure itself (the pretty-printed-JSON hint, a
++// truncated line, ...) instead of masking it with a shape verdict, and
++// SetHeader's task-row guard still refuses to touch any row carrying task keys.
++func boardHasLineOneHeader(tasksPath string) bool {
++	line, ok := firstNonBlankLine(tasksPath)
++	if !ok {
++		return false
++	}
++	row, err := ParseRow(line)
++	if err != nil {
++		return true
++	}
++	return rowIsHeaderShape(row)
++}
++
+ // TasksPath / EventsPath / HeaderPath / FixturesPath expose the tracked file
+ // paths (fixtures is "" when absent).
+ func (b *Board) TasksPath() string  { return b.tasksPath }
+@@ -138,8 +203,34 @@ func (b *Board) FixturesPath() string {
+ // topology-B header).
+ func (b *Board) IsTopologyA() bool { return b.Topology == "A" }
+ 
++// HasHeader reports whether the board carries a header row: always true on
++// topology A (board.jsonl), and on topology B only when line 1 of
++// tasks.jsonl is header-shaped. A board with neither (no board.jsonl, line 1
++// is a task row — BT-037) is HEADERLESS: reads still work, header operations
++// refuse.
++func (b *Board) HasHeader() bool { return !b.headerless }
++
++// noHeaderError builds the "no header on this board" refusal for a headerless
++// board, naming the file and the task row that a header operation would
++// otherwise corrupt.
++func (b *Board) noHeaderError() error {
++	name := filepath.Base(b.tasksPath)
++	if line, ok := firstNonBlankLine(b.tasksPath); ok {
++		if row, err := ParseRow(line); err == nil {
++			if id := row.String("id"); id != "" {
++				return fmt.Errorf("%w: %s holds no board.jsonl and line 1 of %s is the TASK row %q — a header operation there would rewrite that task row, so it is refused (create a board.jsonl header, or run 'boardctl init' on a fresh board)",
++					ErrNoHeader, b.Dir, name, id)
++			}
++		}
++	}
++	return fmt.Errorf("%w: %s holds no board.jsonl and line 1 of %s is not a board header row — nothing to read or rewrite (create a board.jsonl header, or run 'boardctl init' on a fresh board)",
++		ErrNoHeader, b.Dir, name)
++}
++
+ // headerPathFor returns the file that carries the board header: board.jsonl
+-// on topology A, tasks.jsonl (line 1) on topology B.
++// on topology A, tasks.jsonl (line 1) on topology B. It is only meaningful
++// when HasHeader() is true — callers that write must check first (SetHeader
++// does), because on a headerless board this path is a file full of TASK rows.
+ func (b *Board) headerPathFor() string {
+ 	if b.IsTopologyA() {
+ 		return b.headerPath
+@@ -156,6 +247,13 @@ func rowIsHeaderShape(row *Row) bool {
+ 		(row.Has("project") || row.Has("namespace") || row.Has("version") || row.Has("ticks_total"))
+ }
+ 
++// rowIsTaskShape reports whether a parsed row carries task identity keys.
++// BT-037: SetHeader's hard guard uses it — a header rewrite must never land
++// in a row that also holds id/title/status, whatever the topology says.
++func rowIsTaskShape(row *Row) bool {
++	return row.Has("id") || row.Has("title") || row.Has("status")
++}
++
+ // skipTaskLine reports whether the raw line at lines[idx] is a header row
+ // (topology-B line 1) rather than a task row. Task-line enumeration on
+ // topology B skips it; line indices remain file-absolute so callers can map
+@@ -283,7 +381,14 @@ func ReadAllRows(path string) (rows []*Row, raws [][]byte, err error) {
+ // metadata row that shares the file with the task rows. BT-010: topology B
+ // is fully writable (SetHeader rewrites line 1 in place), so the header is
+ // read the same way in both topologies.
++//
++// BT-037: a HEADERLESS board (no board.jsonl, line 1 of tasks.jsonl is a task
++// row) has no header to read — it fails with ErrNoHeader rather than handing
++// a task row back as if it were the header.
+ func (b *Board) HeaderRow() (*Row, error) {
++	if !b.HasHeader() {
++		return nil, b.noHeaderError()
++	}
+ 	path := b.headerPathFor()
+ 	lines, err := ReadJSONLLines(path)
+ 	if err != nil {
+diff --git a/internal/board/bt037_headerless_test.go b/internal/board/bt037_headerless_test.go
+new file mode 100644
+index 0000000..2e15c52
+--- /dev/null
++++ b/internal/board/bt037_headerless_test.go
+@@ -0,0 +1,388 @@
++package board
++
++import (
++	"crypto/sha256"
++	"encoding/hex"
++	"errors"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++// BT-037: header operations on a HEADERLESS board.
++//
++// MEASURED (2026-09-19) on the real coding-hermes-tools board: a board dir
++// holding tasks.jsonl + events.jsonl and NO board.jsonl, whose line 1 is an
++// ordinary task row, was classified as writable topology B. `header
++// --set-ticks-total 90` then rewrote line 1 — task CHT-001 grew from 9 keys to
++// 10 and lost its updated_at — and `validate` read that task row as the header
++// and invented three "not an integer counter" errors.
++//
++// The fix classifies such boards as HEADERLESS (topology stays "B", the board
++// just has no header): reads keep working, header reads/writes refuse with
++// ErrNoHeader, validate/doctor skip the header checks with one note.
++
++// headerlessTask1 / headerlessTask2 are ordinary task rows; line 1 is a TASK
++// row (9 keys), which is what the topology-B detection used to mistake for a
++// header.
++const (
++	headerlessTask1 = `{"id":"CHT-001","title":"Bootstrap","status":"complete","priority":"P1","created_at":"2026-09-17T01:20:00-05:00","reasoning":"First row.","updated_at":"2026-09-17T02:49:50-05:00","completed_at":"2026-09-17T02:49:50-05:00","attributes":{"tick":"t1"}}`
++	headerlessTask2 = `{"id":"CHT-002","title":"Diff3","status":"pending","priority":"P2","updated_at":"2026-09-17T03:00:00-05:00"}`
++)
++
++// headerlessBoardFiles is the measured shape: tasks.jsonl (task rows only, no
++// metadata row), events.jsonl, and no board.jsonl. The newest event tick (50)
++// is deliberately far above any counter so a header-drift check WOULD fire if
++// the board had a header to compare against.
++func headerlessBoardFiles() map[string]string {
++	return map[string]string{
++		"tasks.jsonl": headerlessTask1 + "\n" + headerlessTask2 + "\n",
++		"events.jsonl": `{"id":1,"timestamp":"2026-09-17 01:20:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n" +
++			`{"id":2,"timestamp":"2026-09-17 05:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":50}` + "\n",
++	}
++}
++
++func newTestHeaderlessBoard(t *testing.T) *Board {
++	t.Helper()
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, headerlessBoardFiles())
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if b.Topology != "B" {
++		t.Fatalf("topology = %q, want B (no board.jsonl)", b.Topology)
++	}
++	if b.HasHeader() {
++		t.Fatal("board with no board.jsonl and a task row on line 1 was classified as having a header")
++	}
++	return b
++}
++
++func fileSHA(t *testing.T, path string) string {
++	t.Helper()
++	data, err := os.ReadFile(path)
++	if err != nil {
++		t.Fatal(err)
++	}
++	sum := sha256.Sum256(data)
++	return hex.EncodeToString(sum[:])
++}
++
++func findingsText(rep *Report) string {
++	var sb strings.Builder
++	for _, f := range rep.Findings {
++		sb.WriteString("[" + f.Level + "] " + f.Msg + "\n")
++	}
++	return sb.String()
++}
++
++// TestHeaderlessReadsKeepWorking: headerless is a HEADER property, not a read
++// restriction — every task row, including line 1, is enumerated.
++func TestHeaderlessReadsKeepWorking(t *testing.T) {
++	b := newTestHeaderlessBoard(t)
++	rows, err := b.TaskRows()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(rows) != 2 {
++		t.Fatalf("TaskRows = %d rows, want 2 (line 1 is a task, not a header)", len(rows))
++	}
++	if rows[0].String("id") != "CHT-001" {
++		t.Fatalf("first task row id = %q, want CHT-001", rows[0].String("id"))
++	}
++	row, file, err := b.ShowTask("CHT-001")
++	if err != nil {
++		t.Fatal(err)
++	}
++	if row == nil || file != b.TasksPath() {
++		t.Fatalf("ShowTask(CHT-001) = %v, %q; want the task row from tasks.jsonl", row, file)
++	}
++	// LaneName (backfill) reads the header opportunistically — on a headerless
++	// board it must fall through to the directory name, not error out.
++	if got := b.LaneName(); got != filepath.Base(filepath.Dir(b.Dir)) {
++		t.Fatalf("LaneName = %q, want the repo dir name %q", got, filepath.Base(filepath.Dir(b.Dir)))
++	}
++}
++
++// TestHeaderlessHeaderRowRefuses: there is no header to read, so HeaderRow
++// must say so — never hand back a task row as if it were the header.
++func TestHeaderlessHeaderRowRefuses(t *testing.T) {
++	b := newTestHeaderlessBoard(t)
++	row, err := b.HeaderRow()
++	if err == nil {
++		t.Fatalf("HeaderRow on a headerless board returned %s, want an error", RowJSONCompact(row))
++	}
++	if !errors.Is(err, ErrNoHeader) {
++		t.Fatalf("HeaderRow error %v does not wrap ErrNoHeader", err)
++	}
++	if !strings.Contains(err.Error(), "no header on this board") {
++		t.Fatalf("HeaderRow error %q does not say 'no header on this board'", err)
++	}
++	if !strings.Contains(err.Error(), "CHT-001") {
++		t.Fatalf("HeaderRow error %q does not name the task row it refused to use", err)
++	}
++}
++
++// TestHeaderlessSetHeaderRefusesByteIdentical is acceptance criterion 1 at the
++// package level: every --set flag is refused and tasks.jsonl keeps its exact
++// bytes (sha256) and its 9-key first row.
++func TestHeaderlessSetHeaderRefusesByteIdentical(t *testing.T) {
++	b := newTestHeaderlessBoard(t)
++	before := fileSHA(t, b.TasksPath())
++	eventsBefore := fileSHA(t, b.EventsPath())
++
++	ninety := int64(90)
++	seven := int64(7)
++	sha := "abc1234"
++	cases := map[string]HeaderUpdate{
++		"--set-ticks-total":  {TicksTotal: &ninety},
++		"--set-ticks-idle":   {TicksIdle: &seven},
++		"--set-last-commit":  {LastCommit: &sha},
++		"all three together": {TicksTotal: &ninety, TicksIdle: &seven, LastCommit: &sha},
++	}
++	for name, u := range cases {
++		changed, err := b.SetHeader(u)
++		if err == nil {
++			t.Fatalf("%s on a headerless board succeeded (changed %v), want a refusal", name, changed)
++		}
++		if !errors.Is(err, ErrNoHeader) {
++			t.Fatalf("%s error %v does not wrap ErrNoHeader", name, err)
++		}
++		if !strings.Contains(err.Error(), "no header on this board") {
++			t.Fatalf("%s error %q does not say 'no header on this board'", name, err)
++		}
++	}
++	if after := fileSHA(t, b.TasksPath()); after != before {
++		t.Fatalf("tasks.jsonl changed under a refused header write:\nbefore %s\nafter  %s", before, after)
++	}
++	if after := fileSHA(t, b.EventsPath()); after != eventsBefore {
++		t.Fatalf("events.jsonl changed under a refused header write: %s -> %s", eventsBefore, after)
++	}
++	// The corruption this row is about: the FIRST TASK ROW must not grow a
++	// header key. (Pre-fix it went 9 keys -> 10 with ticks_total.)
++	line, ok := firstNonBlankLine(b.TasksPath())
++	if !ok {
++		t.Fatal("tasks.jsonl has no line 1")
++	}
++	row, err := ParseRow(line)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if row.Has("ticks_total") || row.Has("ticks_idle") {
++		t.Fatalf("header counters landed in a task row: %s", line)
++	}
++	if got := len(row.Keys); got != 9 {
++		t.Fatalf("first task row has %d keys, want 9 (unchanged): %s", got, line)
++	}
++	if row.String("id") != "CHT-001" || row.String("status") != "complete" {
++		t.Fatalf("first task row identity changed: %s", line)
++	}
++}
++
++// TestHeaderlessSetHeaderGuardFiresOnTaskRow is the HARD GUARD (acceptance
++// criterion 5's RED case): even with the headerless classification defeated,
++// SetHeader must refuse to stamp header keys into a row carrying
++// id/title/status. Pre-fix this call succeeded and rewrote the task row.
++func TestHeaderlessSetHeaderGuardFiresOnTaskRow(t *testing.T) {
++	b := newTestHeaderlessBoard(t)
++	before := fileSHA(t, b.TasksPath())
++
++	// Defeat layer 1 (the classification) to exercise layer 2 (the shape
++	// guard) on its own: the board is now "topology B with a header".
++	b.headerless = false
++	if !b.HasHeader() {
++		t.Fatal("test premise broken: board should report a header once headerless is cleared")
++	}
++	ninety := int64(90)
++	_, err := b.SetHeader(HeaderUpdate{TicksTotal: &ninety})
++	if err == nil {
++		t.Fatal("SetHeader stamped a header counter into a task row — the task-shape guard did not fire")
++	}
++	if !errors.Is(err, ErrNoHeader) {
++		t.Fatalf("guard error %v does not wrap ErrNoHeader", err)
++	}
++	if !strings.Contains(err.Error(), "id/title/status") || !strings.Contains(err.Error(), "CHT-001") {
++		t.Fatalf("guard error %q does not name the task row / the keys it refuses to write", err)
++	}
++	if after := fileSHA(t, b.TasksPath()); after != before {
++		t.Fatalf("tasks.jsonl rewritten despite the guard:\nbefore %s\nafter  %s", before, after)
++	}
++}
++
++// TestHeaderlessSetHeaderGuardFiresOnTopologyATaskRow: the same guard covers
++// the other file — a board.jsonl whose line 1 is accidentally a task row must
++// not be rewritten as a header either.
++func TestHeaderlessSetHeaderGuardFiresOnTopologyATaskRow(t *testing.T) {
++	dir := t.TempDir()
++	files := headerlessBoardFiles()
++	files["board.jsonl"] = `{"id":"BOGUS-1","title":"not a header","status":"pending","ticks_total":1}` + "\n"
++	writeBoardFiles(t, dir, files)
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if b.Topology != "A" || !b.HasHeader() {
++		t.Fatalf("topology = %q HasHeader = %v, want A/true", b.Topology, b.HasHeader())
++	}
++	before := fileSHA(t, b.HeaderPath())
++	seven := int64(7)
++	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &seven}); err == nil {
++		t.Fatal("SetHeader rewrote a task row in board.jsonl as the header")
++	} else if !errors.Is(err, ErrNoHeader) {
++		t.Fatalf("guard error %v does not wrap ErrNoHeader", err)
++	}
++	if after := fileSHA(t, b.HeaderPath()); after != before {
++		t.Fatalf("board.jsonl rewritten despite the guard: %s -> %s", before, after)
++	}
++}
++
++// TestHeaderlessValidateInformational is acceptance criterion 2: one
++// informational headerless line, NONE of the three false
++// 'not an integer counter' errors, zero errors overall.
++func TestHeaderlessValidateInformational(t *testing.T) {
++	b := newTestHeaderlessBoard(t)
++	rep, err := b.Validate()
++	if err != nil {
++		t.Fatal(err)
++	}
++	text := findingsText(rep)
++	if !strings.Contains(text, "headerless board (no board.jsonl)") {
++		t.Fatalf("validate did not report the headerless board:\n%s", text)
++	}
++	if strings.Contains(text, "not an integer counter") {
++		t.Fatalf("validate validated a task row as a header:\n%s", text)
++	}
++	if strings.Contains(text, "header:") {
++		t.Fatalf("validate emitted header findings for a board with no header:\n%s", text)
++	}
++	if rep.HasErrors() {
++		t.Fatalf("headerless board has %d error(s), want 0:\n%s", rep.Errors(), text)
++	}
++	if rep.Header {
++		t.Fatal("report claims a header was parsed on a headerless board")
++	}
++	if rep.Tasks != 2 || rep.Events != 2 {
++		t.Fatalf("report rows = %d tasks / %d events, want 2/2", rep.Tasks, rep.Events)
++	}
++	headerless := 0
++	for _, f := range rep.Findings {
++		if strings.Contains(f.Msg, "headerless board") {
++			headerless++
++		}
++	}
++	if headerless != 1 {
++		t.Fatalf("validate emitted %d headerless lines, want exactly 1:\n%s", headerless, text)
++	}
++}
++
++// TestHeaderlessDoctorSkipsHeaderChecks: doctor's header-vs-events drift check
++// cannot run without a header — it must skip with a note rather than invent an
++// error (the remediation it would print, `header --set-ticks-total`, now
++// refuses on this board).
++func TestHeaderlessDoctorSkipsHeaderChecks(t *testing.T) {
++	b := newTestHeaderlessBoard(t)
++	rep, err := b.Doctor()
++	if err != nil {
++		t.Fatal(err)
++	}
++	text := findingsText(rep)
++	if rep.HasErrors() {
++		t.Fatalf("doctor on a headerless board has %d error(s), want 0:\n%s", rep.Errors(), text)
++	}
++	if !strings.Contains(text, "header-vs-events tick drift checks skipped") {
++		t.Fatalf("doctor did not note the skipped drift check:\n%s", text)
++	}
++	if strings.Contains(text, "ticks_total") {
++		t.Fatalf("doctor compared header counters on a board that has none:\n%s", text)
++	}
++	if strings.Contains(text, "not an integer counter") {
++		t.Fatalf("doctor inherited validate's false header errors:\n%s", text)
++	}
++}
++
++// TestHeaderlessEventTickAppendsWithoutHeaderBump: `event --tick N` bumps the
++// header counter on header-bearing boards; on a headerless board there is no
++// counter, so the bump is a no-op and the event still lands — tasks.jsonl is
++// never touched (pre-fix the bump wrote ticks_total into the first task row).
++func TestHeaderlessEventTickAppendsWithoutHeaderBump(t *testing.T) {
++	b := newTestHeaderlessBoard(t)
++	tasksBefore := fileSHA(t, b.TasksPath())
++	tick := int64(51)
++	id, err := b.AppendEvent(EventSpec{Type: "tick", Actor: "foreman", Tick: &tick})
++	if err != nil {
++		t.Fatalf("AppendEvent with a tick on a headerless board: %v", err)
++	}
++	if id <= 2 {
++		t.Fatalf("appended event id = %d, want > 2", id)
++	}
++	if after := fileSHA(t, b.TasksPath()); after != tasksBefore {
++		t.Fatalf("tick event bumped a header into tasks.jsonl:\nbefore %s\nafter  %s", tasksBefore, after)
++	}
++	rows, _, err := ReadAllRows(b.EventsPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(rows) != 3 {
++		t.Fatalf("events.jsonl has %d rows, want 3", len(rows))
++	}
++}
++
++// TestHeaderlessEmptyTasksFileRefuses: an empty tasks.jsonl has no line 1 to
++// be a header, so it is headerless too — a header write must refuse instead of
++// creating a header row out of nothing.
++func TestHeaderlessEmptyTasksFileRefuses(t *testing.T) {
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"events.jsonl": `{"id":1,"timestamp":"2026-09-17 01:20:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
++	})
++	// writeBoardFiles skips empty content, so create the 0-byte file directly.
++	if err := os.WriteFile(filepath.Join(dir, "tasks.jsonl"), nil, 0o644); err != nil {
++		t.Fatal(err)
++	}
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if b.HasHeader() {
++		t.Fatal("empty tasks.jsonl classified as carrying a header")
++	}
++	ninety := int64(90)
++	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &ninety}); !errors.Is(err, ErrNoHeader) {
++		t.Fatalf("SetHeader on an empty tasks.jsonl error = %v, want ErrNoHeader", err)
++	}
++}
++
++// TestUnparseableLineOneIsNotHeaderless: a break in line 1 is a PARSE failure
++// and must surface as one (the pretty-printed/truncated-JSON diagnosis), not be
++// masked by a shape verdict. The write path still refuses via the task-shape
++// guard, but the reported error is the parser's.
++func TestUnparseableLineOneIsNotHeaderless(t *testing.T) {
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl":  headerlessTask1[:20] + "\n" + headerlessTask2 + "\n", // truncated line 1
++		"events.jsonl": `{"id":1,"timestamp":"2026-09-17 01:20:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !b.HasHeader() {
++		t.Fatal("unparseable line 1 was classified as headerless (masking the parse error)")
++	}
++	ninety := int64(90)
++	err = func() error {
++		_, e := b.SetHeader(HeaderUpdate{TicksTotal: &ninety})
++		return e
++	}()
++	if err == nil {
++		t.Fatal("SetHeader succeeded on a corrupt tasks.jsonl")
++	}
++	if errors.Is(err, ErrNoHeader) {
++		t.Fatalf("prioritized the shape verdict over the parse error: %v", err)
++	}
++	if !strings.Contains(err.Error(), "line 1") {
++		t.Fatalf("parse error %q does not name the offending line", err)
++	}
++}
+diff --git a/internal/board/doctor.go b/internal/board/doctor.go
+index f4376ce..4350bb5 100644
+--- a/internal/board/doctor.go
++++ b/internal/board/doctor.go
+@@ -101,7 +101,16 @@ func findRepoRoot(dir string) string {
+ // Events without a numeric tick_number (legacy rows) are ignored;
+ // header/event read failures are skipped because Validate already itemized
+ // them.
++//
++// BT-037: a HEADERLESS board has no counters to compare, so the cross-check
++// is skipped with a note naming why — the drift ERROR (which would propose
++// `boardctl header --set-ticks-total`, a command that now refuses) must never
++// be emitted for a board that carries no header.
+ func (b *Board) doctorHeaderVsEvents(rep *Report) {
++	if !b.HasHeader() {
++		rep.Add("warn", "headerless board (no board.jsonl): no header counters to compare — header-vs-events tick drift checks skipped")
++		return
++	}
+ 	rows, _, err := ReadAllRows(b.eventsPath)
+ 	if err != nil {
+ 		return // validate already reported the events read failure
+diff --git a/internal/board/validate.go b/internal/board/validate.go
+index c5fe852..4e6fdc0 100644
+--- a/internal/board/validate.go
++++ b/internal/board/validate.go
+@@ -249,7 +249,17 @@ func (b *Board) validateEvents(rep *Report) error {
+ // Works in BOTH topologies (BT-010): the header is read via headerPathFor —
+ // board.jsonl line 1 on topology A, tasks.jsonl line 1 on topology B — with
+ // findings worded for whichever file carries it.
++//
++// BT-037: a HEADERLESS board (no board.jsonl, tasks.jsonl line 1 is an
++// ordinary task row) has no header to check. Reading that task row as if it
++// were a header invented three false "not an integer counter" errors on a
++// clean board, so the counter checks are skipped with ONE informational line
++// instead.
+ func (b *Board) validateHeader(rep *Report) error {
++	if !b.HasHeader() {
++		rep.Add("warn", "headerless board (no board.jsonl): tasks.jsonl line 1 is a task row, not board metadata — no header to validate; header counter checks skipped")
++		return nil
++	}
+ 	headerPath := b.headerPathFor()
+ 	name := filepath.Base(headerPath)
+ 	lines, err := ReadJSONLLines(headerPath)
+diff --git a/internal/board/write.go b/internal/board/write.go
+index edeb035..d2ec9de 100644
+--- a/internal/board/write.go
++++ b/internal/board/write.go
+@@ -1066,7 +1066,15 @@ func embedDetail(content []byte, s Style) []byte {
+ // the header already reports n or higher (never regresses the counter).
+ // Works on both topologies — SetHeader targets line 1 of board.jsonl (A) or
+ // tasks.jsonl (B).
++//
++// BT-037: on a HEADERLESS board there is no counter to keep fresh, so this is
++// a no-op — `event --tick` must still append to such a board (the event row
++// is the record), never fail because a header bump was attempted in a file
++// full of task rows.
+ func (b *Board) bumpHeaderTicksTotal(n int64) error {
++	if !b.HasHeader() {
++		return nil
++	}
+ 	hdr, err := b.HeaderRow()
+ 	if err != nil {
+ 		return err
+@@ -1096,7 +1104,17 @@ type HeaderUpdate struct {
+ // another timestamp field on the header, else the spec default — so the
+ // header's staleness never misleads drift consumers. Nothing is written when
+ // validation fails.
++//
++// BT-037: on a HEADERLESS board (no board.jsonl, line 1 of tasks.jsonl is an
++// ordinary task row) this REFUSES with ErrNoHeader — the whole point of the
++// function is byte-preserving surgery on non-target rows, and rewriting line 1
++// there would corrupt a task. The refusal is unconditional, below the
++// task-shape guard, so no topology verdict can route a header key into a row
++// that carries id/title/status.
+ func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
++	if !b.HasHeader() {
++		return nil, b.noHeaderError()
++	}
+ 	headerPath := b.headerPathFor()
+ 	lines, err := ReadJSONLLines(headerPath)
+ 	if err != nil {
+@@ -1119,6 +1137,14 @@ func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
+ 	if header == nil {
+ 		return nil, fmt.Errorf("%s is empty", filepath.Base(headerPath))
+ 	}
++	// BT-037 hard guard: never stamp header keys into a row that carries task
++	// identity keys. Belt and braces behind HasHeader — if a board was
++	// classified topology B because line 1 was unparseable at resolve time
++	// yet parses now as a task row, this still refuses before any mutation.
++	if rowIsTaskShape(header) {
++		return nil, fmt.Errorf("%w: line %d of %s is the TASK row %q (it carries id/title/status) — refusing to write header keys (ticks_total/ticks_idle/last_commit/updated_at) into a task row",
++			ErrNoHeader, headerIdx+1, filepath.Base(headerPath), header.String("id"))
++	}
+ 	if u.TicksTotal == nil && u.TicksIdle == nil && u.LastCommit == nil {
+ 		return nil, fmt.Errorf("header requires at least one --set flag (--set-ticks-total/--set-ticks-idle/--set-last-commit)")
+ 	}
