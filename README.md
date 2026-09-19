@@ -81,10 +81,18 @@ boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
     --reasoning "Idempotent retry with backoff" --evidence-run-id qa-2026-09-18T04:11Z
 
+# rows can carry WHERE the work happened and WHICH agent runs did it
+# (see "Worktree, branch and session fields" below)
+boardctl -C ~/myproject create --id FEAT-2 --title "Add caching" \
+    --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
+    --session 2f8c41a0 --session 91ab77c2
+
 # update a task row (status flip + completion event; --commit-hash stays on
 # the task row — the header drift pointer only moves via `header --set-last-commit`)
 boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
     --guard PASS --ci GREEN --summary "retry added (+80/-12)"
+boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
+    --branch wt/ft-1 --session 2f8c41a0
 
 # canonicalize one row's status/guard_result/ci_result spelling in place
 # (read-alias fix path; no-op + "already canonical" when nothing is dirty)
@@ -274,6 +282,55 @@ Per group (≥ 2 open rows sharing a fingerprint) it keeps the earliest row, clo
 the rest with `worker_summary="merged into <kept>: dedupe backfill <date>"`,
 carries the merged evidence onto the kept row, and writes one `audit` event.
 Full rules: [`docs/board-fingerprint-rules.md`](docs/board-fingerprint-rules.md).
+
+## Worktree, branch and session fields
+
+A task row carries WHERE the work happened and WHICH agent runs worked it.
+Both `create` and `update` accept three first-class fields for that:
+
+| Flag | Row field | Type | Meaning |
+|------|-----------|------|---------|
+| `--worktree PATH` | `worktree` | string | absolute path of the git worktree the task is built in |
+| `--branch NAME` | `branch` | string | that worktree's git branch, e.g. `wt/cht-031` |
+| `--session ID` | `sessions` | array of strings | Hermes session id(s) that worked the row — repeatable |
+
+```bash
+boardctl -C ~/myproject create --id FEAT-2 --title "Add caching" \
+    --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
+    --session 2f8c41a0 --session 91ab77c2
+boardctl -C ~/myproject update FEAT-2 --status complete \
+    --worktree /home/me/wt/ft-2 --branch wt/ft-2 --session 91ab77c2
+```
+
+Rules that hold on both commands:
+
+- **Absent is valid.** A flag that was not passed writes NO key — never an
+  empty string and never an empty array. Work done in the main checkout simply
+  carries no `worktree`/`branch`; a row whose runs were never recorded carries
+  no `sessions` array. Nothing is inferred from the environment.
+- **Appended key order, byte preservation.** A newly set field is APPENDED at
+  the end of the target row's key order; existing keys keep their order and
+  their verbatim value bytes, and every other line of `tasks.jsonl` stays
+  byte-identical (the usual surgery contract, enforced by assertion before the
+  write).
+- **`sessions` is an ARRAY, replaced wholesale.** `--session A` writes
+  `["A"]`; `--session A --session B` writes `["A","B"]` in the order given.
+  Setting it REPLACES the row's whole list — the array is never merged
+  element-wise, so the row reflects the run(s) recorded last instead of
+  accumulating stale ids. `--session=ID` works too, and the flags parse in any
+  order (before or after the task id).
+- **The board's own style wins.** The array and strings are encoded through the
+  same serializer every other field uses, so a compact board stays compact and
+  a spaced board stays spaced.
+- **`--normalize` refuses them.** `--worktree`, `--branch` and `--session` are
+  change flags: `update` needs at least one change flag (or `--normalize`), and
+  `--normalize` rejects a combination with any of the three — a usage error
+  with nothing written, like its existing change-flag siblings.
+
+No other command needed changing: `validate`, `doctor`, `stats`, `render`,
+`list`, `show` tolerate unknown keys (the fields never produce a finding), and
+`import` copies exported rows verbatim, so the three fields round-trip with the
+row.
 
 ## Board topology
 

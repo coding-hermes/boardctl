@@ -149,6 +149,23 @@ type TaskRowSpec struct {
 	// task_evidence event.
 	EvidenceRunID string
 
+	// BT-037: first-class build-location + session audit fields.
+	//
+	//   worktree — absolute path of the git worktree the task was built in
+	//   branch   — that worktree's git branch (e.g. wt/cht-031)
+	//   sessions — JSON ARRAY of Hermes session ids that worked this row
+	//
+	// nil means "the caller did not supply this" and NO key is written: a row
+	// built in the main checkout carries no worktree/branch at all, and a row
+	// whose runs were never recorded carries no sessions array. A non-nil
+	// pointer is authoritative and IS written (appended at the end of the
+	// row's key order when the mirrored schema lacks the key, which is what
+	// Row.SetRaw already does), even when it holds an empty string — the CLI
+	// never produces such a pointer, since an unset flag yields nil.
+	Worktree *string
+	Branch   *string
+	Sessions *[]string
+
 	// BT-022: prevalidated raw row for the import path. When Raw is set,
 	// Create still performs every check below (id format, duplicate id,
 	// status/priority vocabulary, depends_on existence) but appends these
@@ -352,6 +369,18 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	if spec.Reasoning != "" {
 		overrides["reasoning"] = spec.Reasoning
 	}
+	// BT-037: build-location + session fields ride the same table — set in
+	// place when the mirrored schema already carries the key, appended at the
+	// end of the row when it does not (see the append list below).
+	if spec.Worktree != nil {
+		overrides["worktree"] = *spec.Worktree
+	}
+	if spec.Branch != nil {
+		overrides["branch"] = *spec.Branch
+	}
+	if spec.Sessions != nil {
+		overrides["sessions"] = *spec.Sessions
+	}
 	overrides["created_at"] = nowStr
 	overrides["updated_at"] = nowStr
 	for k, v := range overrides {
@@ -362,7 +391,7 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 		}
 	}
 	// Keys the user asked for but the mirrored schema lacks: append at end.
-	for _, k := range []string{"depends_on", "capability_tags", "reasoning"} {
+	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions"} {
 		if v, ok := overrides[k]; ok && !row.Has(k) {
 			if err := set(k, v); err != nil {
 				return "", err
@@ -536,6 +565,22 @@ type UpdateSpec struct {
 	BlockedReason *string
 	CompletedAt   *string
 	Force         bool // BT-023: bypass the fleet task-id format check on the target id
+	// BT-037: build-location + session audit fields, same nil-untouched
+	// discipline as every field above:
+	//
+	//   worktree — absolute path of the git worktree the task is built in
+	//   branch   — that worktree's git branch (e.g. wt/cht-031)
+	//   sessions — JSON ARRAY of Hermes session ids that worked the row
+	//
+	// nil leaves the key alone (never creating it, and never clearing a value
+	// already on the row); a non-nil pointer sets it, APPENDING the key at the
+	// end of the row's key order when the row does not already carry it.
+	// Sessions REPLACES the whole list — the array is never merged
+	// element-wise, so the row always reflects the run(s) recorded last
+	// instead of accumulating stale ids.
+	Worktree *string
+	Branch   *string
+	Sessions *[]string
 	// BT-025: normalize mode — rewrite ONLY the row's status (via the
 	// read-alias table) and guard_result/ci_result (via NormalizeResultValue)
 	// to their canonical forms. Any present field whose value cannot be
@@ -670,13 +715,33 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
+	// BT-037: build-location + session audit fields. set() appends the key at
+	// the end of the row when it is absent (Row.SetRaw semantics) and encodes
+	// the sessions list through encodeValue's []string branch, so the array
+	// is written in the row's own style (compact/spaced, ASCII escapes) —
+	// never hand-rolled json.Marshal output.
+	if spec.Worktree != nil {
+		if err := set("worktree", *spec.Worktree); err != nil {
+			return nil, err
+		}
+	}
+	if spec.Branch != nil {
+		if err := set("branch", *spec.Branch); err != nil {
+			return nil, err
+		}
+	}
+	if spec.Sessions != nil {
+		if err := set("sessions", *spec.Sessions); err != nil {
+			return nil, err
+		}
+	}
 	if target.Has("updated_at") {
 		if err := set("updated_at", now); err != nil {
 			return nil, err
 		}
 	}
 	if len(changed) == 0 && !spec.Normalize {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at) or --normalize")
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))

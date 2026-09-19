@@ -223,6 +223,24 @@ func valueFlags(names ...string) func(string) bool {
 	return func(n string) bool { return set[n] }
 }
 
+// stringListFlag is a REPEATABLE string flag: each occurrence appends one
+// value, so `--session A --session B` collects [A B] instead of overwriting.
+// String() renders the collected values comma-joined, which keeps an unset
+// flag reading as "" — the normalize-combination gate in cmdUpdate tests
+// flags with Value.String() != "".
+type stringListFlag []string
+
+func (s *stringListFlag) String() string { return strings.Join(*s, ",") }
+
+func (s *stringListFlag) Set(v string) error {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return fmt.Errorf("value must not be empty")
+	}
+	*s = append(*s, v)
+	return nil
+}
+
 // parseIntFlag validates a CLI int.
 func parseIntFlag(name, v string) (int64, error) {
 	n, err := strconv.ParseInt(v, 10, 64)
@@ -435,7 +453,7 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "evidence-run-id"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "evidence-run-id", "worktree", "branch", "session"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
@@ -445,11 +463,18 @@ func cmdCreate(dir string, args []string) error {
 	reasoning := fs.String("reasoning", "", "reasoning note")
 	capTags := fs.String("capability-tags", "", "comma-separated capability tags")
 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence (SG-126)")
+	// BT-037: build-location + session audit fields. Omitted flags write
+	// NOTHING (no empty worktree/branch, no empty sessions array) — a row
+	// built in the main checkout simply carries no worktree/branch keys.
+	worktree := fs.String("worktree", "", "absolute path of the git worktree this task is built in (omit = main checkout)")
+	branch := fs.String("branch", "", "git branch of --worktree, e.g. wt/cht-031")
+	var sessions stringListFlag
+	fs.Var(&sessions, "session", "Hermes session id that worked this task (repeatable: --session A --session B records the ordered array)")
 	force := fs.Bool("force", false, "write the id even if it violates the fleet id format (also files a duplicate finding as a variant)")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--force] [flags] [-C dir]\\n")
+		fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -481,6 +506,16 @@ func cmdCreate(dir string, args []string) error {
 	if spec.HasTags {
 		spec.CapabilityTags = splitCSV(*capTags)
 	}
+	if *worktree != "" {
+		spec.Worktree = worktree
+	}
+	if *branch != "" {
+		spec.Branch = branch
+	}
+	if len(sessions) > 0 {
+		list := []string(sessions)
+		spec.Sessions = &list
+	}
 	if *complexity != "" {
 		n, err := parseIntFlag("--complexity", *complexity)
 		if err != nil {
@@ -500,7 +535,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at"))
+	args = reorderArgs(args, valueFlags("C", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	workerStatus := fs.String("worker-status", "", "worker_status")
 	commitHash := fs.String("commit-hash", "", "commit_hash")
@@ -510,6 +545,13 @@ func cmdUpdate(dir string, args []string) error {
 	note := fs.String("note", "", "foreman_note")
 	blockedReason := fs.String("blocked-reason", "", "blocked_reason")
 	completedAt := fs.String("completed-at", "", "completed_at timestamp")
+	// BT-037: build-location + session audit fields. An omitted flag leaves
+	// the row's key untouched (and never creates it); --session REPLACES the
+	// whole sessions array with the ids given here, in order.
+	worktree := fs.String("worktree", "", "absolute path of the git worktree this task is built in (omit = leave untouched)")
+	branch := fs.String("branch", "", "git branch of --worktree, e.g. wt/cht-031")
+	var sessions stringListFlag
+	fs.Var(&sessions, "session", "Hermes session id that worked this task (repeatable; REPLACES the row's sessions array with the ids given)")
 	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
 	// to their canonical forms (read-alias fix path). Takes no value, so it
 	// must NOT join the reorderArgs valueFlags list.
@@ -518,7 +560,7 @@ func cmdUpdate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl update <id> [--status complete] [--normalize] [--force] [flags] [-C dir]\\n")
+		fmt.Fprintf(os.Stderr, "boardctl update <id> [--status complete] [--worktree PATH] [--branch NAME] [--session ID]... [--normalize] [--force] [flags] [-C dir]\\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -541,7 +583,7 @@ func cmdUpdate(dir string, args []string) error {
 	// --normalize alone satisfies the change-flag gate and needs no --force
 	// beyond the fleet-id escape hatch.
 	if *normalize {
-		for _, f := range []string{"status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at"} {
+		for _, f := range []string{"status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session"} {
 			if fs.Lookup(f).Value.String() != "" {
 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
 			}
@@ -576,6 +618,16 @@ func cmdUpdate(dir string, args []string) error {
 		BlockedReason: ptr(*blockedReason),
 		CompletedAt:   ptr(*completedAt),
 		Force:         *force,
+	}
+	if *worktree != "" {
+		spec.Worktree = worktree
+	}
+	if *branch != "" {
+		spec.Branch = branch
+	}
+	if len(sessions) > 0 {
+		list := []string(sessions)
+		spec.Sessions = &list
 	}
 	changed, err := b.UpdateTask(fs.Arg(0), spec)
 	if err != nil {

@@ -119,6 +119,14 @@ Types/normalization (read-side only; the report never writes task files):
 
 Sparse-key tolerance is absolute: NO metric may require a key that is not in
 this union, and no renderer may crash on a missing/`null`/wrong-typed value.
+
+Board writers also emit three OPTIONAL keys beyond the union above —
+`worktree` (absolute path of the git worktree the task is built in), `branch`
+(that worktree's branch) and `sessions` (JSON array of Hermes session ids that
+worked the row). They are tolerated exactly like every key above: never
+required for a metric, never a parse failure when absent, and surfaced only in
+the collapsed-row detail when present.
+
 Wrong-typed values (e.g. `attempts` as string) are rendered as the raw JSON
 and do not fail the load.
 

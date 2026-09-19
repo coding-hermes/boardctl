@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.2.0
+version: 1.3.0
 category: software-development
 ---
 
@@ -64,6 +64,15 @@ boardctl -C R create --id FEAT-1 --title "T" --priority P1 \
     --capability-tags go,cli
 boardctl -C R update FEAT-1 --status complete \
     --commit-hash <sha> --guard PASS --ci GREEN --summary "done (+80/-12)"
+
+# worktree / branch / Hermes session audit trail (first-class row fields).
+# Omitted flag = NO key written (main-checkout work has no worktree);
+# --session is repeatable and REPLACES the row's sessions array, in order.
+boardctl -C R create --id FEAT-2 --title "T" \
+    --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
+    --session <hermes-session-id> --session <second-session-id>
+boardctl -C R update FEAT-2 --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
+    --session <hermes-session-id>
 boardctl -C R event --type audit --tick 42 --detail-text "..."   # or --detail @file
 boardctl -C R header --set-ticks-total 42 --set-last-commit <sha>
 boardctl init --project myproject          # bootstrap a fresh board: writes
@@ -87,6 +96,12 @@ boardctl version                           # release tag on release builds
   create/update aborts (create the dependency task first).
 - Header counters (`--set-ticks-total`, `--set-ticks-idle`, ...): negative
   values rejected — counters must be `>= 0`.
+- `--worktree` / `--branch` / `--session` (create and update): free-form
+  values — `--worktree` is the absolute path of the git worktree the task is
+  built in, `--branch` its branch, `--session` the Hermes session id that
+  worked the row (repeatable; the array is REPLACED wholesale, never merged).
+  They are change flags for `update` and are refused in combination with
+  `--normalize`.
 - `event --type`: must be one of the enumerated event types (`audit`,
   `tick`, `task_created`, `task_completed`, `task_updated`, `idle`,
   `dogfood`, `e2e_verified`, ... — the error message lists them all).
