@@ -474,7 +474,7 @@ func cmdCreate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\\n")
+		fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -560,7 +560,7 @@ func cmdUpdate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl update <id> [--status complete] [--worktree PATH] [--branch NAME] [--session ID]... [--normalize] [--force] [flags] [-C dir]\\n")
+		fmt.Fprintf(os.Stderr, "boardctl update <id> [--status complete] [--worktree PATH] [--branch NAME] [--session ID]... [--normalize] [--force] [flags] [-C dir]\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
