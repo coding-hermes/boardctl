@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.3.0
+version: 1.4.0
 category: software-development
 ---
 
@@ -155,6 +155,65 @@ boardctl version                           # release tag on release builds
    header counter drift, and fixture orphans in ~0.02s on real fleet boards.
    And never `git add -A` a board COPY — an untracked `board.db` rides
    along and doctor (correctly) fails the copy.
+
+## Report surface — `render`, `serve`, `import`
+
+Added BT-020..022; dogfooded 2026-09-20 and found rough. Use it, but know its
+shape before you trust a number.
+
+```bash
+boardctl -C R render -o report.html                 # self-contained HTML, no network
+boardctl -C R render -o r.html --json r.json        # ALSO emit the payload
+boardctl serve --addr 127.0.0.1:8787                # loopback-only uploader
+boardctl serve --addr 127.0.0.1:8787 -C ~/myrepo    # -C board prepended to every report
+boardctl -C R import r.json --dry-run               # report -> board, plan only
+```
+
+Rules that are real (verified):
+
+- `render` is **read-only** and **self-contained** — sha256 of the board files is
+  unchanged after render + serve upload, and the HTML has zero external
+  `src`/`href` (no CDN, no fonts, no chart libs).
+- `serve` refuses any non-loopback `--addr` with **exit 2** (no auth, no TLS — it
+  must never leave the machine).
+- `import` refuses a **board-name mismatch** (`export is for board "X"; target
+  board is "Y"`) and is a no-op when rows are identical. Always `--dry-run` first.
+- Fixture rows (`NEVER-DONE`, `fixtures.jsonl` membership, `perpetual:true`) are
+  **excluded** from the report's counts — so report `tasks` is one less than
+  `wc -l tasks.jsonl` when the perpetual fixture exists. That is correct, not drift.
+
+**Pitfalls that will burn you (measured 2026-09-20, rows DF-BOARDCTL-1..6):**
+
+- **Read the report's charts with suspicion.** `derived.burndown` ships as
+  `{window, open}` while `derived.burnup` ships as `{window, days, cum}`; the
+  template asks both for `.days`, so the **burndown panel shows "no tasks yet" on
+  every report**, even a 42-task board. Check `--json` output, not the picture.
+  (DF-BOARDCTL-1)
+- **`velocity` can under-report by 2x.** It counts row timestamps only
+  (`completed_at`, else `updated_at`); completions recorded only as a
+  `task_completed` event are invisible to it. crier: 391 complete rows vs 199 in
+  velocity. Never read velocity as "work delivered" without cross-checking
+  `derived.complete_count`. (DF-BOARDCTL-4)
+- **The data-quality footnote is not per-board in `serve` reports.**
+  `completed_no_done_ids` is a payload-level union across every uploaded board,
+  so a multi-board report shows another board's ids under one board's view.
+  (DF-BOARDCTL-5)
+- **`serve` accumulates uploads for the life of the process.** Re-uploading the
+  same zip duplicates boards in the report, the compare table and `/api/boards`;
+  there is no reset short of restarting. Upload once, or restart between runs.
+  The `-C` board also appears twice even before any upload. (DF-BOARDCTL-2)
+- **The `-0500` timestamp dialect is written but not read.** `internal/board`
+  detects and preserves `2026-09-18T03:47:31-0500`, while the report parser's
+  layout list accepts only `Z`/`+00:00` forms — those rows land in
+  `parse_warnings.timestamp_excluded` and drop out of every time metric. Check
+  `timestamp_excluded` before trusting any time series on a board you did not
+  create. (DF-BOARDCTL-3)
+- `boardctl <cmd> --help` exits **1** (only the bare `help`/`--help` exits 0).
+
+**Verify a report before quoting it:** render with `--json`, then check that
+`derived.complete_count` and the velocity total agree, and that
+`parse_warnings.timestamp_excluded` is 0 (or explain it). Two numbers describing
+the same board that disagree means one of them is lying.
 
 ## Minimal task-row schema (reference only)
 

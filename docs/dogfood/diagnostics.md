@@ -130,6 +130,136 @@ Second dogfood run against HEAD `237e594` (post v0.1.2). Full report:
   JSON page to `SHA256SUMS` and `sha256sum -c` fails with
   "no file was verified" — that failure mode is the canary, not noise.
 
+## 2026-09-20 re-run — the render/serve surface (addendum)
+
+Runs 4 and 12 dogfooded the CLI and board-write surface. This run took the
+analytics stack the README advertises above the fold — `render`, `serve`,
+`import`, governed by `docs/specs/board-analytics-report.md` — which had never
+been exercised by a user.
+
+### How the report is actually assembled (the part that matters)
+
+Three layers, each independently tested, and the seam between two of them is
+where this run's findings live:
+
+```
+board.Resolve / loadBoard      →  boardData: raw rows + typed task/event recs
+  internal/render/load.go          (birth = day(created_at),
+                                    done  = day(completed_at), else
+                                            day(updated_at) when status=complete)
+derive(d)                      →  Derived: burndown/burnup/velocity/cycle/
+  internal/render/derive.go        streaks/tick_health/work_clock/model_share
+newBoardPayload / Build        →  board-report/v1 payload (JSON island)
+  internal/render/report.go
+BuildHTML(island)              →  template.go: one big JS renderer that reads
+                                   the island and draws every panel
+```
+
+The load and derive layers are sound: measured against ground truth they agree
+(velocity's window totals, status/priority counts, fixture exclusion). The
+losses happen at the **template contract**, because `template.go` is a JavaScript
+renderer reading a JSON shape that no Go struct declares as a contract:
+
+- `burndown` is `{window, open}`; `burnup` is `{window, days, cum}`. The
+  template asks **both** for `.days` (`template.go:714`). Burn-up draws;
+  burndown returns the `"no tasks yet"` placeholder **on every report ever
+  generated**, discarding a correct `open` series. `chartLines`
+  (`template.go:387-388`) bails on an empty `days` before it ever reads
+  `values`.
+- `completed_no_done_ids` is payload-level (`report.go:80-94` unions all
+  boards), but the footer renders it unscoped — so a multi-board report
+  attributes one board's uncomputable rows to every board.
+
+**Lesson to carry forward:** when a Go struct feeds a hand-written JS template,
+the struct's JSON tags ARE an API and nothing tests them. Every finding in this
+class is invisible to `go test` because derive is correct and the template
+"works" — it just draws a placeholder. A report-HTML test (render, parse, assert
+the panel is not the empty state) is the missing gate.
+
+### The velocity trap: correct code, missing input
+
+`velocity` (`derive.go:361`) counts completions per ISO week from row
+timestamps. It has a fallback for a complete row with no `completed_at` — use
+`updated_at` (`load.go:335-338`) — which is why boardctl's own board reconciles
+(12 rows with `completed_at` + 4 using `updated_at` = the 16 the payload shows).
+That fallback is the trap: it makes the metric look trustworthy on boards whose
+rows carry timestamps, and silently halves it on boards whose rows do not.
+
+crier: 391 complete rows → velocity totals 199. 192 of the missing ones carry a
+`task_completed` event in `events.jsonl` — the completion is recorded, just not
+on the row. So velocity and `complete_count` describe the same board and differ
+by 2x, with no visible caveat. The general rule this run produced:
+
+> **When two numbers describe the same board, either they agree or the
+> difference must be visible.** A report that quietly reports half the work is
+> worse than one that reports none, because half looks plausible.
+
+### The dialect asymmetry
+
+`internal/board/timefmt.go` accepts and **preserves** the colon-less UTC-offset
+dialect `2026-09-18T03:47:31-0500` (`zoneRe = (?:Z|[+-]\d{2}:?\d{2})$`) — it
+detects it, writes new timestamps in the same shape, and does not normalize it
+away. `internal/render/load.go:507` `stampLayouts` has only the colon and `Z`
+forms, so the report parser rejects it and drops those rows from every
+time-based metric.
+
+So boardctl writes what boardctl cannot read. Verified the writer itself is not
+the hazard: `boardctl create` on a `-0500` board emitted `+00:00` (the
+DetectTSLayout default), so the asymmetry is read-side only — but a fresh
+writer/reader round trip inside one tool that loses rows is a trust defect.
+
+Fleet scan (52 boards, 8034 task rows): the literal `-NNNN` form appears on 4
+rows of 1 board (`coding-hermes-tools`). Narrow today; the row was filed with
+the blast radius named rather than inflated.
+
+### serve: the state nobody can see
+
+`serve.go:366` appends every upload session to `s.sessions`;
+`currentBoards()` (`serve.go:201-207`) concatenates all of them plus the `-C`
+board on every request; there is no dedupe and no reset route. Uploading the
+same zip three times yields `GET /api/boards` = 2→4 `boardctl` and 1→3 `b2`, and
+the compare table diffs a board against itself. The `-C` board also appears
+**twice** before any upload at all, which suggests the registration path
+double-adds it independently of the accumulation.
+
+### Errors hit during this run
+
+1. **`render --help` exits 1** — every subcommand's `--help` returns 1 while the
+   bare `--help` returns 0. Documented as deliberate (a usage error) in
+   `docs/dogfood/diagnostics.md`; recorded, not re-filed. Cost: one double-take.
+2. **My own probe bug, and it proved a guard works**: `create --id X-2` was
+   refused — `task id "X-2" does not match the fleet id format
+   ^[A-Z][A-Z0-9]+(-[A-Z0-9]+)+$` — because a single-digit segment is not a
+   valid id. The id-format gate is live and correctly worded; `X-002` is also
+   rejected (segment must be `[A-Z0-9]+` after the hyphen, and `X-002` has no
+   qualifying prefix split), so the probe used `PROBE-002`. Good guard, wrong
+   probe.
+3. **A script path bug on my side** (binary fetched into `$HOME`, smoke script
+   looked in `$HOME/dog`) produced a wall of `No such file or directory` and
+   `EXIT=0` lines. Lesson worth keeping: `EXIT=$?` after a pipeline reports the
+   **pipeline's** status, not the command's — `PIPESTATUS[0]` is the honest
+   read, and an `exit 0` next to a "file not found" line is the tell.
+4. **`serve` port 8787 was already bound** by an unrelated `python3` process on
+   this host, so the first `serve` attempt died with
+   `bind: address already in use`. Not a boardctl defect — but it means a failed
+   `serve` start is easy to miss, since the process exits and the caller's
+   `curl` gets a 404 from whatever else holds the port. Use an explicit
+   `--addr` port when dogfooding.
+
+### The right way to dogfood this surface
+
+- Render with `--json` as well as `-o`. The HTML hides the payload; the JSON is
+  where a shape defect is visible in one `jq` call.
+- Check `burndown` and `burnup` **together** — they are siblings and any
+  asymmetry between them is a defect by construction.
+- Open the HTML in a real browser and read the DOM, not the file. The burndown
+  bug is invisible in `grep` on the HTML (the placeholder string is a JS
+  argument) and obvious the moment you query `chartLines`'s inputs live.
+- Compare the report's headline numbers against ground truth computed from
+  `tasks.jsonl` AND `events.jsonl` independently — never one against the other.
+- For `serve`, hash the board files before and after to check the read-only
+  claim, and re-upload to expose accumulation.
+
 ## What a new agent should check when picking this project up
 
 - `go build ./cmd/boardctl && go test ./...` (fast, stdlib-only).
