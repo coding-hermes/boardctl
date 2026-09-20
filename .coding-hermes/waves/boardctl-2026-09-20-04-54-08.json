@@ -1,0 +1,65 @@
+{
+  "tick": "boardctl-2026-09-20-04-54-08",
+  "project": "coding-hermes-boardctl",
+  "repo": "/home/kara/coding-hermes-boardctl",
+  "created_at": "2026-09-20T00:05:00-05:00",
+  "base": "origin/main",
+  "base_sha": "c73f0f6",
+  "budget": 12,
+  "strategy": "wave-serial-merge",
+  "workers": [
+    {
+      "task": "DF-BOARDCTL-1",
+      "title": "Burndown chart never renders: template reads d.burndown.days, payload has window/open",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-1",
+      "branch": "wt/DF-BOARDCTL-1",
+      "brief": "/tmp/brief-DF-BOARDCTL-1.md",
+      "files_touched": ["internal/render/template.go"],
+      "status": "dispatched"
+    },
+    {
+      "task": "DF-BOARDCTL-3",
+      "title": "Report parser rejects colon-less UTC offsets (-0500) its own detector accepts",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-3",
+      "branch": "wt/DF-BOARDCTL-3",
+      "brief": "/tmp/brief-DF-BOARDCTL-3.md",
+      "files_touched": ["internal/render/load.go"],
+      "status": "dispatched"
+    },
+    {
+      "task": "DF-BOARDCTL-4",
+      "title": "Velocity undercounts completions recorded only in events.jsonl",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-4",
+      "branch": "wt/DF-BOARDCTL-4",
+      "brief": "/tmp/brief-DF-BOARDCTL-4.md",
+      "files_touched": ["internal/render/load.go", "internal/render/report.go"],
+      "status": "dispatched"
+    },
+    {
+      "task": "DF-BOARDCTL-5",
+      "title": "Data-quality footnote leaks across boards in multi-board reports",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-5",
+      "branch": "wt/DF-BOARDCTL-5",
+      "brief": "/tmp/brief-DF-BOARDCTL-5.md",
+      "files_touched": ["internal/render/report.go"],
+      "status": "dispatched"
+    },
+    {
+      "task": "DF-BOARDCTL-7",
+      "title": "Usage errors print literal backslash-n; usage output collides with exit line",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-7",
+      "branch": "wt/DF-BOARDCTL-7",
+      "brief": "/tmp/brief-DF-BOARDCTL-7.md",
+      "files_touched": ["cmd/boardctl/main.go"],
+      "status": "dispatched"
+    }
+  ],
+  "excluded": {
+    "DF-BOARDCTL-2": "collides with DF-BOARDCTL-6 on cmd/boardctl/serve.go",
+    "DF-BOARDCTL-6": "collides with DF-BOARDCTL-2 on cmd/boardctl/serve.go",
+    "BT-038": "operational deploy task, post-wave",
+    "BT-039": "cross-cutting load-hygiene audit, not independent-file-safe",
+    "NEVER-DONE": "perpetual fixture"
+  },
+  "merge_order": ["DF-BOARDCTL-1", "DF-BOARDCTL-3", "DF-BOARDCTL-4", "DF-BOARDCTL-5", "DF-BOARDCTL-7"]
+}
