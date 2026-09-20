@@ -1318,11 +1318,15 @@ function renderFooter(){
   var li3 = el("li", null, "Raw any-tick streak counts idle ticks by definition — context only, never a headline.");
   ul.appendChild(li1); ul.appendChild(li2); ul.appendChild(li3);
   f.appendChild(ul);
-  if (Array.isArray(payload.completed_no_done_ids) && payload.completed_no_done_ids.length) {
-    var h2 = el("h4", null, "Data quality");
-    f.appendChild(h2);
-    f.appendChild(el("div", null, "completed tasks with no computable completion day (never counted in time series): " + payload.completed_no_done_ids.join(", ")));
-  }
+  // DF-BOARDCTL-5: the data-quality footnote is per board — each board's
+  // own completed_no_done_ids only (payload-level union removed).
+  boards.forEach(function(bd){
+    var nd = bd.completed_no_done_ids;
+    if (Array.isArray(nd) && nd.length) {
+      f.appendChild(el("h4", null, "Data quality — " + bd.name));
+      f.appendChild(el("div", null, "completed tasks with no computable completion day (never counted in time series): " + nd.join(", ")));
+    }
+  });
   var h3 = el("h4", null, "View catalog");
   f.appendChild(h3);
   var ul2 = el("ul");

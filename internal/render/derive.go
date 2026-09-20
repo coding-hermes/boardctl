@@ -161,18 +161,23 @@ type BoardPayload struct {
 	FixtureIDs    []string          `json:"fixture_ids"`
 	ParseWarnings ParseWarnings     `json:"parse_warnings"`
 	Derived       Derived           `json:"derived"`
+	// NoDoneCompleted carries THIS board's data-quality footnote ids only
+	// (completed with no computable done day, 3.0). DF-BOARDCTL-5: scoped
+	// per board so a multi-board report never shows another board's
+	// uncomputable rows in this board's footnote.
+	NoDoneCompleted []string `json:"completed_no_done_ids,omitempty"`
 }
 
 // ReportPayload is the top-level board-report/v1 object. rendered_at is set
-// by the caller; NoDoneCompleted carries the data-quality footnote ids
-// (completed with no computable done day, 3.0).
+// by the caller. DF-BOARDCTL-5: the data-quality footnote ids moved onto
+// BoardPayload — the old payload-level union attributed every board's
+// uncomputable rows to every report, including single-board ones.
 type ReportPayload struct {
-	Schema          string         `json:"schema"`
-	RenderedAt      string         `json:"rendered_at"`
-	ReportTimezone  string         `json:"report_timezone"`
-	Boards          []BoardPayload `json:"boards"`
-	GeneratedBy     string         `json:"generated_by"`
-	NoDoneCompleted []string       `json:"completed_no_done_ids,omitempty"`
+	Schema         string         `json:"schema"`
+	RenderedAt     string         `json:"rendered_at"`
+	ReportTimezone string         `json:"report_timezone"`
+	Boards         []BoardPayload `json:"boards"`
+	GeneratedBy    string         `json:"generated_by"`
 	// UploadNotice carries an upload-level warning from serve (BT-027):
 	// the request carried file parts but registered 0 boards, so the
 	// rendered report is only the -C board(s). Optional — render/Build

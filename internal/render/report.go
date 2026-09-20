@@ -44,12 +44,11 @@ func buildFromBoard(b *board.Board, opts Options) (*ReportPayload, error) {
 		return nil, err
 	}
 	return &ReportPayload{
-		Schema:          SchemaName,
-		RenderedAt:      now.Format(time.RFC3339),
-		ReportTimezone:  loc.String(),
-		Boards:          []BoardPayload{newBoardPayload(d)},
-		GeneratedBy:     "boardctl render (board-report/v1)",
-		NoDoneCompleted: noDoneCompletedIDs(d),
+		Schema:         SchemaName,
+		RenderedAt:     now.Format(time.RFC3339),
+		ReportTimezone: loc.String(),
+		Boards:         []BoardPayload{newBoardPayload(d)},
+		GeneratedBy:    "boardctl render (board-report/v1)",
 	}, nil
 }
 
@@ -77,7 +76,6 @@ func BuildBoards(boards []*board.Board, opts Options) (*ReportPayload, error) {
 		Boards:         []BoardPayload{},
 		GeneratedBy:    "boardctl serve (board-report/v1)",
 	}
-	noDone := map[string]bool{}
 	for _, b := range boards {
 		if b == nil {
 			continue
@@ -86,12 +84,11 @@ func BuildBoards(boards []*board.Board, opts Options) (*ReportPayload, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", b.Dir, err)
 		}
+		// DF-BOARDCTL-5: the data-quality footnote ids stay on each board's
+		// own payload (newBoardPayload) — never unioned across boards, so a
+		// board's report lists only its own uncomputable rows.
 		rp.Boards = append(rp.Boards, newBoardPayload(d))
-		for _, id := range noDoneCompletedIDs(d) {
-			noDone[id] = true
-		}
 	}
-	rp.NoDoneCompleted = sortedKeys(noDone)
 	return rp, nil
 }
 
@@ -120,6 +117,8 @@ func newBoardPayload(d *boardData) BoardPayload {
 	for _, e := range d.events {
 		bp.Events = append(bp.Events, compactRow(e.row))
 	}
+	// DF-BOARDCTL-5: this board's own data-quality footnote ids only.
+	bp.NoDoneCompleted = noDoneCompletedIDs(d)
 	return bp
 }
 
