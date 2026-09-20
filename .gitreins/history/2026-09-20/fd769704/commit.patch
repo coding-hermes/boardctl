@@ -1,0 +1,12 @@
+commit cfff3634a70151528e4bafa4171cebd7d82ecc17
+Merge: 495f35f ac5442e
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Sep 20 00:33:16 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Sep 20 00:33:16 2026 -0500
+
+    merge: DF-BOARDCTL-7 fix literal backslash-n in usage errors
+
+ cmd/boardctl/df_boardctl_7_usage_test.go | 347 +++++++++++++++++++++++++++++++
+ cmd/boardctl/main.go                     |   4 +-
+ 2 files changed, 349 insertions(+), 2 deletions(-)

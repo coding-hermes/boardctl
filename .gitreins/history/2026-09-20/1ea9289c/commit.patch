@@ -1,0 +1,12 @@
+commit 79a10123addda00679dde62146924766ce3de7b0
+Merge: 8c03390 ba0890c
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Sep 20 01:07:33 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Sep 20 01:07:33 2026 -0500
+
+    merge: DF-BOARDCTL-2 serve replaces same-identity boards on re-upload
+
+ cmd/boardctl/df_boardctl_2_dedupe_test.go | 377 ++++++++++++++++++++++++++++++
+ cmd/boardctl/serve.go                     | 220 +++++++++++++++--
+ 2 files changed, 580 insertions(+), 17 deletions(-)

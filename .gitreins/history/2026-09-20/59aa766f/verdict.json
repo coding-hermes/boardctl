@@ -1,0 +1,99 @@
+{
+  "task_id": "DF-BOARDCTL-5",
+  "task_title": "Data-quality footnote is fleet-global in serve: multi-board reports list another board's n",
+  "task_criteria": [
+    "Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "cfff3634a70151528e4bafa4171cebd7d82ecc17",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.836s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n12:35AM INF scanned ~1199928 bytes (1.20 MB) in 1.71s\n12:35AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 82 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T053409.946425Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.836s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T053409.946425Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin: Worktree wt/DF-BOARDCTL-5 at commit a73316b ('DF-BOARDCTL-5: scope data-quality footnote to each board's own no-done ids'); merged to main via merge commit 495f35f (git merge-base --is-ancestor a73316b main confirms ancestor). Pushed: main == origin/main == cfff363, git rev-list --left-right --count origin/main...main = 0 0. Full Go gate green: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 (ok cmd/boardctl, internal/board, internal/fmtcheck, internal/render, internal/versioncheck, internal/vulncheck). Fix verified in code: NoDoneCompleted moved from ReportPayload to BoardPayload (internal/render/derive.go:168), set per-board at internal/render/report.go:121, template iterates boards.forEach reading bd.completed_no_done_ids (internal/render/template.go:1324). Tests TestBuildBoardsNoDoneFootnotePerBoard, TestBuildSingleBoardNoDoneFootnote, TestNoDoneFootnoteAbsentWhenClean, TestTemplateFootnotePerBoard all PASS.\nDF-BOARDCTL-5 fix is implemented in the worktree, merged to main, pushed to origin, and the full Go build+vet+test gate is green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin: Worktree wt/DF-BOARDCTL-5 at commit a73316b ('DF-BOARDCTL-5: scope data-quality footnote to each board's own no-done ids'); merged to main via merge commit 495f35f (git merge-base --is-ancestor a73316b main confirms ancestor). Pushed: main == origin/main == cfff363, git rev-list --left-right --count origin/main...main = 0 0. Full Go gate green: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 (ok cmd/boardctl, internal/board, internal/fmtcheck, internal/render, internal/versioncheck, internal/vulncheck). Fix verified in code: NoDoneCompleted moved from ReportPayload to BoardPayload (internal/render/derive.go:168), set per-board at internal/render/report.go:121, template iterates boards.forEach reading bd.completed_no_done_ids (internal/render/template.go:1324). Tests TestBuildBoardsNoDoneFootnotePerBoard, TestBuildSingleBoardNoDoneFootnote, TestNoDoneFootnoteAbsentWhenClean, TestTemplateFootnotePerBoard all PASS.\nDF-BOARDCTL-5 fix is implemented in the worktree, merged to main, pushed to origin, and the full Go build+vet+test gate is green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin",
+                "status": "PASS",
+                "detail": "Worktree wt/DF-BOARDCTL-5 at commit a73316b ('DF-BOARDCTL-5: scope data-quality footnote to each board's own no-done ids'); merged to main via merge commit 495f35f (git merge-base --is-ancestor a73316b main confirms ancestor). Pushed: main == origin/main == cfff363, git rev-list --left-right --count origin/main...main = 0 0. Full Go gate green: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 (ok cmd/boardctl, internal/board, internal/fmtcheck, internal/render, internal/versioncheck, internal/vulncheck). Fix verified in code: NoDoneCompleted moved from ReportPayload to BoardPayload (internal/render/derive.go:168), set per-board at internal/render/report.go:121, template iterates boards.forEach reading bd.completed_no_done_ids (internal/render/template.go:1324). Tests TestBuildBoardsNoDoneFootnotePerBoard, TestBuildSingleBoardNoDoneFootnote, TestNoDoneFootnoteAbsentWhenClean, TestTemplateFootnotePerBoard all PASS."
+              }
+            ],
+            "summary": "DF-BOARDCTL-5 fix is implemented in the worktree, merged to main, pushed to origin, and the full Go build+vet+test gate is green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-5\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.836s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin: Worktree wt/DF-BOARDCTL-5 at commit a73316b ('DF-BOARDCTL-5: scope data-quality footnote to each board's own no-done ids'); merged to main via merge commit 495f35f (git merge-base --is-ancestor a73316b main confirms ancestor). Pushed: main == origin/main == cfff363, git rev-list --left-right --count origin/main...main = 0 0. Full Go gate green: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 (ok cmd/boardctl, internal/board, internal/fmtcheck, internal/render, internal/versioncheck, internal/vulncheck). Fix verified in code: NoDoneCompleted moved from ReportPayload to BoardPayload (internal/render/derive.go:168), set per-board at internal/render/report.go:121, template iterates boards.forEach reading bd.completed_no_done_ids (internal/render/template.go:1324). Tests TestBuildBoardsNoDoneFootnotePerBoard, TestBuildSingleBoardNoDoneFootnote, TestNoDoneFootnoteAbsentWhenClean, TestTemplateFootnotePerBoard all PASS.\nDF-BOARDCTL-5 fix is implemented in the worktree, merged to main, pushed to origin, and the full Go build+vet+test gate is green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-20T05:36:22.069212",
+  "evidence": {
+    "collected_at": "2026-09-20T05:36:22.106064+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 555,
+        "truncated": false,
+        "source": "git show cfff3634a701"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 36482,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-5"
+  }
+}

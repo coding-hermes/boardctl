@@ -1,0 +1,99 @@
+{
+  "task_id": "DF-BOARDCTL-6",
+  "task_title": "serve folder-upload arm unverified E2E",
+  "task_criteria": [
+    "E2E multipart test proves GET form, POST files, board appears once; two real bugs found+fixed with RED proof; full gate green; merged+pushed"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "6189838f392ccad3e8232c5c034df0c60e2225a6",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.399s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n1:31AM INF scanned ~1236249 bytes (1.24 MB) in 440ms\n1:31AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 84 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T063110.347868Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.399s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T063110.347868Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 E2E multipart test proves GET form, POST files, board appears once; two real bugs found+fixed with RED proof; full gate green; merged+pushed: E2E test cmd/boardctl/df_boardctl_6_folder_upload_test.go (275 lines) present in HEAD. TestServeBrowserFolderUploadEndToEnd (line 117) GETs / and asserts exact form markup (serve.go:436 enctype=\"multipart/form-data\", :438 name=\"files\" webkitdirectory multiple, :441 name=\"zip\"), POSTs a webkitdirectory-shaped multipart body on field \"files\" with two boards at different depths, asserts 2 boards registered, then /api/boards shows each exactly once with counts 3/2/1 (lines 155-183). RED proof bug1: reverting wireFilename() -> 'folder upload registered 1 boards, want 2' FAIL. RED proof bug2: removing the MkdirAll block -> 'folder upload status = 400 ... no such file or directory' FAIL. Both fixes in serve.go (wireFilename at :637-660, MkdirAll at :673-679). Full gate: 'go build ./...' OK, 'go vet ./...' OK, 'go test -count=1 ./...' all packages ok exit 0 (one transient flake TestServeFolderUploadMatchesRender caused by external git touching .git/FETCH_HEAD, passed on rerun). Merged: HEAD 6189838 is a real 2-parent merge (79a1012 + f596836). Pushed: HEAD == origin/main (6189838), merge-base --is-ancestor HEAD origin/main = YES. LSP diagnostics: 0.\nE2E multipart folder-upload test proves GET form + POST files + board-appears-once, both bugs independently reproduced RED and fixed, full gate green, and the merge commit is pushed to origin/main.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 E2E multipart test proves GET form, POST files, board appears once; two real bugs found+fixed with RED proof; full gate green; merged+pushed: E2E test cmd/boardctl/df_boardctl_6_folder_upload_test.go (275 lines) present in HEAD. TestServeBrowserFolderUploadEndToEnd (line 117) GETs / and asserts exact form markup (serve.go:436 enctype=\"multipart/form-data\", :438 name=\"files\" webkitdirectory multiple, :441 name=\"zip\"), POSTs a webkitdirectory-shaped multipart body on field \"files\" with two boards at different depths, asserts 2 boards registered, then /api/boards shows each exactly once with counts 3/2/1 (lines 155-183). RED proof bug1: reverting wireFilename() -> 'folder upload registered 1 boards, want 2' FAIL. RED proof bug2: removing the MkdirAll block -> 'folder upload status = 400 ... no such file or directory' FAIL. Both fixes in serve.go (wireFilename at :637-660, MkdirAll at :673-679). Full gate: 'go build ./...' OK, 'go vet ./...' OK, 'go test -count=1 ./...' all packages ok exit 0 (one transient flake TestServeFolderUploadMatchesRender caused by external git touching .git/FETCH_HEAD, passed on rerun). Merged: HEAD 6189838 is a real 2-parent merge (79a1012 + f596836). Pushed: HEAD == origin/main (6189838), merge-base --is-ancestor HEAD origin/main = YES. LSP diagnostics: 0.\nE2E multipart folder-upload test proves GET form + POST files + board-appears-once, both bugs independently reproduced RED and fixed, full gate green, and the merge commit is pushed to origin/main.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "E2E multipart test proves GET form, POST files, board appears once; two real bugs found+fixed with RED proof; full gate green; merged+pushed",
+                "status": "PASS",
+                "detail": "E2E test cmd/boardctl/df_boardctl_6_folder_upload_test.go (275 lines) present in HEAD. TestServeBrowserFolderUploadEndToEnd (line 117) GETs / and asserts exact form markup (serve.go:436 enctype=\"multipart/form-data\", :438 name=\"files\" webkitdirectory multiple, :441 name=\"zip\"), POSTs a webkitdirectory-shaped multipart body on field \"files\" with two boards at different depths, asserts 2 boards registered, then /api/boards shows each exactly once with counts 3/2/1 (lines 155-183). RED proof bug1: reverting wireFilename() -> 'folder upload registered 1 boards, want 2' FAIL. RED proof bug2: removing the MkdirAll block -> 'folder upload status = 400 ... no such file or directory' FAIL. Both fixes in serve.go (wireFilename at :637-660, MkdirAll at :673-679). Full gate: 'go build ./...' OK, 'go vet ./...' OK, 'go test -count=1 ./...' all packages ok exit 0 (one transient flake TestServeFolderUploadMatchesRender caused by external git touching .git/FETCH_HEAD, passed on rerun). Merged: HEAD 6189838 is a real 2-parent merge (79a1012 + f596836). Pushed: HEAD == origin/main (6189838), merge-base --is-ancestor HEAD origin/main = YES. LSP diagnostics: 0."
+              }
+            ],
+            "summary": "E2E multipart folder-upload test proves GET form + POST files + board-appears-once, both bugs independently reproduced RED and fixed, full gate green, and the merge commit is pushed to origin/main."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-6\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.399s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 E2E multipart test proves GET form, POST files, board appears once; two real bugs found+fixed with RED proof; full gate green; merged+pushed: E2E test cmd/boardctl/df_boardctl_6_folder_upload_test.go (275 lines) present in HEAD. TestServeBrowserFolderUploadEndToEnd (line 117) GETs / and asserts exact form markup (serve.go:436 enctype=\"multipart/form-data\", :438 name=\"files\" webkitdirectory multiple, :441 name=\"zip\"), POSTs a webkitdirectory-shaped multipart body on field \"files\" with two boards at different depths, asserts 2 boards registered, then /api/boards shows each exactly once with counts 3/2/1 (lines 155-183). RED proof bug1: reverting wireFilename() -> 'folder upload registered 1 boards, want 2' FAIL. RED proof bug2: removing the MkdirAll block -> 'folder upload status = 400 ... no such file or directory' FAIL. Both fixes in serve.go (wireFilename at :637-660, MkdirAll at :673-679). Full gate: 'go build ./...' OK, 'go vet ./...' OK, 'go test -count=1 ./...' all packages ok exit 0 (one transient flake TestServeFolderUploadMatchesRender caused by external git touching .git/FETCH_HEAD, passed on rerun). Merged: HEAD 6189838 is a real 2-parent merge (79a1012 + f596836). Pushed: HEAD == origin/main (6189838), merge-base --is-ancestor HEAD origin/main = YES. LSP diagnostics: 0.\nE2E multipart folder-upload test proves GET form + POST files + board-appears-once, both bugs independently reproduced RED and fixed, full gate green, and the merge commit is pushed to origin/main.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-20T06:32:29.243223",
+  "evidence": {
+    "collected_at": "2026-09-20T06:32:29.257650+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 610,
+        "truncated": false,
+        "source": "git show 6189838f392c"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 36773,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-6"
+  }
+}

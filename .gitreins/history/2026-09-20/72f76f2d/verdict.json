@@ -1,0 +1,99 @@
+{
+  "task_id": "DF-BOARDCTL-2",
+  "task_title": "serve accumulates every upload in memory; re-upload duplicates boards",
+  "task_criteria": [
+    "Replace-or-append by board identity in serve; httptest proves single entry after re-upload; full gate green; merged+pushed"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "79a10123addda00679dde62146924766ce3de7b0",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.853s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n1:08AM INF scanned ~1223598 bytes (1.22 MB) in 498ms\n1:08AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 83 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T060743.825632Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.853s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T060743.825632Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Replace-or-append by board identity in serve; httptest proves single entry after re-upload; full gate green; merged+pushed: serve.go (commit ba0890c) adds serveBoardIdentity (report-slug|topology), mergeByIdentity (later same-identity entry replaces earlier at first-seen position), registerSession (drops superseded boards and os.RemoveAll's the orphaned temp tree), and currentBoards now returns mergeByIdentity(out); handleUpload builds the report from mergeByIdentity(cBoards+boards). httptest proof: cmd/boardctl/df_boardctl_2_dedupe_test.go:88 TestServeReuploadSameBoardReplaces posts the same board twice through srv.routes() and asserts len(p2.Boards)==1 and len(/api/boards)==1 with the newest board's 3/2/1 counts; TestServeReuploadDifferentBoardAppends proves different boards still append (2 entries, first-seen order). Full gate: `go test -count=1 ./...` exit_code=0 \u2014 'ok github.com/coding-hermes/boardctl/cmd/boardctl 4.046s', 'ok .../internal/board 4.159s', 'ok .../internal/render 0.219s', 'ok .../internal/fmtcheck 0.067s', 'ok .../internal/versioncheck 0.006s', 'ok .../internal/vulncheck 2.918s'; targeted run shows '--- PASS: TestServeReuploadSameBoardReplaces (0.00s)'. go vet ./... exit 0, gofmt -l cmd internal empty. Merged+pushed: HEAD=79a1012 'merge: DF-BOARDCTL-2 serve replaces same-identity boards on re-upload', origin/main=79a1012, `git rev-list --left-right --count origin/main...HEAD` = 0 0.\nserve now replaces same-identity boards on re-upload (mergeByIdentity + registerSession), proven by httptest single-entry assertions, with the full test/vet/gofmt gate green and the merge commit pushed to origin/main.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Replace-or-append by board identity in serve; httptest proves single entry after re-upload; full gate green; merged+pushed: serve.go (commit ba0890c) adds serveBoardIdentity (report-slug|topology), mergeByIdentity (later same-identity entry replaces earlier at first-seen position), registerSession (drops superseded boards and os.RemoveAll's the orphaned temp tree), and currentBoards now returns mergeByIdentity(out); handleUpload builds the report from mergeByIdentity(cBoards+boards). httptest proof: cmd/boardctl/df_boardctl_2_dedupe_test.go:88 TestServeReuploadSameBoardReplaces posts the same board twice through srv.routes() and asserts len(p2.Boards)==1 and len(/api/boards)==1 with the newest board's 3/2/1 counts; TestServeReuploadDifferentBoardAppends proves different boards still append (2 entries, first-seen order). Full gate: `go test -count=1 ./...` exit_code=0 \u2014 'ok github.com/coding-hermes/boardctl/cmd/boardctl 4.046s', 'ok .../internal/board 4.159s', 'ok .../internal/render 0.219s', 'ok .../internal/fmtcheck 0.067s', 'ok .../internal/versioncheck 0.006s', 'ok .../internal/vulncheck 2.918s'; targeted run shows '--- PASS: TestServeReuploadSameBoardReplaces (0.00s)'. go vet ./... exit 0, gofmt -l cmd internal empty. Merged+pushed: HEAD=79a1012 'merge: DF-BOARDCTL-2 serve replaces same-identity boards on re-upload', origin/main=79a1012, `git rev-list --left-right --count origin/main...HEAD` = 0 0.\nserve now replaces same-identity boards on re-upload (mergeByIdentity + registerSession), proven by httptest single-entry assertions, with the full test/vet/gofmt gate green and the merge commit pushed to origin/main.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Replace-or-append by board identity in serve; httptest proves single entry after re-upload; full gate green; merged+pushed",
+                "status": "PASS",
+                "detail": "serve.go (commit ba0890c) adds serveBoardIdentity (report-slug|topology), mergeByIdentity (later same-identity entry replaces earlier at first-seen position), registerSession (drops superseded boards and os.RemoveAll's the orphaned temp tree), and currentBoards now returns mergeByIdentity(out); handleUpload builds the report from mergeByIdentity(cBoards+boards). httptest proof: cmd/boardctl/df_boardctl_2_dedupe_test.go:88 TestServeReuploadSameBoardReplaces posts the same board twice through srv.routes() and asserts len(p2.Boards)==1 and len(/api/boards)==1 with the newest board's 3/2/1 counts; TestServeReuploadDifferentBoardAppends proves different boards still append (2 entries, first-seen order). Full gate: `go test -count=1 ./...` exit_code=0 \u2014 'ok github.com/coding-hermes/boardctl/cmd/boardctl 4.046s', 'ok .../internal/board 4.159s', 'ok .../internal/render 0.219s', 'ok .../internal/fmtcheck 0.067s', 'ok .../internal/versioncheck 0.006s', 'ok .../internal/vulncheck 2.918s'; targeted run shows '--- PASS: TestServeReuploadSameBoardReplaces (0.00s)'. go vet ./... exit 0, gofmt -l cmd internal empty. Merged+pushed: HEAD=79a1012 'merge: DF-BOARDCTL-2 serve replaces same-identity boards on re-upload', origin/main=79a1012, `git rev-list --left-right --count origin/main...HEAD` = 0 0."
+              }
+            ],
+            "summary": "serve now replaces same-identity boards on re-upload (mergeByIdentity + registerSession), proven by httptest single-entry assertions, with the full test/vet/gofmt gate green and the merge commit pushed to origin/main."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-2\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.853s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Replace-or-append by board identity in serve; httptest proves single entry after re-upload; full gate green; merged+pushed: serve.go (commit ba0890c) adds serveBoardIdentity (report-slug|topology), mergeByIdentity (later same-identity entry replaces earlier at first-seen position), registerSession (drops superseded boards and os.RemoveAll's the orphaned temp tree), and currentBoards now returns mergeByIdentity(out); handleUpload builds the report from mergeByIdentity(cBoards+boards). httptest proof: cmd/boardctl/df_boardctl_2_dedupe_test.go:88 TestServeReuploadSameBoardReplaces posts the same board twice through srv.routes() and asserts len(p2.Boards)==1 and len(/api/boards)==1 with the newest board's 3/2/1 counts; TestServeReuploadDifferentBoardAppends proves different boards still append (2 entries, first-seen order). Full gate: `go test -count=1 ./...` exit_code=0 \u2014 'ok github.com/coding-hermes/boardctl/cmd/boardctl 4.046s', 'ok .../internal/board 4.159s', 'ok .../internal/render 0.219s', 'ok .../internal/fmtcheck 0.067s', 'ok .../internal/versioncheck 0.006s', 'ok .../internal/vulncheck 2.918s'; targeted run shows '--- PASS: TestServeReuploadSameBoardReplaces (0.00s)'. go vet ./... exit 0, gofmt -l cmd internal empty. Merged+pushed: HEAD=79a1012 'merge: DF-BOARDCTL-2 serve replaces same-identity boards on re-upload', origin/main=79a1012, `git rev-list --left-right --count origin/main...HEAD` = 0 0.\nserve now replaces same-identity boards on re-upload (mergeByIdentity + registerSession), proven by httptest single-entry assertions, with the full test/vet/gofmt gate green and the merge commit pushed to origin/main.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-20T06:09:19.768239",
+  "evidence": {
+    "collected_at": "2026-09-20T06:09:19.781748+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 581,
+        "truncated": false,
+        "source": "git show 79a10123addd"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 27868,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-2"
+  }
+}

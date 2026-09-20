@@ -1,0 +1,99 @@
+{
+  "task_id": "DF-BOARDCTL-4",
+  "task_title": "Velocity headline silently reports less than the board's own completion count: completions",
+  "task_criteria": [
+    "Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "cfff3634a70151528e4bafa4171cebd7d82ecc17",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.576s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n12:35AM INF scanned ~1199928 bytes (1.20 MB) in 1.56s\n12:35AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 82 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T053409.946425Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.576s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T053409.946425Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin: Worktree wt/DF-BOARDCTL-4 @3ec5ffd implements the fix: internal/render/derive.go:375 velocity() now takes *boardData and counts completions via completionDays() (derive.go:436), which dedupes by task id, treats the row done stamp as authoritative, and fills gaps with task_completed events (event-only completions), excluding fixtures/unknown/open tasks. Merged to main via b74196b ('merge: DF-BOARDCTL-4 count event-only completions in velocity, deduped by task id'); `git branch --contains b74196b` => main. Pushed: local main == origin/main == cfff3634a70151528e4bafa4171cebd7d82ecc17 and `git merge-base --is-ancestor b74196b origin/main` => true. Go gate green: `go build ./...` exit_code=0; `go vet ./...` exit_code=0; `go test -count=1 ./...` exit_code=0 with 'ok github.com/coding-hermes/boardctl/cmd/boardctl', 'ok .../internal/board', 'ok .../internal/fmtcheck', 'ok .../internal/render', 'ok .../internal/versioncheck', 'ok .../internal/vulncheck'. Targeted run: TestVelocityCountsEventOnlyCompletions, TestVelocityNoDoubleCountRowStampAndEvent, TestVelocityEventOnlyCountedOnceAcrossDuplicateEvents, TestVelocityIgnoresEventsForUnknownOpenOrReopenedTasks, TestVelocityEventOnlyFixtureExcluded all PASS.\nDF-BOARDCTL-4 fix is implemented in the worktree, merged to main (b74196b), pushed to origin (main == origin/main == cfff363), and the full Go gate (build+vet+test) is green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin: Worktree wt/DF-BOARDCTL-4 @3ec5ffd implements the fix: internal/render/derive.go:375 velocity() now takes *boardData and counts completions via completionDays() (derive.go:436), which dedupes by task id, treats the row done stamp as authoritative, and fills gaps with task_completed events (event-only completions), excluding fixtures/unknown/open tasks. Merged to main via b74196b ('merge: DF-BOARDCTL-4 count event-only completions in velocity, deduped by task id'); `git branch --contains b74196b` => main. Pushed: local main == origin/main == cfff3634a70151528e4bafa4171cebd7d82ecc17 and `git merge-base --is-ancestor b74196b origin/main` => true. Go gate green: `go build ./...` exit_code=0; `go vet ./...` exit_code=0; `go test -count=1 ./...` exit_code=0 with 'ok github.com/coding-hermes/boardctl/cmd/boardctl', 'ok .../internal/board', 'ok .../internal/fmtcheck', 'ok .../internal/render', 'ok .../internal/versioncheck', 'ok .../internal/vulncheck'. Targeted run: TestVelocityCountsEventOnlyCompletions, TestVelocityNoDoubleCountRowStampAndEvent, TestVelocityEventOnlyCountedOnceAcrossDuplicateEvents, TestVelocityIgnoresEventsForUnknownOpenOrReopenedTasks, TestVelocityEventOnlyFixtureExcluded all PASS.\nDF-BOARDCTL-4 fix is implemented in the worktree, merged to main (b74196b), pushed to origin (main == origin/main == cfff363), and the full Go gate (build+vet+test) is green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin",
+                "status": "PASS",
+                "detail": "Worktree wt/DF-BOARDCTL-4 @3ec5ffd implements the fix: internal/render/derive.go:375 velocity() now takes *boardData and counts completions via completionDays() (derive.go:436), which dedupes by task id, treats the row done stamp as authoritative, and fills gaps with task_completed events (event-only completions), excluding fixtures/unknown/open tasks. Merged to main via b74196b ('merge: DF-BOARDCTL-4 count event-only completions in velocity, deduped by task id'); `git branch --contains b74196b` => main. Pushed: local main == origin/main == cfff3634a70151528e4bafa4171cebd7d82ecc17 and `git merge-base --is-ancestor b74196b origin/main` => true. Go gate green: `go build ./...` exit_code=0; `go vet ./...` exit_code=0; `go test -count=1 ./...` exit_code=0 with 'ok github.com/coding-hermes/boardctl/cmd/boardctl', 'ok .../internal/board', 'ok .../internal/fmtcheck', 'ok .../internal/render', 'ok .../internal/versioncheck', 'ok .../internal/vulncheck'. Targeted run: TestVelocityCountsEventOnlyCompletions, TestVelocityNoDoubleCountRowStampAndEvent, TestVelocityEventOnlyCountedOnceAcrossDuplicateEvents, TestVelocityIgnoresEventsForUnknownOpenOrReopenedTasks, TestVelocityEventOnlyFixtureExcluded all PASS."
+              }
+            ],
+            "summary": "DF-BOARDCTL-4 fix is implemented in the worktree, merged to main (b74196b), pushed to origin (main == origin/main == cfff363), and the full Go gate (build+vet+test) is green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-4\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.576s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Fix implemented in worktree, merged to main, full Go gate green (build+vet+test), pushed to origin: Worktree wt/DF-BOARDCTL-4 @3ec5ffd implements the fix: internal/render/derive.go:375 velocity() now takes *boardData and counts completions via completionDays() (derive.go:436), which dedupes by task id, treats the row done stamp as authoritative, and fills gaps with task_completed events (event-only completions), excluding fixtures/unknown/open tasks. Merged to main via b74196b ('merge: DF-BOARDCTL-4 count event-only completions in velocity, deduped by task id'); `git branch --contains b74196b` => main. Pushed: local main == origin/main == cfff3634a70151528e4bafa4171cebd7d82ecc17 and `git merge-base --is-ancestor b74196b origin/main` => true. Go gate green: `go build ./...` exit_code=0; `go vet ./...` exit_code=0; `go test -count=1 ./...` exit_code=0 with 'ok github.com/coding-hermes/boardctl/cmd/boardctl', 'ok .../internal/board', 'ok .../internal/fmtcheck', 'ok .../internal/render', 'ok .../internal/versioncheck', 'ok .../internal/vulncheck'. Targeted run: TestVelocityCountsEventOnlyCompletions, TestVelocityNoDoubleCountRowStampAndEvent, TestVelocityEventOnlyCountedOnceAcrossDuplicateEvents, TestVelocityIgnoresEventsForUnknownOpenOrReopenedTasks, TestVelocityEventOnlyFixtureExcluded all PASS.\nDF-BOARDCTL-4 fix is implemented in the worktree, merged to main (b74196b), pushed to origin (main == origin/main == cfff363), and the full Go gate (build+vet+test) is green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-20T05:36:18.846880",
+  "evidence": {
+    "collected_at": "2026-09-20T05:36:18.862997+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 555,
+        "truncated": false,
+        "source": "git show cfff3634a701"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 36482,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-4"
+  }
+}
