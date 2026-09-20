@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -402,4 +403,91 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// TestRenderBurndownUsesWindow guards DF-BOARDCTL-1: the burndown payload
+// series is {window, open} — there is no "days" key — so the emitted chart
+// JS must consume d.burndown.window. The template is a Go string constant
+// (template.go htmlTemplate) and the payload rides inline in the same HTML
+// (report-data JSON island), so string assertions on the rendered document
+// cover both halves. window[0] equals the oldest task birth day, i.e. the
+// R-1 fixture's created_at.
+func TestRenderBurndownUsesWindow(t *testing.T) {
+	dir := seedRenderBoard(t)
+	outHTML := filepath.Join(t.TempDir(), "r.html")
+	if code := run([]string{"-C", dir, "render", "-o", outHTML, "--tz", "UTC"}); code != 0 {
+		t.Fatalf("render exit code = %d, want 0", code)
+	}
+	raw, err := os.ReadFile(outHTML)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(raw)
+
+	// 1. The payload island carries the burndown series under window/open.
+	var payload struct {
+		Boards []struct {
+			Derived struct {
+				Burndown struct {
+					Window []string `json:"window"`
+					Open   []int    `json:"open"`
+				} `json:"burndown"`
+			} `json:"derived"`
+		} `json:"boards"`
+	}
+	m := regexp.MustCompile(`<script type="application/json" id="report-data">(.*?)</script>`).FindStringSubmatch(s)
+	if m == nil {
+		t.Fatal("report-data island not found")
+	}
+	if err := json.Unmarshal([]byte(m[1]), &payload); err != nil {
+		t.Fatalf("payload island does not parse: %v", err)
+	}
+	if len(payload.Boards) != 1 {
+		t.Fatalf("boards = %d, want 1", len(payload.Boards))
+	}
+	bd := payload.Boards[0].Derived.Burndown
+	if len(bd.Open) < 1 {
+		t.Fatal("burndown open series empty — fixture produced no window")
+	}
+	firstDay, lastOpen := bd.Window[0], bd.Open[len(bd.Open)-1]
+	if firstDay != "2026-09-01" {
+		t.Fatalf("burndown window[0] = %q, want 2026-09-01 (oldest fixture birth)", firstDay)
+	}
+	if lastOpen != 1 {
+		t.Fatalf("burndown open[last] = %d, want 1 (only R-2 still open: R-1 completed 09-02, NEVER-DONE is fixture-excluded)", lastOpen)
+	}
+	if len(bd.Open) < 2 {
+		t.Fatalf("burndown series length = %d, want >1 (window spans 2026-09-01..today)", len(bd.Open))
+	}
+
+	// 2. The template consumes only keys that exist on the payload: no
+	// d.burndown.days anywhere in the emitted document.
+	if strings.Contains(s, "d.burndown.days") {
+		t.Fatal(`template still reads d.burndown.days — the burndown payload has no "days" key`)
+	}
+
+	// 3. The chart renders: chartLines bails to emptyChart at runtime only
+	// when the fed days[] is empty, so the emitted JS must feed
+	// d.burndown.window at both call sites (separate box + overlay), and the
+	// window day keys the x-axis is drawn from must ride in the document
+	// (report-data island — the browser draws the labels from them).
+	if got := strings.Count(s, "days: d.burndown.window || []"); got != 2 {
+		t.Fatalf("burndown window feeds = %d, want 2 (separate + overlay variants)", got)
+	}
+	for _, label := range []string{`{label: "burndown", empty: "no tasks yet"}`, `{label: "burndown + burn-up overlay", empty: "no tasks yet"}`} {
+		if strings.Count(s, label) != 1 {
+			t.Fatalf("burndown chart invocation %q missing from emitted report", label)
+		}
+	}
+	for _, day := range []string{firstDay, bd.Window[len(bd.Window)-1]} {
+		if !strings.Contains(s, day) {
+			t.Fatalf("burndown x-axis label %q missing from emitted report", day)
+		}
+	}
+	// The burndown open-count values must be the series data the chart JS
+	// consumes (burndown.open feed, not burnup.cum).
+	nBurndownFeeds := strings.Count(s, "values: d.burndown.open")
+	if nBurndownFeeds != 2 {
+		t.Fatalf("burndown open feeds = %d, want 2 (separate + overlay variants)", nBurndownFeeds)
+	}
 }
