@@ -1,0 +1,91 @@
+{
+  "task_id": "BT-039",
+  "task_title": "bound test-suite host load",
+  "task_criteria": [
+    "Audit the Go test suite for load anti-patterns; fix the worst offender (in-process fixtures/bounded waves) with before/after spawn measurement; full suite green twice; merged to main; pushed to origin"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "d20faf58b2ea5050c44194f6a43cac4d00c2a711",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.035s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n2:08AM INF scanned ~1248470 bytes (1.25 MB) in 674ms\n2:08AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 84 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T070225.461218Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.035s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.279s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.093s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.671s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260920T070225.461218Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 Audit the Go test suite for load anti-patterns; fix the worst offender (in-process fixtures/bounded waves) with before/after spawn measurement; full suite green twice; merged to main; pushed to origin: Four of five conjuncts PASS, but 'pushed to origin' is unmet. AUDIT: PASS \u2014 commit 5dfbbd3 carries a full load-hygiene audit (33 files/122 tests, patterns a/b/c); independently confirmed 0 t.Parallel() in repo, 32 test files, only 2 exec.Command refs in tests. FIX: PASS \u2014 internal/board/doctor_test.go:57 initGitRepo() hand-builds .git (HEAD/config/loose object/index) in-process; newGitTestBoard (line 213) now calls it instead of git init/add/commit; real-exec parity retained by TestGitTrackedSetRealExecParity (line 411), which still spawns real git and asserts both directions agree. MEASUREMENT: PASS \u2014 independently reproduced with `strace -f -e trace=execve` on compiled test binaries: BEFORE (521119f) 23 git execs = 18 per-fixture scaffolding (6 boards x init/add/commit) + 5 Doctor ls-files; AFTER (d20faf5) 16 top-level git execs (18 incl. git-core re-execs) = 5 Doctor ls-files + 6 scaffolding (only inside parity test) + 4 parity ls-files + 1 init.defaultBranch probe; per-fixture scaffolding 18 -> 0, matching the commit message. SUITE GREEN TWICE: PASS \u2014 `go test -count=1 ./...` exit 0 on run 1 and run 2 (all packages ok); parity test verbose PASS on both subtests; internal/board coverage 77.0% and 123 tests, matching commit claims. MERGED TO MAIN: PASS \u2014 HEAD d20faf5 is a merge commit and `git merge-base --is-ancestor HEAD main` = YES (main == d20faf5). PUSHED TO ORIGIN: FAIL \u2014 `git rev-parse origin/main` = 521119f (the pre-BT-039 commit); `git rev-list --left-right --count origin/main...main` = 0 2, i.e. main is 2 commits ahead; re-confirmed after a fresh `git fetch origin` (exit 0) that origin/main is still 521119f. Commits 5dfbbd3 and d20faf5 are not on origin.\nThe audit, in-process fixture fix, before/after spawn measurement (23->16 git execs, 18->0 per-fixture scaffolding), and two green full-suite runs are all verified, and the work is merged to local main, but it was never pushed to origin (origin/main still at 521119f), so the criterion's 'pushed to origin' clause fails.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 Audit the Go test suite for load anti-patterns; fix the worst offender (in-process fixtures/bounded waves) with before/after spawn measurement; full suite green twice; merged to main; pushed to origin: Four of five conjuncts PASS, but 'pushed to origin' is unmet. AUDIT: PASS \u2014 commit 5dfbbd3 carries a full load-hygiene audit (33 files/122 tests, patterns a/b/c); independently confirmed 0 t.Parallel() in repo, 32 test files, only 2 exec.Command refs in tests. FIX: PASS \u2014 internal/board/doctor_test.go:57 initGitRepo() hand-builds .git (HEAD/config/loose object/index) in-process; newGitTestBoard (line 213) now calls it instead of git init/add/commit; real-exec parity retained by TestGitTrackedSetRealExecParity (line 411), which still spawns real git and asserts both directions agree. MEASUREMENT: PASS \u2014 independently reproduced with `strace -f -e trace=execve` on compiled test binaries: BEFORE (521119f) 23 git execs = 18 per-fixture scaffolding (6 boards x init/add/commit) + 5 Doctor ls-files; AFTER (d20faf5) 16 top-level git execs (18 incl. git-core re-execs) = 5 Doctor ls-files + 6 scaffolding (only inside parity test) + 4 parity ls-files + 1 init.defaultBranch probe; per-fixture scaffolding 18 -> 0, matching the commit message. SUITE GREEN TWICE: PASS \u2014 `go test -count=1 ./...` exit 0 on run 1 and run 2 (all packages ok); parity test verbose PASS on both subtests; internal/board coverage 77.0% and 123 tests, matching commit claims. MERGED TO MAIN: PASS \u2014 HEAD d20faf5 is a merge commit and `git merge-base --is-ancestor HEAD main` = YES (main == d20faf5). PUSHED TO ORIGIN: FAIL \u2014 `git rev-parse origin/main` = 521119f (the pre-BT-039 commit); `git rev-list --left-right --count origin/main...main` = 0 2, i.e. main is 2 commits ahead; re-confirmed after a fresh `git fetch origin` (exit 0) that origin/main is still 521119f. Commits 5dfbbd3 and d20faf5 are not on origin.\nThe audit, in-process fixture fix, before/after spawn measurement (23->16 git execs, 18->0 per-fixture scaffolding), and two green full-suite runs are all verified, and the work is merged to local main, but it was never pushed to origin (origin/main still at 521119f), so the criterion's 'pushed to origin' clause fails.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "Audit the Go test suite for load anti-patterns; fix the worst offender (in-process fixtures/bounded waves) with before/after spawn measurement; full suite green twice; merged to main; pushed to origin",
+                "status": "FAIL",
+                "detail": "Four of five conjuncts PASS, but 'pushed to origin' is unmet. AUDIT: PASS \u2014 commit 5dfbbd3 carries a full load-hygiene audit (33 files/122 tests, patterns a/b/c); independently confirmed 0 t.Parallel() in repo, 32 test files, only 2 exec.Command refs in tests. FIX: PASS \u2014 internal/board/doctor_test.go:57 initGitRepo() hand-builds .git (HEAD/config/loose object/index) in-process; newGitTestBoard (line 213) now calls it instead of git init/add/commit; real-exec parity retained by TestGitTrackedSetRealExecParity (line 411), which still spawns real git and asserts both directions agree. MEASUREMENT: PASS \u2014 independently reproduced with `strace -f -e trace=execve` on compiled test binaries: BEFORE (521119f) 23 git execs = 18 per-fixture scaffolding (6 boards x init/add/commit) + 5 Doctor ls-files; AFTER (d20faf5) 16 top-level git execs (18 incl. git-core re-execs) = 5 Doctor ls-files + 6 scaffolding (only inside parity test) + 4 parity ls-files + 1 init.defaultBranch probe; per-fixture scaffolding 18 -> 0, matching the commit message. SUITE GREEN TWICE: PASS \u2014 `go test -count=1 ./...` exit 0 on run 1 and run 2 (all packages ok); parity test verbose PASS on both subtests; internal/board coverage 77.0% and 123 tests, matching commit claims. MERGED TO MAIN: PASS \u2014 HEAD d20faf5 is a merge commit and `git merge-base --is-ancestor HEAD main` = YES (main == d20faf5). PUSHED TO ORIGIN: FAIL \u2014 `git rev-parse origin/main` = 521119f (the pre-BT-039 commit); `git rev-list --left-right --count origin/main...main` = 0 2, i.e. main is 2 commits ahead; re-confirmed after a fresh `git fetch origin` (exit 0) that origin/main is still 521119f. Commits 5dfbbd3 and d20faf5 are not on origin."
+              }
+            ],
+            "summary": "The audit, in-process fixture fix, before/after spawn measurement (23->16 git execs, 18->0 per-fixture scaffolding), and two green full-suite runs are all verified, and the work is merged to local main, but it was never pushed to origin (origin/main still at 521119f), so the criterion's 'pushed to origin' clause fails."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-039\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.035s\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 Audit the Go test suite for load anti-patterns; fix the worst offender (in-process fixtures/bounded waves) with before/after spawn measurement; full suite green twice; merged to main; pushed to origin: Four of five conjuncts PASS, but 'pushed to origin' is unmet. AUDIT: PASS \u2014 commit 5dfbbd3 carries a full load-hygiene audit (33 files/122 tests, patterns a/b/c); independently confirmed 0 t.Parallel() in repo, 32 test files, only 2 exec.Command refs in tests. FIX: PASS \u2014 internal/board/doctor_test.go:57 initGitRepo() hand-builds .git (HEAD/config/loose object/index) in-process; newGitTestBoard (line 213) now calls it instead of git init/add/commit; real-exec parity retained by TestGitTrackedSetRealExecParity (line 411), which still spawns real git and asserts both directions agree. MEASUREMENT: PASS \u2014 independently reproduced with `strace -f -e trace=execve` on compiled test binaries: BEFORE (521119f) 23 git execs = 18 per-fixture scaffolding (6 boards x init/add/commit) + 5 Doctor ls-files; AFTER (d20faf5) 16 top-level git execs (18 incl. git-core re-execs) = 5 Doctor ls-files + 6 scaffolding (only inside parity test) + 4 parity ls-files + 1 init.defaultBranch probe; per-fixture scaffolding 18 -> 0, matching the commit message. SUITE GREEN TWICE: PASS \u2014 `go test -count=1 ./...` exit 0 on run 1 and run 2 (all packages ok); parity test verbose PASS on both subtests; internal/board coverage 77.0% and 123 tests, matching commit claims. MERGED TO MAIN: PASS \u2014 HEAD d20faf5 is a merge commit and `git merge-base --is-ancestor HEAD main` = YES (main == d20faf5). PUSHED TO ORIGIN: FAIL \u2014 `git rev-parse origin/main` = 521119f (the pre-BT-039 commit); `git rev-list --left-right --count origin/main...main` = 0 2, i.e. main is 2 commits ahead; re-confirmed after a fresh `git fetch origin` (exit 0) that origin/main is still 521119f. Commits 5dfbbd3 and d20faf5 are not on origin.\nThe audit, in-process fixture fix, before/after spawn measurement (23->16 git execs, 18->0 per-fixture scaffolding), and two green full-suite runs are all verified, and the work is merged to local main, but it was never pushed to origin (origin/main still at 521119f), so the criterion's 'pushed to origin' clause fails.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-09-20T07:09:14.036750",
+  "evidence": {
+    "collected_at": "2026-09-20T07:09:14.051507+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 541,
+        "truncated": false,
+        "source": "git show d20faf58b2ea"
+      }
+    ],
+    "task_id": "BT-039"
+  }
+}

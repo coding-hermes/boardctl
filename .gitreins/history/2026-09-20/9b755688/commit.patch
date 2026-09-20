@@ -1,0 +1,11 @@
+commit d20faf58b2ea5050c44194f6a43cac4d00c2a711
+Merge: 521119f 5dfbbd3
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Sep 20 02:06:23 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Sep 20 02:06:23 2026 -0500
+
+    merge: BT-039 bound test-suite host load — in-process git fixture builder with real-exec parity
+
+ internal/board/doctor_test.go | 285 ++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 274 insertions(+), 11 deletions(-)
