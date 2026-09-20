@@ -503,15 +503,29 @@ func priorityLabel(row *board.Row) (string, bool) {
 
 // stampLayouts are the timestamp dialects the report parser accepts (2.5):
 // space-naive with optional fraction (report tz), RFC3339-ish with optional
-// fraction and offset (converted), T-naive (report tz wall clock).
+// fraction and offset (converted), T-naive (report tz wall clock). Offset
+// forms mirror every zone spelling board.DetectTSLayout accepts/emits
+// (Z07:00 glued or spaced, -07:00, and colon-less -0700 as strftime %z and
+// "%H:%M:%S %z" writers produce) so detector-valid stamps are never
+// excluded from time metrics (DF-BOARDCTL-3).
 var stampLayouts = []struct {
 	layout string
 	offset bool
 }{
 	{"2006-01-02 15:04:05.999999999", false},
 	{"2006-01-02 15:04:05", false},
+	{"2006-01-02 15:04:05.999999999Z07:00", true},
+	{"2006-01-02 15:04:05Z07:00", true},
+	{"2006-01-02 15:04:05.999999999-0700", true},
+	{"2006-01-02 15:04:05-0700", true},
+	{"2006-01-02 15:04:05.999999999 -0700", true},
+	{"2006-01-02 15:04:05 -0700", true},
+	{"2006-01-02 15:04:05.999999999 Z07:00", true},
+	{"2006-01-02 15:04:05 Z07:00", true},
 	{"2006-01-02T15:04:05.999999999Z07:00", true},
 	{"2006-01-02T15:04:05Z07:00", true},
+	{"2006-01-02T15:04:05.999999999-0700", true},
+	{"2006-01-02T15:04:05-0700", true},
 	{"2006-01-02T15:04:05.999999999", false},
 	{"2006-01-02T15:04:05", false},
 }
