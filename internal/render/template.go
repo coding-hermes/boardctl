@@ -711,7 +711,7 @@ function renderBoard(){
     if (question) c.appendChild(el("div", "cq", question));
     return c;
   }
-  var burndownBox = box("Burndown — open tasks per day", chartLines(bd, [{days: d.burndown.days || [], values: d.burndown.open || [], color: "var(--orange)"}], {label: "burndown", empty: "no tasks yet"}), "Is the backlog actually shrinking, or are we opening work as fast as we close it?");
+  var burndownBox = box("Burndown — open tasks per day", chartLines(bd, [{days: d.burndown.window || [], values: d.burndown.open || [], color: "var(--orange)"}], {label: "burndown", empty: "no tasks yet"}), "Is the backlog actually shrinking, or are we opening work as fast as we close it?");
   var burnupBox = box("Burn-up — cumulative completions", chartLines(bd, [{days: d.burnup.days || [], values: d.burnup.cum || [], color: "var(--green)"}], {label: "burn-up", empty: "no completions yet"}), "How much real work has this board delivered over time, and is the slope still alive?");
   charts.appendChild(burndownBox); charts.appendChild(burnupBox);
   // overlay toggle (default separate): button swaps the two panels
@@ -722,7 +722,7 @@ function renderBoard(){
   overlayHolder.setAttribute("hidden", "");
   function renderOverlay(){
     var overlaid = chartLines(bd, [
-      {days: d.burndown.days || [], values: d.burndown.open || [], color: "var(--orange)"},
+      {days: d.burndown.window || [], values: d.burndown.open || [], color: "var(--orange)"},
       {days: d.burnup.days || [], values: d.burnup.cum || [], color: "var(--green)"}
     ], {label: "burndown + burn-up overlay", empty: "no tasks yet"});
     var lg = el("div", "legend");
