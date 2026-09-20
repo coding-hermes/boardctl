@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -633,18 +634,49 @@ func writeZipEntry(zf *zip.File, dest string) error {
 	return err
 }
 
+// wireFilename recovers the raw filename parameter of a multipart file
+// part. net/http's FileHeader.Filename is base-stripped per RFC 7578
+// §4.2 ("directory path information must not be used"), which destroys
+// the directory-relative path browsers send for webkitdirectory uploads
+// ("repo/.coding-hermes/board/tasks.jsonl" arrives as "tasks.jsonl") and
+// flattens a folder upload into the extraction root. The raw
+// Content-Disposition parameters survive on the part header, so recover
+// the wire filename from there (DF-BOARDCTL-6: proven by an E2E multipart
+// test posting a nested two-board folder on field "files" — pre-fix it
+// registered 1 board instead of 2). Browsers use forward slashes on all
+// platforms; safeJoin's FromSlash/slash handling below still applies.
+func wireFilename(fh *multipart.FileHeader) string {
+	for _, v := range fh.Header.Values("Content-Disposition") {
+		_, params, err := mime.ParseMediaType(v)
+		if err != nil {
+			continue
+		}
+		if name := params["filename"]; name != "" {
+			return name
+		}
+	}
+	return fh.Filename
+}
+
 // extractFolder writes the parts of a webkitdirectory upload under root,
 // preserving each file's relative path (browsers put webkitRelativePath in
 // the multipart filename, e.g. "myrepo/.coding-hermes/board/tasks.jsonl").
 func extractFolder(files []*multipart.FileHeader, root string, sess *uploadSession) *uploadError {
 	for _, fh := range files {
-		name := fh.Filename
+		name := wireFilename(fh)
 		// Some browsers include a leading chosen-directory component or
 		// backslashes; normalize. Zip-slip guard applies equally here.
 		clean, ok := safeJoin(root, name)
 		if !ok {
 			sess.warns = append(sess.warns, "file part rejected (escapes the upload root): "+name)
 			continue
+		}
+		// Directories in the upload have no parts of their own, so create
+		// every parent as the files demand it (mirrors writeZipEntry).
+		if dir := filepath.Dir(clean); dir != "" {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return &uploadError{http.StatusBadRequest, "create dir for part " + name + ": " + err.Error()}
+			}
 		}
 		src, err := fh.Open()
 		if err != nil {
