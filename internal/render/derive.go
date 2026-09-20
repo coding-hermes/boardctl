@@ -4,12 +4,15 @@
 package render
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/coding-hermes/boardctl/internal/board"
 )
 
 // SchemaName is the payload schema identifier (6.2).
@@ -274,7 +277,7 @@ func derive(d *boardData) Derived {
 		der.Burndown = burndown(tasks, window)
 		der.Burnup = burnup(tasks, window)
 	}
-	der.Velocity = velocity(tasks, today)
+	der.Velocity = velocity(d, tasks, today)
 	der.Cycle = cycleStats(tasks)
 	der.Streaks = streaks(d, tasks)
 	der.TickHealth = tickHealth(d.events)
@@ -358,7 +361,13 @@ func isoWeekSpan(d1, d2 string) []string {
 
 // velocity: completions per ISO week (3.3), payload = all computed weeks;
 // the display window (most recent 12 active weeks) is a UI concern.
-func velocity(tasks []*taskRec, today string) VelocitySeries {
+//
+// A completion is counted ONCE per distinct non-fixture task: the task row's
+// done stamp is authoritative; when a task carries no computable done stamp
+// but a task_completed event exists for it (e.g. the row's completed_at is
+// absent or unparseable while events.jsonl recorded the completion), the
+// event's day is counted instead. Tasks with neither are not counted.
+func velocity(d *boardData, tasks []*taskRec, today string) VelocitySeries {
 	// window: weeks spanning min(birth) .. max(today, last done)
 	var minBirth, maxDone string
 	haveMin := false
@@ -374,6 +383,13 @@ func velocity(tasks []*taskRec, today string) VelocitySeries {
 			if k > maxDone {
 				maxDone = k
 			}
+		}
+	}
+	// Event-only completion days also push the window end out (a completion
+	// after the last row-level done must still land inside the weeks span).
+	for _, k := range completionDays(d, tasks) {
+		if k > maxDone {
+			maxDone = k
 		}
 	}
 	if !haveMin {
@@ -395,16 +411,88 @@ func velocity(tasks []*taskRec, today string) VelocitySeries {
 	for i, w := range weeks {
 		idx[w] = i
 	}
-	for _, t := range tasks {
-		if t.done == nil {
+	for _, k := range completionDays(d, tasks) {
+		t, err := time.ParseInLocation("2006-01-02", k, time.UTC)
+		if err != nil {
 			continue
 		}
-		wk := isoWeekKey(*t.done)
-		if i, ok := idx[wk]; ok {
+		if i, ok := idx[isoWeekKey(t)]; ok {
 			counts[i]++
 		}
 	}
 	return VelocitySeries{Weeks: weeks, Counts: counts}
+}
+
+// completionDays returns at most one day key per distinct non-fixture task
+// id: the row's done day when computable, else the timestamp of that task's
+// first task_completed event (file order — events are append-log facts, kept
+// in load order). Tasks with neither are omitted. This is the velocity
+// population (3.3); burndown/burnup/cycle keep their row-only semantics.
+func completionDays(d *boardData, tasks []*taskRec) []string {
+	byID := make(map[string]*taskRec, len(tasks))
+	for _, t := range tasks {
+		byID[t.id] = t
+	}
+	dayByID := make(map[string]string, len(tasks))
+	out := make([]string, 0, len(tasks))
+	add := func(t *taskRec, day string) {
+		if _, seen := dayByID[t.id]; seen {
+			return
+		}
+		dayByID[t.id] = day
+		out = append(out, day)
+	}
+	// Row-level done stamps first (authoritative over events).
+	for _, t := range tasks {
+		if t.done == nil {
+			continue
+		}
+		add(t, dayKey(*t.done))
+	}
+	// Then fill the gaps with task_completed events. task_id is a string on
+	// live boards but legacy rows may carry a JSON number (the same shape
+	// the buildEventRec id note tolerates); 2.4: task_id may also be null.
+	for _, e := range d.events {
+		if e.ts == nil || e.etype != "task_completed" {
+			continue
+		}
+		id := eventTaskID(e.row)
+		if id == "" {
+			continue
+		}
+		t, ok := byID[id]
+		if !ok || t.done != nil || t.status != "complete" {
+			// unknown id, the row already carries a done stamp, or the
+			// row is not complete — a stale event must not resurrect a
+			// re-opened task.
+			continue
+		}
+		add(t, dayKey(*e.ts))
+	}
+	return out
+}
+
+// eventTaskID returns the top-level task_id of an event row as a string:
+// the string value when present, else a JSON number rendered as its decimal
+// form (legacy rows); null/absent/wrong-typed yields "".
+func eventTaskID(row *board.Row) string {
+	if s := row.String("task_id"); s != "" {
+		return s
+	}
+	raw := row.Get("task_id")
+	if raw == nil {
+		return ""
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); err != nil {
+		return ""
+	}
+	if n, ok := v.(json.Number); ok {
+		return n.String()
+	}
+	return ""
 }
 
 // cycleStats: cycle(t) = done - birth in whole days (3.4).

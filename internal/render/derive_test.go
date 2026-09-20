@@ -1,6 +1,7 @@
 package render
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"math"
 	"reflect"
@@ -181,7 +182,7 @@ func TestVelocityISOWeekBucketing(t *testing.T) {
 	}
 	d := mkBoard(tasks, nil)
 	d.now = tstamp("2026-09-12 12:00:00")
-	v := velocity(nonFixtureRows(d), dayKey(d.now))
+	v := velocity(d, nonFixtureRows(d), dayKey(d.now))
 	// 2026-08-31 is Monday of ISO week 2026-W36; completions 09-03 and 09-05
 	// are both in W36 (Thu and Sat), 09-07 is Monday of W37.
 	if len(v.Weeks) != 2 || v.Weeks[0] != "2026-W36" || v.Weeks[1] != "2026-W37" {
@@ -194,9 +195,145 @@ func TestVelocityISOWeekBucketing(t *testing.T) {
 
 func TestVelocityEmptyBoard(t *testing.T) {
 	d := mkBoard(nil, nil)
-	v := velocity(nonFixtureRows(d), dayKey(d.now))
+	v := velocity(d, nonFixtureRows(d), dayKey(d.now))
 	if len(v.Weeks) != 0 || len(v.Counts) != 0 {
 		t.Fatalf("empty velocity = %v", v)
+	}
+}
+
+// eventLine builds a task_completed event row (2.4 shape). detail is a JSON
+// object embedded verbatim (2.4 step 1); detailBase64 wraps it as a
+// base64-encoded JSON string instead (2.4 step 3: foreman task_completed
+// payloads).
+func eventLine(id int, ts, taskID, detail string, detailBase64 bool) string {
+	dseg := detail
+	if detailBase64 {
+		dseg = `"` + base64.StdEncoding.EncodeToString([]byte(detail)) + `"`
+	}
+	return `{"id":` + strconv.Itoa(id) + `,"timestamp":"` + ts + `","event_type":"task_completed","task_id":"` + taskID + `","actor":"f","detail":` + dseg + `,"tick_number":3}`
+}
+
+// AC1: completions recorded ONLY as events count toward velocity, bucketed
+// by the event's ISO week; row-stamp completions keep their weeks.
+func TestVelocityCountsEventOnlyCompletions(t *testing.T) {
+	tasks := []*board.Row{
+		// two complete rows with real done stamps
+		mustRow(t, taskLine("A", "2026-08-31 00:00:00", "2026-09-03 00:00:00", "complete")),
+		mustRow(t, taskLine("B", "2026-09-05 00:00:00", "2026-09-05 00:00:00", "complete")),
+		// two complete rows with NO computable done stamp but completion events
+		mustRow(t, taskLine("C", "2026-09-08 00:00:00", "", "complete")),
+		mustRow(t, taskLine("D", "2026-09-09 00:00:00", "", "complete")),
+	}
+	events := []*board.Row{
+		mustRow(t, eventLine(1, "2026-09-08 14:00:00", "C", `{"status":"complete"}`, false)),
+		// D's completion arrives as a base64-wrapped detail (2.4 step 3)
+		mustRow(t, eventLine(2, "2026-09-10 09:30:00", "D", `{"status":"complete"}`, true)),
+	}
+	d := mkBoard(tasks, events)
+	d.now = tstamp("2026-09-12 12:00:00")
+	v := velocity(d, nonFixtureRows(d), dayKey(d.now))
+	// A+B complete 09-03/09-05 (W36), C completes 09-08 (W37), D 09-10 (W37).
+	// 2026-08-31 is Monday of W36; 09-07 and 09-10 are both in W37.
+	if len(v.Weeks) != 2 || v.Weeks[0] != "2026-W36" || v.Weeks[1] != "2026-W37" {
+		t.Fatalf("weeks = %v", v.Weeks)
+	}
+	total := 0
+	for _, c := range v.Counts {
+		total += c
+	}
+	if total != 4 {
+		t.Fatalf("velocity total = %d, want 4 (2 row + 2 event-only)", total)
+	}
+	if !reflect.DeepEqual(v.Counts, []int{2, 2}) {
+		t.Fatalf("counts = %v, want [2 2]", v.Counts)
+	}
+}
+
+// AC2: a task with BOTH a row done stamp and a task_completed event counts
+// exactly once — the row stamp wins and the event does not add a second hit.
+// The event sits in a DIFFERENT ISO week than the row stamp, so a double
+// count would flip the total to 2 and light up W37.
+func TestVelocityNoDoubleCountRowStampAndEvent(t *testing.T) {
+	tasks := []*board.Row{
+		mustRow(t, taskLine("A", "2026-08-31 00:00:00", "2026-09-03 00:00:00", "complete")),
+	}
+	events := []*board.Row{
+		mustRow(t, eventLine(1, "2026-09-09 10:00:00", "A", `{"status":"complete"}`, false)),
+	}
+	d := mkBoard(tasks, events)
+	d.now = tstamp("2026-09-12 12:00:00")
+	v := velocity(d, nonFixtureRows(d), dayKey(d.now))
+	// window = min(birth 08-31/W36) .. today 09-12/W37 -> two payload weeks;
+	// the completion lands once, in the ROW stamp's week (W36).
+	if len(v.Weeks) != 2 || v.Weeks[0] != "2026-W36" || v.Weeks[1] != "2026-W37" {
+		t.Fatalf("weeks = %v", v.Weeks)
+	}
+	if !reflect.DeepEqual(v.Counts, []int{1, 0}) {
+		t.Fatalf("counts = %v, want [1 0] (deduped, row stamp wins, W37 unlit)", v.Counts)
+	}
+}
+
+// AC2 (detail): multiple completion events for one event-only task still
+// count once — the first event's day wins (append-log order).
+func TestVelocityEventOnlyCountedOnceAcrossDuplicateEvents(t *testing.T) {
+	tasks := []*board.Row{
+		mustRow(t, taskLine("C", "2026-09-08 00:00:00", "", "complete")),
+	}
+	events := []*board.Row{
+		mustRow(t, eventLine(1, "2026-09-08 14:00:00", "C", `{"status":"complete"}`, false)),
+		mustRow(t, eventLine(2, "2026-09-09 15:00:00", "C", `{"status":"complete"}`, false)),
+	}
+	d := mkBoard(tasks, events)
+	d.now = tstamp("2026-09-12 12:00:00")
+	v := velocity(d, nonFixtureRows(d), dayKey(d.now))
+	if !reflect.DeepEqual(v.Counts, []int{1}) {
+		t.Fatalf("counts = %v, want [1] (one distinct task, first event wins)", v.Counts)
+	}
+}
+
+// A completion event for an unknown task id, an open task, or a re-opened
+// task (status no longer complete) must not resurrect a completion.
+func TestVelocityIgnoresEventsForUnknownOpenOrReopenedTasks(t *testing.T) {
+	tasks := []*board.Row{
+		mustRow(t, taskLine("OPEN1", "2026-09-08 00:00:00", "", "open")),
+		mustRow(t, taskLine("REOPEN", "2026-09-08 00:00:00", "", "open")),
+		mustRow(t, taskLine("GHOST", "2026-09-08 00:00:00", "", "open")),
+	}
+	events := []*board.Row{
+		mustRow(t, eventLine(1, "2026-09-09 10:00:00", "OPEN1", `{"status":"complete"}`, false)),
+		mustRow(t, eventLine(2, "2026-09-09 11:00:00", "REOPEN", `{"status":"complete"}`, false)),
+		mustRow(t, eventLine(3, "2026-09-09 12:00:00", "NO-SUCH-TASK", `{"status":"complete"}`, false)),
+		// legacy numeric task_id + null-task board event: matched to nothing
+		mustRow(t, `{"id":4,"timestamp":"2026-09-09 13:00:00","event_type":"task_completed","task_id":7,"actor":"f","detail":null,"tick_number":3}`),
+		mustRow(t, `{"id":5,"timestamp":"2026-09-09 14:00:00","event_type":"board_init","task_id":null,"actor":"f","detail":null,"tick_number":0}`),
+	}
+	d := mkBoard(tasks, events)
+	d.now = tstamp("2026-09-12 12:00:00")
+	v := velocity(d, nonFixtureRows(d), dayKey(d.now))
+	total := 0
+	for _, c := range v.Counts {
+		total += c
+	}
+	if total != 0 {
+		t.Fatalf("velocity total = %d, want 0 (no event may complete an open/unknown task)", total)
+	}
+}
+
+// Fixture tasks are excluded from velocity even when event-completed.
+func TestVelocityEventOnlyFixtureExcluded(t *testing.T) {
+	task := mustRow(t, `{"id":"NEVER-DONE-1","title":"perpetual","status":"complete","priority":"P1","created_at":"2026-09-08 00:00:00"}`)
+	events := []*board.Row{
+		mustRow(t, eventLine(1, "2026-09-09 10:00:00", "NEVER-DONE-1", `{"status":"complete"}`, false)),
+	}
+	d := mkBoard([]*board.Row{task}, events)
+	d.now = tstamp("2026-09-12 12:00:00")
+	v := velocity(d, nonFixtureRows(d), dayKey(d.now))
+	total := 0
+	for _, c := range v.Counts {
+		total += c
+	}
+	if total != 0 {
+		t.Fatalf("velocity total = %d, want 0 (fixtures excluded)", total)
 	}
 }
 
