@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"syscall"
 	"time"
@@ -161,7 +162,10 @@ func loopbackHost(host string) bool {
 type uploadSession struct {
 	root   string // shared parent under os.TempDir()
 	boards []*board.Board
-	warns  []string
+	// identities carries serveBoardIdentity per live board, index-aligned
+	// with boards (DF-BOARDCTL-2 replace-on-re-upload bookkeeping).
+	identities []string
+	warns      []string
 }
 
 // serveServer carries the live server state.
@@ -177,6 +181,197 @@ func newServeServer(cBoards []*board.Board) *serveServer {
 
 func (s *serveServer) lock()   { s.mu <- struct{}{} }
 func (s *serveServer) unlock() { <-s.mu }
+
+// serveBoardIdentity is the stable DF-BOARDCTL-2 identity of one board:
+// the report-display name's slug (render.boardData.slug = slugify(name)
+// with the same empty-name fallback), then the topology (two co-located
+// boards of different topologies stay distinct entries). render.slugify is
+// unexported, so the slug part is mirrored here; render tests pin the
+// shared derivation, and slug collisions only over-merge boards the report
+// already presents under one name.
+func serveBoardIdentity(b *board.Board) string {
+	name := ""
+	if h := boardHeaderRow(b); h != nil {
+		name = strings.TrimSpace(h.String("project"))
+	}
+	if name == "" {
+		name = filepath.Base(b.Dir)
+	}
+	return slugifyServe(name) + "|" + b.Topology
+}
+
+// boardHeaderRow returns the board's header row under the loader's rules
+// (nil when none: topology B, blank/unreadable board.jsonl, or line 1 of
+// tasks.jsonl without header shape). Mirrors loadBoard's header ladder.
+func boardHeaderRow(b *board.Board) *board.Row {
+	if b.IsTopologyA() {
+		return firstHeaderShapedRow(b.HeaderPath())
+	}
+	lines, err := tolerantBoardLines(b.TasksPath())
+	if err != nil {
+		return nil
+	}
+	for _, line := range lines {
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
+		}
+		row, err := board.ParseRow(line)
+		if err != nil || !isHeaderShapedServe(row) {
+			return nil
+		}
+		return row
+	}
+	return nil
+}
+
+// firstHeaderShapedRow parses the first non-blank line of board.jsonl and
+// keeps it only when it has header shape (nil otherwise).
+func firstHeaderShapedRow(path string) *board.Row {
+	lines, err := tolerantBoardLines(path)
+	if err != nil {
+		return nil
+	}
+	for _, line := range lines {
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
+		}
+		row, err := board.ParseRow(line)
+		if err != nil || !isHeaderShapedServe(row) {
+			return nil
+		}
+		return row
+	}
+	return nil
+}
+
+// headerShapeKeysServe mirrors render.headerShapeKeys: the keys that make a
+// row a header (no id + at least one of these).
+var headerShapeKeysServe = []string{"project", "namespace", "version", "ticks_total"}
+
+// isHeaderShapedServe mirrors render.isHeaderShape.
+func isHeaderShapedServe(row *board.Row) bool {
+	if row.String("id") != "" {
+		return false
+	}
+	for _, k := range headerShapeKeysServe {
+		if row.Has(k) {
+			return true
+		}
+	}
+	return false
+}
+
+// tolerantBoardLines mirrors render.tolerantLines for identity reads.
+func tolerantBoardLines(path string) ([][]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.Split(data, []byte("\n")), nil
+}
+
+// slugifyServe is byte-for-byte render.slugify (internal/render/load.go):
+// lowercased, runs of non-alphanumerics collapsed to a single "-", trimmed
+// at the edges, empty input -> "board".
+func slugifyServe(name string) string {
+	var sb strings.Builder
+	prev := false
+	for _, r := range strings.ToLower(name) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			sb.WriteRune(r)
+			prev = false
+			continue
+		}
+		if !prev && sb.Len() > 0 {
+			sb.WriteByte('-')
+			prev = true
+		}
+	}
+	out := strings.Trim(sb.String(), "-")
+	if out == "" {
+		out = "board"
+	}
+	return out
+}
+
+// mergeByIdentity returns boards with later same-identity entries replacing
+// earlier ones (first-seen order kept): re-uploading a board must replace
+// its previous copy everywhere the report is derived from (DF-BOARDCTL-2).
+func mergeByIdentity(boards []*board.Board) []*board.Board {
+	idx := map[string]int{}
+	out := make([]*board.Board, 0, len(boards))
+	for _, b := range boards {
+		if b == nil {
+			continue
+		}
+		id := serveBoardIdentity(b)
+		if i, ok := idx[id]; ok {
+			out[i] = b
+			continue
+		}
+		idx[id] = len(out)
+		out = append(out, b)
+	}
+	return out
+}
+
+// currentBoards returns the boards carried by live sessions with
+// same-identity entries collapsed (later uploads replace earlier ones, for
+// /api/boards, the compare view and every payload built from this list).
+func (s *serveServer) currentBoards() []*board.Board {
+	s.lock()
+	defer s.unlock()
+	var out []*board.Board
+	out = append(out, s.cBoards...)
+	for _, sess := range s.sessions {
+		out = append(out, sess.boards...)
+	}
+	return mergeByIdentity(out)
+}
+
+// registerSession records a live upload session under the lock, dropping
+// any boards it replaces: a superseded board's session loses that board
+// (and is deleted outright once it carries none), together with its now
+// orphaned temp extraction tree (its files were copied per upload).
+func (s *serveServer) registerSession(sess *uploadSession) {
+	s.lock()
+	defer s.unlock()
+	superseded := map[string]bool{}
+	for _, id := range sess.identities {
+		superseded[id] = true
+	}
+	kept := s.sessions[:0]
+	for _, old := range s.sessions {
+		live := old.boards[:0]
+		for i, b := range old.boards {
+			if !superseded[old.identities[i]] {
+				live = append(live, b)
+			}
+		}
+		if len(live) == len(old.boards) {
+			kept = append(kept, old)
+			continue
+		}
+		// Index-aligned compaction: identities[i] belongs to boards[i],
+		// so the survivors keep their identity entries under the same
+		// relative order.
+		liveIDs := old.identities[:0]
+		for _, id := range old.identities {
+			if !superseded[id] {
+				liveIDs = append(liveIDs, id)
+			}
+		}
+		old.boards = live
+		old.identities = liveIDs
+		if len(live) == 0 {
+			os.RemoveAll(old.root)
+			continue
+		}
+		kept = append(kept, old)
+	}
+	s.sessions = kept
+	s.sessions = append(s.sessions, sess)
+}
 
 // routes wires the serve HTTP surface (shared by cmdServe and tests).
 func (s *serveServer) routes() http.Handler {
@@ -195,18 +390,6 @@ func (s *serveServer) removeAllTemps() {
 		os.RemoveAll(sess.root)
 	}
 	s.sessions = nil
-}
-
-// currentBoards returns the boards carried by live sessions (for /api/boards).
-func (s *serveServer) currentBoards() []*board.Board {
-	s.lock()
-	defer s.unlock()
-	var out []*board.Board
-	out = append(out, s.cBoards...)
-	for _, sess := range s.sessions {
-		out = append(out, sess.boards...)
-	}
-	return out
 }
 
 // handleIndex serves the inline uploader page (7.2.1: GET / -> 200 + form;
@@ -361,12 +544,15 @@ func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	// Mark the session as live BEFORE registering it: a session with
 	// boards set survives until shutdown (7.2.8); a failed upload leaves
 	// boards nil and the deferred cleanup removes its temp dir at once.
+	// DF-BOARDCTL-2: identity strings ride the session (index-aligned with
+	// boards) so registerSession can drop superseded boards.
 	sess.boards = boards
-	s.lock()
-	s.sessions = append(s.sessions, sess)
-	s.unlock()
+	for _, b := range boards {
+		sess.identities = append(sess.identities, serveBoardIdentity(b))
+	}
+	s.registerSession(sess)
 
-	all := append(append([]*board.Board{}, s.cBoards...), boards...)
+	all := mergeByIdentity(append(append([]*board.Board{}, s.cBoards...), boards...))
 	payload, err := render.BuildBoards(all, render.Options{Now: time.Now(), Zone: time.Local})
 	if err != nil {
 		http.Error(w, "build report: "+err.Error(), http.StatusInternalServerError)
