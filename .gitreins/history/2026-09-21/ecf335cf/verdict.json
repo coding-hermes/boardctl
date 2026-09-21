@@ -1,0 +1,99 @@
+{
+  "task_id": "BT-040",
+  "task_title": "Cut v0.1.7 release: move README pins off stale v0.1.6 asset and publish v0.1.7 with the 8 shipped fixes",
+  "task_criteria": [
+    "README.md Current-release line and all /releases/download/ URLs pin v0.1.7; git tag v0.1.7 pushed and CI release workflow green; downloaded asset boardctl_linux_amd64 passes sha256 -c, prints version v0.1.7, go version -m shows vcs.revision == v0.1.7 commit == origin/main and vcs.modified=false; behavior probe proves a shipped fix (usage-error newline formatting) differs from the v0.1.6 asset"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "f17253b9619d106ddad3eac727dfecb438e5ae00",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t6.366s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n8:52PM INF scanned ~1253372 bytes (1.25 MB) in 375ms\n8:52PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 85 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260921T014417.077120Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t6.366s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t6.195s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.050s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.017s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.247s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260921T014417.077120Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README.md Current-release line and all /releases/download/ URLs pin v0.1.7; git tag v0.1.7 pushed and CI release workflow green; downloaded asset boardctl_linux_amd64 passes sha256 -c, prints version v0.1.7, go version -m shows vcs.revision == v0.1.7 commit == origin/main and vcs.modified=false; behavior probe proves a shipped fix (usage-error newline formatting) differs from the v0.1.6 asset: README.md:17 'Current release: **v0.1.7**.'; README.md:20-21 both /releases/download/ URLs pin v0.1.7 (grep for v0.1.6 shows only historical mentions at 463/469). git tag v0.1.7 = f17253b9619d106ddad3eac727dfecb438e5ae00 == origin/main == HEAD; git ls-remote origin refs/tags/v0.1.7 = f17253b... (pushed). CI Multi-Arch run 35551898349 (tag v0.1.7) all jobs success incl. 'multiarch / Release'. Downloaded asset: sha256sum -c --ignore-missing SHA256SUMS => 'boardctl_linux_amd64: OK' exit=0; ./boardctl_linux_amd64 version => 'boardctl version v0.1.7'; go version -m => vcs.revision=f17253b9619d106ddad3eac727dfecb438e5ae00 (== v0.1.7 commit == origin/main), vcs.modified=false. Behavior probe: `create --bogus-flag` v0.1.6 stderr = '...[-C dir]\\nboardctl: flag provided but not defined: -bogus-flag$' (literal backslash-n gluing exit line) vs v0.1.7 = '...[-C dir]$' newline 'boardctl: flag provided but not defined: -bogus-flag$'; identical divergence for `update --bogus-flag` (fix commit ac5442e DF-BOARDCTL-7).\nv0.1.7 is fully cut: README pins, pushed tag, green CI release workflow, verified asset (checksum/version/vcs.revision==origin/main/modified=false), and the usage-error newline fix demonstrably differs from the v0.1.6 asset.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README.md Current-release line and all /releases/download/ URLs pin v0.1.7; git tag v0.1.7 pushed and CI release workflow green; downloaded asset boardctl_linux_amd64 passes sha256 -c, prints version v0.1.7, go version -m shows vcs.revision == v0.1.7 commit == origin/main and vcs.modified=false; behavior probe proves a shipped fix (usage-error newline formatting) differs from the v0.1.6 asset: README.md:17 'Current release: **v0.1.7**.'; README.md:20-21 both /releases/download/ URLs pin v0.1.7 (grep for v0.1.6 shows only historical mentions at 463/469). git tag v0.1.7 = f17253b9619d106ddad3eac727dfecb438e5ae00 == origin/main == HEAD; git ls-remote origin refs/tags/v0.1.7 = f17253b... (pushed). CI Multi-Arch run 35551898349 (tag v0.1.7) all jobs success incl. 'multiarch / Release'. Downloaded asset: sha256sum -c --ignore-missing SHA256SUMS => 'boardctl_linux_amd64: OK' exit=0; ./boardctl_linux_amd64 version => 'boardctl version v0.1.7'; go version -m => vcs.revision=f17253b9619d106ddad3eac727dfecb438e5ae00 (== v0.1.7 commit == origin/main), vcs.modified=false. Behavior probe: `create --bogus-flag` v0.1.6 stderr = '...[-C dir]\\nboardctl: flag provided but not defined: -bogus-flag$' (literal backslash-n gluing exit line) vs v0.1.7 = '...[-C dir]$' newline 'boardctl: flag provided but not defined: -bogus-flag$'; identical divergence for `update --bogus-flag` (fix commit ac5442e DF-BOARDCTL-7).\nv0.1.7 is fully cut: README pins, pushed tag, green CI release workflow, verified asset (checksum/version/vcs.revision==origin/main/modified=false), and the usage-error newline fix demonstrably differs from the v0.1.6 asset.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README.md Current-release line and all /releases/download/ URLs pin v0.1.7; git tag v0.1.7 pushed and CI release workflow green; downloaded asset boardctl_linux_amd64 passes sha256 -c, prints version v0.1.7, go version -m shows vcs.revision == v0.1.7 commit == origin/main and vcs.modified=false; behavior probe proves a shipped fix (usage-error newline formatting) differs from the v0.1.6 asset",
+                "status": "PASS",
+                "detail": "README.md:17 'Current release: **v0.1.7**.'; README.md:20-21 both /releases/download/ URLs pin v0.1.7 (grep for v0.1.6 shows only historical mentions at 463/469). git tag v0.1.7 = f17253b9619d106ddad3eac727dfecb438e5ae00 == origin/main == HEAD; git ls-remote origin refs/tags/v0.1.7 = f17253b... (pushed). CI Multi-Arch run 35551898349 (tag v0.1.7) all jobs success incl. 'multiarch / Release'. Downloaded asset: sha256sum -c --ignore-missing SHA256SUMS => 'boardctl_linux_amd64: OK' exit=0; ./boardctl_linux_amd64 version => 'boardctl version v0.1.7'; go version -m => vcs.revision=f17253b9619d106ddad3eac727dfecb438e5ae00 (== v0.1.7 commit == origin/main), vcs.modified=false. Behavior probe: `create --bogus-flag` v0.1.6 stderr = '...[-C dir]\\nboardctl: flag provided but not defined: -bogus-flag$' (literal backslash-n gluing exit line) vs v0.1.7 = '...[-C dir]$' newline 'boardctl: flag provided but not defined: -bogus-flag$'; identical divergence for `update --bogus-flag` (fix commit ac5442e DF-BOARDCTL-7)."
+              }
+            ],
+            "summary": "v0.1.7 is fully cut: README pins, pushed tag, green CI release workflow, verified asset (checksum/version/vcs.revision==origin/main/modified=false), and the usage-error newline fix demonstrably differs from the v0.1.6 asset."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-040\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t6.366s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README.md Current-release line and all /releases/download/ URLs pin v0.1.7; git tag v0.1.7 pushed and CI release workflow green; downloaded asset boardctl_linux_amd64 passes sha256 -c, prints version v0.1.7, go version -m shows vcs.revision == v0.1.7 commit == origin/main and vcs.modified=false; behavior probe proves a shipped fix (usage-error newline formatting) differs from the v0.1.6 asset: README.md:17 'Current release: **v0.1.7**.'; README.md:20-21 both /releases/download/ URLs pin v0.1.7 (grep for v0.1.6 shows only historical mentions at 463/469). git tag v0.1.7 = f17253b9619d106ddad3eac727dfecb438e5ae00 == origin/main == HEAD; git ls-remote origin refs/tags/v0.1.7 = f17253b... (pushed). CI Multi-Arch run 35551898349 (tag v0.1.7) all jobs success incl. 'multiarch / Release'. Downloaded asset: sha256sum -c --ignore-missing SHA256SUMS => 'boardctl_linux_amd64: OK' exit=0; ./boardctl_linux_amd64 version => 'boardctl version v0.1.7'; go version -m => vcs.revision=f17253b9619d106ddad3eac727dfecb438e5ae00 (== v0.1.7 commit == origin/main), vcs.modified=false. Behavior probe: `create --bogus-flag` v0.1.6 stderr = '...[-C dir]\\nboardctl: flag provided but not defined: -bogus-flag$' (literal backslash-n gluing exit line) vs v0.1.7 = '...[-C dir]$' newline 'boardctl: flag provided but not defined: -bogus-flag$'; identical divergence for `update --bogus-flag` (fix commit ac5442e DF-BOARDCTL-7).\nv0.1.7 is fully cut: README pins, pushed tag, green CI release workflow, verified asset (checksum/version/vcs.revision==origin/main/modified=false), and the usage-error newline fix demonstrably differs from the v0.1.6 asset.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-21T01:53:30.489648",
+  "evidence": {
+    "collected_at": "2026-09-21T01:53:30.524723+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 5653,
+        "truncated": false,
+        "source": "git show f17253b9619d"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 11241,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-040"
+  }
+}
