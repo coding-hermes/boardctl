@@ -14,11 +14,11 @@ The zero-dependency path: grab a static binary from
 amd64, freebsd amd64) — no Go toolchain needed. Verify the binary's checksum
 before running it:
 
-Current release: **v0.1.6**.
+Current release: **v0.1.7**.
 
 ```bash
-curl -sL -o boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.6/boardctl_linux_amd64
-curl -sL -o SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/v0.1.6/SHA256SUMS
+curl -sL -o boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.7/boardctl_linux_amd64
+curl -sL -o SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/v0.1.7/SHA256SUMS
 sha256sum -c --ignore-missing SHA256SUMS   # verify the binary you downloaded
 chmod +x boardctl_linux_amd64 && ./boardctl_linux_amd64 version
 ```
@@ -32,8 +32,8 @@ paths emit exactly these names: the tag-push CI cut and the offline
 ones you did not download (without it, `sha256sum -c` exits 1 on the absent
 files). The downloaded binary must keep its release filename for this to verify.
 
-The last line prints the binary's release identity — for a v0.1.6 asset it
-prints `boardctl version v0.1.6`. Release binaries are stamped from the release
+The last line prints the binary's release identity — for a v0.1.7 asset it
+prints `boardctl version v0.1.7`. Release binaries are stamped from the release
 tag, so the printed version must match the release you downloaded; a bare date
 stamp (e.g. `20260915`) or `dev` means the binary was not cut from a tagged
 checkout (see [Development](#development)).
@@ -66,11 +66,11 @@ boardctl -C ~/myproject validate
 boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
                                    # (no .db/.parquet), header vs events ticks,
                                    # fixture orphans
-boardctl version                   # prints e.g. "boardctl version v0.1.6"
+boardctl version                   # prints e.g. "boardctl version v0.1.7"
                                    # (the release tag; a UTC date for release
                                    # builds from untagged checkouts, "dev" for
                                    # unstamped local builds)
-boardctl version --json            # {"version":"v0.1.6","build":"v0.1.6"}
+boardctl version --json            # {"version":"v0.1.7","build":"v0.1.7"}
                                    # ("build" is the raw build stamp)
 
 # create a task row (appends tasks.jsonl + task_created event).
@@ -476,34 +476,34 @@ the primary cut:
    values until they all agree (CI runs the identical check on every push and
    PR). Commit and push `main`.
 2. Tag the release commit and push the tag:
-   `git tag v0.1.6 && git push origin v0.1.6`. The tag push triggers
+   `git tag v0.1.7 && git push origin v0.1.7`. The tag push triggers
    `.github/workflows/multiarch.yml`, whose Release job runs on tag refs only:
    it cross-builds the platform set in the workflow's `platforms:` input
    (`boardctl_<goos>_<goarch>`, `.exe` on windows), writes `SHA256SUMS`,
    attests provenance, and publishes the release. Push the branch too — the
    Release job runs on the tag ref and the tag must point at a pushed commit.
-3. Verify the published release: `gh release view v0.1.6` lists the seven
+3. Verify the published release: `gh release view v0.1.7` lists the seven
    platform binaries plus `SHA256SUMS`; then download per the install block and
    confirm the identity — `./boardctl_linux_amd64 version` prints
-   `boardctl version v0.1.6`.
+   `boardctl version v0.1.7`.
 4. Offline / local equivalent, when CI cannot publish: `make release` from the
    tagged checkout. VERSION resolves via `git describe --tags --abbrev=0` (a UTC
    date only on checkouts with no tags), and every binary reports it:
-   `./dist/boardctl_linux_amd64 version` prints `boardctl version v0.1.6`. If
+   `./dist/boardctl_linux_amd64 version` prints `boardctl version v0.1.7`. If
    the repo HAS tags but VERSION resolved to a non-tag, the target FAILS instead
-   of silently shipping a date stamp; `make release VERSION=v0.1.6` overrides
+   of silently shipping a date stamp; `make release VERSION=v0.1.7` overrides
    deliberately. It writes the same underscore names and `dist/SHA256SUMS` the
    CI job publishes, so publish them verbatim:
 
    ```bash
-   gh release create v0.1.6 --title v0.1.6 --generate-notes --verify-tag dist/*
+   gh release create v0.1.7 --title v0.1.7 --generate-notes --verify-tag dist/*
    ```
 
    Never delete and re-push a tag to re-cut a release: that re-drafts the
    published release.
 
 Scripts read the identity as JSON: `boardctl version --json` prints
-`{"version":"v0.1.6","build":"v0.1.6"}` — `build` is the raw build stamp and
+`{"version":"v0.1.7","build":"v0.1.7"}` — `build` is the raw build stamp and
 differs from `version` only when a binary was hand-stamped with a non-tag
 value while carrying an embedded tag.
 
