@@ -272,3 +272,44 @@ double-adds it independently of the accumulation.
   `skills/boardctl-usage/SKILL.md` were refreshed against the live binary
   (BT-012); when behavior changes again, update those two files in the same
   change-set as the code.
+
+---
+
+## Run-9 addendum — 2026-09-22 (fleet-wide / multi-board dogfood)
+
+**How the multi-board reality actually behaves, and why.**
+
+1. "Legacy pretty-printed boards fail line-wise loads but are VALID" (fleet memory, 08-28)
+   is FALSE for 3 of the 4 boards it named. Raw bytes: helios rows contain literal newlines
+   INSIDE string values (detail fields pasted from multi-line tool output without escaping),
+   consensus has truncated rows that never close (line 167: raw `;`-escape garbage) plus
+   whole blank-line separators between row groups, ring-runner has a literal `bunker info`
+   banner pasted mid-row (lines 121-128). jq agrees with boardctl on every one. The right
+   lesson: a board file is only as valid as its worst escape; count similarity to JSONL is
+   not validity. The tool's all-or-nothing parse is the CORRECT default (a silent skip would
+   corrupt every downstream count); what's missing is a degrade-with-evidence mode
+   (DF-BOARDCTL-9), not tolerance.
+
+2. The fingerprint design survived its first adversarial test: 6 rows sharing one id
+   (QA-ASCE-1 x6 on asce) turned out to be 6 DIFFERENT findings (per-row title+reasoning
+   compared: all distinct). dedupe-board returning groups=[] there is correct — the
+   fingerprint is over text, not ids. The actual defect is upstream lane behavior: QA lanes
+   recycled cycle numbers into the id (QA-ASCE-1, -2, -3 refiled each cycle) instead of
+   advancing. Filing `QA-ASCE-1` a second time should have been `QA-ASCE-6`. Until lanes
+   fix that, validate will keep (correctly) erroring on id-recycled boards.
+
+3. The burndown bug class recurred ONE layer deeper than DF-BOARDCTL-1 fixed: same
+   symptom-discipline failure (payload shape vs template expectation never asserted by a
+   test), new expression: v0.1.6 read a key that didn't exist (blank panel, honest); v0.1.7
+   passes window bounds [start,end] as the x array, so the chart draws 2 of 20 points and
+   looks plausible (dishonest). Lesson: shape-mismatch asserts must compare SERIES LENGTHS
+   (days.length === values.length), not key existence. A "fixed" chart bug that still
+   renders wrong is worse than the original because review stops looking at it.
+
+4. Skill-level reminder honored this run: `${PIPESTATUS[0]}` after pipes (an early
+   `stats | tail` printed exit=0 through a failing parse — the exit was tail's). And
+   `render -o out.html` is the documented form; the positional-arg refusal is correct
+   behavior, not a bug (RTFM before filing).
+
+5. Fleet-sweep cost is negligible (624ms / 53 boards / release v0.1.7); performance is not
+   the story on any surface measured this run. Process startup dominates; no PERF rows filed.

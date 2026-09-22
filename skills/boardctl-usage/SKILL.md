@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.4.0
+version: 1.5.0
 category: software-development
 ---
 
@@ -115,27 +115,34 @@ boardctl version                           # release tag on release builds
    exits 0. Re-running is a no-clobber no-op (exit 0). `create` on the
    empty board works too and emits the full default row schema — no
    copying files from other boards, no hand-seeding needed.
-2. **`create --id` does not validate the id format (BT-023).** Any string
-   is accepted — `"bad id!"` lands in tasks AND events and validate stays
-   silent. Fleet convention is `PREFIX-NUM` (often `PROJ-N`); until
-   BT-023 lands, keep ids clean at the call site — downstream consumers
-   (task-router, board-scan dedupe) parse them.
-3. **`update --commit-hash` writes the task's fix commit into the header's
-   `last_commit` (BT-024).** The header field is the board-edit drift
-   pointer, so a routine task completion silently degrades drift
-   detection, and the header's `updated_at` does not move. Use
-   `header --set-last-commit` explicitly when you mean the board commit;
-   until BT-024 lands, re-pin drift pointers after bulk updates.
+2. **Task ids are machine keys — writes enforce the fleet format (fixed after
+   BT-023).** `create --id "bad id!"` exits 1 (`^[A-Z][A-Z0-9]+(-[A-Z0-9]+)+$`);
+   `--force` writes it anyway for legacy junk. `validate` stays silent about
+   ids already on a board (legacy boards must not newly fail); `doctor`
+   itemizes them as warnings. NEVER recycle an id across cycles: QA lanes
+   that refile `QA-X-1` each cycle instead of advancing produce boards with
+   6 DISTINCT findings under one id (asce, ai_plays_poke, hivemind-work,
+   dexdat-memory, speclang, 2026-09-22) — validate errors, and dedupe-board
+   correctly refuses to collapse them because fingerprints are over text,
+   not ids. Always mint a fresh id for a new finding.
+3. **`update --commit-hash` stays on the task row (BT-024 fixed).** The
+   header's `last_commit` drift pointer moves only via
+   `header --set-last-commit`; keep the two apart when writing tooling.
 4. **`validate` enforces a status vocabulary the fleet doesn't fully
    speak (BT-025).** Real foreman rows with `todo`/`done`/`open` produce
    ERRORs (exit 1) — on boards with legacy statuses, treat validate's
    status errors as an alias-policy question, not data corruption.
-5. **Legacy/partial boards fail with unhelpful errors (BT-026).** A board
-   dir with only `tasks.jsonl` reports "no board found" (exit 2 — the
-   file IS there; events.jsonl is missing); a pretty-printed
-   (multi-line JSON) board fails with a raw JSON escape error and no row
-   context. Both board classes are valid-on-disk and readable by
-   `jq`; they are just not line-loadable. Don't rewrite them (fleet law).
+5. **tasks.jsonl-only boards refuse with a precise error (BT-026 fixed).**
+   The message names the missing events.jsonl and the exit is 2. Treat it
+   as board-not-found (the board is not a board without its audit trail).
+   Related, CORRECTED 2026-09-22: the old note here claimed the legacy
+   pretty-printed boards were "valid-on-disk, jq-readable". They are NOT —
+   jq fails on all of them (helios: raw newlines inside strings; consensus:
+   truncated rows; ring-runner: a bunker banner pasted mid-row). All-or-
+   nothing parse failure on one bad line is correct; never rewrite those
+   boards by hand (fleet law) — wait for a repair path (DF-BOARDCTL-9).
+   A duplicate-id row makes EVERY read of the board exit 1 until the ids
+   are fixed — no flag skips it (by design).
 6. **`create` mirrors the LAST row's schema.** On boards with legacy rows your
    new row inherits their key style — that's a feature (byte-stable diffs),
    but check `stats` output for `(none)` status groups after creating on
@@ -155,6 +162,19 @@ boardctl version                           # release tag on release builds
    header counter drift, and fixture orphans in ~0.02s on real fleet boards.
    And never `git add -A` a board COPY — an untracked `board.db` rides
    along and doctor (correctly) fails the copy.
+10. **After a DUPLICATE-SUPPRESSED refusal, remediate via CREATE, not
+    update.** `--evidence-run-id RUN` exists on `create` only — re-running
+    the same create with it appends a task_evidence event on the existing
+    row (exit 0). `update` rejects the flag (README wording fixed by
+    DF-BOARDCTL-11). `--force` files a deliberate fingerprinted variant.
+11. **Fleet-wide sweeps are free — run them.** validate across all ~53 live
+    fleet boards costs ~624ms total (v0.1.7, 2026-09-22); per-board cost is
+    ~1ms/100 rows and process startup dominates. A sweep is the cheapest
+    integrity ritual available and it found real debt on day one.
+12. **dedupe-board dry-run groups=[] can be the CORRECT answer.** Same id on
+    N rows with different titles/reasoning = different findings (fingerprint
+    is sha over normalized title+reasoning). Never force it; fix the lane
+    that recycled the id (see pitfall 2).
 
 ## Report surface — `render`, `serve`, `import`
 
@@ -234,7 +254,9 @@ every push/PR (recent runs green). `boardctl validate` is fast and strict
 enough to gate any PR that touches `.coding-hermes/` — a malformed board
 fails the workflow.
 
-## Performance envelope (measured 2026-09-04)
+## Performance envelope (measured 2026-09-04, re-verified 2026-09-22 on v0.1.7)
 
-0.01–0.02s for stats/list/validate/doctor on the largest real fleet board
-(259 rows). Boards are tiny; there is no need to batch or cache.
+0.01–0.04s for stats/list/validate/doctor on the largest real fleet boards
+(259–1163 rows; 43.0ms ± 1.8 validate on the 1163-row hermes-dagger board).
+Render of a 53-task board: 13.6ms ± 0.8. Full 53-board fleet sweep: ~624ms.
+Boards are tiny; there is no need to batch or cache.
