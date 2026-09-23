@@ -239,6 +239,25 @@ func (b *Board) validateTasks(rep *Report) {
 	rep.Tasks = rows
 }
 
+// DanglingDepMsg is the exact substring of the dangling-depends_on warning
+// class. BT-054-R: the pre-commit hook needs a stable text anchor to promote
+// this one warning class to a blocker (via `boardctl validate --fail-on
+// dangling-dep`) without re-parsing the report; the wording above stays
+// byte-identical so existing tests pinning the message keep passing.
+const DanglingDepMsg = "depends_on references nonexistent task id"
+
+// CountDanglingDepWarns returns the number of dangling depends_on warnings in
+// a validate report — the exact class --fail-on dangling-dep promotes.
+func (r *Report) CountDanglingDepWarns() int {
+	n := 0
+	for _, f := range r.Findings {
+		if f.Level == "warn" && strings.Contains(f.Msg, DanglingDepMsg) {
+			n++
+		}
+	}
+	return n
+}
+
 // depRef records which row references a depends_on id (for itemized findings).
 type depRef struct {
 	line int

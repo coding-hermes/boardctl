@@ -117,7 +117,7 @@ func TestDF9CLIFlagsInUsage(t *testing.T) {
 		{"list", "boardctl list [--status S] [--priority P] [--json] [--all] [--skip-bad-lines] [-C dir]"},
 		{"show", "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]"},
 		{"stats", "boardctl stats [--json] [--all] [--skip-bad-lines] [-C dir]"},
-		{"validate", "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [-C dir]"},
+		{"validate", "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep] [-C dir]"},
 		{"render", "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]"},
 	}
 	for _, tc := range cases {

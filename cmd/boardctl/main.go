@@ -47,7 +47,7 @@ commands:
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N]
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
-  validate [--skip-bad-lines] [--repair] [--strict-keys]
+  validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep]
   doctor
   version [--json]
   stats   [--json] [--all] [--skip-bad-lines]
@@ -64,6 +64,9 @@ its normal output. Without the flag the first unparseable line aborts.
 validate --repair: salvage every parseable row into <boarddir>/tasks.rewritten.jsonl
 (manual review file — tasks.jsonl is never overwritten).
 validate --strict-keys: treat BT-056 key-uniformity drift as an error (exit 1).
+validate --fail-on dangling-dep: treat a dangling depends_on reference (a
+warning by default) as a failure (exit 1). The pre-commit hook installed by
+'boardctl install' passes this flag; plain validate stays exit 0.
 Every validate run prints the census line "key uniformity: N/M rows carry only
 canon keys" — quote it as evidence of zero drift.
 
@@ -848,10 +851,20 @@ func cmdValidate(dir string, args []string) error {
 	skipBad := useSkipBad(fs)
 	repair := fs.Bool("repair", false, "salvage every parseable row into <boarddir>/tasks.rewritten.jsonl (manual review file — tasks.jsonl is never modified)")
 	strictKeys := fs.Bool("strict-keys", false, "promote BT-056 key-uniformity drift from a warning to an error (exit non-zero)")
+	// BT-054-R: --fail-on promotes ONE named warning class to an error (exit
+	// 1) while the report text stays a warn. The value is an allow-list, not
+	// free text: today only "dangling-dep" (a depends_on reference to a
+	// nonexistent task id) is recognized. The pre-commit hook installed by
+	// `boardctl install` calls validate with --fail-on dangling-dep so a
+	// commit that bakes a dangling ref into the board is REJECTED, while a
+	// human running plain `boardctl validate` still sees the warning and a
+	// clean exit (legacy boards carry dangling refs that must not fail
+	// interactive reads).
+	failOn := fs.String("fail-on", "", "promote a warning class to an error (exit 1): dangling-dep")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [-C dir]\n")
+		fmt.Fprintf(os.Stderr, "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep] [-C dir]\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -886,6 +899,23 @@ func cmdValidate(dir string, args []string) error {
 	// --strict-keys is the switch that makes it a gate.
 	if *strictKeys && rep.Keys.DriftRows() > 0 {
 		rep.Add("error", "key-uniformity drift: %s (promoted by --strict-keys)", rep.Keys.Summary())
+	}
+	// BT-054-R: --fail-on promotes a named warning class to an error so the
+	// hook path can block on it. The warn findings STAY in the report (the
+	// text still says "warn" — the hook's stderr output reads like the plain
+	// report); only the EXIT flips. Unknown class names fail the command
+	// (usage-level) rather than silently doing nothing: a hook calling with
+	// a misspelled class must never degrade to a no-op gate.
+	switch *failOn {
+	case "":
+	case "dangling-dep":
+		if n := rep.CountDanglingDepWarns(); n > 0 {
+			rep.Add("error", "%d dangling depends_on warning(s) promoted to a failure by --fail-on dangling-dep", n)
+		}
+	default:
+		// Usage-level refusal (exit 2): a hook calling with a misspelled
+		// class must never degrade to a no-op gate.
+		return fmt.Errorf("validate: unknown --fail-on class %q (recognized: dangling-dep): %w", *failOn, errUsage)
 	}
 	fmt.Fprint(os.Stdout, rep.RenderText())
 	if b.HasSkipped() {
