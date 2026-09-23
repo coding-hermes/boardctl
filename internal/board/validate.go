@@ -135,20 +135,26 @@ func (b *Board) validateTasks(rep *Report) {
 		// rows are skipped; free-form prose values ARE flagged (warn) —
 		// legacy boards carry prose in these columns that predates the
 		// vocabulary, and flagging (not failing) is the point.
+		//
+		// BT-049: the message names the FIELD and that field's OWN
+		// vocabulary — a single value sits in exactly one column, so the
+		// BT-007 union string made a guard-vocab value in ci_result ("PASS")
+		// read as if it were rejected everywhere.
 		for _, c := range []struct {
 			key   string
 			vocab map[string]bool
+			str   string
 		}{
-			{"guard_result", GuardResultVocabulary},
-			{"ci_result", CIResultVocabulary},
+			{"guard_result", GuardResultVocabulary, "{PASS,FAIL,SKIP}"},
+			{"ci_result", CIResultVocabulary, "{GREEN,RED,SKIP}"},
 		} {
 			v := row.String(c.key)
 			if v == "" {
 				continue // absent, null, or never-run
 			}
 			if !c.vocab[NormalizeResultValue(v)] {
-				rep.Add("warn", "tasks.jsonl line %d (task %s): %s %q is free-form — not in vocabulary {PASS,FAIL,SKIP} / {GREEN,RED,SKIP} (writes now enforce this; hand-edit the row or rewrite via boardctl update)",
-					idx+1, id, c.key, v)
+				rep.Add("warn", "tasks.jsonl line %d (task %s): %s %q is free-form — not in the %s vocabulary %s (writes now enforce this; hand-edit the row or rewrite via boardctl update)",
+					idx+1, id, c.key, v, c.key, c.str)
 			}
 		}
 		// BT-048: the priority column has a canonical on-disk vocabulary
