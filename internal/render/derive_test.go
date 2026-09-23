@@ -102,6 +102,32 @@ func TestBurndownSingleDayBoard(t *testing.T) {
 	}
 }
 
+// DF-BOARDCTL-8: burndown must expose per-day labels (Days) matching Open,
+// while Window keeps only the [start, end] bounds.
+func TestBurndownDaysMatchOpenPoints(t *testing.T) {
+	tasks := []*board.Row{
+		mustRow(t, taskLine("A", "2026-09-01 00:00:00", "2026-09-03 00:00:00", "complete")),
+		mustRow(t, taskLine("B", "2026-09-02 00:00:00", "", "pending")),
+	}
+	d := mkBoard(tasks, nil)
+	der := derive(d)
+	if len(der.Burndown.Open) < 5 {
+		t.Fatalf("open points = %d, want >= 5", len(der.Burndown.Open))
+	}
+	if len(der.Burndown.Days) <= 2 {
+		t.Fatalf("days = %d, want > 2 (2-bound window leaked into x-axis)", len(der.Burndown.Days))
+	}
+	if len(der.Burndown.Days) != len(der.Burndown.Open) {
+		t.Fatalf("days = %d, open = %d (per-day labels dropped)", len(der.Burndown.Days), len(der.Burndown.Open))
+	}
+	if len(der.Burndown.Window) != 2 || der.Burndown.Window[0] != "2026-09-01" || der.Burndown.Window[1] != "2026-09-12" {
+		t.Fatalf("window = %v, want [2026-09-01 2026-09-12]", der.Burndown.Window)
+	}
+	if der.Burndown.Days[0] != der.Burnup.Days[0] || len(der.Burndown.Days) != len(der.Burnup.Days) {
+		t.Fatalf("burndown/burnup x-axes diverge: %v vs %v", der.Burndown.Days, der.Burnup.Days)
+	}
+}
+
 // ---------- 3.4 cycle ----------
 
 func TestCycleMedianP90Worst5(t *testing.T) {
