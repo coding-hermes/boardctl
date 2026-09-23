@@ -113,11 +113,11 @@ func TestBT054InstallFreshHook(t *testing.T) {
 	}
 }
 
-// TestBT054InstallChainedKeepsExistingHook covers the GitReins-shaped chain:
-// an existing hook's logic must survive, and the board-lint block must be
-// inserted BEFORE the existing logic's first early exit — the only placement
-// guaranteed to run when existing logic exits early (generateHookContent
-// inserts after the shebang for exactly that reason).
+// TestBT054InstallChainedKeepsExistingHook covers the chained rewrite:
+// an existing hook's logic must survive (inside the subshell wrap), the
+// board-lint epilogue must run AFTER the existing body (BT-054-R: lint after
+// existing logic, not before), and the existing body's early `exit 0` must be
+// neutralized by the subshell so board-lint still runs.
 func TestBT054InstallChainedKeepsExistingHook(t *testing.T) {
 	root := instRepoRoot(t)
 	hooks := filepath.Join(root, ".git", "hooks")
@@ -134,12 +134,17 @@ func TestBT054InstallChainedKeepsExistingHook(t *testing.T) {
 	if !strings.Contains(content, "existing-ran") {
 		t.Fatalf("existing hook logic lost:\n%s", content)
 	}
-	// The block must precede the existing exit 0 so board-lint runs even on
-	// the early-exit path.
-	markerIdx := strings.Index(content, boardLintMarkerBegin)
-	exitIdx := strings.Index(content, "exit 0")
-	if markerIdx < 0 || exitIdx < 0 || markerIdx > exitIdx {
-		t.Fatalf("board-lint block not inserted before existing early exit:\n%s", content)
+	// BT-054-R: the wrapped existing body must come BEFORE the board-lint
+	// epilogue call — board-lint runs AFTER the existing logic.
+	bodyIdx := strings.Index(content, "existing-ran")
+	epilogueIdx := strings.Index(content, boardLintChainExisting+"=$?")
+	if bodyIdx < 0 || epilogueIdx < 0 || bodyIdx > epilogueIdx {
+		t.Fatalf("board-lint epilogue not after the existing hook body:\n%s", content)
+	}
+	// The existing body must be inside the subshell wrap (its early exits
+	// neutralized), and the epilogue must honor the existing status.
+	if !strings.Contains(content, "(\n") || !strings.Contains(content, ")\n"+boardLintChainExisting+"=$?") {
+		t.Fatalf("existing body not wrapped in a subshell:\n%s", content)
 	}
 }
 
@@ -230,4 +235,142 @@ func TestBT054GenerateHookContentNoShebang(t *testing.T) {
 	if !strings.Contains(out, boardLintMarkerBegin) {
 		t.Fatalf("block missing:\n%s", out)
 	}
+}
+
+// TestBT054GenerateHookContentChainedShape pins the chained rewrite BT-054-R
+// requires: the board-lint function block sits after the shebang, the existing
+// body is wrapped in a subshell (bare exits neutralized), and the epilogue
+// that runs board-lint AFTER the body combines both statuses.
+func TestBT054GenerateHookContentChainedShape(t *testing.T) {
+	existing := "#!/bin/sh\necho legacy\ngitreins guard\nexit 0\n"
+	out := generateHookContent(existing, "/bin/boardctl", "/repo", 30)
+	if !strings.Contains(out, "echo legacy") || !strings.Contains(out, "gitreins guard") {
+		t.Fatalf("existing logic lost:\n%s", out)
+	}
+	if !strings.Contains(out, boardLintMarkerBegin) || !strings.Contains(out, boardLintMarkerEnd) {
+		t.Fatalf("block missing:\n%s", out)
+	}
+	// The wrapped body must precede the epilogue call.
+	bodyIdx := strings.Index(out, "echo legacy")
+	epilogueIdx := strings.Index(out, boardLintChainExisting+"=$?")
+	if bodyIdx < 0 || epilogueIdx < 0 || bodyIdx > epilogueIdx {
+		t.Fatalf("board-lint not chained after the existing body:\n%s", out)
+	}
+	// The lint logic must be DEFINED in the block and CALLED in the epilogue,
+	// so the early `exit 0` in the wrapped body cannot skip it.
+	if !strings.Contains(out, boardLintChainMain+"() {") {
+		t.Fatalf("chained block missing the lint function definition:\n%s", out)
+	}
+	if !strings.Contains(out, boardLintChainMain+" || "+boardLintChainStatus+"=1") {
+		t.Fatalf("epilogue missing the lint call with status capture:\n%s", out)
+	}
+	// The reject arm inside the function must be a return, not an exit —
+	// otherwise a lint rejection exits before the epilogue can merge with
+	// the existing body's status (it would still block, but would skip the
+	// merge contract that lets an EARLIER body failure win too).
+	blockStart := strings.Index(out, boardLintMarkerBegin)
+	blockEnd := strings.Index(out, boardLintMarkerEnd)
+	block := out[blockStart:blockEnd]
+	if strings.Contains(block, "exit 1") {
+		t.Fatalf("chained block reject arm must be a return inside the function:\n%s", block)
+	}
+	if !strings.Contains(block, "return 1") {
+		t.Fatalf("chained block reject arm missing:\n%s", block)
+	}
+}
+
+// TestBT054GenerateHookContentChainedIdempotent: re-installing over a chained
+// hook regenerates the chained shape (never downgraded to standalone), keeps
+// the wrapped body, and leaves exactly one block.
+func TestBT054GenerateHookContentChainedIdempotent(t *testing.T) {
+	existing := "#!/bin/sh\necho legacy\nexit 0\n"
+	first := generateHookContent(existing, "/bin/boardctl", "/repo", 30)
+	second := generateHookContent(first, "/bin/boardctl", "/repo", 30)
+	if n := strings.Count(second, boardLintMarkerBegin); n != 1 {
+		t.Fatalf("chained re-install produced %d blocks:\n%s", n, second)
+	}
+	if !strings.Contains(second, boardLintChainExisting+"=$?") {
+		t.Fatalf("chained re-install lost the epilogue:\n%s", second)
+	}
+	if !strings.Contains(second, "echo legacy") {
+		t.Fatalf("chained re-install lost the existing body:\n%s", second)
+	}
+}
+
+// TestBT054GenerateHookContentNoMarkerKeepsNonShebang: a shebang-less legacy
+// hook still gets the chained rewrite with a shebang supplied.
+func TestBT054GenerateHookContentNoShebangChained(t *testing.T) {
+	out := generateHookContent("echo legacy\nexit 0\n", "/bin/boardctl", "/repo", 30)
+	if !strings.HasPrefix(out, "#!/bin/sh\n") {
+		t.Fatalf("chained rewrite did not supply a shebang:\n%s", out)
+	}
+	if !strings.Contains(out, "echo legacy") || !strings.Contains(out, boardLintChainExisting+"=$?") {
+		t.Fatalf("chained rewrite lost content or epilogue:\n%s", out)
+	}
+}
+
+// TestBT054ValidateFailOnDanglingDep pins the --fail-on dangling-dep CLI
+// contract (BT-054-R FINDING 1): plain validate on a dangling-ref board
+// stays exit 0 with the warn in the report; --fail-on dangling-dep turns it
+// into exit 1 with the warn text STILL in the report; a clean board passes
+// with the flag; an unknown class is a usage-level failure.
+func TestBT054ValidateFailOnDanglingDep(t *testing.T) {
+	dir := t.TempDir()
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	if err := os.MkdirAll(boardDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"tasks.jsonl":  `{"id":"OK-1","title":"dangling ref holder","status":"pending","priority":"P2","depends_on":["NOPE-404"]}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(boardDir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Plain validate: exit 0, warn present (BT-007 contract unchanged).
+	out, errOut := instCapture(func() {
+		if code := run([]string{"validate", "-C", dir}); code != 0 {
+			t.Errorf("plain validate exit = %d, want 0 (dangling ref warns)", code)
+		}
+	})
+	if !strings.Contains(out, "NOPE-404") || !strings.Contains(out, "RESULT: OK") {
+		t.Fatalf("plain validate report lost the dangling-ref warn:\n%s", out)
+	}
+	// --fail-on dangling-dep: exit 1, warn text still reported.
+	out2, _ := instCapture(func() {
+		if code := run([]string{"validate", "-C", dir, "--fail-on", "dangling-dep"}); code != 1 {
+			t.Errorf("validate --fail-on dangling-dep exit = %d, want 1", code)
+		}
+	})
+	if !strings.Contains(out2, "NOPE-404") {
+		t.Fatalf("--fail-on report lost the warn text (it must stay a warn in the report):\n%s", out2)
+	}
+	if !strings.Contains(out2, "promoted to a failure") {
+		t.Fatalf("--fail-on report missing the promotion note:\n%s", out2)
+	}
+	if errOut != "" {
+		// stderr must stay empty in both runs (the report is stdout).
+		t.Logf("note: stderr = %q", errOut)
+	}
+	// Clean board with the flag: still exit 0.
+	clean := t.TempDir()
+	cboard := filepath.Join(clean, ".coding-hermes", "board")
+	if err := os.MkdirAll(cboard, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range map[string]string{
+		"tasks.jsonl":  `{"id":"CLEAN-1","title":"clean","status":"pending","priority":"P2","depends_on":[]}` + "\n",
+		"events.jsonl": files["events.jsonl"],
+		"board.jsonl":  files["board.jsonl"],
+	} {
+		if err := os.WriteFile(filepath.Join(cboard, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	instRunExpect(t, []string{"validate", "-C", clean, "--fail-on", "dangling-dep"}, 0)
+	// Unknown class name: usage-level failure (exit 2), never a silent no-op.
+	instRunExpect(t, []string{"validate", "-C", clean, "--fail-on", "bogus-class"}, 2)
 }
