@@ -47,7 +47,7 @@ commands:
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N]
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
-  validate [--skip-bad-lines] [--repair]
+  validate [--skip-bad-lines] [--repair] [--strict-keys]
   doctor
   version [--json]
   stats   [--json] [--all] [--skip-bad-lines]
@@ -61,6 +61,9 @@ SKIPPED-LINES evidence block and the command exits 1 even though it produced
 its normal output. Without the flag the first unparseable line aborts.
 validate --repair: salvage every parseable row into <boarddir>/tasks.rewritten.jsonl
 (manual review file — tasks.jsonl is never overwritten).
+validate --strict-keys: treat BT-056 key-uniformity drift as an error (exit 1).
+Every validate run prints the census line "key uniformity: N/M rows carry only
+canon keys" — quote it as evidence of zero drift.
 
 -C resolves the board dir: a repo root (looks for .coding-hermes/board),
 .coding-hermes, or the board dir itself. Defaults to the current directory.
@@ -840,9 +843,12 @@ func cmdValidate(dir string, args []string) error {
 	args = reorderArgs(args, valueFlags("C"))
 	skipBad := useSkipBad(fs)
 	repair := fs.Bool("repair", false, "salvage every parseable row into <boarddir>/tasks.rewritten.jsonl (manual review file — tasks.jsonl is never modified)")
+	strictKeys := fs.Bool("strict-keys", false, "promote BT-056 key-uniformity drift from a warning to an error (exit non-zero)")
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl validate [--skip-bad-lines] [--repair] [-C dir]\n") }
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [-C dir]\n")
+	}
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -870,6 +876,12 @@ func cmdValidate(dir string, args []string) error {
 	rep, err := b.Validate()
 	if err != nil {
 		return err
+	}
+	// BT-056: the check is a warning by default so a legacy board still
+	// validates (keys drift is a shape defect, not corruption), and
+	// --strict-keys is the switch that makes it a gate.
+	if *strictKeys && rep.Keys.DriftRows() > 0 {
+		rep.Add("error", "key-uniformity drift: %s (promoted by --strict-keys)", rep.Keys.Summary())
 	}
 	fmt.Fprint(os.Stdout, rep.RenderText())
 	if b.HasSkipped() {

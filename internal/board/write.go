@@ -780,10 +780,13 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 
 // fieldChange describes one canonicalization NormalizeTask applied (or found
 // unnecessary) to a field: the raw on-disk spelling and the canonical form.
+// KeyRename marks a KEY-spelling repair (BT-056) rather than a value repair:
+// Old/New are then the offending and canonical KEY names.
 type fieldChange struct {
-	Field string
-	Old   string
-	New   string
+	Field     string
+	Old       string
+	New       string
+	KeyRename bool
 }
 
 // NormalizeTask is the BT-025 sanctioned fix path for read-alias drift:
@@ -877,6 +880,20 @@ func (b *Board) NormalizeTask(id string, force bool) ([]fieldChange, error) {
 		}
 	}
 
+	// BT-056: key-spelling drift — a key that merely respells a canonical one
+	// (why/reasoning, acceptance/acceptance_criteria). Same discipline as
+	// every other normalize target: classify first, refuse rather than
+	// guess. RenameKey itself refuses the two destructive cases (canonical
+	// key already present; offending key duplicated), and both abort the
+	// whole run before anything is written.
+	for _, k := range append([]string{}, target.Keys...) {
+		canonical, ok := CanonicalKeyFor(k)
+		if !ok {
+			continue
+		}
+		pending = append(pending, fieldChange{Field: "key", Old: k, New: canonical, KeyRename: true})
+	}
+
 	// Pass 2 — nothing to rewrite: report the no-op WITHOUT touching the
 	// file, so a second --normalize run is byte-identical (idempotent).
 	if len(pending) == 0 {
@@ -887,6 +904,12 @@ func (b *Board) NormalizeTask(id string, force bool) ([]fieldChange, error) {
 	// classification pass, so only fields whose spelling actually changes
 	// are reported and rewritten.
 	for _, ch := range pending {
+		if ch.KeyRename {
+			if err := target.RenameKey(ch.Old, ch.New); err != nil {
+				return nil, fmt.Errorf("cannot normalize: %v", err)
+			}
+			continue
+		}
 		if err := target.SetGoValue(ch.Field, ch.New, style); err != nil {
 			return nil, err
 		}

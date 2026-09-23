@@ -27,6 +27,10 @@ type Report struct {
 	Events   int
 	Fixtures int
 	Header   bool
+	// Keys is the BT-056 key-uniformity census (see keys.go). It is always
+	// populated, so a clean board can QUOTE "N/N rows carry only canon keys"
+	// as evidence of zero drift rather than only the absence of a warning.
+	Keys KeyDriftSummary
 }
 
 // Add appends a finding.
@@ -170,6 +174,25 @@ func (b *Board) validateTasks(rep *Report) {
 		// BT-007: collect depends_on for the existence cross-check below.
 		for _, dep := range rowStringSlice(row, "depends_on") {
 			depends[dep] = append(depends[dep], depRef{line: idx + 1, id: id})
+		}
+		// BT-056: the row's KEY SET must stay inside the declared canon
+		// (keys.go). Until this check existed, "the row parsed" was the only
+		// shape test, so the fleet drifted to ~230 distinct keys — one-key
+		// dialects, composite squatters and typos — with nothing reporting
+		// it. A known alias still counts as drift here: it has a named
+		// repair (`update --normalize`), not an exemption.
+		rep.Keys.AddRow(row)
+		if unknown := UnknownTaskKeys(row); len(unknown) > 0 {
+			who := "task " + id
+			if id == "" {
+				who = "row"
+			}
+			fix := ""
+			if fixableByAlias(unknown) {
+				fix = " — fixable with 'boardctl update " + id + " --normalize'"
+			}
+			rep.Add("warn", "tasks.jsonl line %d (%s): key(s) {%s} outside the declared canon%s",
+				idx+1, who, strings.Join(unknown, ", "), fix)
 		}
 	}
 	if b.SkipBad {
@@ -409,6 +432,7 @@ func (r *Report) RenderText() string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "board: %s (topology %s)\n", r.Dir, r.Topology)
 	fmt.Fprintf(&sb, "rows: %d tasks, %d events, %d fixtures%s\n", r.Tasks, r.Events, r.Fixtures, headerNote(r.Header))
+	fmt.Fprintf(&sb, "%s\n", r.Keys.Summary())
 	for _, f := range r.Findings {
 		fmt.Fprintf(&sb, "[%s] %s\n", f.Level, f.Msg)
 	}

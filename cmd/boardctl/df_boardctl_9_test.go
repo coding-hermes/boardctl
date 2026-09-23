@@ -117,7 +117,7 @@ func TestDF9CLIFlagsInUsage(t *testing.T) {
 		{"list", "boardctl list [--status S] [--priority P] [--json] [--all] [--skip-bad-lines] [-C dir]"},
 		{"show", "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]"},
 		{"stats", "boardctl stats [--json] [--all] [--skip-bad-lines] [-C dir]"},
-		{"validate", "boardctl validate [--skip-bad-lines] [--repair] [-C dir]"},
+		{"validate", "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [-C dir]"},
 		{"render", "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]"},
 	}
 	for _, tc := range cases {
@@ -141,10 +141,19 @@ func TestDF9CLIFlagsInUsage(t *testing.T) {
 		t.Errorf("validate -h does not document --repair:\n%s", got)
 	}
 	// The top-level usage text lists the new flags too.
-	for _, want := range []string{"[--skip-bad-lines]", "[--repair]"} {
+	for _, want := range []string{"[--skip-bad-lines]", "[--repair]", "[--strict-keys]"} {
 		if !strings.Contains(usageText, want) {
 			t.Errorf("usageText lost %q", want)
 		}
+	}
+	// BT-056: the key-uniformity gate's flag is part of the documented
+	// surface — validate -h names the flag, and the longer explanation of the
+	// census line lives in the top-level usage text.
+	if !strings.Contains(got, "strict-keys") {
+		t.Errorf("validate -h does not document --strict-keys:\n%s", got)
+	}
+	if !strings.Contains(usageText, "key uniformity") {
+		t.Errorf("usageText does not document the key-uniformity census line")
 	}
 }
 
