@@ -1,0 +1,101 @@
+{
+  "task_id": "DF-BOARDCTL-8",
+  "task_title": "Burndown renders 2 of 20 points \u2014 per-day labels missing",
+  "task_criteria": [
+    "BurndownSeries carries a per-day Days array matching Open's length; template passes it as x-axis at both chart sites; go build/vet/test green with a payload-shape test asserting len(days)==len(open)>2"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "releng-check",
+  "commit": "c9bbc6cacf8cae3728cd244dcc7d7fec821e6dbb",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.069s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n12:39AM INF scanned ~1303637 bytes (1.30 MB) in 788ms\n12:39AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 87 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T051145.612410Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.069s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.255s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.102s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.193s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T051145.612410Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 BurndownSeries carries a per-day Days array matching Open's length; template passes it as x-axis at both chart sites; go build/vet/test green with a payload-shape test asserting len(days)==len(open)>2: internal/render/derive.go:43 adds `Days []string `json:\"days,omitempty\"`` to BurndownSeries; derive.go:310 `burndown()` sets `Days: window` and appends one Open value per window day, so len(Days)==len(Open). internal/render/template.go:714 (separate box) and :725 (overlay) both feed `days: d.burndown.days || []`; grep confirms no remaining `d.burndown.window` feed in template.go. Payload-shape tests: internal/render/derive_test.go:107 TestBurndownDaysMatchOpenPoints asserts len(Days)!=len(Open) fails and len(Days)<=2 fails (i.e. ==open and >2); cmd/boardctl/render_test.go TestRenderBurndownUsesDays asserts payload days==open, days>2, days[0]==window[0], `strings.Count(s, \"days: d.burndown.days || []\") == 2`, and rejects `days: d.burndown.window`. Gate run fresh: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` exit 0 with `ok github.com/coding-hermes/boardctl/cmd/boardctl`, `ok .../internal/render`, `ok .../internal/board`, etc.; targeted `go test -count=1 -run 'TestBurndownDaysMatchOpenPoints|TestPayloadRoundTripAndShapes|TestRenderBurndownUsesDays' -v` \u2192 all PASS.\nBurndownSeries.Days is populated per-day and fed as the x-axis at both template chart sites, with payload-shape tests asserting len(days)==len(open)>2 and a green build/vet/test gate.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 BurndownSeries carries a per-day Days array matching Open's length; template passes it as x-axis at both chart sites; go build/vet/test green with a payload-shape test asserting len(days)==len(open)>2: internal/render/derive.go:43 adds `Days []string `json:\"days,omitempty\"`` to BurndownSeries; derive.go:310 `burndown()` sets `Days: window` and appends one Open value per window day, so len(Days)==len(Open). internal/render/template.go:714 (separate box) and :725 (overlay) both feed `days: d.burndown.days || []`; grep confirms no remaining `d.burndown.window` feed in template.go. Payload-shape tests: internal/render/derive_test.go:107 TestBurndownDaysMatchOpenPoints asserts len(Days)!=len(Open) fails and len(Days)<=2 fails (i.e. ==open and >2); cmd/boardctl/render_test.go TestRenderBurndownUsesDays asserts payload days==open, days>2, days[0]==window[0], `strings.Count(s, \"days: d.burndown.days || []\") == 2`, and rejects `days: d.burndown.window`. Gate run fresh: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` exit 0 with `ok github.com/coding-hermes/boardctl/cmd/boardctl`, `ok .../internal/render`, `ok .../internal/board`, etc.; targeted `go test -count=1 -run 'TestBurndownDaysMatchOpenPoints|TestPayloadRoundTripAndShapes|TestRenderBurndownUsesDays' -v` \u2192 all PASS.\nBurndownSeries.Days is populated per-day and fed as the x-axis at both template chart sites, with payload-shape tests asserting len(days)==len(open)>2 and a green build/vet/test gate.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "BurndownSeries carries a per-day Days array matching Open's length; template passes it as x-axis at both chart sites; go build/vet/test green with a payload-shape test asserting len(days)==len(open)>2",
+                "status": "PASS",
+                "detail": "internal/render/derive.go:43 adds `Days []string `json:\"days,omitempty\"`` to BurndownSeries; derive.go:310 `burndown()` sets `Days: window` and appends one Open value per window day, so len(Days)==len(Open). internal/render/template.go:714 (separate box) and :725 (overlay) both feed `days: d.burndown.days || []`; grep confirms no remaining `d.burndown.window` feed in template.go. Payload-shape tests: internal/render/derive_test.go:107 TestBurndownDaysMatchOpenPoints asserts len(Days)!=len(Open) fails and len(Days)<=2 fails (i.e. ==open and >2); cmd/boardctl/render_test.go TestRenderBurndownUsesDays asserts payload days==open, days>2, days[0]==window[0], `strings.Count(s, \"days: d.burndown.days || []\") == 2`, and rejects `days: d.burndown.window`. Gate run fresh: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` exit 0 with `ok github.com/coding-hermes/boardctl/cmd/boardctl`, `ok .../internal/render`, `ok .../internal/board`, etc.; targeted `go test -count=1 -run 'TestBurndownDaysMatchOpenPoints|TestPayloadRoundTripAndShapes|TestRenderBurndownUsesDays' -v` \u2192 all PASS."
+              }
+            ],
+            "summary": "BurndownSeries.Days is populated per-day and fed as the x-axis at both template chart sites, with payload-shape tests asserting len(days)==len(open)>2 and a green build/vet/test gate."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-8\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.069s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 BurndownSeries carries a per-day Days array matching Open's length; template passes it as x-axis at both chart sites; go build/vet/test green with a payload-shape test asserting len(days)==len(open)>2: internal/render/derive.go:43 adds `Days []string `json:\"days,omitempty\"`` to BurndownSeries; derive.go:310 `burndown()` sets `Days: window` and appends one Open value per window day, so len(Days)==len(Open). internal/render/template.go:714 (separate box) and :725 (overlay) both feed `days: d.burndown.days || []`; grep confirms no remaining `d.burndown.window` feed in template.go. Payload-shape tests: internal/render/derive_test.go:107 TestBurndownDaysMatchOpenPoints asserts len(Days)!=len(Open) fails and len(Days)<=2 fails (i.e. ==open and >2); cmd/boardctl/render_test.go TestRenderBurndownUsesDays asserts payload days==open, days>2, days[0]==window[0], `strings.Count(s, \"days: d.burndown.days || []\") == 2`, and rejects `days: d.burndown.window`. Gate run fresh: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` exit 0 with `ok github.com/coding-hermes/boardctl/cmd/boardctl`, `ok .../internal/render`, `ok .../internal/board`, etc.; targeted `go test -count=1 -run 'TestBurndownDaysMatchOpenPoints|TestPayloadRoundTripAndShapes|TestRenderBurndownUsesDays' -v` \u2192 all PASS.\nBurndownSeries.Days is populated per-day and fed as the x-axis at both template chart sites, with payload-shape tests asserting len(days)==len(open)>2 and a green build/vet/test gate.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-23T05:39:37.745155",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-23T05:39:37.768720+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 583,
+        "truncated": false,
+        "source": "git show c9bbc6cacf8c"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 29838,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-8"
+  }
+}

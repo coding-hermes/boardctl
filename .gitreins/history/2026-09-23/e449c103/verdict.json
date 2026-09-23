@@ -1,0 +1,101 @@
+{
+  "task_id": "BT-048",
+  "task_title": "validate WARNs on out-of-vocabulary priority on disk",
+  "task_criteria": [
+    "Table-driven test proves rows with priority values outside P0-P3 yield exactly one WARNING each naming row id and value; canonical rows yield none; exit code unchanged; build/vet/test green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "releng-check",
+  "commit": "c9bbc6cacf8cae3728cd244dcc7d7fec821e6dbb",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.707s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n12:39AM INF scanned ~1303637 bytes (1.30 MB) in 715ms\n12:39AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 87 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T051145.612410Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.707s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T051145.612410Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Table-driven test proves rows with priority values outside P0-P3 yield exactly one WARNING each naming row id and value; canonical rows yield none; exit code unchanged; build/vet/test green: internal/board/validate_priority_test.go: TestValidateWarnsOnOffVocabularyPriority is table-driven over {\"3\",\"P3\"},{\"P4\",\"\"},{\"p2\",\"P2\"},{\"urgent\",\"\"}; each case asserts countPriorityWarns(rep)==1 (exactly one WARNING), msg contains row id \"PRIO-A\" and the quoted raw value `priority \"<raw>\"`, and names vocabulary {P0,P1,P2,P3}. TestValidateCanonicalPrioritiesSilent seeds P0-P3 and asserts 0 priority warns. TestValidatePriorityWarningsKeepBoardOK asserts warnings do not error and RenderText contains \"RESULT: OK\" (exit code unchanged: cmd/boardctl/main.go:805 returns error only on rep.HasErrors(), and validate.go:49 HasErrors counts errors only). Implementation at internal/board/validate.go:158-165 adds exactly one warn per off-vocabulary row naming id and raw value. Evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` -> ok internal/board, ok cmd/boardctl, all packages ok; `go test -count=1 ./internal/board/ -run Priority -v` -> PASS TestValidateWarnsOnOffVocabularyPriority, PASS TestValidatePriorityWarningsKeepBoardOK, PASS TestValidateMissingPriorityUntouched.\nTable-driven test proves off-vocabulary priorities yield exactly one WARNING naming row id and value, canonical rows yield none, exit code unchanged, and build/vet/test are all green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Table-driven test proves rows with priority values outside P0-P3 yield exactly one WARNING each naming row id and value; canonical rows yield none; exit code unchanged; build/vet/test green: internal/board/validate_priority_test.go: TestValidateWarnsOnOffVocabularyPriority is table-driven over {\"3\",\"P3\"},{\"P4\",\"\"},{\"p2\",\"P2\"},{\"urgent\",\"\"}; each case asserts countPriorityWarns(rep)==1 (exactly one WARNING), msg contains row id \"PRIO-A\" and the quoted raw value `priority \"<raw>\"`, and names vocabulary {P0,P1,P2,P3}. TestValidateCanonicalPrioritiesSilent seeds P0-P3 and asserts 0 priority warns. TestValidatePriorityWarningsKeepBoardOK asserts warnings do not error and RenderText contains \"RESULT: OK\" (exit code unchanged: cmd/boardctl/main.go:805 returns error only on rep.HasErrors(), and validate.go:49 HasErrors counts errors only). Implementation at internal/board/validate.go:158-165 adds exactly one warn per off-vocabulary row naming id and raw value. Evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` -> ok internal/board, ok cmd/boardctl, all packages ok; `go test -count=1 ./internal/board/ -run Priority -v` -> PASS TestValidateWarnsOnOffVocabularyPriority, PASS TestValidatePriorityWarningsKeepBoardOK, PASS TestValidateMissingPriorityUntouched.\nTable-driven test proves off-vocabulary priorities yield exactly one WARNING naming row id and value, canonical rows yield none, exit code unchanged, and build/vet/test are all green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Table-driven test proves rows with priority values outside P0-P3 yield exactly one WARNING each naming row id and value; canonical rows yield none; exit code unchanged; build/vet/test green",
+                "status": "PASS",
+                "detail": "internal/board/validate_priority_test.go: TestValidateWarnsOnOffVocabularyPriority is table-driven over {\"3\",\"P3\"},{\"P4\",\"\"},{\"p2\",\"P2\"},{\"urgent\",\"\"}; each case asserts countPriorityWarns(rep)==1 (exactly one WARNING), msg contains row id \"PRIO-A\" and the quoted raw value `priority \"<raw>\"`, and names vocabulary {P0,P1,P2,P3}. TestValidateCanonicalPrioritiesSilent seeds P0-P3 and asserts 0 priority warns. TestValidatePriorityWarningsKeepBoardOK asserts warnings do not error and RenderText contains \"RESULT: OK\" (exit code unchanged: cmd/boardctl/main.go:805 returns error only on rep.HasErrors(), and validate.go:49 HasErrors counts errors only). Implementation at internal/board/validate.go:158-165 adds exactly one warn per off-vocabulary row naming id and raw value. Evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` -> ok internal/board, ok cmd/boardctl, all packages ok; `go test -count=1 ./internal/board/ -run Priority -v` -> PASS TestValidateWarnsOnOffVocabularyPriority, PASS TestValidatePriorityWarningsKeepBoardOK, PASS TestValidateMissingPriorityUntouched."
+              }
+            ],
+            "summary": "Table-driven test proves off-vocabulary priorities yield exactly one WARNING naming row id and value, canonical rows yield none, exit code unchanged, and build/vet/test are all green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-048\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.707s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Table-driven test proves rows with priority values outside P0-P3 yield exactly one WARNING each naming row id and value; canonical rows yield none; exit code unchanged; build/vet/test green: internal/board/validate_priority_test.go: TestValidateWarnsOnOffVocabularyPriority is table-driven over {\"3\",\"P3\"},{\"P4\",\"\"},{\"p2\",\"P2\"},{\"urgent\",\"\"}; each case asserts countPriorityWarns(rep)==1 (exactly one WARNING), msg contains row id \"PRIO-A\" and the quoted raw value `priority \"<raw>\"`, and names vocabulary {P0,P1,P2,P3}. TestValidateCanonicalPrioritiesSilent seeds P0-P3 and asserts 0 priority warns. TestValidatePriorityWarningsKeepBoardOK asserts warnings do not error and RenderText contains \"RESULT: OK\" (exit code unchanged: cmd/boardctl/main.go:805 returns error only on rep.HasErrors(), and validate.go:49 HasErrors counts errors only). Implementation at internal/board/validate.go:158-165 adds exactly one warn per off-vocabulary row naming id and raw value. Evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` -> ok internal/board, ok cmd/boardctl, all packages ok; `go test -count=1 ./internal/board/ -run Priority -v` -> PASS TestValidateWarnsOnOffVocabularyPriority, PASS TestValidatePriorityWarningsKeepBoardOK, PASS TestValidateMissingPriorityUntouched.\nTable-driven test proves off-vocabulary priorities yield exactly one WARNING naming row id and value, canonical rows yield none, exit code unchanged, and build/vet/test are all green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-23T05:39:42.778766",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-23T05:39:42.790087+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 583,
+        "truncated": false,
+        "source": "git show c9bbc6cacf8c"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 29838,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-048"
+  }
+}

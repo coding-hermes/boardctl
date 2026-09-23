@@ -1,0 +1,12 @@
+commit c9bbc6cacf8cae3728cd244dcc7d7fec821e6dbb
+Merge: 9b96380 53a79cc
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Wed Sep 23 00:35:33 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Wed Sep 23 00:35:33 2026 -0500
+
+    merge: BT-048 validate warns on out-of-vocabulary priority values (wave boardctl-2026-09-23-04-57-53)
+
+ internal/board/validate.go               |  20 +++++
+ internal/board/validate_priority_test.go | 141 +++++++++++++++++++++++++++++++
+ 2 files changed, 161 insertions(+)

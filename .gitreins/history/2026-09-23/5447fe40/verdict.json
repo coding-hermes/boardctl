@@ -1,0 +1,101 @@
+{
+  "task_id": "BT-051",
+  "task_title": "Cut v0.1.8 release (drift class recurrence)",
+  "task_criteria": [
+    "README pins moved to v0.1.8; tag v0.1.8 pushed from the origin/main tip; published v0.1.8 asset sha256-verified with vcs.revision == tag commit == origin/main and vcs.modified=false; asset 'version' prints v0.1.8; behavior probe proves a shipped fix vs the v0.1.7 asset; CI Multi-Arch release run green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "releng-check",
+  "commit": "a3328d799947ba104a4481a3e75e370aaebc3ba1",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.603s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n2:06AM INF scanned ~1353042 bytes (1.35 MB) in 345ms\n2:06AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 90 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T070026.885747Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.603s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.111s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.601s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T070026.885747Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README pins moved to v0.1.8; tag v0.1.8 pushed from the origin/main tip; published v0.1.8 asset sha256-verified with vcs.revision == tag commit == origin/main and vcs.modified=false; asset 'version' prints v0.1.8; behavior probe proves a shipped fix vs the v0.1.7 asset; CI Multi-Arch release run green: README pins: README.md:17 'Current release: **v0.1.8**', README.md:20-21 download URLs point at /releases/download/v0.1.8/, README.md:69,73 version examples; `grep -n v0.1.7 README.md` returns nothing (no stale pins). Tag: `git rev-parse v0.1.8` = a3328d799947ba104a4481a3e75e370aaebc3ba1 == `git rev-parse origin/main` == HEAD (tag pushed from origin/main tip). Asset: `gh release download v0.1.8` boardctl_linux_amd64 sha256 = 5d422d6ab37d13032f49fa7e4dccb01cdb6b4480c6b56403f6fe529f87e49b6d, matching the published SHA256SUMS line for boardctl_linux_amd64. `go version -m boardctl_linux_amd64` shows vcs.revision=a3328d799947ba104a4481a3e75e370aaebc3ba1 (== tag commit == origin/main) and vcs.modified=false. `./boardctl_linux_amd64 version` prints 'boardctl version v0.1.8' and `version --json` prints {\"version\":\"v0.1.8\",\"build\":\"v0.1.8\"}. Behavior probe vs the v0.1.7 asset (vcs.revision=f17253b9, version v0.1.7): on a board with an unparseable JSONL line, v0.1.7 `list` aborts (exit 1, 'not valid JSON'), while v0.1.8 `list --skip-bad-lines` degrades with evidence ('SKIPPED-LINES: 1 line(s) could not be parsed and were skipped', exit 1) \u2014 DF-BOARDCTL-9; and on a row with priority P9, v0.1.7 `validate` emits no priority warning while v0.1.8 warns 'priority \"P9\" is not in vocabulary {P0,P1,P2,P3}' \u2014 BT-048. CI: `gh run list --workflow multiarch.yml` shows run 35829487898 on tag v0.1.8 = completed/success; `gh run view 35829487898` shows all jobs green including 'multiarch / Release' (\u2713).\nAll v0.1.8 release sub-claims verified: README pins, tag==origin/main, sha256+vcs.revision+vcs.modified=false, version output, behavior probe vs v0.1.7, and green Multi-Arch CI run.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README pins moved to v0.1.8; tag v0.1.8 pushed from the origin/main tip; published v0.1.8 asset sha256-verified with vcs.revision == tag commit == origin/main and vcs.modified=false; asset 'version' prints v0.1.8; behavior probe proves a shipped fix vs the v0.1.7 asset; CI Multi-Arch release run green: README pins: README.md:17 'Current release: **v0.1.8**', README.md:20-21 download URLs point at /releases/download/v0.1.8/, README.md:69,73 version examples; `grep -n v0.1.7 README.md` returns nothing (no stale pins). Tag: `git rev-parse v0.1.8` = a3328d799947ba104a4481a3e75e370aaebc3ba1 == `git rev-parse origin/main` == HEAD (tag pushed from origin/main tip). Asset: `gh release download v0.1.8` boardctl_linux_amd64 sha256 = 5d422d6ab37d13032f49fa7e4dccb01cdb6b4480c6b56403f6fe529f87e49b6d, matching the published SHA256SUMS line for boardctl_linux_amd64. `go version -m boardctl_linux_amd64` shows vcs.revision=a3328d799947ba104a4481a3e75e370aaebc3ba1 (== tag commit == origin/main) and vcs.modified=false. `./boardctl_linux_amd64 version` prints 'boardctl version v0.1.8' and `version --json` prints {\"version\":\"v0.1.8\",\"build\":\"v0.1.8\"}. Behavior probe vs the v0.1.7 asset (vcs.revision=f17253b9, version v0.1.7): on a board with an unparseable JSONL line, v0.1.7 `list` aborts (exit 1, 'not valid JSON'), while v0.1.8 `list --skip-bad-lines` degrades with evidence ('SKIPPED-LINES: 1 line(s) could not be parsed and were skipped', exit 1) \u2014 DF-BOARDCTL-9; and on a row with priority P9, v0.1.7 `validate` emits no priority warning while v0.1.8 warns 'priority \"P9\" is not in vocabulary {P0,P1,P2,P3}' \u2014 BT-048. CI: `gh run list --workflow multiarch.yml` shows run 35829487898 on tag v0.1.8 = completed/success; `gh run view 35829487898` shows all jobs green including 'multiarch / Release' (\u2713).\nAll v0.1.8 release sub-claims verified: README pins, tag==origin/main, sha256+vcs.revision+vcs.modified=false, version output, behavior probe vs v0.1.7, and green Multi-Arch CI run.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README pins moved to v0.1.8; tag v0.1.8 pushed from the origin/main tip; published v0.1.8 asset sha256-verified with vcs.revision == tag commit == origin/main and vcs.modified=false; asset 'version' prints v0.1.8; behavior probe proves a shipped fix vs the v0.1.7 asset; CI Multi-Arch release run green",
+                "status": "PASS",
+                "detail": "README pins: README.md:17 'Current release: **v0.1.8**', README.md:20-21 download URLs point at /releases/download/v0.1.8/, README.md:69,73 version examples; `grep -n v0.1.7 README.md` returns nothing (no stale pins). Tag: `git rev-parse v0.1.8` = a3328d799947ba104a4481a3e75e370aaebc3ba1 == `git rev-parse origin/main` == HEAD (tag pushed from origin/main tip). Asset: `gh release download v0.1.8` boardctl_linux_amd64 sha256 = 5d422d6ab37d13032f49fa7e4dccb01cdb6b4480c6b56403f6fe529f87e49b6d, matching the published SHA256SUMS line for boardctl_linux_amd64. `go version -m boardctl_linux_amd64` shows vcs.revision=a3328d799947ba104a4481a3e75e370aaebc3ba1 (== tag commit == origin/main) and vcs.modified=false. `./boardctl_linux_amd64 version` prints 'boardctl version v0.1.8' and `version --json` prints {\"version\":\"v0.1.8\",\"build\":\"v0.1.8\"}. Behavior probe vs the v0.1.7 asset (vcs.revision=f17253b9, version v0.1.7): on a board with an unparseable JSONL line, v0.1.7 `list` aborts (exit 1, 'not valid JSON'), while v0.1.8 `list --skip-bad-lines` degrades with evidence ('SKIPPED-LINES: 1 line(s) could not be parsed and were skipped', exit 1) \u2014 DF-BOARDCTL-9; and on a row with priority P9, v0.1.7 `validate` emits no priority warning while v0.1.8 warns 'priority \"P9\" is not in vocabulary {P0,P1,P2,P3}' \u2014 BT-048. CI: `gh run list --workflow multiarch.yml` shows run 35829487898 on tag v0.1.8 = completed/success; `gh run view 35829487898` shows all jobs green including 'multiarch / Release' (\u2713)."
+              }
+            ],
+            "summary": "All v0.1.8 release sub-claims verified: README pins, tag==origin/main, sha256+vcs.revision+vcs.modified=false, version output, behavior probe vs v0.1.7, and green Multi-Arch CI run."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-051\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.603s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README pins moved to v0.1.8; tag v0.1.8 pushed from the origin/main tip; published v0.1.8 asset sha256-verified with vcs.revision == tag commit == origin/main and vcs.modified=false; asset 'version' prints v0.1.8; behavior probe proves a shipped fix vs the v0.1.7 asset; CI Multi-Arch release run green: README pins: README.md:17 'Current release: **v0.1.8**', README.md:20-21 download URLs point at /releases/download/v0.1.8/, README.md:69,73 version examples; `grep -n v0.1.7 README.md` returns nothing (no stale pins). Tag: `git rev-parse v0.1.8` = a3328d799947ba104a4481a3e75e370aaebc3ba1 == `git rev-parse origin/main` == HEAD (tag pushed from origin/main tip). Asset: `gh release download v0.1.8` boardctl_linux_amd64 sha256 = 5d422d6ab37d13032f49fa7e4dccb01cdb6b4480c6b56403f6fe529f87e49b6d, matching the published SHA256SUMS line for boardctl_linux_amd64. `go version -m boardctl_linux_amd64` shows vcs.revision=a3328d799947ba104a4481a3e75e370aaebc3ba1 (== tag commit == origin/main) and vcs.modified=false. `./boardctl_linux_amd64 version` prints 'boardctl version v0.1.8' and `version --json` prints {\"version\":\"v0.1.8\",\"build\":\"v0.1.8\"}. Behavior probe vs the v0.1.7 asset (vcs.revision=f17253b9, version v0.1.7): on a board with an unparseable JSONL line, v0.1.7 `list` aborts (exit 1, 'not valid JSON'), while v0.1.8 `list --skip-bad-lines` degrades with evidence ('SKIPPED-LINES: 1 line(s) could not be parsed and were skipped', exit 1) \u2014 DF-BOARDCTL-9; and on a row with priority P9, v0.1.7 `validate` emits no priority warning while v0.1.8 warns 'priority \"P9\" is not in vocabulary {P0,P1,P2,P3}' \u2014 BT-048. CI: `gh run list --workflow multiarch.yml` shows run 35829487898 on tag v0.1.8 = completed/success; `gh run view 35829487898` shows all jobs green including 'multiarch / Release' (\u2713).\nAll v0.1.8 release sub-claims verified: README pins, tag==origin/main, sha256+vcs.revision+vcs.modified=false, version output, behavior probe vs v0.1.7, and green Multi-Arch CI run.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-23T07:07:29.689868",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-23T07:07:29.702985+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 5665,
+        "truncated": false,
+        "source": "git show a3328d799947"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 8181,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-051"
+  }
+}
