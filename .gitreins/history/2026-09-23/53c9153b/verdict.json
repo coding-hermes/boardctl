@@ -1,0 +1,93 @@
+{
+  "task_id": "BT-054",
+  "task_title": "boardctl install: board-lint pre-commit hook",
+  "task_criteria": [
+    "boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt)"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "c74a76a5215f2b338acd757ebec2f0b14ba72101",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.648s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n6:09AM INF scanned ~1481353 bytes (1.48 MB) in 486ms\n6:09AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 118 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T102918.465581Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.648s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.126s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.067s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T102918.465581Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt): install.go cmdInstall writes <root>/.git/hooks/pre-commit mode 0755; -C repo supported via repoRootFor (walks up to .git). Hook calls `boardctl validate -C <root> --fail-on dangling-dep`. E2E verified with real git in /tmp/bt054git: duplicate-id board -> `git commit` exit 1 (no commit created); dangling ref -> hook exit 1; clean board -> commit exit 0. Chaining: existing body wrapped in subshell, board-lint epilogue AFTER it (install.go boardLintChainWrap); verified existing exit 7 propagates (exit 7), existing exit 0 early + bad board still rejects (exit 1), EXISTING_RAN printed before lint. Timeout: `timeout \"$boardctl_timeout\"` default 30 (boardLintDefaultTTL=30); exit 124 -> skip exit 0, verified with slow fake binary -> exit 0. Idempotent: two re-installs leave exactly 1 marker block, 1 existing body, 1 epilogue (generateHookContent replaces in place). Tests: 12 BT054 tests pass (unit: generateHookContent/boardLintHookBody; CLI: run() install/validate) \u2014 `go test -count=1 -run BT054 -v ./cmd/boardctl/` all PASS. Gates: `go build ./...` exit 0, `go vet ./...` exit 0, `gofmt -l .` empty, `go test -count=1 ./...` all ok (cmd/boardctl ok, internal/* ok). LSP diagnostics empty.\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt): install.go cmdInstall writes <root>/.git/hooks/pre-commit mode 0755; -C repo supported via repoRootFor (walks up to .git). Hook calls `boardctl validate -C <root> --fail-on dangling-dep`. E2E verified with real git in /tmp/bt054git: duplicate-id board -> `git commit` exit 1 (no commit created); dangling ref -> hook exit 1; clean board -> commit exit 0. Chaining: existing body wrapped in subshell, board-lint epilogue AFTER it (install.go boardLintChainWrap); verified existing exit 7 propagates (exit 7), existing exit 0 early + bad board still rejects (exit 1), EXISTING_RAN printed before lint. Timeout: `timeout \"$boardctl_timeout\"` default 30 (boardLintDefaultTTL=30); exit 124 -> skip exit 0, verified with slow fake binary -> exit 0. Idempotent: two re-installs leave exactly 1 marker block, 1 existing body, 1 epilogue (generateHookContent replaces in place). Tests: 12 BT054 tests pass (unit: generateHookContent/boardLintHookBody; CLI: run() install/validate) \u2014 `go test -count=1 -run BT054 -v ./cmd/boardctl/` all PASS. Gates: `go build ./...` exit 0, `go vet ./...` exit 0, `gofmt -l .` empty, `go test -count=1 ./...` all ok (cmd/boardctl ok, internal/* ok). LSP diagnostics empty.\n",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt)",
+                "status": "PASS",
+                "detail": "install.go cmdInstall writes <root>/.git/hooks/pre-commit mode 0755; -C repo supported via repoRootFor (walks up to .git). Hook calls `boardctl validate -C <root> --fail-on dangling-dep`. E2E verified with real git in /tmp/bt054git: duplicate-id board -> `git commit` exit 1 (no commit created); dangling ref -> hook exit 1; clean board -> commit exit 0. Chaining: existing body wrapped in subshell, board-lint epilogue AFTER it (install.go boardLintChainWrap); verified existing exit 7 propagates (exit 7), existing exit 0 early + bad board still rejects (exit 1), EXISTING_RAN printed before lint. Timeout: `timeout \"$boardctl_timeout\"` default 30 (boardLintDefaultTTL=30); exit 124 -> skip exit 0, verified with slow fake binary -> exit 0. Idempotent: two re-installs leave exactly 1 marker block, 1 existing body, 1 epilogue (generateHookContent replaces in place). Tests: 12 BT054 tests pass (unit: generateHookContent/boardLintHookBody; CLI: run() install/validate) \u2014 `go test -count=1 -run BT054 -v ./cmd/boardctl/` all PASS. Gates: `go build ./...` exit 0, `go vet ./...` exit 0, `gofmt -l .` empty, `go test -count=1 ./...` all ok (cmd/boardctl ok, internal/* ok). LSP diagnostics empty."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-054\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.648s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt): install.go cmdInstall writes <root>/.git/hooks/pre-commit mode 0755; -C repo supported via repoRootFor (walks up to .git). Hook calls `boardctl validate -C <root> --fail-on dangling-dep`. E2E verified with real git in /tmp/bt054git: duplicate-id board -> `git commit` exit 1 (no commit created); dangling ref -> hook exit 1; clean board -> commit exit 0. Chaining: existing body wrapped in subshell, board-lint epilogue AFTER it (install.go boardLintChainWrap); verified existing exit 7 propagates (exit 7), existing exit 0 early + bad board still rejects (exit 1), EXISTING_RAN printed before lint. Timeout: `timeout \"$boardctl_timeout\"` default 30 (boardLintDefaultTTL=30); exit 124 -> skip exit 0, verified with slow fake binary -> exit 0. Idempotent: two re-installs leave exactly 1 marker block, 1 existing body, 1 epilogue (generateHookContent replaces in place). Tests: 12 BT054 tests pass (unit: generateHookContent/boardLintHookBody; CLI: run() install/validate) \u2014 `go test -count=1 -run BT054 -v ./cmd/boardctl/` all PASS. Gates: `go build ./...` exit 0, `go vet ./...` exit 0, `gofmt -l .` empty, `go test -count=1 ./...` all ok (cmd/boardctl ok, internal/* ok). LSP diagnostics empty.\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-23T11:11:27.384921",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-23T11:11:27.452018+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 741,
+        "truncated": false,
+        "source": "git show c74a76a5215f"
+      }
+    ],
+    "task_id": "BT-054"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-11",
+  "task_title": "README fingerprint section: --evidence-run-id is create-only",
+  "task_criteria": [
+    "README.md fingerprint section (~lines 276-290) says to evidence an existing row with --evidence-run-id without saying the flag exists only on CREATE (update rejects it: 'flag provided but not defined'), and never names the exit-2-vs-exit-1 distinction it implies. Fix the README text: state the flag is create-only, that evidence lands via boardctl update on an existing row, and spell out exit 2 = duplicate-suppressed re-detection vs exit 1 = plain failure. Add a README-consistency test if the repo has one; gates green (gofmt irrelevant but build/test must pass)."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "9baf632f7e636fd9d6ae2b0d96ae0ff7dac2bd2a",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.633s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n5:33AM INF scanned ~1457198 bytes (1.46 MB) in 379ms\n5:33AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 114 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T102918.465581Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.633s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.142s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.054s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T102918.465581Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README.md fingerprint section (~lines 276-290) says to evidence an existing row with --evidence-run-id without saying the flag exists only on CREATE (update rejects it: 'flag provided but not defined'), and never names the exit-2-vs-exit-1 distinction it implies. Fix the README text: state the flag is create-only, that evidence lands via boardctl update on an existing row, and spell out exit 2 = duplicate-suppressed re-detection vs exit 1 = plain failure. Add a README-consistency test if the repo has one; gates green (gofmt irrelevant but build/test must pass).: README.md:296-300 now states 'Evidence the EXISTING row with `boardctl update <id>` \u2014 carry the run id in `--summary` or `--note`; `update` does not accept `--evidence-run-id`. That flag exists ONLY on `create`'. README.md:283-291 adds the exit-code table: 'exit 1 plain failure (validation, duplicate task id, runtime errors)' and 'exit 2 duplicate-suppressed re-detection: DUPLICATE-SUPPRESSED on stderr plus a task_evidence event on the existing row'. Verified against code: cmd/boardctl/main.go:526 defines --evidence-run-id only in cmdCreate; cmdUpdate (main.go:597-599) valueFlags list omits it; main.go:160-163 maps ErrDuplicateFinding->exit 2, main.go:152-155 ErrDuplicateTaskID->exit 1, main.go:166 fallback->exit 1. E2E with built binary: `update QA-X-1 --evidence-run-id qa-1` => 'flag provided but not defined: -evidence-run-id' exit 1; duplicate create => 'DUPLICATE-SUPPRESSED: QA-X-1 matches fingerprint ...' exit 2; `update QA-X-1 --summary ...` => exit 0. docs/board-fingerprint-rules.md:80-86 also updated to say create-only. Gates: `go build ./...` exit 0; `go test -count=1 ./...` exit 0 (ok cmd/boardctl, internal/board, internal/fmtcheck, internal/render, internal/versioncheck, internal/vulncheck). Repo has README-consistency tests (internal/versioncheck for release tags, internal/vulncheck for `make vuln-check`) but none covering the fingerprint section, so there was no existing fingerprint-section consistency test to extend; the conditional 'if the repo has one' is satisfied.\nREADME fingerprint section now correctly documents --evidence-run-id as create-only, evidence via boardctl update on existing rows, and the exit-2-vs-exit-1 distinction, all verified against code and passing build/tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README.md fingerprint section (~lines 276-290) says to evidence an existing row with --evidence-run-id without saying the flag exists only on CREATE (update rejects it: 'flag provided but not defined'), and never names the exit-2-vs-exit-1 distinction it implies. Fix the README text: state the flag is create-only, that evidence lands via boardctl update on an existing row, and spell out exit 2 = duplicate-suppressed re-detection vs exit 1 = plain failure. Add a README-consistency test if the repo has one; gates green (gofmt irrelevant but build/test must pass).: README.md:296-300 now states 'Evidence the EXISTING row with `boardctl update <id>` \u2014 carry the run id in `--summary` or `--note`; `update` does not accept `--evidence-run-id`. That flag exists ONLY on `create`'. README.md:283-291 adds the exit-code table: 'exit 1 plain failure (validation, duplicate task id, runtime errors)' and 'exit 2 duplicate-suppressed re-detection: DUPLICATE-SUPPRESSED on stderr plus a task_evidence event on the existing row'. Verified against code: cmd/boardctl/main.go:526 defines --evidence-run-id only in cmdCreate; cmdUpdate (main.go:597-599) valueFlags list omits it; main.go:160-163 maps ErrDuplicateFinding->exit 2, main.go:152-155 ErrDuplicateTaskID->exit 1, main.go:166 fallback->exit 1. E2E with built binary: `update QA-X-1 --evidence-run-id qa-1` => 'flag provided but not defined: -evidence-run-id' exit 1; duplicate create => 'DUPLICATE-SUPPRESSED: QA-X-1 matches fingerprint ...' exit 2; `update QA-X-1 --summary ...` => exit 0. docs/board-fingerprint-rules.md:80-86 also updated to say create-only. Gates: `go build ./...` exit 0; `go test -count=1 ./...` exit 0 (ok cmd/boardctl, internal/board, internal/fmtcheck, internal/render, internal/versioncheck, internal/vulncheck). Repo has README-consistency tests (internal/versioncheck for release tags, internal/vulncheck for `make vuln-check`) but none covering the fingerprint section, so there was no existing fingerprint-section consistency test to extend; the conditional 'if the repo has one' is satisfied.\nREADME fingerprint section now correctly documents --evidence-run-id as create-only, evidence via boardctl update on existing rows, and the exit-2-vs-exit-1 distinction, all verified against code and passing build/tests.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README.md fingerprint section (~lines 276-290) says to evidence an existing row with --evidence-run-id without saying the flag exists only on CREATE (update rejects it: 'flag provided but not defined'), and never names the exit-2-vs-exit-1 distinction it implies. Fix the README text: state the flag is create-only, that evidence lands via boardctl update on an existing row, and spell out exit 2 = duplicate-suppressed re-detection vs exit 1 = plain failure. Add a README-consistency test if the repo has one; gates green (gofmt irrelevant but build/test must pass).",
+                "status": "PASS",
+                "detail": "README.md:296-300 now states 'Evidence the EXISTING row with `boardctl update <id>` \u2014 carry the run id in `--summary` or `--note`; `update` does not accept `--evidence-run-id`. That flag exists ONLY on `create`'. README.md:283-291 adds the exit-code table: 'exit 1 plain failure (validation, duplicate task id, runtime errors)' and 'exit 2 duplicate-suppressed re-detection: DUPLICATE-SUPPRESSED on stderr plus a task_evidence event on the existing row'. Verified against code: cmd/boardctl/main.go:526 defines --evidence-run-id only in cmdCreate; cmdUpdate (main.go:597-599) valueFlags list omits it; main.go:160-163 maps ErrDuplicateFinding->exit 2, main.go:152-155 ErrDuplicateTaskID->exit 1, main.go:166 fallback->exit 1. E2E with built binary: `update QA-X-1 --evidence-run-id qa-1` => 'flag provided but not defined: -evidence-run-id' exit 1; duplicate create => 'DUPLICATE-SUPPRESSED: QA-X-1 matches fingerprint ...' exit 2; `update QA-X-1 --summary ...` => exit 0. docs/board-fingerprint-rules.md:80-86 also updated to say create-only. Gates: `go build ./...` exit 0; `go test -count=1 ./...` exit 0 (ok cmd/boardctl, internal/board, internal/fmtcheck, internal/render, internal/versioncheck, internal/vulncheck). Repo has README-consistency tests (internal/versioncheck for release tags, internal/vulncheck for `make vuln-check`) but none covering the fingerprint section, so there was no existing fingerprint-section consistency test to extend; the conditional 'if the repo has one' is satisfied."
+              }
+            ],
+            "summary": "README fingerprint section now correctly documents --evidence-run-id as create-only, evidence via boardctl update on existing rows, and the exit-2-vs-exit-1 distinction, all verified against code and passing build/tests."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-11\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.633s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README.md fingerprint section (~lines 276-290) says to evidence an existing row with --evidence-run-id without saying the flag exists only on CREATE (update rejects it: 'flag provided but not defined'), and never names the exit-2-vs-exit-1 distinction it implies. Fix the README text: state the flag is create-only, that evidence lands via boardctl update on an existing row, and spell out exit 2 = duplicate-suppressed re-detection vs exit 1 = plain failure. Add a README-consistency test if the repo has one; gates green (gofmt irrelevant but build/test must pass).: README.md:296-300 now states 'Evidence the EXISTING row with `boardctl update <id>` \u2014 carry the run id in `--summary` or `--note`; `update` does not accept `--evidence-run-id`. That flag exists ONLY on `create`'. README.md:283-291 adds the exit-code table: 'exit 1 plain failure (validation, duplicate task id, runtime errors)' and 'exit 2 duplicate-suppressed re-detection: DUPLICATE-SUPPRESSED on stderr plus a task_evidence event on the existing row'. Verified against code: cmd/boardctl/main.go:526 defines --evidence-run-id only in cmdCreate; cmdUpdate (main.go:597-599) valueFlags list omits it; main.go:160-163 maps ErrDuplicateFinding->exit 2, main.go:152-155 ErrDuplicateTaskID->exit 1, main.go:166 fallback->exit 1. E2E with built binary: `update QA-X-1 --evidence-run-id qa-1` => 'flag provided but not defined: -evidence-run-id' exit 1; duplicate create => 'DUPLICATE-SUPPRESSED: QA-X-1 matches fingerprint ...' exit 2; `update QA-X-1 --summary ...` => exit 0. docs/board-fingerprint-rules.md:80-86 also updated to say create-only. Gates: `go build ./...` exit 0; `go test -count=1 ./...` exit 0 (ok cmd/boardctl, internal/board, internal/fmtcheck, internal/render, internal/versioncheck, internal/vulncheck). Repo has README-consistency tests (internal/versioncheck for release tags, internal/vulncheck for `make vuln-check`) but none covering the fingerprint section, so there was no existing fingerprint-section consistency test to extend; the conditional 'if the repo has one' is satisfied.\nREADME fingerprint section now correctly documents --evidence-run-id as create-only, evidence via boardctl update on existing rows, and the exit-2-vs-exit-1 distinction, all verified against code and passing build/tests.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-23T10:34:19.470893",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-23T10:34:19.485667+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 568,
+        "truncated": false,
+        "source": "git show 9baf632f7e63"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-11"
+  }
+}

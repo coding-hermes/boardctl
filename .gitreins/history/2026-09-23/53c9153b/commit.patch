@@ -1,0 +1,16 @@
+commit c74a76a5215f2b338acd757ebec2f0b14ba72101
+Merge: 9baf632 4a40798
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Wed Sep 23 06:09:38 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Wed Sep 23 06:09:38 2026 -0500
+
+    merge: BT-054 remediation — hook chaining order + dangling-dep rejection
+
+ cmd/boardctl/bt054_install_test.go | 165 ++++++++++++++++++++++++++++++++---
+ cmd/boardctl/df_boardctl_9_test.go |   2 +-
+ cmd/boardctl/install.go            | 172 ++++++++++++++++++++++++++++---------
+ cmd/boardctl/main.go               |  34 +++++++-
+ internal/board/validate.go         |  19 ++++
+ 5 files changed, 338 insertions(+), 54 deletions(-)
+

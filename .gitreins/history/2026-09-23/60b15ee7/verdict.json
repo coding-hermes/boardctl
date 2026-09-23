@@ -1,0 +1,93 @@
+{
+  "task_id": "BT-054",
+  "task_title": "boardctl install: board-lint pre-commit hook",
+  "task_criteria": [
+    "boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt)"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "9baf632f7e636fd9d6ae2b0d96ae0ff7dac2bd2a",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.700s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n5:29AM INF scanned ~1457198 bytes (1.46 MB) in 381ms\n5:29AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 114 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T102918.465581Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.700s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.123s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.058s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.020s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.553s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T102918.465581Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt): PARTIAL. PASSING parts: (a) hook written \u2014 cmd/boardctl/install.go:78-90 writes <root>/.git/hooks/pre-commit mode 0755, dispatched at main.go:134, usage main.go:57-58; (b) duplicate id rejected \u2014 live E2E: appended a duplicate tasks.jsonl row, `git commit` exit 1 with 'board-lint: commit rejected (boardctl validate failed)' + validate diagnostics, nothing landed; (c) 30s timeout SKIPS \u2014 boardLintDefaultTTL=30 (install.go:35), hook wraps validate in `timeout \"$boardctl_timeout\"`; live E2E with --timeout 2 and a slow fake boardctl: commit exit 0 in 2s with 'board-lint: skipped (timeout)' on stderr; (d) idempotent \u2014 live E2E 3 installs left exactly 1 marker block and 1 copy of the pre-existing hook body; (e) gates green \u2014 `go build ./...` exit 0, `go vet ./...` exit 0, `gofmt -l .` empty, `go test -count=1 ./...` exit 0 (all packages ok), `make fmt-check` exit 0. FAILING parts: (1) DANGLING REF IS NOT REJECTED \u2014 internal/board/validate.go:229-236 adds dangling depends_on as a WARN ('BT-007 ... itemized warnings'), so `boardctl validate` exits 0; live E2E with a task whose depends_on=['NO-SUCH-ID'] produced 'RESULT: OK (1 warning(s))' and `git commit` exit 0 with the commit landing. install.go:155's own comment claims the hook rejects 'dangling depends_on', which is false. (2) CHAINING ORDER IS INVERTED \u2014 generateHookContent (install.go:196-206) inserts the marked block immediately AFTER the shebang, i.e. board-lint runs BEFORE the existing hook, not after it as the criterion requires; live E2E with a pre-existing stub hook and a bad board: commit exit 1 and the existing hook's marker file was never written (existing logic did not run). (3) NO CLI E2E TEST \u2014 cmd/boardctl/bt054_install_test.go contains 8 tests but imports no os/exec and spawns no git subprocess; it only asserts on generated hook strings and file writes (grep for 'hook|pre-commit' across all *_test.go returns matches only in bt054_install_test.go, and none run a real commit). The commit message claims 'E2E (all live against a temp git repo)' but no such test exists in the tree. Unit tests do pass: `go test -count=1 -run BT054 -v ./cmd/boardctl/` => 8/8 PASS.\nHook install, duplicate-id rejection, 30s timeout-skip, idempotency and all gates pass, but dangling refs are only warned (not rejected), the chained block runs BEFORE the existing hook rather than after it, and no CLI E2E test exists \u2014 only unit tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt): PARTIAL. PASSING parts: (a) hook written \u2014 cmd/boardctl/install.go:78-90 writes <root>/.git/hooks/pre-commit mode 0755, dispatched at main.go:134, usage main.go:57-58; (b) duplicate id rejected \u2014 live E2E: appended a duplicate tasks.jsonl row, `git commit` exit 1 with 'board-lint: commit rejected (boardctl validate failed)' + validate diagnostics, nothing landed; (c) 30s timeout SKIPS \u2014 boardLintDefaultTTL=30 (install.go:35), hook wraps validate in `timeout \"$boardctl_timeout\"`; live E2E with --timeout 2 and a slow fake boardctl: commit exit 0 in 2s with 'board-lint: skipped (timeout)' on stderr; (d) idempotent \u2014 live E2E 3 installs left exactly 1 marker block and 1 copy of the pre-existing hook body; (e) gates green \u2014 `go build ./...` exit 0, `go vet ./...` exit 0, `gofmt -l .` empty, `go test -count=1 ./...` exit 0 (all packages ok), `make fmt-check` exit 0. FAILING parts: (1) DANGLING REF IS NOT REJECTED \u2014 internal/board/validate.go:229-236 adds dangling depends_on as a WARN ('BT-007 ... itemized warnings'), so `boardctl validate` exits 0; live E2E with a task whose depends_on=['NO-SUCH-ID'] produced 'RESULT: OK (1 warning(s))' and `git commit` exit 0 with the commit landing. install.go:155's own comment claims the hook rejects 'dangling depends_on', which is false. (2) CHAINING ORDER IS INVERTED \u2014 generateHookContent (install.go:196-206) inserts the marked block immediately AFTER the shebang, i.e. board-lint runs BEFORE the existing hook, not after it as the criterion requires; live E2E with a pre-existing stub hook and a bad board: commit exit 1 and the existing hook's marker file was never written (existing logic did not run). (3) NO CLI E2E TEST \u2014 cmd/boardctl/bt054_install_test.go contains 8 tests but imports no os/exec and spawns no git subprocess; it only asserts on generated hook strings and file writes (grep for 'hook|pre-commit' across all *_test.go returns matches only in bt054_install_test.go, and none run a real commit). The commit message claims 'E2E (all live against a temp git repo)' but no such test exists in the tree. Unit tests do pass: `go test -count=1 -run BT054 -v ./cmd/boardctl/` => 8/8 PASS.\nHook install, duplicate-id rejection, 30s timeout-skip, idempotency and all gates pass, but dangling refs are only warned (not rejected), the chained block runs BEFORE the existing hook rather than after it, and no CLI E2E test exists \u2014 only unit tests.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt)",
+                "status": "FAIL",
+                "detail": "PARTIAL. PASSING parts: (a) hook written \u2014 cmd/boardctl/install.go:78-90 writes <root>/.git/hooks/pre-commit mode 0755, dispatched at main.go:134, usage main.go:57-58; (b) duplicate id rejected \u2014 live E2E: appended a duplicate tasks.jsonl row, `git commit` exit 1 with 'board-lint: commit rejected (boardctl validate failed)' + validate diagnostics, nothing landed; (c) 30s timeout SKIPS \u2014 boardLintDefaultTTL=30 (install.go:35), hook wraps validate in `timeout \"$boardctl_timeout\"`; live E2E with --timeout 2 and a slow fake boardctl: commit exit 0 in 2s with 'board-lint: skipped (timeout)' on stderr; (d) idempotent \u2014 live E2E 3 installs left exactly 1 marker block and 1 copy of the pre-existing hook body; (e) gates green \u2014 `go build ./...` exit 0, `go vet ./...` exit 0, `gofmt -l .` empty, `go test -count=1 ./...` exit 0 (all packages ok), `make fmt-check` exit 0. FAILING parts: (1) DANGLING REF IS NOT REJECTED \u2014 internal/board/validate.go:229-236 adds dangling depends_on as a WARN ('BT-007 ... itemized warnings'), so `boardctl validate` exits 0; live E2E with a task whose depends_on=['NO-SUCH-ID'] produced 'RESULT: OK (1 warning(s))' and `git commit` exit 0 with the commit landing. install.go:155's own comment claims the hook rejects 'dangling depends_on', which is false. (2) CHAINING ORDER IS INVERTED \u2014 generateHookContent (install.go:196-206) inserts the marked block immediately AFTER the shebang, i.e. board-lint runs BEFORE the existing hook, not after it as the criterion requires; live E2E with a pre-existing stub hook and a bad board: commit exit 1 and the existing hook's marker file was never written (existing logic did not run). (3) NO CLI E2E TEST \u2014 cmd/boardctl/bt054_install_test.go contains 8 tests but imports no os/exec and spawns no git subprocess; it only asserts on generated hook strings and file writes (grep for 'hook|pre-commit' across all *_test.go returns matches only in bt054_install_test.go, and none run a real commit). The commit message claims 'E2E (all live against a temp git repo)' but no such test exists in the tree. Unit tests do pass: `go test -count=1 -run BT054 -v ./cmd/boardctl/` => 8/8 PASS."
+              }
+            ],
+            "summary": "Hook install, duplicate-id rejection, 30s timeout-skip, idempotency and all gates pass, but dangling refs are only warned (not rejected), the chained block runs BEFORE the existing hook rather than after it, and no CLI E2E test exists \u2014 only unit tests."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-054\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.700s\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 boardctl install [-C repo] writes a .git/hooks/pre-commit board-lint hook that rejects a bad board (duplicate id / dangling ref) with a nonzero exit, chains with an existing hook (runs after it), is bounded by a 30s timeout that SKIPS instead of blocking, is idempotent (re-install updates without duplicating), adds CLI E2E + unit tests, and gates green (build/vet/test/gofmt): PARTIAL. PASSING parts: (a) hook written \u2014 cmd/boardctl/install.go:78-90 writes <root>/.git/hooks/pre-commit mode 0755, dispatched at main.go:134, usage main.go:57-58; (b) duplicate id rejected \u2014 live E2E: appended a duplicate tasks.jsonl row, `git commit` exit 1 with 'board-lint: commit rejected (boardctl validate failed)' + validate diagnostics, nothing landed; (c) 30s timeout SKIPS \u2014 boardLintDefaultTTL=30 (install.go:35), hook wraps validate in `timeout \"$boardctl_timeout\"`; live E2E with --timeout 2 and a slow fake boardctl: commit exit 0 in 2s with 'board-lint: skipped (timeout)' on stderr; (d) idempotent \u2014 live E2E 3 installs left exactly 1 marker block and 1 copy of the pre-existing hook body; (e) gates green \u2014 `go build ./...` exit 0, `go vet ./...` exit 0, `gofmt -l .` empty, `go test -count=1 ./...` exit 0 (all packages ok), `make fmt-check` exit 0. FAILING parts: (1) DANGLING REF IS NOT REJECTED \u2014 internal/board/validate.go:229-236 adds dangling depends_on as a WARN ('BT-007 ... itemized warnings'), so `boardctl validate` exits 0; live E2E with a task whose depends_on=['NO-SUCH-ID'] produced 'RESULT: OK (1 warning(s))' and `git commit` exit 0 with the commit landing. install.go:155's own comment claims the hook rejects 'dangling depends_on', which is false. (2) CHAINING ORDER IS INVERTED \u2014 generateHookContent (install.go:196-206) inserts the marked block immediately AFTER the shebang, i.e. board-lint runs BEFORE the existing hook, not after it as the criterion requires; live E2E with a pre-existing stub hook and a bad board: commit exit 1 and the existing hook's marker file was never written (existing logic did not run). (3) NO CLI E2E TEST \u2014 cmd/boardctl/bt054_install_test.go contains 8 tests but imports no os/exec and spawns no git subprocess; it only asserts on generated hook strings and file writes (grep for 'hook|pre-commit' across all *_test.go returns matches only in bt054_install_test.go, and none run a real commit). The commit message claims 'E2E (all live against a temp git repo)' but no such test exists in the tree. Unit tests do pass: `go test -count=1 -run BT054 -v ./cmd/boardctl/` => 8/8 PASS.\nHook install, duplicate-id rejection, 30s timeout-skip, idempotency and all gates pass, but dangling refs are only warned (not rejected), the chained block runs BEFORE the existing hook rather than after it, and no CLI E2E test exists \u2014 only unit tests.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-09-23T10:31:03.549475",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-23T10:31:03.560371+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 568,
+        "truncated": false,
+        "source": "git show 9baf632f7e63"
+      }
+    ],
+    "task_id": "BT-054"
+  }
+}

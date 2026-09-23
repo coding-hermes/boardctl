@@ -1,0 +1,12 @@
+commit 9baf632f7e636fd9d6ae2b0d96ae0ff7dac2bd2a
+Merge: a10021a f2b997e
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Wed Sep 23 05:27:27 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Wed Sep 23 05:27:27 2026 -0500
+
+    merge: DF-BOARDCTL-11 README fingerprint section — evidence-run-id create-only (wave worker)
+
+ README.md                       | 27 +++++++++++++++++++++++----
+ docs/board-fingerprint-rules.md |  6 ++++--
+ 2 files changed, 27 insertions(+), 6 deletions(-)
