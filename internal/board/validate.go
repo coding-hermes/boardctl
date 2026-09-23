@@ -145,6 +145,26 @@ func (b *Board) validateTasks(rep *Report) {
 					idx+1, id, c.key, v)
 			}
 		}
+		// BT-048: the priority column has a canonical on-disk vocabulary
+		// {P0,P1,P2,P3} (the write path normalizes bare digits and case
+		// variants, rejecting the rest, since BT-007), but hand-edited or
+		// legacy rows carry other spellings (28 live rows measured
+		// 2026-09-22: bare digits, P4, lowercase p2, prose). Unlike the
+		// guard/ci checks above, membership is tested on the RAW stored
+		// value with NO case/digit tolerance: those spellings are exactly
+		// the drift class this warning exists to catch. Empty/absent
+		// priority stays silent (no new missing-field class);
+		// NormalizePriority only names the canonical form when one exists.
+		p := row.String("priority")
+		if p != "" && !PriorityVocabulary[p] {
+			if canon := NormalizePriority(p); PriorityVocabulary[canon] {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3} — canonical form is %q (writes normalize bare 0-3 and case variants; hand-edit the row or rewrite via boardctl update)",
+					idx+1, id, p, canon)
+			} else {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3} (writes reject this value; hand-edit the row or rewrite via boardctl update)",
+					idx+1, id, p)
+			}
+		}
 		// BT-007: collect depends_on for the existence cross-check below.
 		for _, dep := range rowStringSlice(row, "depends_on") {
 			depends[dep] = append(depends[dep], depRef{line: idx + 1, id: id})
