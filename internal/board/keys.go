@@ -98,18 +98,31 @@ var SanctionedTaskRowKeys = func() []string {
 // `boardctl update <id> --normalize` applies them, and REFUSES (never guesses)
 // when the canonical key is already present on the row — that would mean
 // silently dropping one of two different values.
+//
+// THE TABLE IS HELD TO EVIDENCE, NOT TO PLAUSIBILITY. Every entry was checked
+// against real rows across 57 boards (2026-09-23), and four candidates were
+// REMOVED for merging different concepts rather than fixing a spelling:
+//   - `commit`: 6 rows carry it, TWO of them also carry `commit_hash` with a
+//     DIFFERENT value (commit="afffb64" vs commit_hash="9b4536e") — two
+//     different commits, not one misspelled. Renaming it would have rewritten
+//     "which commit" on a row that says two things.
+//   - `deps`: 7 rows, every value the EMPTY STRING, no `depends_on` anywhere —
+//     renaming would put a string where the canon expects a list of ids.
+//   - `review_otes`: 2 rows, and it is NOT a typo of `review_notes` — it holds
+//     captured cell output as prose while `review_notes` on the same rows holds
+//     provenance notes. Different kinds of content behind a similar name.
+//   - `review_notes_dupe`: a candidate that turned out to match NO row at all.
+//
+// They remain reported as drift. A misspelled key that names something the canon
+// has no field for needs a human decision, not a rename.
 var TaskKeyAliases = map[string]string{
-	"why":               "reasoning",
-	"acceptance":        "acceptance_criteria",
-	"pass_criteria":     "acceptance_criteria",
-	"_pass_criteria":    "acceptance_criteria",
-	"ac":                "acceptance_criteria",
-	"pri":               "priority",
-	"cpx":               "complexity",
-	"review_otes":       "review_notes", // BT-050 era typo
-	"deps":              "depends_on",
-	"commit":            "commit_hash",
-	"review_notes_dupe": "review_notes",
+	"why":            "reasoning",
+	"acceptance":     "acceptance_criteria",
+	"pass_criteria":  "acceptance_criteria",
+	"_pass_criteria": "acceptance_criteria", // 222 rows, 0 conflicts, values are pass conditions
+	"ac":             "acceptance_criteria",
+	"pri":            "priority",
+	"cpx":            "complexity",
 }
 
 var requiredTaskKeys = func() map[string]bool {
@@ -189,7 +202,13 @@ func (s *KeyDriftSummary) AddRow(row *Row) {
 	fixable := true
 	for _, k := range unknown {
 		s.Keys[k]++
-		if _, ok := CanonicalKeyFor(k); !ok {
+		target, ok := CanonicalKeyFor(k)
+		// Not an alias at all, OR the canonical key is already on the row —
+		// present even as `null` — in which case RenameKey REFUSES (two values,
+		// one slot) and the row needs an explicit update, not a rename. Both
+		// cases are excluded here so the summary never advertises a repair that
+		// will not happen.
+		if !ok || row.Has(target) {
 			fixable = false
 		}
 	}
@@ -199,10 +218,14 @@ func (s *KeyDriftSummary) AddRow(row *Row) {
 }
 
 // fixableByAlias reports whether every offending key has a declared canonical
-// spelling, i.e. the row's drift can be repaired mechanically by --normalize.
-func fixableByAlias(unknown []string) bool {
+// spelling that --normalize can actually apply: the key must be a known alias
+// AND its target must be ABSENT from the row. A target that is present — even as
+// `null` — means RenameKey would refuse (two values, one slot), so the row needs
+// an explicit update instead and must not be advertised as a mechanical repair.
+func fixableByAlias(row *Row, unknown []string) bool {
 	for _, k := range unknown {
-		if _, ok := CanonicalKeyFor(k); !ok {
+		target, ok := CanonicalKeyFor(k)
+		if !ok || row.Has(target) {
 			return false
 		}
 	}

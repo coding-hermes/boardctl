@@ -188,7 +188,7 @@ func (b *Board) validateTasks(rep *Report) {
 				who = "row"
 			}
 			fix := ""
-			if fixableByAlias(unknown) {
+			if fixableByAlias(row, unknown) {
 				fix = " — fixable with 'boardctl update " + id + " --normalize'"
 			}
 			rep.Add("warn", "tasks.jsonl line %d (%s): key(s) {%s} outside the declared canon%s",

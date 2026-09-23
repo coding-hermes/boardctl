@@ -101,7 +101,46 @@ func TestValidateReportsKeyDrift(t *testing.T) {
 	}
 }
 
-// RenameKey must move the key in place: same position, same value bytes.
+// An alias whose canonical target is ALREADY on the row is not a mechanical
+// repair: RenameKey refuses it (two values, one slot), so neither the census nor
+// the per-row finding may advertise --normalize. This was found by auditing the
+// alias table against 57 boards — the `pri` rows carry `priority: null` beside
+// them, so the "N fixable" count was over-reporting.
+func TestAliasWithPresentTargetIsNotAdvertisedAsFixable(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl": `{"id":"NULLPRI-1","title":"t","status":"pending","priority":null,"pri":"P0"}` + "\n" +
+			`{"id":"CLEANPRI-1","title":"t","status":"pending","pri":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := b.Validate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Keys.DriftRows() != 2 {
+		t.Fatalf("both rows carry a non-canon key; got %d drift rows (%+v)", rep.Keys.DriftRows(), rep.Keys)
+	}
+	// only the row WITHOUT the canonical key is mechanically repairable
+	if rep.Keys.Fixable != 1 {
+		t.Fatalf("expected exactly 1 fixable row (the one with no priority key), got %d", rep.Keys.Fixable)
+	}
+	if got := findWarn(rep, "NULLPRI-1"); strings.Contains(got, "--normalize") {
+		t.Fatalf("a row whose canonical key is already present must NOT advertise --normalize: %q", got)
+	}
+	if got := findWarn(rep, "CLEANPRI-1"); !strings.Contains(got, "--normalize") {
+		t.Fatalf("a repairable alias row SHOULD advertise --normalize: %q", got)
+	}
+	// and the repair genuinely refuses rather than half-applying
+	if _, err := b.NormalizeTask("NULLPRI-1", false); err == nil {
+		t.Fatalf("NormalizeTask must refuse to rename over an existing canonical key")
+	}
+}
+
 func TestRenameKeyPreservesPositionAndValue(t *testing.T) {
 	row, err := ParseRow([]byte(`{"id":"A-1","title":"t","why":"because","status":"pending","priority":"P2"}`))
 	if err != nil {
