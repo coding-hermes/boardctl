@@ -54,6 +54,8 @@ commands:
   render  [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]
   import  <export.json> [--dry-run] [--renumber]
   serve   [-C dir] [--addr 127.0.0.1:8787]
+  install [-C repo] [--hook-path P] [--timeout S] [--dry-run]
+          install the board-lint pre-commit hook
 
 --skip-bad-lines (list/show/stats/validate/render): read the board tolerantly,
 keeping every line that parses; unparseable lines are reported on stderr as a
@@ -129,6 +131,8 @@ func run(args []string) int {
 		err = cmdImport(boardDir, rest)
 	case "serve":
 		err = cmdServe(boardDir, rest)
+	case "install":
+		err = cmdInstall(boardDir, rest)
 	case "help", "-h", "--help":
 		fmt.Fprint(os.Stdout, usageText)
 		return 0
