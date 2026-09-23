@@ -1,0 +1,46 @@
+{
+  "tick": "boardctl-2026-09-23-04-57-53",
+  "project": "coding-hermes-boardctl",
+  "repo": "/home/kara/coding-hermes-boardctl",
+  "created_at": "2026-09-23T05:20:00-05:00",
+  "base": "origin/main",
+  "base_sha": "c973a57",
+  "budget": 8,
+  "strategy": "wave-serial-merge",
+  "workers": [
+    {
+      "task": "DF-BOARDCTL-8",
+      "title": "Burndown renders 2 of 20 points — template passes window as x-axis instead of per-day labels",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-8",
+      "branch": "wt/DF-BOARDCTL-8",
+      "brief": "/tmp/brief-boardctl-DF-BOARDCTL-8.md",
+      "files_touched": ["internal/render/derive.go", "internal/render/template.go"],
+      "status": "dispatched"
+    },
+    {
+      "task": "DF-BOARDCTL-9",
+      "title": "One spec-invalid JSONL line kills ALL reads — add --skip-bad-lines degrade-with-evidence mode + validate --repair",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-9",
+      "branch": "wt/DF-BOARDCTL-9",
+      "brief": "/tmp/brief-boardctl-DF-BOARDCTL-9.md",
+      "files_touched": ["internal/board/board.go", "internal/board/read.go", "cmd/boardctl/main.go", "internal/board/validate.go"],
+      "status": "dispatched"
+    },
+    {
+      "task": "BT-048",
+      "title": "validate: WARN on out-of-vocabulary priority values found on disk (bare digits, P4+, lowercase)",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-048",
+      "branch": "wt/BT-048",
+      "brief": "/tmp/brief-boardctl-BT-048.md",
+      "files_touched": ["internal/board/validate.go"],
+      "status": "dispatched"
+    }
+  ],
+  "deferred": [
+    {"task": "REVIEW-BOARDCTL-001", "reason": "overlaps BT-048 writer-side priority vocabulary work; next tick"},
+    {"task": "DF-BOARDCTL-10", "reason": "schema/ID-policy change, cross-board coordination; next tick"},
+    {"task": "DF-BOARDCTL-11", "reason": "P2 docs; next tick"},
+    {"task": "BT-041", "reason": "P2 CLI contract; next tick"},
+    {"task": "BT-042", "reason": "P2 install target/drift probe; next tick"}
+  ]
+}

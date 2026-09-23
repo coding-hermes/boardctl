@@ -199,3 +199,7 @@
 {"id":199,"timestamp":"2026-09-22 13:58:05","event_type":"task_created","task_id":"DF-BOARDCTL-9","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-9\",\"status\":\"pending\"}","tick_number":null}
 {"id":200,"timestamp":"2026-09-22 13:58:05","event_type":"task_created","task_id":"DF-BOARDCTL-10","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-10\",\"status\":\"pending\"}","tick_number":null}
 {"id":201,"timestamp":"2026-09-22 13:58:05","event_type":"task_created","task_id":"DF-BOARDCTL-11","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-11\",\"status\":\"pending\"}","tick_number":null}
+{"id":202,"timestamp":"2026-09-23 05:51:30","event_type":"task_completed","task_id":"DF-BOARDCTL-8","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":203,"timestamp":"2026-09-23 05:51:30","event_type":"task_completed","task_id":"BT-048","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":204,"timestamp":"2026-09-23 05:51:37","event_type":"task_completed","task_id":"DF-BOARDCTL-8","actor":"foreman","detail":"worker d4a2c1b merged 9b96380; verdict 7c3f0968 PASS; post-merge suite green","tick_number":90}
+{"id":205,"timestamp":"2026-09-23 05:51:37","event_type":"task_completed","task_id":"BT-048","actor":"foreman","detail":"worker 53a79cc merged c9bbc6c; verdict 3661508b PASS; internal/board green","tick_number":90}
