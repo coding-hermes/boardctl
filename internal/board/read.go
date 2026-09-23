@@ -201,10 +201,25 @@ func (f TaskFilter) Match(row *Row, fixtureIDs map[string]bool) bool {
 // TaskRows reads tasks.jsonl into parsed task rows, skipping the line-1
 // header row on topology B (the header is board metadata, not a task).
 // Topology A returns every row.
+//
+// DF-BOARDCTL-9: in SkipBad mode a line that fails to parse is recorded as
+// skipped-line evidence and the read continues; in the default mode the
+// first bad line aborts the read (status quo).
 func (b *Board) TaskRows() ([]*Row, error) {
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
 		return nil, err
+	}
+	if b.SkipBad {
+		var rows []*Row
+		b.iterParsedTolerant(lines, b.tasksPath, func(row *Row, idx int, _ []byte) error {
+			if b.skipTaskLine(lines, idx) {
+				return nil
+			}
+			rows = append(rows, row)
+			return nil
+		})
+		return rows, nil
 	}
 	var rows []*Row
 	err = IterParsed(lines, func(row *Row, idx int, _ []byte) error {
@@ -221,6 +236,11 @@ func (b *Board) TaskRows() ([]*Row, error) {
 }
 
 // ListTasks returns task rows (in file order) matching the filter.
+//
+// DF-BOARDCTL-9: in SkipBad mode the tasks.jsonl scan is tolerant (bad lines
+// ride the skipped-line evidence); fixtures.jsonl, which only contributes an
+// exclusion set, is read tolerantly in BOTH modes so one malformed fixture
+// row cannot hide task rows — it never aborts the listing.
 func (b *Board) ListTasks(f TaskFilter) ([]*Row, error) {
 	rows, err := b.TaskRows()
 	if err != nil {
@@ -241,6 +261,7 @@ func (b *Board) ListTasks(f TaskFilter) ([]*Row, error) {
 
 // ShowTask finds a task by parsed id. It searches tasks.jsonl first, then
 // fixtures.jsonl (a row may live in either). Returns nil, nil when absent.
+// DF-BOARDCTL-9: in SkipBad mode both scans run tolerantly.
 func (b *Board) ShowTask(id string) (row *Row, file string, err error) {
 	rows, err := b.TaskRows()
 	if err != nil {
@@ -252,7 +273,7 @@ func (b *Board) ShowTask(id string) (row *Row, file string, err error) {
 		}
 	}
 	if fp := b.FixturesPath(); fp != "" {
-		rows, _, err := ReadAllRows(fp)
+		rows, _, err := b.ReadAllRowsTolerant(fp)
 		if err != nil {
 			return nil, "", err
 		}
@@ -297,8 +318,15 @@ func (b *Board) OpenFingerprints() (map[string]string, error) {
 
 // EventsForTask returns events whose top-level task_id equals id, in file
 // order (detail is opaque; task_id matching is top-level only).
+// DF-BOARDCTL-9: in SkipBad mode the events scan is tolerant.
 func (b *Board) EventsForTask(id string) ([]*Row, error) {
-	rows, _, err := ReadAllRows(b.eventsPath)
+	var rows []*Row
+	var err error
+	if b.SkipBad {
+		rows, _, err = b.ReadAllRowsTolerant(b.eventsPath)
+	} else {
+		rows, _, err = ReadAllRows(b.eventsPath)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -320,6 +348,8 @@ type Stats struct {
 
 // ComputeStats tallies counts by status and by priority (string form; numeric
 // priorities like 1/2/3 appear as "1"/"2"/"3", distinct from "P1").
+// DF-BOARDCTL-9: in SkipBad mode the underlying reads are tolerant; bad lines
+// ride the skipped-line evidence instead of aborting the tally.
 func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
 	rows, err := b.TaskRows()
 	if err != nil {

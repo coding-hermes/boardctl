@@ -111,7 +111,15 @@ func (b *Board) doctorHeaderVsEvents(rep *Report) {
 		rep.Add("warn", "headerless board (no board.jsonl): no header counters to compare — header-vs-events tick drift checks skipped")
 		return
 	}
-	rows, _, err := ReadAllRows(b.eventsPath)
+	var rows []*Row
+	var err error
+	if b.SkipBad {
+		// DF-BOARDCTL-9: tolerant scan; validate already itemized any bad
+		// lines, so doctor only consumes the salvageable events here.
+		rows, _, err = b.ReadAllRowsTolerant(b.eventsPath)
+	} else {
+		rows, _, err = ReadAllRows(b.eventsPath)
+	}
 	if err != nil {
 		return // validate already reported the events read failure
 	}
@@ -192,15 +200,33 @@ func (b *Board) doctorTaskIDFormat(rep *Report) {
 	if err != nil {
 		return // validate already reported the tasks read failure
 	}
+	if b.SkipBad {
+		// DF-BOARDCTL-9: tolerant scan over the salvageable rows; the
+		// bad lines themselves are itemized by validateTasks' own
+		// tolerant pass.
+		b.iterParsedTolerant(lines, b.tasksPath, func(row *Row, idx int, _ []byte) error {
+			if b.skipTaskLine(lines, idx) {
+				return nil
+			}
+			doctorTaskIDFormatRow(rep, row, idx)
+			return nil
+		})
+		return
+	}
 	_ = IterParsed(lines, func(row *Row, idx int, _ []byte) error {
 		if b.skipTaskLine(lines, idx) {
 			return nil // topology B: line 1 is the header, not a task row
 		}
-		id := row.String("id")
-		if id != "" && !MatchesFleetTaskID(id) {
-			rep.Add("warn", "tasks.jsonl line %d: task id %q does not match the fleet id format %s — downstream id parsing (task-router, board-scan) may wedge; writes now enforce this (rewrite via boardctl create --force or hand-edit the row)",
-				idx+1, id, FleetTaskIDPattern)
-		}
+		doctorTaskIDFormatRow(rep, row, idx)
 		return nil
 	})
+}
+
+// doctorTaskIDFormatRow flags one row whose id does not match the fleet id
+// format (BT-023) as a warning, shared by the default and tolerant scans.
+func doctorTaskIDFormatRow(rep *Report, row *Row, idx int) {
+	if id := row.String("id"); id != "" && !MatchesFleetTaskID(id) {
+		rep.Add("warn", "tasks.jsonl line %d: task id %q does not match the fleet id format %s — downstream id parsing (task-router, board-scan) may wedge; writes now enforce this (rewrite via boardctl create --force or hand-edit the row)",
+			idx+1, id, FleetTaskIDPattern)
+	}
 }

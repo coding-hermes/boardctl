@@ -34,7 +34,7 @@ usage:
 
 commands:
   init    [-C dir] [--project P] [--namespace NS]   bootstrap a fresh board
-  list    [--status S] [--priority P] [--json] [--all]
+  list    [--status S] [--priority P] [--json] [--all] [--skip-bad-lines]
   show    <id> [--events]
   create  --id ID --title T [--priority P2] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
@@ -47,13 +47,20 @@ commands:
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N]
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
-  validate
+  validate [--skip-bad-lines] [--repair]
   doctor
   version [--json]
-  stats   [--json] [--all]
-  render  [-C dir] [-o out.html] [--tz Zone] [--json out.json]
+  stats   [--json] [--all] [--skip-bad-lines]
+  render  [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]
   import  <export.json> [--dry-run] [--renumber]
   serve   [-C dir] [--addr 127.0.0.1:8787]
+
+--skip-bad-lines (list/show/stats/validate/render): read the board tolerantly,
+keeping every line that parses; unparseable lines are reported on stderr as a
+SKIPPED-LINES evidence block and the command exits 1 even though it produced
+its normal output. Without the flag the first unparseable line aborts.
+validate --repair: salvage every parseable row into <boarddir>/tasks.rewritten.jsonl
+(manual review file — tasks.jsonl is never overwritten).
 
 -C resolves the board dir: a repo root (looks for .coding-hermes/board),
 .coding-hermes, or the board dir itself. Defaults to the current directory.
@@ -176,6 +183,43 @@ func openBoard(target string) (*board.Board, error) {
 // also works.
 func addCFlag(fs *flag.FlagSet, target *string) {
 	fs.StringVar(target, "C", *target, "repo root or board dir")
+}
+
+// useSkipBad registers the shared DF-BOARDCTL-9 --skip-bad-lines flag on a
+// read-consuming subcommand and returns its value pointer. The flag is OFF by
+// default: without it the first unparseable line aborts the command exactly
+// as before (exit 1, no rows output).
+func useSkipBad(fs *flag.FlagSet) *bool {
+	return fs.Bool("skip-bad-lines", false, "degrade with evidence: keep every line that parses, report unparseable lines on stderr (exit stays 1 when anything was skipped)")
+}
+
+// armSkipBad flips the board into tolerant-read mode when the flag is set.
+func armSkipBad(b *board.Board, skipBad *bool) {
+	if skipBad != nil && *skipBad {
+		b.SkipBad = true
+	}
+}
+
+// reportSkipped prints the SKIPPED-LINES evidence block to stderr after a
+// tolerant read skipped at least one line. The caller must exit 1 in that
+// case: degraded output must never read as success. It returns the exit
+// status to use (1 when anything was skipped, 0 otherwise).
+func reportSkipped(b *board.Board) int {
+	if !b.HasSkipped() {
+		return 0
+	}
+	fmt.Fprint(os.Stderr, b.RenderSkippedLines())
+	return 1
+}
+
+// exitError maps reportSkipped's exit status to run()'s error return: a nil
+// error keeps exit 0, a non-nil one yields exit 1 via the default arm (it is
+// neither ErrBoardNotFound/errUsage nor a duplicate-finding sentinel).
+func exitError(skipStatus int) error {
+	if skipStatus != 0 {
+		return fmt.Errorf("board read was degraded: unparseable lines were skipped (see SKIPPED-LINES above)")
+	}
+	return nil
 }
 
 func newFlagSet(cmd string) *flag.FlagSet {
@@ -316,10 +360,11 @@ func cmdList(dir string, args []string) error {
 	priority := fs.String("priority", "", "filter by priority (e.g. P1)")
 	asJSON := fs.Bool("json", false, "emit JSON array of full rows")
 	all := fs.Bool("all", false, "include fixture rows (ids in fixtures.jsonl)")
+	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl list [--status S] [--priority P] [--json] [--all] [-C dir]\n")
+		fmt.Fprintf(os.Stderr, "boardctl list [--status S] [--priority P] [--json] [--all] [--skip-bad-lines] [-C dir]\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -334,6 +379,7 @@ func cmdList(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
+	armSkipBad(b, skipBad)
 	f := board.TaskFilter{All: *all}
 	if *status != "" {
 		norm := board.NormalizeStatus(*status)
@@ -366,11 +412,17 @@ func cmdList(dir string, args []string) error {
 		} else {
 			os.Stdout.Write(buf.Bytes())
 		}
+		return exitError(reportSkipped(b))
+	}
+	if len(rows) == 0 && !b.HasSkipped() {
+		fmt.Fprintln(os.Stderr, "no tasks match")
 		return nil
 	}
 	if len(rows) == 0 {
-		fmt.Fprintln(os.Stderr, "no tasks match")
-		return nil
+		// Degraded read with zero salvageable rows: still print the
+		// evidence and exit 1 (reportSkipped), not the plain "no tasks
+		// match" success.
+		return exitError(reportSkipped(b))
 	}
 	// Aligned text columns: id, priority, status, truncated title.
 	fmt.Fprintln(os.Stdout, fmt.Sprintf("%-16s %-4s %-11s %s", "ID", "PRI", "STATUS", "TITLE"))
@@ -381,7 +433,7 @@ func cmdList(dir string, args []string) error {
 		status := board.NormalizeStatus(r.String("status"))
 		fmt.Fprintln(os.Stdout, fmt.Sprintf("%-16s %-4s %-11s %s", r.String("id"), prio, status, title))
 	}
-	return nil
+	return exitError(reportSkipped(b))
 }
 
 func truncateRunes(s string, n int) string {
@@ -402,9 +454,10 @@ func cmdShow(dir string, args []string) error {
 	fs := newFlagSet("show")
 	args = reorderArgs(args, valueFlags("C"))
 	withEvents := fs.Bool("events", false, "also print events for the task")
+	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl show <id> [--events] [-C dir]\n") }
+	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]\n") }
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -418,6 +471,7 @@ func cmdShow(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
+	armSkipBad(b, skipBad)
 	id := fs.Arg(0)
 	row, file, err := b.ShowTask(id)
 	if err != nil {
@@ -446,7 +500,7 @@ func cmdShow(dir string, args []string) error {
 			os.Stdout.Write([]byte("\n"))
 		}
 	}
-	return nil
+	return exitError(reportSkipped(b))
 }
 
 // ---------- create ----------
@@ -784,9 +838,11 @@ func cmdHeader(dir string, args []string) error {
 func cmdValidate(dir string, args []string) error {
 	fs := newFlagSet("validate")
 	args = reorderArgs(args, valueFlags("C"))
+	skipBad := useSkipBad(fs)
+	repair := fs.Bool("repair", false, "salvage every parseable row into <boarddir>/tasks.rewritten.jsonl (manual review file — tasks.jsonl is never modified)")
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl validate [-C dir]\n") }
+	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl validate [--skip-bad-lines] [--repair] [-C dir]\n") }
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -797,15 +853,36 @@ func cmdValidate(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
+	armSkipBad(b, skipBad)
+	// DF-BOARDCTL-9 Part 2: --repair re-reads the board tolerantly and
+	// writes the salvageable rows to tasks.rewritten.jsonl for manual
+	// review. It exits 0 on a successful rewrite-to-review-file even when
+	// rows were dropped — the review file IS the deliverable — and names
+	// the dropped line numbers in its output.
+	if *repair {
+		res, err := b.Repair()
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(os.Stdout, res.RenderRepairText())
+		return nil
+	}
 	rep, err := b.Validate()
 	if err != nil {
 		return err
 	}
 	fmt.Fprint(os.Stdout, rep.RenderText())
+	if b.HasSkipped() {
+		// Tolerant mode: the salvageable rows were validated and itemized
+		// (each skipped line carries its own error finding naming the
+		// parse failure); the SKIPPED-LINES evidence block still goes to
+		// stderr per the degrade-with-evidence contract.
+		fmt.Fprint(os.Stderr, b.RenderSkippedLines())
+	}
 	if rep.HasErrors() {
 		return errors.New("validation failed")
 	}
-	return nil
+	return exitError(reportSkipped(b))
 }
 
 // ---------- doctor ----------
@@ -930,9 +1007,10 @@ func cmdStats(dir string, args []string) error {
 	args = reorderArgs(args, valueFlags("C"))
 	asJSON := fs.Bool("json", false, "emit stats as JSON")
 	all := fs.Bool("all", false, "include fixture rows")
+	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl stats [--json] [--all] [-C dir]\n") }
+	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl stats [--json] [--all] [--skip-bad-lines] [-C dir]\n") }
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -946,6 +1024,7 @@ func cmdStats(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
+	armSkipBad(b, skipBad)
 	st, err := b.ComputeStats(board.TaskFilter{All: *all})
 	if err != nil {
 		return err
@@ -956,8 +1035,8 @@ func cmdStats(dir string, args []string) error {
 			return err
 		}
 		fmt.Fprintln(os.Stdout, string(out))
-		return nil
+		return exitError(reportSkipped(b))
 	}
 	fmt.Fprint(os.Stdout, st.RenderText())
-	return nil
+	return exitError(reportSkipped(b))
 }
