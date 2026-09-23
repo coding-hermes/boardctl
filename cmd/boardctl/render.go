@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/coding-hermes/boardctl/internal/board"
 	"github.com/coding-hermes/boardctl/internal/render"
 )
 
@@ -18,18 +19,23 @@ import (
 // Flags: -o out.html (default board-report.html; "-" = stdout), --tz
 // <IANA zone> pins the report timezone for deterministic output, --json
 // out.json additionally writes the board-report/v1 payload (the BT-022
-// export format). Exit codes via the shared contract: 2 board-not-found,
-// 1 write/operational failure, 0 success.
+// export format). --skip-bad-lines (DF-BOARDCTL-9) degrades with evidence:
+// the render's tolerant loader already skips unparseable rows with
+// ParseWarnings; the flag additionally surfaces the exact skipped lines
+// (path, 1-based line, snippet, parse error) on stderr and forces exit 1 so
+// a degraded report cannot pass silently. Exit codes via the shared
+// contract: 2 board-not-found, 1 write/operational failure, 0 success.
 func cmdRender(dir string, args []string) error {
 	fs := newFlagSet("render")
 	args = reorderArgs(args, valueFlags("C", "o", "tz", "json"))
 	out := fs.String("o", "board-report.html", "output HTML file ('-' for stdout)")
 	tz := fs.String("tz", "", "report timezone (IANA name, e.g. America/Bogota); default: machine local")
 	jsonOut := fs.String("json", "", "also write the board-report/v1 payload as JSON")
+	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json]\n")
+		fmt.Fprintf(os.Stderr, "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]\n")
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -52,11 +58,24 @@ func cmdRender(dir string, args []string) error {
 		tzName = l.String()
 	}
 
-	payload, err := render.Build(dir, render.Options{Now: time.Now(), Zone: loc})
+	b, err := board.Resolve(dir)
+	if err != nil {
+		if _, oerr := openBoard(dir); oerr != nil {
+			return oerr // reuse the openBoard hint wrapping for exit 2
+		}
+		return err
+	}
+	armSkipBad(b, skipBad)
+	payload, err := render.BuildFromBoard(b, render.Options{Now: time.Now(), Zone: loc})
 	if err != nil {
 		return err
 	}
 	payload.ReportTimezone = tzName
+	// DF-BOARDCTL-9: without the flag a degraded read is still a degraded
+	// read — render keeps its tolerant-loader warnings, but the
+	// SKIPPED-LINES evidence and the exit-1 contract only apply when the
+	// operator asked for the degrade mode.
+	degraded := reportSkipped(b)
 
 	if *jsonOut != "" {
 		jb, err := render.EscapeJSONIsland(payload)
@@ -76,13 +95,13 @@ func cmdRender(dir string, args []string) error {
 	if *out == "-" {
 		os.Stdout.WriteString(html)
 		fmt.Fprintf(os.Stderr, "wrote report to stdout (%d bytes)\n", len(html))
-		return nil
+		return exitError(degraded)
 	}
 	if werr := writeReportFile(*out, []byte(html)); werr != nil {
 		return werr
 	}
 	fmt.Fprintf(os.Stdout, "wrote %s (%d bytes, %d board(s))\n", *out, len(html), len(payload.Boards))
-	return nil
+	return exitError(degraded)
 }
 
 // writeReportFile writes a render artifact to path, creating parent dirs.

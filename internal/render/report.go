@@ -28,6 +28,19 @@ func Build(target string, opts Options) (*ReportPayload, error) {
 }
 
 // buildFromBoard builds the payload for an already-resolved board.
+//
+// BuildFromBoard is the exported wrapper (DF-BOARDCTL-9): `render
+// --skip-bad-lines` resolves the board itself so it can arm the tolerant
+// flag set before loading, then hands the pre-armed board here. The render
+// loader is tolerant by design, so this path ignores Board.SkipBad; arming
+// it is what lets the CLI attach the SKIPPED-LINES evidence to the same
+// read it renders from.
+//
+// godoc: rendered output — reports render fully even on degraded boards.
+func BuildFromBoard(b *board.Board, opts Options) (*ReportPayload, error) {
+	return buildFromBoard(b, opts)
+}
+
 func buildFromBoard(b *board.Board, opts Options) (*ReportPayload, error) {
 	now := opts.Now
 	if now.IsZero() {

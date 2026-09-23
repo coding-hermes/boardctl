@@ -27,6 +27,20 @@ type Board struct {
 	// topology stays "B" (there is no board.jsonl), but header reads and
 	// writes refuse instead of treating line 1 of tasks.jsonl as the header.
 	headerless bool
+
+	// SkipBad enables the degrade-with-evidence read mode (DF-BOARDCTL-9):
+	// read-consuming paths parse lines individually, keep every line that
+	// parses, and collect the failures as SkippedLine evidence instead of
+	// aborting on the first bad line. Default false — the abort-on-first-
+	// bad-line behavior is byte-for-byte unchanged. Write paths never
+	// consult this: a read-modify-write must never run on a partially-read
+	// board.
+	SkipBad bool
+
+	// skipped accumulates one entry per line a tolerant read (SkipBad mode)
+	// could not parse, across every file the command read, in encounter
+	// order. Read it via SkippedLines.
+	skipped []SkippedLine
 }
 
 // ErrBoardNotFound is wrapped with the directories probed. It is also the
@@ -41,6 +55,59 @@ var ErrBoardNotFound = errors.New("no JSONL foreman board found")
 // so every header operation refuses loudly instead of stamping header keys
 // (ticks_total/ticks_idle/last_commit/updated_at) into a TASK row.
 var ErrNoHeader = errors.New("no header on this board")
+
+// SkippedLine is the evidence record for one line a tolerant read
+// (DF-BOARDCTL-9 --skip-bad-lines) could not parse. Line is the 1-based
+// PHYSICAL line number in the file; Snippet carries the first ~120 bytes of
+// the raw line; Err carries the underlying parse failure verbatim.
+type SkippedLine struct {
+	Path    string
+	Line    int
+	Snippet string
+	Err     string
+}
+
+// skipFailedLine records one unparseable line in the board's evidence list.
+// Recording only happens in SkipBad mode: the always-tolerant auxiliary
+// reads (fixtures.jsonl exclusion set) must not silently flip a default-mode
+// command's exit code — default-path exit codes stay exactly as before.
+func (b *Board) skipFailedLine(path string, line1 int, raw []byte, err error) {
+	if !b.SkipBad {
+		return
+	}
+	const maxSnippet = 120
+	trimmed := bytes.TrimSpace(raw)
+	snippet := string(trimmed)
+	if r := []rune(snippet); len(r) > maxSnippet {
+		snippet = string(r[:maxSnippet]) + "…"
+	}
+	b.skipped = append(b.skipped, SkippedLine{
+		Path:    path,
+		Line:    line1,
+		Snippet: snippet,
+		Err:     err.Error(),
+	})
+}
+
+// SkippedLines returns the evidence collected during a tolerant read
+// (SkipBad mode). It is nil when the mode was off or nothing was skipped.
+func (b *Board) SkippedLines() []SkippedLine { return b.skipped }
+
+// HasSkipped reports whether any tolerant read skipped at least one line.
+func (b *Board) HasSkipped() bool { return len(b.skipped) > 0 }
+
+// RenderSkippedLines renders the SKIPPED-LINES evidence report. It is
+// intended for stderr, after a command's normal output, whenever
+// HasSkipped() is true: degraded data must never read as a clean success.
+func (b *Board) RenderSkippedLines() string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "SKIPPED-LINES: %d line(s) could not be parsed and were skipped:\n", len(b.skipped))
+	for _, s := range b.skipped {
+		fmt.Fprintf(&sb, "  %s line %d: %s\n", s.Path, s.Line, s.Err)
+		fmt.Fprintf(&sb, "    %s\n", s.Snippet)
+	}
+	return sb.String()
+}
 
 // boardDirCandidates lists the directories Resolve probes for a
 // tasks.jsonl+events.jsonl pair, in order. For an ordinary target (a repo
@@ -376,6 +443,45 @@ func ReadAllRows(path string) (rows []*Row, raws [][]byte, err error) {
 	return rows, raws, nil
 }
 
+// iterParsedTolerant is the DF-BOARDCTL-9 degrade-with-evidence counterpart
+// of IterParsed: it parses every non-empty line INDIVIDUALLY, calls fn for
+// each line that parses, and records each line that fails as skipped-line
+// evidence on the board (unlike IterParsed it never aborts on a parse error,
+// and there is no pretty-printed whole-file diagnosis — in tolerant mode
+// every line is judged on its own). fn never receives a line that failed to
+// parse; its error stops the iteration.
+func (b *Board) iterParsedTolerant(lines [][]byte, path string, fn func(row *Row, lineIdx int, raw []byte) error) {
+	for i, l := range lines {
+		if len(bytes.TrimSpace(l)) == 0 {
+			continue
+		}
+		row, err := ParseRow(l)
+		if err != nil {
+			b.skipFailedLine(path, i+1, l, err)
+			continue
+		}
+		if err := fn(row, i, l); err != nil {
+			return
+		}
+	}
+}
+
+// ReadAllRowsTolerant is ReadAllRows under the tolerant reader: it returns
+// every salvageable row (and its raw line) and never fails on parse errors —
+// failures ride the Board's skipped-line evidence instead.
+func (b *Board) ReadAllRowsTolerant(path string) (rows []*Row, raws [][]byte, err error) {
+	lines, err := ReadJSONLLines(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	b.iterParsedTolerant(lines, path, func(row *Row, _ int, raw []byte) error {
+		rows = append(rows, row)
+		raws = append(raws, raw)
+		return nil
+	})
+	return rows, raws, nil
+}
+
 // HeaderRow returns the parsed board header row. Topology A reads line 1 of
 // board.jsonl; topology B (legacy layout) reads line 1 of tasks.jsonl — the
 // metadata row that shares the file with the task rows. BT-010: topology B
@@ -409,13 +515,17 @@ func (b *Board) HeaderRow() (*Row, error) {
 
 // FixtureIDs returns the union of task ids that live in fixtures.jsonl
 // (permanent fixture rows — never selectable as tasks). Missing fixtures file
-// yields an empty set.
+// yields an empty set. A line that fails to parse is skipped: in SkipBad mode
+// it is recorded as skipped-line evidence; otherwise it is silently ignored
+// (the exclusion set's only job is to hide ids, so a malformed fixture row
+// must never abort the listing — this matches the long-standing behavior of
+// this function's own parse loop, which already `continue`d on parse errors).
 func (b *Board) FixtureIDs() (map[string]bool, error) {
 	ids := map[string]bool{}
 	if !fileExists(b.fixturesPath) {
 		return ids, nil
 	}
-	_, raws, err := ReadAllRows(b.fixturesPath)
+	_, raws, err := b.ReadAllRowsTolerant(b.fixturesPath)
 	if err != nil {
 		return nil, fmt.Errorf("fixtures.jsonl: %w", err)
 	}

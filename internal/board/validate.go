@@ -93,9 +93,11 @@ func (b *Board) validateTasks(rep *Report) {
 	seen := map[string]int{}
 	depends := map[string][]depRef{} // dependency id -> rows that reference it
 	rows := 0
-	ierr := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+	// validateTaskRow itemizes one salvageable row (shared by the default
+	// and the DF-BOARDCTL-9 tolerant scan).
+	validateTaskRow := func(row *Row, idx int) {
 		if b.skipTaskLine(lines, idx) {
-			return nil // topology B: line 1 is the header, not a task row
+			return // topology B: line 1 is the header, not a task row
 		}
 		rows++
 		id := row.String("id")
@@ -149,10 +151,30 @@ func (b *Board) validateTasks(rep *Report) {
 		for _, dep := range rowStringSlice(row, "depends_on") {
 			depends[dep] = append(depends[dep], depRef{line: idx + 1, id: id})
 		}
-		return nil
-	})
-	if ierr != nil {
-		rep.Add("error", "tasks.jsonl: %v", ierr)
+	}
+	if b.SkipBad {
+		// DF-BOARDCTL-9: the tolerant pass keeps validating the salvageable
+		// rows; every skipped line rides the board's evidence list and is
+		// itemized below as an error finding, so a degraded board still
+		// reports FAIL with the evidence of WHAT is broken — while the
+		// surviving rows are listed and counted.
+		b.iterParsedTolerant(lines, b.tasksPath, func(row *Row, idx int, _ []byte) error {
+			validateTaskRow(row, idx)
+			return nil
+		})
+	} else {
+		ierr := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+			validateTaskRow(row, idx)
+			return nil
+		})
+		if ierr != nil {
+			rep.Add("error", "tasks.jsonl: %v", ierr)
+		}
+	}
+	for _, s := range b.SkippedLines() {
+		if s.Path == b.tasksPath {
+			rep.Add("error", "tasks.jsonl line %d: SKIPPED unparseable row — %s (salvage with 'boardctl validate --repair'; reads need --skip-bad-lines)", s.Line, s.Err)
+		}
 	}
 	// BT-007: dependency ids must exist in tasks.jsonl (WARN, per the board
 	// wording "validate depends_on ids exist (warn)") — legacy boards carry
