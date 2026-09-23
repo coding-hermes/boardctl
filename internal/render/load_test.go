@@ -377,6 +377,10 @@ func TestPayloadRoundTripAndShapes(t *testing.T) {
 	if bd.Derived.Burnup.Cum[len(bd.Derived.Burnup.Cum)-1] != 1 {
 		t.Fatalf("burnup cum = %v", bd.Derived.Burnup.Cum)
 	}
+	// DF-BOARDCTL-8: burndown exposes per-day labels for the chart x-axis
+	if len(bd.Derived.Burndown.Days) != len(bd.Derived.Burndown.Open) || len(bd.Derived.Burndown.Days) == 0 {
+		t.Fatalf("burndown days = %d, open = %d", len(bd.Derived.Burndown.Days), len(bd.Derived.Burndown.Open))
+	}
 	if bd.Derived.Streaks.Delivery.Current != 1 && bd.Derived.Streaks.Delivery.Longest != 1 {
 		t.Fatalf("delivery streak = %+v", bd.Derived.Streaks.Delivery)
 	}

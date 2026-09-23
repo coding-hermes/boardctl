@@ -40,6 +40,7 @@ type Series struct {
 // BurndownSeries is open-tasks-per-day (3.1).
 type BurndownSeries struct {
 	Window []string `json:"window"`
+	Days   []string `json:"days,omitempty"`
 	Open   []int    `json:"open"`
 }
 
@@ -306,7 +307,7 @@ func dayRange(d1, d2 string) []string {
 
 // burndown: open(d) = |{ t : birth(t) <= d AND (done(t) absent OR done(t) > d) }|
 func burndown(tasks []*taskRec, window []string) BurndownSeries {
-	out := BurndownSeries{Window: []string{window[0], window[len(window)-1]}}
+	out := BurndownSeries{Window: []string{window[0], window[len(window)-1]}, Days: window}
 	for _, d := range window {
 		open := 0
 		for _, t := range tasks {

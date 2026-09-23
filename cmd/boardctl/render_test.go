@@ -405,14 +405,16 @@ func min(a, b int) int {
 	return b
 }
 
-// TestRenderBurndownUsesWindow guards DF-BOARDCTL-1: the burndown payload
-// series is {window, open} — there is no "days" key — so the emitted chart
-// JS must consume d.burndown.window. The template is a Go string constant
+// TestRenderBurndownUsesDays guards DF-BOARDCTL-8 (superseding the
+// DF-BOARDCTL-1 pin): the burndown payload now carries per-day labels —
+// series is {window bounds, days, open} — so the emitted chart JS must
+// consume d.burndown.days. Feeding the 2-entry window bounds as the x-axis
+// drew only 2 of the open[] points. The template is a Go string constant
 // (template.go htmlTemplate) and the payload rides inline in the same HTML
 // (report-data JSON island), so string assertions on the rendered document
 // cover both halves. window[0] equals the oldest task birth day, i.e. the
 // R-1 fixture's created_at.
-func TestRenderBurndownUsesWindow(t *testing.T) {
+func TestRenderBurndownUsesDays(t *testing.T) {
 	dir := seedRenderBoard(t)
 	outHTML := filepath.Join(t.TempDir(), "r.html")
 	if code := run([]string{"-C", dir, "render", "-o", outHTML, "--tz", "UTC"}); code != 0 {
@@ -424,12 +426,13 @@ func TestRenderBurndownUsesWindow(t *testing.T) {
 	}
 	s := string(raw)
 
-	// 1. The payload island carries the burndown series under window/open.
+	// 1. The payload island carries the burndown series under window/days/open.
 	var payload struct {
 		Boards []struct {
 			Derived struct {
 				Burndown struct {
 					Window []string `json:"window"`
+					Days   []string `json:"days"`
 					Open   []int    `json:"open"`
 				} `json:"burndown"`
 			} `json:"derived"`
@@ -460,19 +463,29 @@ func TestRenderBurndownUsesWindow(t *testing.T) {
 		t.Fatalf("burndown series length = %d, want >1 (window spans 2026-09-01..today)", len(bd.Open))
 	}
 
-	// 2. The template consumes only keys that exist on the payload: no
-	// d.burndown.days anywhere in the emitted document.
-	if strings.Contains(s, "d.burndown.days") {
-		t.Fatal(`template still reads d.burndown.days — the burndown payload has no "days" key`)
+	// 2. The payload's days[] now exists and is chart-shaped: one label per
+	// open point, more than the 2 window bounds (DF-BOARDCTL-8 regression).
+	if len(bd.Days) != len(bd.Open) {
+		t.Fatalf("burndown days = %d, open = %d — x-axis would drop points", len(bd.Days), len(bd.Open))
+	}
+	if len(bd.Days) <= 2 {
+		t.Fatalf("burndown days = %d, want > 2 (window-bounds-only regression)", len(bd.Days))
+	}
+	if bd.Days[0] != firstDay {
+		t.Fatalf("burndown days[0] = %q, want %q", bd.Days[0], firstDay)
 	}
 
 	// 3. The chart renders: chartLines bails to emptyChart at runtime only
 	// when the fed days[] is empty, so the emitted JS must feed
-	// d.burndown.window at both call sites (separate box + overlay), and the
-	// window day keys the x-axis is drawn from must ride in the document
+	// d.burndown.days at both call sites (separate box + overlay) — feeding
+	// the 2-entry window bounds here was the DF-BOARDCTL-8 defect — and the
+	// day keys the x-axis is drawn from must ride in the document
 	// (report-data island — the browser draws the labels from them).
-	if got := strings.Count(s, "days: d.burndown.window || []"); got != 2 {
-		t.Fatalf("burndown window feeds = %d, want 2 (separate + overlay variants)", got)
+	if strings.Contains(s, "days: d.burndown.window") {
+		t.Fatal(`template still feeds d.burndown.window as x-axis — stale 2-bound feed (DF-BOARDCTL-8)`)
+	}
+	if got := strings.Count(s, "days: d.burndown.days || []"); got != 2 {
+		t.Fatalf("burndown days feeds = %d, want 2 (separate + overlay variants)", got)
 	}
 	for _, label := range []string{`{label: "burndown", empty: "no tasks yet"}`, `{label: "burndown + burn-up overlay", empty: "no tasks yet"}`} {
 		if strings.Count(s, label) != 1 {
