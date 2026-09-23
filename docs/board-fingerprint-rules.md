@@ -77,8 +77,10 @@ When the same finding is detected again, **do not refile it**. Either:
    <hex>` line on stderr make it dispatcher-detectable (a plain failure is
    exit 1). `boardctl show <existing-id> --events` lists every re-detection.
 
-2. or attach the run as evidence explicitly, which stamps the new row's
-   `detail.evidence[].run_id`:
+2. or, on a NEW filing only, stamp evidence explicitly with
+   `--evidence-run-id` (a `create`-only flag — `update` does not accept it;
+   to record evidence on an EXISTING row use `boardctl update <id>
+   --summary/--note` carrying the run id):
 
    ```
    $ boardctl create --id QA-CRIER-9 --title "…" --reasoning "…" --evidence-run-id qa-2026-09-18T04:11Z

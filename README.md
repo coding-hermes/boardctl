@@ -279,10 +279,29 @@ migration — with the original prose preserved:
 DUPLICATE-SUPPRESSED: <existing-id> matches fingerprint <hex>
 ```
 
-on stderr and exits **2** (a plain failure is exit 1), and records the
-re-detection as a `task_evidence` event on the existing row — the board gains
-an audit line, never another row. Evidence the existing row with
-`--evidence-run-id RUN` instead of refiling; `--force` files a deliberate
+on stderr and records the re-detection as a `task_evidence` event on the
+existing row — the board gains an audit line, never another row. The exit
+code is **2**, and that is a rule a lane dispatcher can branch on, not a
+one-off:
+
+```
+exit 0  success (create accepted)
+exit 1  plain failure (validation, duplicate task id, runtime errors)
+exit 2  duplicate-suppressed re-detection: DUPLICATE-SUPPRESSED on stderr
+        plus a task_evidence event on the existing row (2 doubles as the
+        usage/board-not-found code used elsewhere)
+```
+
+Evidence the EXISTING row with `boardctl update <id>` — carry the run id in
+`--summary` or `--note`; `update` does not accept `--evidence-run-id`. That
+flag exists ONLY on `create`, stamping evidence on a NEW filing:
+
+```bash
+boardctl -C ~/myproject update QA-X-3 --summary "re-detected on run qa-1"     # evidence on an existing row
+boardctl -C ~/myproject create --id QA-X-9 --title "…" --evidence-run-id qa-1 # new filing only
+```
+
+`--force` files a deliberate
 variant (still fingerprinted, so a later accidental re-file is caught). Rows
 written before this rule have no fingerprint and are grandfathered: still open
 and visible, they simply never match an incoming filing. An open row is
