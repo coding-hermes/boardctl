@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/coding-hermes/boardctl/internal/board"
+	"github.com/coding-hermes/boardctl/internal/freshness"
 )
 
 // version is stamped at release time via the Makefile release target:
@@ -27,6 +28,17 @@ import (
 //
 // Unstamped builds (go build / go install) report "dev".
 var version = "dev"
+
+// buildCommit is stamped at build time via the Makefile build and release
+// targets (BT-057):
+//
+//	go build -ldflags "-X main.buildCommit=$(git rev-parse HEAD 2>/dev/null)" ./cmd/boardctl
+//
+// It feeds internal/freshness.Check, which warns (stderr, never fails) when
+// the running binary predates the HEAD of the checkout it runs inside.
+// Unstamped builds (go build / go install without ldflags) keep "" and the
+// gate stays silent.
+var buildCommit = ""
 
 const usageText = `boardctl — manage coding-hermes JSONL foreman boards
 
@@ -109,6 +121,16 @@ func run(args []string) int {
 		return 2
 	}
 	cmd, rest := args[0], args[1:]
+
+	// BT-057: before dispatching anywhere, tell the operator when the
+	// running binary was built from a commit HEAD has moved past. The gate
+	// is contract-silent (empty stamp, skip var, no checkout, foreign or
+	// rebased-away sha, missing git) — it can never write to stdout, fail,
+	// or alter the exit code, so the byte-exact CLI contracts below are
+	// untouched. The subcommand args are forwarded unchanged: -C is
+	// resolved per subcommand, so the freshness probe uses the LAUNCH
+	// directory, matching "the checkout the operator is standing in".
+	freshness.Check(buildCommit, "", os.Stderr)
 
 	var err error
 	switch cmd {

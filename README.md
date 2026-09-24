@@ -495,6 +495,23 @@ CI installs that same pinned version in its own step, so the check runs (and
 never skips) on every push and PR. `GOVULNCHECK=/path/to/binary` overrides the
 PATH lookup.
 
+### Deployment freshness gate (BT-057)
+
+`make build` and `make release` stamp the build commit into every binary via
+`-X main.buildCommit=$(git rev-parse HEAD 2>/dev/null)` (a non-git build —
+e.g. a source tarball — leaves the stamp empty and the gate silent). At
+startup, before dispatching any subcommand, the binary compares that stamp
+against the HEAD of the checkout it is running inside (`.git` discovered by
+walking up from the launch directory): when the stamp is non-empty, exists in
+HEAD's history, and is NOT HEAD itself, it prints ONE warning line to stderr
+naming the binary's commit, its commit date, the current HEAD, and how many
+commits the binary is behind. This exists because a stale deployed binary can
+silently hide fixes that exist only at HEAD. The gate never fails, never
+writes to stdout, and never changes the exit code — a release binary run
+outside any checkout, a commit rebased away, or a missing git binary all mean
+silent skip. Set `BOARDCTL_SKIP_FRESHNESS=1` to suppress the warning (the
+warning line itself names this switch).
+
 The toolchain requirement: go.mod declares `go 1.26.6`. The Go 1.26.5 standard
 library shipped reachable advisories that 1.26.6 fixes — `net/http`
 (GO-2026-6089), `crypto/tls` (GO-2026-6090) and `encoding/asn1`

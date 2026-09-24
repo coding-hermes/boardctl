@@ -15,8 +15,15 @@ PLATFORMS := \
 
 .PHONY: build test vet fmt fmt-check version-check vuln-check release clean
 
+# BT-057: the build commit stamped into every make-built binary. The guard
+# keeps non-git builds working (a tarball without .git yields an empty
+# stamp and the freshness gate stays silent); inside a checkout it is HEAD.
+# main.buildCommit feeds internal/freshness.Check — see README Development.
+BUILD_COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
+
 build:
-	go build -o bin/$(BINARY) $(CMD)
+	go build -o bin/$(BINARY) \
+		-ldflags "-X main.buildCommit=$(BUILD_COMMIT)" $(CMD)
 
 test:
 	go test ./...
@@ -77,7 +84,7 @@ release: test
 		ext=""; [ "$$os" = "windows" ] && ext=".exe"; \
 		echo "== $$os/$$arch"; \
 		GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -trimpath \
-			-ldflags "-s -w -X main.version=$(VERSION)" \
+			-ldflags "-s -w -X main.version=$(VERSION) -X main.buildCommit=$(BUILD_COMMIT)" \
 			-o $(DIST)/$(BINARY)_$${os}_$${arch}$${ext} $(CMD) || exit 1; \
 	done
 	@cd $(DIST) && sha256sum $(BINARY)_* > SHA256SUMS
