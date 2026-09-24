@@ -176,13 +176,14 @@ type TaskRowSpec struct {
 	Raw []byte
 }
 
-// Create appends a new task row, deep-copying the schema (key set, key
-// order, serialization style, timestamp dialect) of the LAST tasks.jsonl row
-// and overriding values: id/title are required, status defaults to "pending",
-// priority "P2", complexity 3. Values the user did not supply are reset to
-// pending-neutral defaults rather than inheriting the mirrored row's values,
-// so a fresh row is always a clean pending task no matter what the mirrored
-// row held. Append-only; fails when the parsed id already exists.
+// Create appends a new task row, deep-copying the CANON-SANCTIONED part of
+// the LAST tasks.jsonl row's schema (key set, key order, serialization style,
+// timestamp dialect) and overriding values: id/title are required, status
+// defaults to "pending", priority "P2", complexity 3. Values the user did not
+// supply are reset to pending-neutral defaults rather than inheriting the
+// mirrored row's values, so a fresh row is always a clean pending task no
+// matter what the mirrored row held. Append-only; fails when the parsed id
+// already exists.
 // Works on BOTH topologies (BT-010): on topology B the header is line 1 of
 // tasks.jsonl and is neither mirrored, dup-checked, nor overwritten — the
 // append lands after the last task row.
@@ -331,8 +332,23 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 		style = DetectStyle(rawLastLine(b.tasksPath))
 		nowStr = b.tasksTSFormat(last).Now()
 		neutral = neutralValue
-		row.Keys = append(row.Keys, last.Keys...)
+		// BT-059: the create schema is CANONICAL, not inherited from the
+		// board's drift. Mirror the last row's key set FILTERED to the
+		// declared canon (IsSanctionedTaskKey): census-dirty keys a legacy
+		// row carries — `repo` on GAP-145-era boards, typos, one-project
+		// dialects — never reach a new row, so repairing old rows can
+		// actually bring the board to zero drift. What survives the filter
+		// stays in the row's own order: sanctioned board extras (the init
+		// fixture's `perpetual`, `labels`) still flow to keep fresh boards
+		// self-similar, and a board extra that is deliberate belongs in the
+		// canon declared in keys.go — add it THERE, not by letting create
+		// copy it. The guarantee step below still enforces the required
+		// core keys on any row, so filtering can never under-fill a row.
 		for _, k := range last.Keys {
+			if !IsSanctionedTaskKey(k) {
+				continue
+			}
+			row.Keys = append(row.Keys, k)
 			row.Vals[k] = neutral(k)
 		}
 	} else {
