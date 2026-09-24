@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // ---------- DF-BOARDCTL-15: usage-skill freshness gate ----------
@@ -253,4 +254,227 @@ func TestUsageSkillVersionTracksGateResult(t *testing.T) {
 // versionKey folds a semver triple into a single comparable integer.
 func versionKey(major, minor, patch int) int {
 	return major*1000000 + minor*1000 + patch
+}
+
+// skillHeaderStaleTolerance is how far behind the run date the skill's
+// frontmatter `date:` field may sit before the freshness gate fails. The
+// date is the operator-facing "last verified against the real CLI" stamp:
+// the version bump alone (TestUsageSkillVersionTracksGateResult) cannot go
+// stale on its own, so the date is the half of the header that actually
+// decays and forces a re-verification pass over the skill. 45 days covers
+// roughly one foreman cycle per calendar month plus slack for review
+// queues — a rotted skill must fail the build within about six weeks of
+// its last proven-fresh edit, not at the next dogfood audit.
+const skillHeaderStaleTolerance = 45 * 24 * time.Hour
+
+// skillFrontmatter returns the YAML frontmatter block of a SKILL.md body:
+// the text between the opening "---" line and the closing "---" line. It
+// returns "" when the block is absent or unterminated, so a restructured
+// header fails the date gate loudly at the extraction site rather than
+// reading as "no date found" ambiguity downstream.
+func skillFrontmatter(skill string) string {
+	if !strings.HasPrefix(skill, "---\n") {
+		return ""
+	}
+	end := strings.Index(skill[len("---\n"):], "\n---")
+	if end < 0 {
+		return ""
+	}
+	return skill[len("---\n") : len("---\n")+end]
+}
+
+// usageSkillDate parses the frontmatter `date: YYYY-MM-DD` field of the
+// usage skill. It reports ok=false with a reason for each failure class —
+// missing field, malformed value, unparseable calendar date — so the gate
+// can name the exact header defect instead of one generic "bad date".
+// Only the strict `2006-01-02` layout is accepted: the skill header is a
+// machine-checked contract, not free prose (a human-written "Sept 24,
+// 2026" in the header is a gate failure by design).
+func usageSkillDate(t *testing.T, skill string) (time.Time, bool) {
+	t.Helper()
+	fm := skillFrontmatter(skill)
+	if fm == "" {
+		t.Fatal("usage skill has no YAML frontmatter block — the header must carry `date: YYYY-MM-DD`")
+	}
+	m := regexp.MustCompile(`(?m)^date: (\d{4}-\d{2}-\d{2})$`).FindStringSubmatch(fm)
+	if m == nil {
+		t.Fatal("usage skill frontmatter has no `date: YYYY-MM-DD` line — the header must state when the skill was last verified against the real CLI")
+	}
+	d, err := time.Parse("2006-01-02", m[1])
+	if err != nil {
+		t.Fatalf("usage skill frontmatter date %q does not parse as a calendar date: %v", m[1], err)
+	}
+	return d, true
+}
+
+// usageSkillDateError is the predicate side of the date gate, factored out
+// so the mutation test drives exactly the extraction and freshness logic
+// the gate uses. It returns "" when the header date is present, parses,
+// and sits within skillHeaderStaleTolerance of the run date; otherwise the
+// returned message names the exact defect class — the same text the gate's
+// t.Fatal/t.Errorf would surface.
+func usageSkillDateError(skill string) string {
+	fm := skillFrontmatter(skill)
+	if fm == "" {
+		return "usage skill has no YAML frontmatter block — the header must carry `date: YYYY-MM-DD`"
+	}
+	m := regexp.MustCompile(`(?m)^date: (\d{4}-\d{2}-\d{2})$`).FindStringSubmatch(fm)
+	if m == nil {
+		return "usage skill frontmatter has no `date: YYYY-MM-DD` line — the header must state when the skill was last verified against the real CLI"
+	}
+	d, err := time.Parse("2006-01-02", m[1])
+	if err != nil {
+		return fmt.Sprintf("usage skill frontmatter date %q does not parse as a calendar date: %v", m[1], err)
+	}
+	if age := time.Since(d); age > skillHeaderStaleTolerance {
+		return fmt.Sprintf("usage skill frontmatter date %s is %d days behind the run date (%s) — beyond the %d-day tolerance; re-verify the skill against the current CLI and refresh the header date",
+			d.Format("2006-01-02"),
+			int(age.Hours()/24),
+			time.Now().Format("2006-01-02"),
+			int(skillHeaderStaleTolerance.Hours()/24))
+	}
+	return ""
+}
+
+// TestUsageSkillDateWithinTolerance — the other half of the header
+// contract: the frontmatter `date:` field must agree with the gate's run
+// date within skillHeaderStaleTolerance. The version floor above can never
+// rot (1.7.0 stays >= 1.7.0 forever); the date is the freshness signal —
+// when it goes stale, an operator reading the skill cannot tell whether
+// the proven commands still match the shipped CLI, and the gate forces the
+// re-verification edit that answers the question.
+//
+// Failure classes covered:
+//   - missing `date:` field          → fail
+//   - malformed / non-ISO date       → fail
+//   - date older than the tolerance  → fail
+//   - date current (within window)   → pass (the live skills/ tree)
+//
+// The mutation cases (missing, malformed, stale) are pinned by
+// TestUsageSkillDateGateBitesOnHeaderMutations below, which runs the same
+// predicate against mutated copies of the real skill body — so a future
+// edit that neuters this test cannot pass silently.
+func TestUsageSkillDateWithinTolerance(t *testing.T) {
+	skill := readUsageSkill(t)
+	d, _ := usageSkillDate(t, skill)
+
+	if msg := usageSkillDateError(skill); msg != "" {
+		t.Errorf("%s (header date read as %s)", msg, d.Format("2006-01-02"))
+	}
+}
+
+// TestUsageSkillDateGateBitesOnHeaderMutations proves the date gate is not
+// vacuous: it runs the real skill body through mutated frontmatter copies
+// and requires each broken class to fail the same predicate the gate uses
+// (usageSkillDateError), while the untouched body and freshly-dated bodies
+// pass. Without this, a refactor that drops the extraction or freshness
+// checks would leave TestUsageSkillDateWithinTolerance passing against a
+// skill with no date at all.
+func TestUsageSkillDateGateBitesOnHeaderMutations(t *testing.T) {
+	skill := readUsageSkill(t)
+	fm := skillFrontmatter(skill)
+	if fm == "" {
+		t.Fatal("usage skill has no frontmatter to mutate — the freshness gate anchor is gone")
+	}
+
+	// The live skill must pass its own gate (guards against the header
+	// already being stale/malformed, which would make every mutation
+	// comparison meaningless).
+	if msg := usageSkillDateError(skill); msg != "" {
+		t.Fatalf("the live usage skill fails its own freshness gate — fix skills/boardctl-usage/SKILL.md before this mutation battery can assert anything: %s", msg)
+	}
+
+	today := time.Now().Format("2006-01-02")
+	rotten := time.Now().Add(-skillHeaderStaleTolerance - 24*time.Hour).Format("2006-01-02")
+	edgeInside := time.Now().Add(-skillHeaderStaleTolerance + 24*time.Hour).Format("2006-01-02")
+	yesterday := time.Now().Add(-24 * time.Hour).Format("2006-01-02")
+
+	// The battery mutates the LIVE header date, so the search string is
+	// derived from the file each run — no hardcoded date to drift out of
+	// sync with the skill.
+	dre := regexp.MustCompile(`(?m)^date: (\d{4}-\d{2}-\d{2})$`)
+	live := dre.FindStringSubmatch(fm)
+	if live == nil {
+		t.Fatal("live frontmatter has no parsable date line — the battery's anchor is gone")
+	}
+	search := "date: " + live[1]
+	setDate := func(v string) func(string) string {
+		return func(s string) string { return strings.Replace(s, search, "date: "+v, 1) }
+	}
+
+	cases := []struct {
+		name       string
+		mutate     func(string) string
+		wantOK     bool
+		wantHit    string // substring expected in the failure message; "" for passing cases
+		allowNoOp  bool   // skip (not fail) when the mutation is a no-op today
+		noOpReason string
+	}{
+		{
+			// A one-day-old date must pass — freshness is a window, not
+			// an equality check on today.
+			name:   "date one day old passes",
+			mutate: setDate(yesterday),
+			wantOK: true,
+		},
+		{
+			name:   "date just inside tolerance passes",
+			mutate: setDate(edgeInside),
+			wantOK: true,
+		},
+		{
+			// When the run date equals the header date this mutation is a
+			// no-op; the live body is then already the current-date
+			// specimen, proven by the self-check above.
+			name:       "current date passes",
+			mutate:     setDate(today),
+			wantOK:     true,
+			allowNoOp:  true,
+			noOpReason: "run date already equals the header date — the live body above is the current-date specimen",
+		},
+		{
+			name:    "missing date field fails",
+			mutate:  func(s string) string { return strings.Replace(s, search+"\n", "", 1) },
+			wantOK:  false,
+			wantHit: "no `date: YYYY-MM-DD` line",
+		},
+		{
+			name:    "malformed date fails",
+			mutate:  setDate("September 24, 2026"),
+			wantOK:  false,
+			wantHit: "no `date: YYYY-MM-DD` line",
+		},
+		{
+			name:    "non-calendar date fails",
+			mutate:  setDate("2026-13-40"),
+			wantOK:  false,
+			wantHit: "does not parse as a calendar date",
+		},
+		{
+			name:    "stale date beyond tolerance fails",
+			mutate:  setDate(rotten),
+			wantOK:  false,
+			wantHit: rotten,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mutated := tc.mutate(skill)
+			if mutated == skill {
+				if tc.allowNoOp {
+					t.Skip(tc.noOpReason)
+				}
+				t.Fatalf("mutation %q did not change the skill body — the battery's date anchor has drifted", tc.name)
+			}
+			msg := usageSkillDateError(mutated)
+			gotOK := msg == ""
+			if gotOK != tc.wantOK {
+				t.Fatalf("mutated skill freshness = %v, want %v (gate message: %q)", gotOK, tc.wantOK, msg)
+			}
+			if !tc.wantOK && !strings.Contains(msg, tc.wantHit) {
+				t.Fatalf("gate failure for %q does not name the defect: got %q, want substring %q", tc.name, msg, tc.wantHit)
+			}
+		})
+	}
 }

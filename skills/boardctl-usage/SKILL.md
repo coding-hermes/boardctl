@@ -5,6 +5,7 @@ description: >-
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
 version: 1.7.0
+date: 2026-09-24
 category: software-development
 ---
 
