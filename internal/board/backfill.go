@@ -19,7 +19,9 @@ import (
 //   - each group of >= 2 open rows sharing a fingerprint keeps the EARLIEST
 //     row (append-only file order == filing order) and closes the rest with
 //     status=complete, worker_summary "merged into <kept>: dedupe backfill
-//     <date>", completed_at now;
+//     <date>", superseded_by <kept> (REVIEW-BOARDCTL-001: a machine-readable
+//     merge marker — consumers no longer parse the worker_summary prose),
+//     completed_at now;
 //   - the merged-away rows' evidence is appended to the kept row's detail, so
 //     the re-observation count survives the collapse;
 //   - one `audit` event per merge group records kept / merged / fingerprint.
@@ -223,6 +225,12 @@ func (b *Board) DedupeBackfill(apply bool) (*DedupeReport, error) {
 				return nil, err
 			}
 			if err := m.row.SetGoValue("worker_summary", summary, mstyle); err != nil {
+				return nil, err
+			}
+			// REVIEW-BOARDCTL-001: machine-readable merge marker naming the
+			// surviving row. superseded_by is a sanctioned key (keys.go), so
+			// this is pure value-writing, no canon change.
+			if err := m.row.SetGoValue("superseded_by", kept.id, mstyle); err != nil {
 				return nil, err
 			}
 			if err := m.row.SetGoValue("completed_at", now, mstyle); err != nil {
