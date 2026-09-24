@@ -14,7 +14,9 @@
       "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-1",
       "branch": "wt/DF-BOARDCTL-1",
       "brief": "/tmp/brief-DF-BOARDCTL-1.md",
-      "files_touched": ["internal/render/template.go"],
+      "files_touched": [
+        "internal/render/template.go"
+      ],
       "status": "dispatched"
     },
     {
@@ -23,7 +25,9 @@
       "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-3",
       "branch": "wt/DF-BOARDCTL-3",
       "brief": "/tmp/brief-DF-BOARDCTL-3.md",
-      "files_touched": ["internal/render/load.go"],
+      "files_touched": [
+        "internal/render/load.go"
+      ],
       "status": "dispatched"
     },
     {
@@ -32,7 +36,10 @@
       "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-4",
       "branch": "wt/DF-BOARDCTL-4",
       "brief": "/tmp/brief-DF-BOARDCTL-4.md",
-      "files_touched": ["internal/render/load.go", "internal/render/report.go"],
+      "files_touched": [
+        "internal/render/load.go",
+        "internal/render/report.go"
+      ],
       "status": "dispatched"
     },
     {
@@ -41,7 +48,9 @@
       "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-5",
       "branch": "wt/DF-BOARDCTL-5",
       "brief": "/tmp/brief-DF-BOARDCTL-5.md",
-      "files_touched": ["internal/render/report.go"],
+      "files_touched": [
+        "internal/render/report.go"
+      ],
       "status": "dispatched"
     },
     {
@@ -50,7 +59,9 @@
       "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-7",
       "branch": "wt/DF-BOARDCTL-7",
       "brief": "/tmp/brief-DF-BOARDCTL-7.md",
-      "files_touched": ["cmd/boardctl/main.go"],
+      "files_touched": [
+        "cmd/boardctl/main.go"
+      ],
       "status": "dispatched"
     }
   ],
@@ -61,5 +72,12 @@
     "BT-039": "cross-cutting load-hygiene audit, not independent-file-safe",
     "NEVER-DONE": "perpetual fixture"
   },
-  "merge_order": ["DF-BOARDCTL-1", "DF-BOARDCTL-3", "DF-BOARDCTL-4", "DF-BOARDCTL-5", "DF-BOARDCTL-7"]
+  "merge_order": [
+    "DF-BOARDCTL-1",
+    "DF-BOARDCTL-3",
+    "DF-BOARDCTL-4",
+    "DF-BOARDCTL-5",
+    "DF-BOARDCTL-7"
+  ],
+  "finished_at": "2026-09-24T17:18:32-05:00"
 }

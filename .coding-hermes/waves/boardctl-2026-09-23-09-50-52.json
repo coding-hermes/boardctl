@@ -1,1 +1,42 @@
-{"scheduler_tick_id":"boardctl-2026-09-23-09-50-52","created_at":"2026-09-23T05:05:00-05:00","wave_budget":3,"base_sha":"8f840ef2024bc0e13ad333ca9258b8d2492f14ed","workers":[{"task_id":"BT-054","worktree":"/home/kara/worktrees/coding-hermes-boardctl-BT-054","branch":"wt/BT-054","gitreins_task":"BT-054","model":"glm-5.3-flash","provider":"zai-glm"},{"task_id":"BT-049","worktree":"/home/kara/worktrees/coding-hermes-boardctl-BT-049","branch":"wt/BT-049","gitreins_task":"BT-049","model":"glm-5.3-flash","provider":"zai-glm"},{"task_id":"DF-BOARDCTL-11","worktree":"/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-11","branch":"wt/DF-BOARDCTL-11","gitreins_task":"DF-BOARDCTL-11","model":"glm-5.3-flash","provider":"zai-glm"}],"merge_order":["BT-054","BT-049","DF-BOARDCTL-11"],"deferred_conflicts":["BT-041 (shares cmd/boardctl/main.go with BT-054)","BT-055 (shares internal/board/validate.go with BT-049)"]}
+{
+  "scheduler_tick_id": "boardctl-2026-09-23-09-50-52",
+  "created_at": "2026-09-23T05:05:00-05:00",
+  "wave_budget": 3,
+  "base_sha": "8f840ef2024bc0e13ad333ca9258b8d2492f14ed",
+  "workers": [
+    {
+      "task_id": "BT-054",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-054",
+      "branch": "wt/BT-054",
+      "gitreins_task": "BT-054",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm"
+    },
+    {
+      "task_id": "BT-049",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-049",
+      "branch": "wt/BT-049",
+      "gitreins_task": "BT-049",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm"
+    },
+    {
+      "task_id": "DF-BOARDCTL-11",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-11",
+      "branch": "wt/DF-BOARDCTL-11",
+      "gitreins_task": "DF-BOARDCTL-11",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm"
+    }
+  ],
+  "merge_order": [
+    "BT-054",
+    "BT-049",
+    "DF-BOARDCTL-11"
+  ],
+  "deferred_conflicts": [
+    "BT-041 (shares cmd/boardctl/main.go with BT-054)",
+    "BT-055 (shares internal/board/validate.go with BT-049)"
+  ],
+  "finished_at": "2026-09-24T17:18:32-05:00"
+}

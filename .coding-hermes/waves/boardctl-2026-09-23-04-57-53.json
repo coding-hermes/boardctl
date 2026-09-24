@@ -14,7 +14,10 @@
       "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-8",
       "branch": "wt/DF-BOARDCTL-8",
       "brief": "/tmp/brief-boardctl-DF-BOARDCTL-8.md",
-      "files_touched": ["internal/render/derive.go", "internal/render/template.go"],
+      "files_touched": [
+        "internal/render/derive.go",
+        "internal/render/template.go"
+      ],
       "status": "dispatched"
     },
     {
@@ -23,7 +26,12 @@
       "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-9",
       "branch": "wt/DF-BOARDCTL-9",
       "brief": "/tmp/brief-boardctl-DF-BOARDCTL-9.md",
-      "files_touched": ["internal/board/board.go", "internal/board/read.go", "cmd/boardctl/main.go", "internal/board/validate.go"],
+      "files_touched": [
+        "internal/board/board.go",
+        "internal/board/read.go",
+        "cmd/boardctl/main.go",
+        "internal/board/validate.go"
+      ],
       "status": "dispatched"
     },
     {
@@ -32,15 +40,33 @@
       "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-048",
       "branch": "wt/BT-048",
       "brief": "/tmp/brief-boardctl-BT-048.md",
-      "files_touched": ["internal/board/validate.go"],
+      "files_touched": [
+        "internal/board/validate.go"
+      ],
       "status": "dispatched"
     }
   ],
   "deferred": [
-    {"task": "REVIEW-BOARDCTL-001", "reason": "overlaps BT-048 writer-side priority vocabulary work; next tick"},
-    {"task": "DF-BOARDCTL-10", "reason": "schema/ID-policy change, cross-board coordination; next tick"},
-    {"task": "DF-BOARDCTL-11", "reason": "P2 docs; next tick"},
-    {"task": "BT-041", "reason": "P2 CLI contract; next tick"},
-    {"task": "BT-042", "reason": "P2 install target/drift probe; next tick"}
-  ]
+    {
+      "task": "REVIEW-BOARDCTL-001",
+      "reason": "overlaps BT-048 writer-side priority vocabulary work; next tick"
+    },
+    {
+      "task": "DF-BOARDCTL-10",
+      "reason": "schema/ID-policy change, cross-board coordination; next tick"
+    },
+    {
+      "task": "DF-BOARDCTL-11",
+      "reason": "P2 docs; next tick"
+    },
+    {
+      "task": "BT-041",
+      "reason": "P2 CLI contract; next tick"
+    },
+    {
+      "task": "BT-042",
+      "reason": "P2 install target/drift probe; next tick"
+    }
+  ],
+  "finished_at": "2026-09-24T17:18:32-05:00"
 }
