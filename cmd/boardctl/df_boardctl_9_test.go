@@ -121,7 +121,9 @@ func TestDF9CLIFlagsInUsage(t *testing.T) {
 		{"render", "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]"},
 	}
 	for _, tc := range cases {
-		got, err := captureStderr(func() { run([]string{tc.cmd, "-h"}) })
+		// BT-041: `-h` usage now prints on stdout (success path), so the
+		// flag-documentation check captures stdout.
+		got, err := captureStdout(func() { run([]string{tc.cmd, "-h"}) })
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -133,7 +135,7 @@ func TestDF9CLIFlagsInUsage(t *testing.T) {
 		}
 	}
 	// validate -h must also document --repair.
-	got, err := captureStderr(func() { run([]string{"validate", "-h"}) })
+	got, err := captureStdout(func() { run([]string{"validate", "-h"}) })
 	if err != nil {
 		t.Fatal(err)
 	}

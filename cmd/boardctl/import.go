@@ -89,9 +89,9 @@ func cmdImport(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl import <export.json> [--dry-run] [--renumber] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl import <export.json> [--dry-run] [--renumber] [-C dir]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if dir == "" {
