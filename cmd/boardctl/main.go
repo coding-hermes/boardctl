@@ -48,6 +48,11 @@ commands:
           [--tick N]
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
   validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep]
+  sweep-status [--apply] [--json] [--skip-bad-lines]
+           report (and with --apply fix) off-vocabulary task statuses on ONE
+           board: known read aliases are normalized to their canonical form;
+           unknown statuses (duplicate, parked, ...) are NEVER guessed — they
+           are reported with the explicit decision needed
   doctor
   version [--json]
   stats   [--json] [--all] [--skip-bad-lines]
@@ -122,6 +127,8 @@ func run(args []string) int {
 		err = cmdHeader(boardDir, rest)
 	case "validate":
 		err = cmdValidate(boardDir, rest)
+	case "sweep-status":
+		err = cmdSweepStatus(boardDir, rest)
 	case "doctor":
 		err = cmdDoctor(boardDir, rest)
 	case "version":
@@ -927,6 +934,60 @@ func cmdValidate(dir string, args []string) error {
 	}
 	if rep.HasErrors() {
 		return errors.New("validation failed")
+	}
+	return exitError(reportSkipped(b))
+}
+
+// ---------- sweep-status ----------
+
+// cmdSweepStatus runs the REVIEW-BOARDCTL-001 status sweep on ONE board.
+// Dry-run by default: without --apply it classifies and reports only, writing
+// nothing. With --apply it canonicalizes the KNOWN-ALIAS rows through
+// NormalizeTask (the BT-025 machinery — no hand-rolled rewriting) and leaves
+// every unknown-status row untouched (refuse-to-guess is the house rule).
+// Exit stays 0 in both modes: the report IS the product, and an off-vocab
+// census is a finding, not a failure (validate owns exit semantics).
+func cmdSweepStatus(dir string, args []string) error {
+	fs := newFlagSet("sweep-status")
+	args = reorderArgs(args, valueFlags("C"))
+	apply := fs.Bool("apply", false, "canonicalize the known-alias rows (default: dry-run, nothing is written)")
+	asJSON := fs.Bool("json", false, "emit the report as JSON")
+	skipBad := useSkipBad(fs)
+	var cdir string
+	addCFlag(fs, &cdir)
+	fs.Usage = func() {
+		fmt.Fprintf(os.Stderr, "boardctl sweep-status [--apply] [--json] [--skip-bad-lines] [-C dir]\n")
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("sweep-status takes no positional args (got %q)", fs.Arg(0))
+	}
+	if dir == "" {
+		dir = cdir
+	}
+	b, err := openBoard(dir)
+	if err != nil {
+		return err
+	}
+	armSkipBad(b, skipBad)
+	rep, err := b.StatusSweep(*apply)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(rep); err != nil {
+			return err
+		}
+		return exitError(reportSkipped(b))
+	}
+	fmt.Fprintf(os.Stdout, "board: %s\n", rep.BoardPath)
+	fmt.Fprint(os.Stdout, rep.RenderText())
+	if !*apply {
+		fmt.Fprintln(os.Stdout, "DRY-RUN — no files written (pass --apply to normalize the alias rows)")
 	}
 	return exitError(reportSkipped(b))
 }

@@ -238,9 +238,10 @@ func TestEveryUsageClosureEndsWithRealNewline(t *testing.T) {
 			}
 		}
 	}
-	// 12 closures live in main.go, 1 each in import.go, render.go, serve.go,
-	// and 1 in install.go (BT-054 `boardctl install`).
-	if want := 15; seen != want {
+	// 13 closures live in main.go (12 commands + REVIEW-BOARDCTL-001's
+	// sweep-status), 1 each in import.go, render.go, serve.go, and 1 in
+	// install.go (BT-054 `boardctl install`).
+	if want := 16; seen != want {
 		t.Fatalf("found %d fs.Usage closures, want %d — the walker missed blocks or a command lost its usage text", seen, want)
 	}
 }

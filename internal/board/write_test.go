@@ -879,8 +879,9 @@ func TestCreate_ForceOverride(t *testing.T) {
 }
 
 // SG-126 AC5: the backfill collapses a 3-row fingerprint collision into ONE
-// open row plus two closed rows whose worker_summary names the kept id, carries
-// the merged evidence onto the kept row, and writes one audit event per group.
+// open row plus two closed rows whose worker_summary names the kept id and
+// whose superseded_by marks the merge machine-readably, carries the merged
+// evidence onto the kept row, and writes one audit event per group.
 func TestDedupeBackfill_MergesCollisions(t *testing.T) {
 	finding := `"title":"[P3] run_battery FAIL — port pool exhausted","reasoning":"cell detail: no free port ranges"`
 	b := seedFindingBoard(t,
@@ -936,7 +937,9 @@ func TestDedupeBackfill_MergesCollisions(t *testing.T) {
 		t.Fatalf("merged evidence does not name both merged rows: %v", ev)
 	}
 
-	// merged-away rows: complete, summary names the kept id, completed_at set.
+	// merged-away rows: complete, summary names the kept id, completed_at set,
+	// superseded_by marks the merge (REVIEW-BOARDCTL-001 — machine-readable,
+	// not prose-parsed).
 	for _, id := range []string{"QA-BF-2", "QA-BF-3"} {
 		row := taskRowByID(t, b, id)
 		if row["status"] != "complete" {
@@ -948,6 +951,9 @@ func TestDedupeBackfill_MergesCollisions(t *testing.T) {
 		}
 		if ts, _ := row["completed_at"].(string); ts == "" {
 			t.Fatalf("%s has no completed_at", id)
+		}
+		if sb, _ := row["superseded_by"].(string); sb != "QA-BF-1" {
+			t.Fatalf("%s superseded_by = %v, want \"QA-BF-1\" (the kept row id)", id, row["superseded_by"])
 		}
 	}
 
@@ -1086,6 +1092,11 @@ func TestDedupeBackfill_DuplicateIDsCollapse(t *testing.T) {
 			summary, _ := row["worker_summary"].(string)
 			if !strings.HasPrefix(summary, "merged into QA-DUP-1: dedupe backfill ") {
 				t.Fatalf("merged same-id row summary = %q", summary)
+			}
+			// REVIEW-BOARDCTL-001: the marker names the KEPT row id; here the
+			// kept row shares the id, so the marker equals it too.
+			if sb, _ := row["superseded_by"].(string); sb != "QA-DUP-1" {
+				t.Fatalf("merged same-id row superseded_by = %v, want \"QA-DUP-1\"", row["superseded_by"])
 			}
 		default:
 			t.Fatalf("unexpected status %v", row["status"])
