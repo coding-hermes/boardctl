@@ -231,6 +231,19 @@ boardctl -C ~/myproject update FEAT-1 --status done # exit 1 — writes reject a
 boardctl -C ~/myproject update FEAT-1 --normalize   # status "done" -> "complete"
 ```
 
+`sweep-status` drives the same policy board-wide on ONE board: it reports every
+row whose status is off-vocabulary, splitting them into known-alias rows
+(fixable by --normalize) and unknown rows (`duplicate`, `parked`, ... — never
+guessed at; they need an explicit `--status` decision). Dry-run by default;
+`--apply` canonicalizes ONLY the alias rows through the same normalize
+machinery and prints before/after counts; `--json` mirrors the report for
+scripting.
+
+```bash
+boardctl -C ~/myproject sweep-status                # report only, zero writes
+boardctl -C ~/myproject sweep-status --apply        # normalize the alias rows
+```
+
 ## Task id format
 
 Task ids are machine keys — downstream fleet tooling (task-router chains,
