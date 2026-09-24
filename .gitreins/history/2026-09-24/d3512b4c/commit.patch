@@ -1,0 +1,12 @@
+commit 034128f636f4cfe7dfbc72419e54daf11ac0a79d
+Merge: 854b7e7 b80a4a3
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Thu Sep 24 06:55:07 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Thu Sep 24 06:55:07 2026 -0500
+
+    merge: BT-055 — validate warns on non-array depends_on
+
+ internal/board/bt055_depends_shape_test.go | 179 +++++++++++++++++++++++++++++
+ internal/board/validate.go                 |  70 +++++++++++
+ 2 files changed, 249 insertions(+)

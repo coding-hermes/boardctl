@@ -1,0 +1,13 @@
+{
+  "tick_id": "boardctl-2026-09-24-10-58-10",
+  "created_at": "2026-09-24 11:10:00",
+  "budget": 4,
+  "base_sha": "3363874",
+  "workers": [
+    {"task": "BT-041", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-041", "branch": "wt/BT-041", "base_sha": "3363874", "brief": "/tmp/brief-bt041.txt", "log": "/tmp/w-bt041.log"},
+    {"task": "BT-052", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-052", "branch": "wt/BT-052", "base_sha": "3363874", "brief": "/tmp/brief-bt052.txt", "log": "/tmp/w-bt052.log"},
+    {"task": "BT-055", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-055", "branch": "wt/BT-055", "base_sha": "3363874", "brief": "/tmp/brief-bt055.txt", "log": "/tmp/w-bt055.log"},
+    {"task": "BT-059", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-059", "branch": "wt/BT-059", "base_sha": "3363874", "brief": "/tmp/brief-bt059.txt", "log": "/tmp/w-bt059.log"}
+  ],
+  "merge_plan": "serial merge in task order after all workers exit; gate each merge; push before gitreins task complete"
+}

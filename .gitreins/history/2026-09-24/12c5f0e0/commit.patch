@@ -1,0 +1,12 @@
+commit e50aea437f124924381a6cfea94227e66bb8869a
+Merge: 034128f 8a5b04d
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Thu Sep 24 07:03:04 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Thu Sep 24 07:03:04 2026 -0500
+
+    merge: BT-059 — create writes the canonical schema, not the drifted measured union
+
+ internal/board/bt059_create_schema_test.go | 282 +++++++++++++++++++++++++++++
+ internal/board/write.go                    |  32 +++-
+ 2 files changed, 306 insertions(+), 8 deletions(-)
