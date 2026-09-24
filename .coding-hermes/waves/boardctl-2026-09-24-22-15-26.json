@@ -1,0 +1,18 @@
+{
+  "tick_id": "boardctl-2026-09-24-22-15-26",
+  "created_at": "2026-09-24 17:40:00 -05",
+  "budget": 9,
+  "base_sha": "2d6416e",
+  "recovered_wave": {
+    "tick_id": "boardctl-2026-09-24-10-58-10",
+    "outcome": "already recovered by tick 94 (commit 74c71d9): all 4 branches merged, rows complete, 4x judge PASS; recovery this tick = manifest closure + branch cleanup only",
+    "all_manifests_closed": true
+  },
+  "workers": [
+    {"task": "BT-057", "worktree": "~/worktrees/coding-hermes-boardctl-BT-057", "branch": "wt/BT-057", "base_sha": "2d6416e", "brief": "/tmp/brief-BT-057.txt", "log": "/tmp/w-BT-057.log"},
+    {"task": "DF-BOARDCTL-12", "worktree": "~/worktrees/coding-hermes-boardctl-DF-BOARDCTL-12", "branch": "wt/DF-BOARDCTL-12", "base_sha": "2d6416e", "brief": "/tmp/brief-DF-BOARDCTL-12.txt", "log": "/tmp/w-DF-BOARDCTL-12.log"},
+    {"task": "DF-BOARDCTL-15", "worktree": "~/worktrees/coding-hermes-boardctl-DF-BOARDCTL-15", "branch": "wt/DF-BOARDCTL-15", "base_sha": "2d6416e", "brief": "/tmp/brief-DF-BOARDCTL-15.txt", "log": "/tmp/w-DF-BOARDCTL-15.log"}
+  ],
+  "composition": "middle-out: BT-057 = engine band (internal/freshness new + Makefile + main.go wiring); DF-BOARDCTL-12 = docs+test band (README + new test file); DF-BOARDCTL-15 = docs+test band (skills + new test file). No shared internal packages, no depends_on edges. BT-060 deferred (same band as BT-057 via cmd/boardctl/main.go).",
+  "merge_plan": "serial merge in dispatch order after all workers exit; gitreins guard on each branch tip, gates re-run on merged tree; push after merges; gitreins task complete per task post-merge"
+}
