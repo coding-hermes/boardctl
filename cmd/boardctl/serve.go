@@ -74,9 +74,9 @@ func cmdServe(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl serve [-C dir] [--addr 127.0.0.1:8787]\n")
+		fmt.Fprintf(fs.Output(), "boardctl serve [-C dir] [--addr 127.0.0.1:8787]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {

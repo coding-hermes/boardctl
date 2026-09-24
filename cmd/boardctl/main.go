@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -151,6 +152,11 @@ func run(args []string) int {
 		return 2
 	}
 	if err != nil {
+		// BT-041: a help request printed its usage to stdout already and
+		// must read as success (exit 0) — never as a validation failure.
+		if errors.Is(err, errHelpShown) {
+			return 0
+		}
 		// Board-not-found and flag-level usage failures are usage-level
 		// failures (README exit-code contract: "2 usage/board-not-found").
 		// openBoard wraps ErrBoardNotFound with a hint, so match the chain;
@@ -244,6 +250,43 @@ func newFlagSet(cmd string) *flag.FlagSet {
 	fs.SetOutput(os.Stderr)
 	return fs
 }
+
+// parseFlags parses a subcommand's flags and maps BT-041's help contract:
+// `-h`/`--help` is a SUCCESSFUL usage query, not a validation failure. The
+// flag package prints the subcommand's fs.Usage closure INSIDE Parse (its
+// output stream is set by newFlagSet before the outcome is known), so
+// parseFlags captures that output and routes it by outcome: a help request
+// is re-printed to STDOUT and mapped to errHelpShown; every other parse
+// error keeps the old shape — usage + error on stderr, exit 1 via run()'s
+// generic error arm.
+//
+// errHelpShown (not nil) is returned so the subcommand STOPS at the help
+// request: returning nil would let it continue past flag parsing (init
+// would bootstrap a board, list would resolve one) and exit by accident of
+// whatever the command then did. run() maps errHelpShown to exit 0. This is
+// the central fix: every subcommand's fs.Parse call goes through here, so
+// the decision is made once.
+func parseFlags(fs *flag.FlagSet, args []string) error {
+	// Capture whatever Parse prints (the Usage closure, a flag-value error)
+	// instead of letting it stream straight to stderr.
+	buf := &bytes.Buffer{}
+	origOut := fs.Output()
+	fs.SetOutput(buf)
+	err := fs.Parse(args)
+	fs.SetOutput(origOut)
+	if errors.Is(err, flag.ErrHelp) {
+		// BT-041: help is a successful usage query — usage on stdout.
+		os.Stdout.Write(buf.Bytes())
+		return errHelpShown
+	}
+	os.Stderr.Write(buf.Bytes())
+	return err
+}
+
+// errHelpShown is parseFlags' sentinel: the usage text for a help request
+// has already gone to stdout; run() maps it to exit 0 and nothing else may
+// happen (the subcommand must not continue past a help request).
+var errHelpShown = errors.New("usage printed")
 
 // reorderArgs moves all flags ahead of positional arguments so commands like
 // `boardctl show <id> --events` and `boardctl update <id> --status complete`
@@ -341,9 +384,9 @@ func cmdInit(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl init [-C dir] [--project P] [--namespace NS]\n")
+		fmt.Fprintf(fs.Output(), "boardctl init [-C dir] [--project P] [--namespace NS]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
@@ -381,9 +424,9 @@ func cmdList(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl list [--status S] [--priority P] [--json] [--all] [--skip-bad-lines] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl list [--status S] [--priority P] [--json] [--all] [--skip-bad-lines] [-C dir]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
@@ -474,8 +517,8 @@ func cmdShow(dir string, args []string) error {
 	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]\n") }
-	if err := fs.Parse(args); err != nil {
+	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]\n") }
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if dir == "" {
@@ -545,9 +588,9 @@ func cmdCreate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl create --id ID --title T [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
@@ -631,9 +674,9 @@ func cmdUpdate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl update <id> [--status complete] [--worktree PATH] [--branch NAME] [--session ID]... [--normalize] [--force] [flags] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--worktree PATH] [--branch NAME] [--session ID]... [--normalize] [--force] [flags] [-C dir]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if dir == "" {
@@ -713,7 +756,7 @@ func cmdUpdate(dir string, args []string) error {
 func cmdEvent(dir string, args []string) error {
 	fs := newFlagSet("event")
 	args = reorderArgs(args, valueFlags("C", "type", "task-id", "actor", "detail", "detail-text", "tick"))
-	etype := fs.String("type", "", "event_type (default audit)")
+	etype := fs.String("type", "", "event_type (required; no default)")
 	taskID := fs.String("task-id", "", "task_id")
 	actor := fs.String("actor", "", "actor (default foreman)")
 	detailFile := fs.String("detail", "", "detail JSON payload: @/path/file.json")
@@ -721,8 +764,8 @@ func cmdEvent(dir string, args []string) error {
 	tick := fs.String("tick", "", "tick_number")
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl event --type audit [flags] [-C dir]\n") }
-	if err := fs.Parse(args); err != nil {
+	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl event --type audit [flags] [-C dir]\n") }
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
@@ -730,6 +773,24 @@ func cmdEvent(dir string, args []string) error {
 	}
 	if dir == "" {
 		dir = cdir
+	}
+	// BT-041: an omitted --type is a REFUSAL, not a default. Falling through
+	// to the write path's "audit" default silently appended an event nobody
+	// asked for into the append-only trail (exit 0). The gate fires BEFORE
+	// the board is even opened, so a refusal can never append a row; the
+	// message names the required flag and renders the write path's own
+	// enforced vocabulary (one source of truth — it cannot drift from the
+	// set AppendEvent actually enforces). An explicit --type keeps the
+	// write-path vocabulary check as the single enforcement point.
+	if *etype == "" {
+		// Sorted from the write path's own enforced set (no second list to
+		// drift); the deterministic render mirrors board.write's renderer.
+		types := make([]string, 0, len(board.EventTypeVocabulary))
+		for k := range board.EventTypeVocabulary {
+			types = append(types, k)
+		}
+		sort.Strings(types)
+		return fmt.Errorf("event: --type is required (no default; allowed event_type values: %s)", strings.Join(types, ","))
 	}
 	if *detailFile != "" && *detailText != "" {
 		return fmt.Errorf("--detail and --detail-text are mutually exclusive")
@@ -783,9 +844,9 @@ func cmdHeader(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl header [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl header [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [-C dir]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
@@ -871,9 +932,9 @@ func cmdValidate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep] [-C dir]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if dir == "" {
@@ -956,9 +1017,9 @@ func cmdSweepStatus(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl sweep-status [--apply] [--json] [--skip-bad-lines] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl sweep-status [--apply] [--json] [--skip-bad-lines] [-C dir]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
@@ -999,8 +1060,8 @@ func cmdDoctor(dir string, args []string) error {
 	args = reorderArgs(args, valueFlags("C"))
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl doctor [-C dir]\n") }
-	if err := fs.Parse(args); err != nil {
+	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl doctor [-C dir]\n") }
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
@@ -1077,8 +1138,8 @@ func releaseVersion() string {
 func cmdVersion(args []string) error {
 	fs := newFlagSet("version")
 	asJSON := fs.Bool("json", false, "emit version info as JSON")
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl version [--json]\n") }
-	if err := fs.Parse(args); err != nil {
+	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl version [--json]\n") }
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
@@ -1117,8 +1178,8 @@ func cmdStats(dir string, args []string) error {
 	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(os.Stderr, "boardctl stats [--json] [--all] [--skip-bad-lines] [-C dir]\n") }
-	if err := fs.Parse(args); err != nil {
+	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl stats [--json] [--all] [--skip-bad-lines] [-C dir]\n") }
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {

@@ -189,7 +189,24 @@ boards, and that board already exists and is fully writable as-is. Migration
 to topology A (splitting line 1 of `tasks.jsonl` into `board.jsonl`) is an
 optional modernization, done by hand outside init.
 
-Exit codes: `0` ok, `1` validation failure, `2` usage/board-not-found.
+Exit codes: `0` ok (including a help request — see below), `1` validation
+failure, `2` usage/board-not-found.
+
+Help and exit codes (BT-041): `boardctl help`, `boardctl --help`, and
+`<subcommand> --help` (or `-h`) are **successful usage queries** — the usage
+text goes to **stdout** and the exit code is **0**, so a wrapper keying on
+exit codes can ask for usage without a red exit. A help request is never a
+validation failure (1) or a usage error (2). Genuine usage errors keep their
+shape: no arguments, an unknown command, or an unknown flag print usage plus
+the `boardctl: ...` error line on **stderr** and exit non-zero (2 for
+unknown command, 1 for a bad flag).
+
+`event` requires `--type` (BT-041): there is **no default event type**.
+`boardctl event` without `--type` is refused with exit 1 — the error names
+the required flag and lists the allowed `event_type` values — and writes
+nothing to the append-only `events.jsonl`. (Earlier builds silently appended
+an `audit` event in that case.) An explicit `--type` outside the vocabulary
+is refused the same way by the write path.
 
 ## Status vocabulary and read aliases (BT-025)
 

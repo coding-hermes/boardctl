@@ -62,38 +62,32 @@ type usageCase struct {
 	errLine bool
 }
 
-// TestUsageOutputNeverContainsLiteralBackslashN drives every usage-printing
-// path through run() and asserts, on the captured output:
+// TestUsageOutputNeverContainsLiteralBackslashN drives every ERROR-path
+// usage printer through run() and asserts, on the captured stderr:
 //   - zero literal backslash-n sequences (acceptance 1);
 //   - the output ends with exactly one newline, so the usage text and the exit
 //     line can never share a line (acceptance 2);
 //   - no single line carries BOTH a usage signature and the "boardctl: "
 //     prefix, which is the precise shape of the original collision.
+//
+// BT-041 moved `-h`/`--help` to the success path (usage on stdout, exit 0),
+// so those invocations are no longer error-path cases — their output shape
+// is pinned by TestHelpOutputIntegrityOnStdout below (newline rules) and by
+// the BT-041 table test (exit codes). What remains here are the paths that
+// genuinely end in an error line: no args, unknown command, bad flag.
 func TestUsageOutputNeverContainsLiteralBackslashN(t *testing.T) {
-	// `-h` reaches each subcommand's fs.Usage closure via flag.ErrHelp, so
-	// this table executes all 14 usage printers that exist today.
-	subcommands := []string{
-		"init", "list", "show", "create", "update", "event", "header",
-		"validate", "doctor", "version", "stats", "render", "import", "serve",
-	}
+	// Top-level paths: genuine error paths (usage + "boardctl: ..." on
+	// stderr). The `-h` subcommand cases that used to sit in this table
+	// moved to TestHelpOutputIntegrityOnStdout: BT-041 reclassified a help
+	// request as a successful usage query (stdout, exit 0), so it no longer
+	// ends in a "boardctl: " error line.
 	cases := []usageCase{
-		// Top-level paths.
 		{name: "no args", args: nil, usageSig: "usage:"},
 		{name: "unknown command", args: []string{"nosuchcmd"}, usageSig: "commands:"},
+		// The exact invocation named in the acceptance criteria: bad flag.
+		{name: "create --bogus-flag", args: []string{"create", "--bogus-flag"}, usageSig: "boardctl create", errLine: true},
+		{name: "update --bogus-flag", args: []string{"update", "--bogus-flag"}, usageSig: "boardctl update", errLine: true},
 	}
-	for _, cmd := range subcommands {
-		cases = append(cases, usageCase{
-			name:     cmd + " -h",
-			args:     []string{cmd, "-h"},
-			usageSig: "boardctl " + cmd,
-			errLine:  true,
-		})
-	}
-	// The exact invocation named in the acceptance criteria: bad flag.
-	cases = append(cases,
-		usageCase{name: "create --bogus-flag", args: []string{"create", "--bogus-flag"}, usageSig: "boardctl create", errLine: true},
-		usageCase{name: "update --bogus-flag", args: []string{"update", "--bogus-flag"}, usageSig: "boardctl update", errLine: true},
-	)
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -121,6 +115,38 @@ func TestUsageOutputNeverContainsLiteralBackslashN(t *testing.T) {
 		}
 		assertUsageShape(t, got, usageCase{name: "help", usageSig: "usage:"})
 	})
+}
+
+// TestHelpOutputIntegrityOnStdout: every subcommand's `-h`/`--help` usage
+// text keeps the DF-BOARDCTL-7 newline-integrity contract after BT-041
+// moved the help request to the success path — output lands on STDOUT
+// (the reason this subtest exists: the same text used to come back on
+// stderr with a trailing "boardctl: " line), contains no literal
+// backslash-n, and ends with exactly one newline. Exit codes are pinned by
+// TestBT041HelpExitCodeZeroPerSubcommand; this test owns the TEXT shape so
+// a usage printer that starts emitting the two-character sequence fails
+// here the moment a subcommand is added.
+func TestHelpOutputIntegrityOnStdout(t *testing.T) {
+	subcommands := []string{
+		"init", "list", "show", "create", "update", "event", "header",
+		"validate", "doctor", "version", "stats", "render", "import", "serve",
+	}
+	for _, cmd := range subcommands {
+		for _, helpFlag := range []string{"-h", "--help"} {
+			t.Run(cmd+" "+helpFlag, func(t *testing.T) {
+				got, err := captureStdout(func() { run([]string{cmd, helpFlag}) })
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertUsageShape(t, got, usageCase{
+					name:     cmd + " " + helpFlag,
+					usageSig: "boardctl " + cmd,
+					// No errLine: a help request is a success now — no
+					// "boardctl: " exit line may trail the usage text.
+				})
+			})
+		}
+	}
 }
 
 // assertUsageShape applies the shared output-shape contract.

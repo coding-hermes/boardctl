@@ -65,9 +65,9 @@ func cmdInstall(dir string, args []string) error {
 	timeout := fs.Int("timeout", boardLintDefaultTTL, "seconds granted to boardctl validate before the hook skips it")
 	dryRun := fs.Bool("dry-run", false, "print the hook file content that would be written and write nothing")
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl install [-C repo] [--hook-path P] [--timeout S] [--dry-run]\n")
+		fmt.Fprintf(fs.Output(), "boardctl install [-C repo] [--hook-path P] [--timeout S] [--dry-run]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if dir == "" {

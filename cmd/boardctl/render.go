@@ -35,9 +35,9 @@ func cmdRender(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]\n")
+		fmt.Fprintf(fs.Output(), "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]\n")
 	}
-	if err := fs.Parse(args); err != nil {
+	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
