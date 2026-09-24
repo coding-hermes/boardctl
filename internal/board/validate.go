@@ -67,6 +67,12 @@ func (r *Report) HasErrors() bool { return r.Errors() > 0 }
 //   - BT-007: guard_result/ci_result values on existing rows are itemized
 //     warnings when free-form (legacy prose tolerated, not failed)
 //   - BT-007: depends_on ids that reference no task row are itemized warnings
+//   - BT-055: a depends_on key holding a NON-ARRAY value (legacy
+//     hand-written rows; the write path stores []string) is an itemized
+//     warning — the cross-check cannot see through the wrong shape, so the
+//     warning says the value was treated as no dependencies, and a
+//     reference carried as a bare string additionally warns it was not
+//     cross-checked
 //   - BT-007: negative header counters are errors
 //
 // Exit non-zero (HasErrors) with the itemized report on any error.
@@ -175,6 +181,29 @@ func (b *Board) validateTasks(rep *Report) {
 			} else {
 				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3} (writes reject this value; hand-edit the row or rewrite via boardctl update)",
 					idx+1, id, p)
+			}
+		}
+		// BT-055: the depends_on shape is checked before the cross-check
+		// below. rowStringSlice deliberately returns nil for any non-array
+		// value, which made a malformed shape (legacy/hand-written rows:
+		// the write path stores []string, so boardctl itself can never
+		// emit one) read as "no dependencies" — and a real reference in
+		// the wrong shape then escaped the dangling-id warning entirely.
+		// The shape problem is itemized here (WARN: existing boards with
+		// legacy rows must stay exit-0), and a non-empty string value
+		// additionally warns that the reference it may carry was NOT
+		// cross-checked. Absent keys and null stay silent (no-dependencies
+		// is the write path's own neutral spelling for unset).
+		if raw := row.Get("depends_on"); raw != nil {
+			if kind := jsonKindName(raw); kind != "" && kind != "array" {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): depends_on is not an array (%s) — treated as no dependencies",
+					idx+1, id, kind)
+				if kind == "string" {
+					if s, ok := decodeJSONString(raw); ok && strings.TrimSpace(s) != "" {
+						rep.Add("warn", "tasks.jsonl line %d (task %s): depends_on value %q looks like a reference but is not an array element — it was not cross-checked against task ids",
+							idx+1, id, s)
+					}
+				}
 			}
 		}
 		// BT-007: collect depends_on for the existence cross-check below.
@@ -288,6 +317,47 @@ func rowStringSlice(row *Row, key string) []string {
 		}
 	}
 	return out
+}
+
+// jsonKindName names the JSON kind of a stored field value — "array",
+// "string", "number", "boolean", "object", "null", or "" when the bytes are
+// not a complete JSON value (the field never parsed cleanly). Used by the
+// BT-055 depends_on shape warning to describe what is actually stored.
+func jsonKindName(raw []byte) string {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); err != nil {
+		return ""
+	}
+	switch v.(type) {
+	case []any:
+		return "array"
+	case string:
+		return "string"
+	case json.Number:
+		return "number"
+	case bool:
+		return "boolean"
+	case map[string]any:
+		return "object"
+	case nil:
+		return "null"
+	default:
+		return ""
+	}
+}
+
+// decodeJSONString decodes a stored field value as a JSON string, reporting
+// ok=false for anything else (BT-055: only the string kind needs its content
+// named in the not-cross-checked warning).
+func decodeJSONString(raw []byte) (string, bool) {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	var s string
+	if err := dec.Decode(&s); err != nil {
+		return "", false
+	}
+	return s, true
 }
 
 // validateEvents parses events.jsonl: parse errors are errors; numeric ids
