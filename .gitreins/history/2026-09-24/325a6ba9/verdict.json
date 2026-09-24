@@ -1,0 +1,101 @@
+{
+  "task_id": "REVIEW-BOARDCTL-001",
+  "task_title": "Fleet status vocabulary: marker field on dedupe merges, status-rejection regression test, re-runnable per-board sweep",
+  "task_criteria": [
+    "go build/vet/test green on merged tree; update --status duplicate and create --status duplicate exit 1 writing nothing; DedupeBackfill merged rows carry superseded_by=<kept>; new per-board sweep command dry-run by default reporting before/after off-vocab counts; committed on main"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "a028f2f19db26785bebf65f86c098f4bf8abf676",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.873s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n5:36AM INF scanned ~1478786 bytes (1.48 MB) in 420ms\n5:36AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 101 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T102918.465581Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.873s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.162s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.063s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.475s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260923T102918.465581Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 go build/vet/test green on merged tree; update --status duplicate and create --status duplicate exit 1 writing nothing; DedupeBackfill merged rows carry superseded_by=<kept>; new per-board sweep command dry-run by default reporting before/after off-vocab counts; committed on main: Build/vet/test: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` exit 0 (all pkgs ok: cmd/boardctl 0.631s, internal/board 0.127s, etc.). Status rejection: cmd/boardctl/review_status_vocab_test.go TestCmdWriteRejectsStatusDuplicate asserts `run([... update EXIST-1 --status duplicate])==1` and byte-compares tasks.jsonl before/after (no mutation), then `create --id NEW-1 --status duplicate`==1 with byte-compare; PASS output 'boardctl: status \"duplicate\" not in write vocabulary'. internal/board/review_status_vocab_test.go TestWriteRejectsOffVocabularyStatus PASS (create/update reject duplicate/parked/resolved/retired + aliases, line counts unchanged). DedupeBackfill marker: internal/board/backfill.go:233 `m.row.SetGoValue(\"superseded_by\", kept.id, mstyle)`; write_test.go:955 and :1098 assert `row[\"superseded_by\"]==\"QA-BF-1\"`/\"QA-DUP-1\"; TestDedupeBackfill_MergesCollisions/DryRunIsIdempotent/DuplicateIDsCollapse all PASS. Sweep: internal/board/sweep.go StatusSweep(apply bool) with `if !apply { return rep, nil }` (dry-run default, writes nothing) and RenderText printing 'before: N off-vocabulary rows; after: M off-vocabulary rows'; cmd/boardctl/main.go:130 `case \"sweep-status\"`, cmdSweepStatus with `apply := fs.Bool(\"apply\", false, ...)` and 'DRY-RUN \u2014 no files written' banner; TestCmdSweepStatusDryRunWritesNothing (byte-compare no write, '2/3 rows off-vocabulary'), TestCmdSweepStatusApplyNormalizesAliasOnly ('before: 2 ... after: 1', duplicate row untouched), TestCmdSweepStatusJSON all PASS. Committed on main: HEAD a028f2f19db26785bebf65f86c098f4bf8abf676 is on branch main (and origin/main), merge commit titled 'merge: REVIEW-BOARDCTL-001 ...'.\nAll five sub-requirements verified: build/vet/test green, duplicate status rejected with exit 1 and no writes on both create/update, DedupeBackfill sets superseded_by=<kept>, sweep-status is dry-run by default with before/after off-vocab counts, and the work is committed on main.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 go build/vet/test green on merged tree; update --status duplicate and create --status duplicate exit 1 writing nothing; DedupeBackfill merged rows carry superseded_by=<kept>; new per-board sweep command dry-run by default reporting before/after off-vocab counts; committed on main: Build/vet/test: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` exit 0 (all pkgs ok: cmd/boardctl 0.631s, internal/board 0.127s, etc.). Status rejection: cmd/boardctl/review_status_vocab_test.go TestCmdWriteRejectsStatusDuplicate asserts `run([... update EXIST-1 --status duplicate])==1` and byte-compares tasks.jsonl before/after (no mutation), then `create --id NEW-1 --status duplicate`==1 with byte-compare; PASS output 'boardctl: status \"duplicate\" not in write vocabulary'. internal/board/review_status_vocab_test.go TestWriteRejectsOffVocabularyStatus PASS (create/update reject duplicate/parked/resolved/retired + aliases, line counts unchanged). DedupeBackfill marker: internal/board/backfill.go:233 `m.row.SetGoValue(\"superseded_by\", kept.id, mstyle)`; write_test.go:955 and :1098 assert `row[\"superseded_by\"]==\"QA-BF-1\"`/\"QA-DUP-1\"; TestDedupeBackfill_MergesCollisions/DryRunIsIdempotent/DuplicateIDsCollapse all PASS. Sweep: internal/board/sweep.go StatusSweep(apply bool) with `if !apply { return rep, nil }` (dry-run default, writes nothing) and RenderText printing 'before: N off-vocabulary rows; after: M off-vocabulary rows'; cmd/boardctl/main.go:130 `case \"sweep-status\"`, cmdSweepStatus with `apply := fs.Bool(\"apply\", false, ...)` and 'DRY-RUN \u2014 no files written' banner; TestCmdSweepStatusDryRunWritesNothing (byte-compare no write, '2/3 rows off-vocabulary'), TestCmdSweepStatusApplyNormalizesAliasOnly ('before: 2 ... after: 1', duplicate row untouched), TestCmdSweepStatusJSON all PASS. Committed on main: HEAD a028f2f19db26785bebf65f86c098f4bf8abf676 is on branch main (and origin/main), merge commit titled 'merge: REVIEW-BOARDCTL-001 ...'.\nAll five sub-requirements verified: build/vet/test green, duplicate status rejected with exit 1 and no writes on both create/update, DedupeBackfill sets superseded_by=<kept>, sweep-status is dry-run by default with before/after off-vocab counts, and the work is committed on main.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "go build/vet/test green on merged tree; update --status duplicate and create --status duplicate exit 1 writing nothing; DedupeBackfill merged rows carry superseded_by=<kept>; new per-board sweep command dry-run by default reporting before/after off-vocab counts; committed on main",
+                "status": "PASS",
+                "detail": "Build/vet/test: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` exit 0 (all pkgs ok: cmd/boardctl 0.631s, internal/board 0.127s, etc.). Status rejection: cmd/boardctl/review_status_vocab_test.go TestCmdWriteRejectsStatusDuplicate asserts `run([... update EXIST-1 --status duplicate])==1` and byte-compares tasks.jsonl before/after (no mutation), then `create --id NEW-1 --status duplicate`==1 with byte-compare; PASS output 'boardctl: status \"duplicate\" not in write vocabulary'. internal/board/review_status_vocab_test.go TestWriteRejectsOffVocabularyStatus PASS (create/update reject duplicate/parked/resolved/retired + aliases, line counts unchanged). DedupeBackfill marker: internal/board/backfill.go:233 `m.row.SetGoValue(\"superseded_by\", kept.id, mstyle)`; write_test.go:955 and :1098 assert `row[\"superseded_by\"]==\"QA-BF-1\"`/\"QA-DUP-1\"; TestDedupeBackfill_MergesCollisions/DryRunIsIdempotent/DuplicateIDsCollapse all PASS. Sweep: internal/board/sweep.go StatusSweep(apply bool) with `if !apply { return rep, nil }` (dry-run default, writes nothing) and RenderText printing 'before: N off-vocabulary rows; after: M off-vocabulary rows'; cmd/boardctl/main.go:130 `case \"sweep-status\"`, cmdSweepStatus with `apply := fs.Bool(\"apply\", false, ...)` and 'DRY-RUN \u2014 no files written' banner; TestCmdSweepStatusDryRunWritesNothing (byte-compare no write, '2/3 rows off-vocabulary'), TestCmdSweepStatusApplyNormalizesAliasOnly ('before: 2 ... after: 1', duplicate row untouched), TestCmdSweepStatusJSON all PASS. Committed on main: HEAD a028f2f19db26785bebf65f86c098f4bf8abf676 is on branch main (and origin/main), merge commit titled 'merge: REVIEW-BOARDCTL-001 ...'."
+              }
+            ],
+            "summary": "All five sub-requirements verified: build/vet/test green, duplicate status rejected with exit 1 and no writes on both create/update, DedupeBackfill sets superseded_by=<kept>, sweep-status is dry-run by default with before/after off-vocab counts, and the work is committed on main."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: REVIEW-BOARDCTL-001\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t0.873s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 go build/vet/test green on merged tree; update --status duplicate and create --status duplicate exit 1 writing nothing; DedupeBackfill merged rows carry superseded_by=<kept>; new per-board sweep command dry-run by default reporting before/after off-vocab counts; committed on main: Build/vet/test: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` exit 0 (all pkgs ok: cmd/boardctl 0.631s, internal/board 0.127s, etc.). Status rejection: cmd/boardctl/review_status_vocab_test.go TestCmdWriteRejectsStatusDuplicate asserts `run([... update EXIST-1 --status duplicate])==1` and byte-compares tasks.jsonl before/after (no mutation), then `create --id NEW-1 --status duplicate`==1 with byte-compare; PASS output 'boardctl: status \"duplicate\" not in write vocabulary'. internal/board/review_status_vocab_test.go TestWriteRejectsOffVocabularyStatus PASS (create/update reject duplicate/parked/resolved/retired + aliases, line counts unchanged). DedupeBackfill marker: internal/board/backfill.go:233 `m.row.SetGoValue(\"superseded_by\", kept.id, mstyle)`; write_test.go:955 and :1098 assert `row[\"superseded_by\"]==\"QA-BF-1\"`/\"QA-DUP-1\"; TestDedupeBackfill_MergesCollisions/DryRunIsIdempotent/DuplicateIDsCollapse all PASS. Sweep: internal/board/sweep.go StatusSweep(apply bool) with `if !apply { return rep, nil }` (dry-run default, writes nothing) and RenderText printing 'before: N off-vocabulary rows; after: M off-vocabulary rows'; cmd/boardctl/main.go:130 `case \"sweep-status\"`, cmdSweepStatus with `apply := fs.Bool(\"apply\", false, ...)` and 'DRY-RUN \u2014 no files written' banner; TestCmdSweepStatusDryRunWritesNothing (byte-compare no write, '2/3 rows off-vocabulary'), TestCmdSweepStatusApplyNormalizesAliasOnly ('before: 2 ... after: 1', duplicate row untouched), TestCmdSweepStatusJSON all PASS. Committed on main: HEAD a028f2f19db26785bebf65f86c098f4bf8abf676 is on branch main (and origin/main), merge commit titled 'merge: REVIEW-BOARDCTL-001 ...'.\nAll five sub-requirements verified: build/vet/test green, duplicate status rejected with exit 1 and no writes on both create/update, DedupeBackfill sets superseded_by=<kept>, sweep-status is dry-run by default with before/after off-vocab counts, and the work is committed on main.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-24T10:37:06.744710",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-24T10:37:06.779579+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1038,
+        "truncated": false,
+        "source": "git show a028f2f19db2"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 18903,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "REVIEW-BOARDCTL-001"
+  }
+}

@@ -1,0 +1,19 @@
+commit a028f2f19db26785bebf65f86c098f4bf8abf676
+Merge: 99a56a6 e4ef77d
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Thu Sep 24 05:36:07 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Thu Sep 24 05:36:07 2026 -0500
+
+    merge: REVIEW-BOARDCTL-001 — dedupe superseded_by marker, status-rejection regression tests, sweep-status subcommand
+
+ README.md                                  |  13 ++
+ cmd/boardctl/df_boardctl_7_usage_test.go   |   7 +-
+ cmd/boardctl/main.go                       |  61 ++++++++++
+ cmd/boardctl/review_status_vocab_test.go   |  90 ++++++++++++++
+ cmd/boardctl/review_sweep_status_test.go   | 170 ++++++++++++++++++++++++++
+ internal/board/backfill.go                 |  10 +-
+ internal/board/review_status_vocab_test.go |  60 +++++++++
+ internal/board/sweep.go                    | 188 +++++++++++++++++++++++++++++
+ internal/board/write_test.go               |  17 ++-
+ 9 files changed, 609 insertions(+), 7 deletions(-)
