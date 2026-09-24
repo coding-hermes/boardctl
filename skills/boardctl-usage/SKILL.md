@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.6.0
+version: 1.7.0
 category: software-development
 ---
 
@@ -110,6 +110,15 @@ boardctl -C R install [--dry-run]          # writes .git/hooks/pre-commit with
                                            # install's chaining). Chained
                                            # installs (gitreins + board-lint)
                                            # honor BOTH exit statuses.
+
+# report surface (BT-020..022 — details + pitfalls in "Report surface" below)
+boardctl -C R render -o report.html        # self-contained HTML report:
+                                           # read-only, zero external assets
+boardctl -C R import r.json --dry-run      # import a report export into the
+                                           # board; --dry-run first, always
+boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
+                                           # (non-loopback --addr refused,
+                                           # exit 2)
 ```
 
 ## Write vocabularies (all enforced since BT-007)
