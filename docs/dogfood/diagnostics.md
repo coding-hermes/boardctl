@@ -313,3 +313,56 @@ double-adds it independently of the accumulation.
 
 5. Fleet-sweep cost is negligible (624ms / 53 boards / release v0.1.7); performance is not
    the story on any surface measured this run. Process startup dominates; no PERF rows filed.
+## Run-15 addendum — 2026-09-24 (verify-the-fixes + never-touched subcommands)
+
+Angle: v0.1.8 shipped three user-facing fixes from runs 8-9 (burndown per-day
+labels, read tolerance, BT-048) and 33 commits followed the tag. This run
+re-verified the promised workflow with the RELEASED binary on a fresh machine
+and exercised the two subcommands no prior run touched (`sweep-status`,
+`install`).
+
+What the diagnostics trail should record for the next agent:
+
+1. **The burndown fix can be proven without a browser, and that proof is the
+   strongest kind available.** `render --json` gives the payload (`burndown.days`
+   present, length-matched to `open`); the page's own `svgtag/svg/linePath/
+   chartLines` functions extract cleanly into a node `vm` — feed them a 5-day
+   synthetic series and count what `document.createElementNS` produces: two
+   `<path>` elements whose `d` attributes carry five points each
+   (`M30.00 10.00L135.50 37.60…`). The stub-drawing machine from DF-BOARDCTL-8
+   is dead; `derive_test.go:106` is the guard that keeps it dead. The stub
+   approach (intercept createElementNS, count tags, read `d` attrs) generalizes
+   to any chart assertion in this repo.
+
+2. **`install --dry-run` is a live view of hook composition, not just a
+   preview.** On the boardctl repo itself it printed the FULL pre-commit file:
+   the GitReins Tier-1 guard subshell, then the board-lint managed block with
+   the chaining epilogue that honors both exit statuses (BT-054-R's fix, visible
+   in the output). If a hook bug is ever suspected, `--dry-run` shows exactly
+   what is on disk without touching it.
+
+3. **`sweep-status` exits 0 in BOTH modes by design — the census is a finding,
+   not a failure.** Verified: seeded a `todo` row, dry run reported
+   `1/4 off-vocabulary: 1 fixable`, `--apply` canonicalized in place and the
+   file stayed byte-stable everywhere else. Scripting rule: check the census
+   line, not the exit code.
+
+4. **`--force` on create does NOT override the dangling-dep check** (it only
+   bypasses the id-format guard). Verified live: `create --depends-on DG-99
+   --force` still refuses. The refusal message even tells you the order to fix
+   it ("create the dependency task first").
+
+5. **The checksum install failure mode is real and silent-by-design of sha256:**
+   saving the release asset under a different name yields `sha256sum: SHA256SUMS:
+   no file was verified` — which reads like corruption. The README explains the
+   filename requirement in prose but the error never points there. Filed
+   DF-BOARDCTL-12.
+
+6. **Usage-closure meta-test gap:** `install` (BT-054) never entered the
+   `--help` command list; the pinned-count bump (15→16 for sweep-status) had no
+   chance to catch a 17th command. The fix is to walk the command switch, not
+   pin a count (DF-BOARDCTL-14).
+
+Right way to re-run this verification: see
+`docs/dogfood/2026-09-24-run15-verify.md` — every step is a one-liner against
+the released v0.1.8 asset, plus the node-VM chart proof.

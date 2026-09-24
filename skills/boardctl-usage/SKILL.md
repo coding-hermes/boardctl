@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.5.0
+version: 1.6.0
 category: software-development
 ---
 
@@ -15,6 +15,10 @@ category: software-development
 (append-only audit), `board.jsonl` (header: project/namespace/tick
 counters/last_commit), `fixtures.jsonl` (perpetual fixture tasks). No
 database, no caches: what git tracks is the board.
+
+Run-15 (2026-09-24) additions: `sweep-status` + `install` in Proven commands;
+`--force` on create does NOT bypass the dangling-dep check (only the id-format
+guard); `update` still has no `--priority/--title` (BT-060 half-open).
 
 ## Entry points
 
@@ -81,6 +85,31 @@ boardctl init --project myproject          # bootstrap a fresh board: writes
 boardctl version                           # release tag on release builds
                                            # (e.g. "v0.1.3"), "dev" otherwise;
                                            # --json for scripts
+
+# status sweep (run 15, v0.1.8+, REVIEW-BOARDCTL-001)
+boardctl -C R sweep-status                 # census of off-vocabulary statuses:
+                                           # X/Y rows, N fixable --normalize,
+                                           # M need explicit decision.
+                                           # EXITS 0 IN BOTH MODES — the census
+                                           # is a finding, not a failure. DRY
+                                           # RUN by default; --apply in-place
+                                           # normalizes ONLY alias rows
+                                           # (todo/done/open/... -> canon) via
+                                           # the BT-025 byte-preserving path;
+                                           # explicit rows (duplicate/parked/
+                                           # retired) are NEVER touched.
+
+# pre-commit board lint (run 15, v0.1.8+, BT-054)
+boardctl -C R install [--dry-run]          # writes .git/hooks/pre-commit with
+                                           # a managed `boardctl validate`
+                                           # block. A slow/missing/wedged
+                                           # boardctl SKIPS (never wedges
+                                           # commits); timeout(1) required.
+                                           # --dry-run prints the hook block
+                                           # (useful to inspect an existing
+                                           # install's chaining). Chained
+                                           # installs (gitreins + board-lint)
+                                           # honor BOTH exit statuses.
 ```
 
 ## Write vocabularies (all enforced since BT-007)
