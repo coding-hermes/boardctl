@@ -9,10 +9,55 @@
     "all_manifests_closed": true
   },
   "workers": [
-    {"task": "BT-057", "worktree": "~/worktrees/coding-hermes-boardctl-BT-057", "branch": "wt/BT-057", "base_sha": "2d6416e", "brief": "/tmp/brief-BT-057.txt", "log": "/tmp/w-BT-057.log"},
-    {"task": "DF-BOARDCTL-12", "worktree": "~/worktrees/coding-hermes-boardctl-DF-BOARDCTL-12", "branch": "wt/DF-BOARDCTL-12", "base_sha": "2d6416e", "brief": "/tmp/brief-DF-BOARDCTL-12.txt", "log": "/tmp/w-DF-BOARDCTL-12.log"},
-    {"task": "DF-BOARDCTL-15", "worktree": "~/worktrees/coding-hermes-boardctl-DF-BOARDCTL-15", "branch": "wt/DF-BOARDCTL-15", "base_sha": "2d6416e", "brief": "/tmp/brief-DF-BOARDCTL-15.txt", "log": "/tmp/w-DF-BOARDCTL-15.log"}
+    {
+      "task": "BT-057",
+      "worktree": "~/worktrees/coding-hermes-boardctl-BT-057",
+      "branch": "wt/BT-057",
+      "base_sha": "2d6416e",
+      "brief": "/tmp/brief-BT-057.txt",
+      "log": "/tmp/w-BT-057.log"
+    },
+    {
+      "task": "DF-BOARDCTL-12",
+      "worktree": "~/worktrees/coding-hermes-boardctl-DF-BOARDCTL-12",
+      "branch": "wt/DF-BOARDCTL-12",
+      "base_sha": "2d6416e",
+      "brief": "/tmp/brief-DF-BOARDCTL-12.txt",
+      "log": "/tmp/w-DF-BOARDCTL-12.log"
+    },
+    {
+      "task": "DF-BOARDCTL-15",
+      "worktree": "~/worktrees/coding-hermes-boardctl-DF-BOARDCTL-15",
+      "branch": "wt/DF-BOARDCTL-15",
+      "base_sha": "2d6416e",
+      "brief": "/tmp/brief-DF-BOARDCTL-15.txt",
+      "log": "/tmp/w-DF-BOARDCTL-15.log"
+    }
   ],
   "composition": "middle-out: BT-057 = engine band (internal/freshness new + Makefile + main.go wiring); DF-BOARDCTL-12 = docs+test band (README + new test file); DF-BOARDCTL-15 = docs+test band (skills + new test file). No shared internal packages, no depends_on edges. BT-060 deferred (same band as BT-057 via cmd/boardctl/main.go).",
-  "merge_plan": "serial merge in dispatch order after all workers exit; gitreins guard on each branch tip, gates re-run on merged tree; push after merges; gitreins task complete per task post-merge"
+  "merge_plan": "serial merge in dispatch order after all workers exit; gitreins guard on each branch tip, gates re-run on merged tree; push after merges; gitreins task complete per task post-merge",
+  "outcomes": [
+    {
+      "task": "BT-057",
+      "branch": "wt/BT-057",
+      "sha": "91519d8",
+      "judge": "PASS (fd4c6fef)",
+      "merge": "67d1f0c"
+    },
+    {
+      "task": "DF-BOARDCTL-12",
+      "branch": "wt/DF-BOARDCTL-12",
+      "sha": "9ad1e35",
+      "judge": "PASS (65e6bfd8)",
+      "merge": "639fff8"
+    },
+    {
+      "task": "DF-BOARDCTL-15",
+      "branch": "wt/DF-BOARDCTL-15",
+      "sha": "1f52629",
+      "judge": "round1 FAIL -> fixup wt/DF-BOARDCTL-15-fix @ 1e09d45 PASS (b897bb05)",
+      "merge": "4400ae4 + 7d53f8f"
+    }
+  ],
+  "finished_at": "2026-09-24T18:35:47-05:00"
 }
