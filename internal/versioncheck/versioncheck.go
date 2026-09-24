@@ -40,8 +40,11 @@ const READMEName = "README.md"
 var (
 	// pinLineRe matches `Current release: **vX.Y.Z**` at the start of a line.
 	pinLineRe = regexp.MustCompile(`(?m)^Current release: \*\*(v[0-9]+\.[0-9]+\.[0-9]+)\*\*`)
-	// downloadURLRe matches every release-asset download URL, capturing its tag.
-	downloadURLRe = regexp.MustCompile(`/releases/download/(v[0-9]+\.[0-9]+\.[0-9]+)/`)
+	// DownloadURLRe matches every release-asset download URL, capturing its
+	// tag. Exported so other README-surface tests (e.g. cmd/boardctl's
+	// DF-BOARDCTL-12 quickstart pin) extract tags with the exact pattern this
+	// package enforces instead of a drift-prone copy.
+	DownloadURLRe = regexp.MustCompile(`/releases/download/(v[0-9]+\.[0-9]+\.[0-9]+)/`)
 )
 
 // Surfaces is everything the checker extracted from one README.
@@ -65,7 +68,7 @@ func ReadSurfaces(readmePath string) (Surfaces, error) {
 	for _, m := range pinLineRe.FindAllStringSubmatch(content, -1) {
 		s.PinTags = append(s.PinTags, m[1])
 	}
-	for _, m := range downloadURLRe.FindAllStringSubmatch(content, -1) {
+	for _, m := range DownloadURLRe.FindAllStringSubmatch(content, -1) {
 		s.URLTags = append(s.URLTags, m[1])
 	}
 	return s, nil
