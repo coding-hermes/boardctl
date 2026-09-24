@@ -13,7 +13,13 @@ on:
 jobs:
   multiarch:
     # Org standard: coding-hermes/.github/.github/workflows/go-multiarch.yml
-    uses: coding-hermes/.github/.github/workflows/go-multiarch.yml@main
+    # Pinned 2026-09-24 to 917f3216b505a2decefd8d7878b22d24fbf2a89e (upstream
+    # coding-hermes/.github has no release tags yet — only refs/heads/main —
+    # so the current main SHA is the most immutable ref available; re-verify
+    # with `git ls-remote https://github.com/coding-hermes/.github.git` when
+    # updating). Pinned by internal/workflowcheck (TestRefPinned): an @main
+    # ref here lets an upstream change silently alter what this repo publishes.
+    uses: coding-hermes/.github/.github/workflows/go-multiarch.yml@917f3216b505a2decefd8d7878b22d24fbf2a89e
     with:
       binary: boardctl
       main: ./cmd/boardctl
