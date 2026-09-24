@@ -53,7 +53,9 @@ vet:
 # multi-arch workflow (.github/workflows/multiarch.yml) builds
 # `${binary}_${goos}_${goarch}${ext}` and publishes dist/SHA256SUMS, so a
 # `make release` cut and a tag-push cut are interchangeable byte-name-for-name.
-# Changing PLATFORMS means changing the workflow's `platforms:` input too.
+# Changing PLATFORMS means changing the workflow's `platforms:` input too —
+# this is enforced, not just commented: internal/workflowcheck fails
+# `go test ./...` when the two lists drift (same platforms, same order).
 #
 # BT-030 guard: fail loudly instead of silently shipping a date-stamped
 # release when the repo HAS tags — that is exactly the v0.1.3 bug this
