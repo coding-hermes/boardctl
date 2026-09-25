@@ -1,0 +1,183 @@
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// ---------- BT-041: dedicated regression test for the `event` --type refusal ----------
+//
+// The BT-041 refusal lives in cmdEvent (cmd/boardctl/main.go): an OMITTED
+// --type is refused BEFORE the board is even opened, instead of falling
+// through to the write path's silent "audit" default that appended an event
+// nobody asked for into the append-only trail (exit 0). Until this file,
+// the refusal message string existed ONLY in main.go itself — no test in
+// the tree referenced it, so deleting the gate would have gone unnoticed
+// by the suite.
+//
+// Three arms, one focused test, one fresh temp board:
+//
+//  1. REFUSAL: `event --detail-text ...` with NO --type exits 1 with the
+//     "event: --type is required" refusal on stderr, and ZERO board files
+//     change — every file in the board dir is hashed before/after and must
+//     stay byte-identical (no event row appended, no file created,
+//     modified, or deleted). This arm is what fails if the main.go gate is
+//     removed: without it the call falls through to AppendEvent's
+//     "" → "audit" default and BOTH the exit code and the hashes flip.
+//
+//  2. CONTROL: `event --type audit --detail-text "x"` succeeds and
+//     events.jsonl grows by EXACTLY one line, whose event_type parses
+//     (as JSON, not by substring) to "audit".
+//
+//  3. EXPLICIT-DEFAULT-STYLE: `event --type task_created --detail-text
+//     "y"` keeps the append (the documented caveat "an explicit --type
+//     keeps the append"): one more line, event_type "task_created".
+
+// bt041rBoardDir returns the board dir the CLI resolves under a repo root
+// (same shape qaBoardDir resolves; a private copy so this file's helpers
+// never couple to another test file's).
+func bt041rBoardDir(repo string) string {
+	return filepath.Join(repo, ".coding-hermes", "board")
+}
+
+// bt041rNewBoard bootstraps a fresh board through the REAL CLI paths
+// (cmdInit) in a t.TempDir — the repo's established test shape — so every
+// arm below exercises the real dispatch, not a fake.
+func bt041rNewBoard(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := cmdInit(dir, []string{"--project", "bt041-refusal", "--namespace", "test"}); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	return dir
+}
+
+// bt041rBoardFileHashes hashes every regular file in the board dir. The
+// refused call must leave the whole set byte-identical: a file it deletes,
+// appends to, creates, or rewrites in place all fail the comparison below.
+func bt041rBoardFileHashes(t *testing.T, boardDir string) map[string][sha256.Size]byte {
+	t.Helper()
+	entries, err := os.ReadDir(boardDir)
+	if err != nil {
+		t.Fatalf("read board dir %s: %v", boardDir, err)
+	}
+	out := make(map[string][sha256.Size]byte, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(boardDir, e.Name()))
+		if err != nil {
+			t.Fatalf("read %s: %v", e.Name(), err)
+		}
+		out[e.Name()] = sha256.Sum256(data)
+	}
+	return out
+}
+
+// bt041rEventLines reads events.jsonl and returns its content lines
+// (newline-terminated rows; an empty file has no lines).
+func bt041rEventLines(t *testing.T, eventsPath string) []string {
+	t.Helper()
+	data, err := os.ReadFile(eventsPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", eventsPath, err)
+	}
+	s := strings.TrimRight(string(data), "\n")
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, "\n")
+}
+
+// bt041rEventType parses one events.jsonl line as JSON and returns its
+// event_type field (parsed, not substring-matched).
+func bt041rEventType(t *testing.T, line string) string {
+	t.Helper()
+	var row map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(line), &row); err != nil {
+		t.Fatalf("events.jsonl line is not valid JSON: %v\nline: %s", err, line)
+	}
+	raw, ok := row["event_type"]
+	if !ok {
+		t.Fatalf("events.jsonl line has no event_type field: %s", line)
+	}
+	var et string
+	if err := json.Unmarshal(raw, &et); err != nil {
+		t.Fatalf("event_type is not a JSON string: %v\nline: %s", err, line)
+	}
+	return et
+}
+
+// TestEventRefusalRequiresType pins the BT-041 refusal end to end: the
+// refusal arm guards the gate in cmdEvent, the control arm proves the gate
+// does not break the normal append, and the explicit-default-style arm
+// guards the documented caveat that only an OMITTED --type is refused.
+func TestEventRefusalRequiresType(t *testing.T) {
+	dir := bt041rNewBoard(t)
+	boardDir := bt041rBoardDir(dir)
+	eventsPath := filepath.Join(boardDir, "events.jsonl")
+
+	// ---- Arm 1: REFUSAL — no --type (but --detail-text present), the exact
+	// shape that pre-BT-041 silently appended an "audit" event with exit 0.
+	before := bt041rBoardFileHashes(t, boardDir)
+	stderr, cerr := captureStderr(func() {
+		if code := run([]string{"-C", dir, "event", "--detail-text", "no type given"}); code != 1 {
+			t.Errorf("event without --type exit code = %d, want 1 (BT-041: an omitted --type is a refusal)", code)
+		}
+	})
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	if !strings.Contains(stderr, "event: --type is required") {
+		t.Errorf("refusal stderr = %q, want it to contain \"event: --type is required\"", stderr)
+	}
+	after := bt041rBoardFileHashes(t, boardDir)
+	if len(after) != len(before) {
+		t.Fatalf("refused event changed the board dir file set: %d files before, %d after", len(before), len(after))
+	}
+	for name, sum := range before {
+		got, ok := after[name]
+		if !ok {
+			t.Errorf("refused event deleted board file %s", name)
+			continue
+		}
+		if got != sum {
+			t.Errorf("refused event modified board file %s (zero-write contract broken)", name)
+		}
+	}
+	if lines := bt041rEventLines(t, eventsPath); len(lines) != 0 {
+		t.Errorf("refused event left %d event row(s) in events.jsonl; want none", len(lines))
+	}
+
+	// ---- Arm 2: CONTROL — explicit --type audit still appends, exactly one
+	// line, parsed event_type == "audit".
+	if code := run([]string{"-C", dir, "event", "--type", "audit", "--detail-text", "x"}); code != 0 {
+		t.Fatalf("event --type audit exit code = %d, want 0 (an explicit type must keep the append)", code)
+	}
+	lines := bt041rEventLines(t, eventsPath)
+	if len(lines) != 1 {
+		t.Fatalf("events.jsonl has %d line(s) after one explicit audit event, want exactly 1", len(lines))
+	}
+	if got := bt041rEventType(t, lines[0]); got != "audit" {
+		t.Errorf("control event_type = %q, want \"audit\"", got)
+	}
+
+	// ---- Arm 3: EXPLICIT-DEFAULT-STYLE — --type task_created keeps the
+	// append (the gate only fires on an OMITTED --type): one more line,
+	// parsed event_type == "task_created".
+	if code := run([]string{"-C", dir, "event", "--type", "task_created", "--detail-text", "y"}); code != 0 {
+		t.Fatalf("event --type task_created exit code = %d, want 0", code)
+	}
+	lines = bt041rEventLines(t, eventsPath)
+	if len(lines) != 2 {
+		t.Fatalf("events.jsonl has %d line(s) after two explicit events, want exactly 2", len(lines))
+	}
+	if got := bt041rEventType(t, lines[1]); got != "task_created" {
+		t.Errorf("explicit-default-style event_type = %q, want \"task_created\"", got)
+	}
+}
