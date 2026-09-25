@@ -373,3 +373,30 @@ func TestTopLevelUsageTextEndsWithNewline(t *testing.T) {
 		}
 	}
 }
+
+// TestCreateHelpListsFieldFlags (RELEASE-2026-09-25-04): create parses
+// --status, --priority, --complexity, --depends-on, --reasoning,
+// --capability-tags and --evidence-run-id (BT-060, commit 601c580), but the
+// create usage closure printed none of them — the DF-BOARDCTL-14 pattern
+// repeating on the create verb (the top-level usage already documents the
+// field flags; the subcommand usage was the inconsistent one). Every
+// assertion below was RED against the pre-fix usage string; keep them all —
+// they are what makes this test load-bearing rather than a strawman.
+func TestCreateHelpListsFieldFlags(t *testing.T) {
+	got, err := captureStdout(func() {
+		if code := run([]string{"create", "--help"}); code != 0 {
+			t.Fatalf("create --help exit code = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, flag := range []string{
+		"--status", "--priority", "--complexity", "--depends-on",
+		"--reasoning", "--capability-tags", "--evidence-run-id",
+	} {
+		if !strings.Contains(got, flag) {
+			t.Errorf("create --help usage output missing %q; got:\n%q", flag, got)
+		}
+	}
+}

@@ -610,7 +610,7 @@ func cmdCreate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
