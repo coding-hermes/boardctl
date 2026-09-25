@@ -198,7 +198,7 @@ func (b *Board) validateTasks(rep *Report) {
 		// no finding; exit stays 0 (warn severity, like every cross-check).
 		for _, tok := range TitlePriorityTokens(row.String("title")) {
 			if PriorityVocabulary[tok] && tok != p {
-				rep.Add("warn", "tasks.jsonl line %d (task %s): title carries %q but priority is %q — the priority field wins; rewrite the title with 'boardctl update %s --title' or the priority with 'boardctl update %s --priority' if the field is the stale half",
+				rep.Add("warn", "tasks.jsonl line %d (task %s): title carries %q but priority is %q — the priority field wins; rewrite the title with 'boardctl update %s --title', or re-file the row with 'boardctl create --id %s --force --priority <Pn>' if the field is the stale half (update has no --priority)",
 					idx+1, id, tok, p, id, id)
 			}
 		}

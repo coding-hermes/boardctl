@@ -73,7 +73,7 @@ func TestBT060TitlePriorityMismatchWarns(t *testing.T) {
 		`"P2"`, // the row's priority field, quoted
 		"priority field wins",
 		"boardctl update BT060-MISMATCH --title",
-		"boardctl update BT060-MISMATCH --priority",
+		"update has no --priority",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("warning missing %q, got: %s", want, got)
