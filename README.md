@@ -91,6 +91,8 @@ boardctl -C ~/myproject create --id FEAT-2 --title "Add caching" \
 # the task row — the header drift pointer only moves via `header --set-last-commit`)
 boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
     --guard PASS --ci GREEN --summary "retry added (+80/-12)"
+# BT-060: --title rewrites a row's title in place (with the task_updated event)
+boardctl -C ~/myproject update FEAT-1 --title "Add retry with backoff"
 boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
     --branch wt/ft-1 --session 2f8c41a0
 
@@ -260,6 +262,29 @@ scripting.
 boardctl -C ~/myproject sweep-status                # report only, zero writes
 boardctl -C ~/myproject sweep-status --apply        # normalize the alias rows
 ```
+
+## Title-priority cross-check (BT-060)
+
+Fleet rows are titled by hand — `[P1] real title` — and later re-priorities
+leave the token stale. `validate` warns when a row's title carries a
+`P0`–`P3` token that disagrees with the row's `priority` field (warn
+severity, exit 0; the priority FIELD wins for what the row means). The
+warning names the row, the conflicting token, and both repair paths:
+
+```bash
+# tasks.jsonl: {"id":"FEAT-1","title":"[P1] real title",...,"priority":"P2"}
+boardctl -C ~/myproject validate
+# ... title carries "P1" but priority is "P2" — the priority field wins;
+#     rewrite the title with 'boardctl update FEAT-1 --title' or the
+#     priority with 'boardctl update FEAT-1 --priority' ...
+```
+
+The same BT-060 change adds `--title` to `update` (create always had it), so
+the title fix no longer requires hand-editing tasks.jsonl: `boardctl update
+<id> --title "New title"` rewrites the row in place, appends the
+`task_updated` event, and leaves every other row byte-identical. Titles with
+no Pn token never produce a finding, and out-of-vocabulary tokens (`P4`)
+belong to the priority-vocabulary check, not this one.
 
 ## Task id format
 

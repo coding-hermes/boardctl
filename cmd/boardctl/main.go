@@ -51,10 +51,12 @@ commands:
   show    <id> [--events]
   create  --id ID --title T [--priority P2] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
-          [--evidence-run-id RUN]   (a re-detected finding is REFUSED with exit 2)
-  update  <id> --status complete [--worker-status S] [--commit-hash SHA]
-          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S]
-          [--note S] [--blocked-reason R] [--completed-at TS] [--normalize]
+          [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
+          [--session ID]...   (a re-detected finding is REFUSED with exit 2)
+  update  <id> --status complete [--title T] [--worker-status S]
+          [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
+          [--summary S] [--note S] [--blocked-reason R] [--completed-at TS]
+          [--worktree PATH] [--branch NAME] [--session ID]... [--normalize]
           [--force]
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
@@ -671,8 +673,12 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session"))
 	status := fs.String("status", "", "status (write vocabulary)")
+	// BT-060: create has always accepted --title; update could only rewrite
+	// the title by hand-editing the row. Same shape as every other optional
+	// field: omitted = untouched.
+	title := fs.String("title", "", "task title (free text; omitted = leave untouched)")
 	workerStatus := fs.String("worker-status", "", "worker_status")
 	commitHash := fs.String("commit-hash", "", "commit_hash")
 	guard := fs.String("guard", "", "guard_result: PASS|FAIL|SKIP")
@@ -696,7 +702,10 @@ func cmdUpdate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--worktree PATH] [--branch NAME] [--session ID]... [--normalize] [--force] [flags] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--worker-status S] [--commit-hash SHA]\n")
+		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S]\n")
+		fmt.Fprintf(fs.Output(), "          [--blocked-reason R] [--completed-at TS] [--worktree PATH] [--branch NAME]\n")
+		fmt.Fprintf(fs.Output(), "          [--session ID]... [--normalize] [--force] [flags] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -719,7 +728,7 @@ func cmdUpdate(dir string, args []string) error {
 	// --normalize alone satisfies the change-flag gate and needs no --force
 	// beyond the fleet-id escape hatch.
 	if *normalize {
-		for _, f := range []string{"status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session"} {
+		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session"} {
 			if fs.Lookup(f).Value.String() != "" {
 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
 			}
@@ -745,6 +754,7 @@ func cmdUpdate(dir string, args []string) error {
 	}
 	spec := board.UpdateSpec{
 		Status:        ptr(*status),
+		Title:         ptr(*title),
 		WorkerStatus:  ptr(*workerStatus),
 		CommitHash:    ptr(*commitHash),
 		Guard:         ptr(*guard),
