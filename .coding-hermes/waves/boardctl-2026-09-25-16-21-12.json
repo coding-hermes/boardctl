@@ -1,0 +1,27 @@
+{
+  "tick": "boardctl-2026-09-25-16-21-12",
+  "project": "boardctl",
+  "wave_budget": 8,
+  "workers": [
+    {
+      "task_id": "RELEASE-2026-09-25-02",
+      "brief": "/tmp/brief-release-0902.txt",
+      "scope": "cmd/boardctl/bt041_event_refusal_test.go (new); asserts event refusal (no --type) exits 1, appends NOTHING, control arm appends one",
+      "expected_surface": "cmd/boardctl/*_test.go only",
+      "gitreins": "BT-RELEASE-0902"
+    },
+    {
+      "task_id": "RELEASE-2026-09-25-04",
+      "brief": "/tmp/brief-release-0904.txt",
+      "scope": "cmd/boardctl/main.go create usage closure (line ~613) + usage-integrity test; create --help lists --status/--priority/--complexity/--depends-on/--reasoning/--capability-tags/--evidence-run-id",
+      "expected_surface": "cmd/boardctl/main.go (usage string) + df_boardctl_7_usage_test.go",
+      "gitreins": "BT-RELEASE-0904"
+    }
+  ],
+  "independence": "Worker surfaces are file-disjoint: -02 writes a NEW test file; -04 edits the create usage closure in main.go plus a different test file. No shared edits, no depends_on edges between rows (verified from tasks.jsonl).",
+  "worktrees": {
+    "RELEASE-2026-09-25-02": {"worktree": "/home/kara/worktrees/boardctl-BT-RELEASE-0902", "branch": "wt/BT-RELEASE-0902", "base": "origin/main", "base_sha": "9b276f7"},
+    "RELEASE-2026-09-25-04": {"worktree": "/home/kara/worktrees/boardctl-BT-RELEASE-0904", "branch": "wt/BT-RELEASE-0904", "base": "origin/main", "base_sha": "9b276f7"}
+  },
+  "note": "worktree/branch paths recorded after worktree.sh new; operational rows RELEASE-2026-09-25-03 (install refresh) and RELEASE-2026-09-25-01 (fleet sweep) run foreman-direct post-merge (no repo-file surface, not independent-code work)."
+}
