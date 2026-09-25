@@ -639,6 +639,16 @@ type UpdateSpec struct {
 	Worktree *string
 	Branch   *string
 	Sessions *[]string
+	// DF-BOARDCTL-13: priority + SG-126 run evidence, same nil-untouched
+	// discipline. Priority rides create's BT-007 write-time gate verbatim
+	// (normalize bare digits/case variants, reject the rest) — BT-060 left
+	// the priority FIELD unrepairable through the CLI, so the contradiction
+	// class kept its other half. EvidenceRunID merges one {run_id, ts} entry
+	// into the row's detail envelope (SG-126), so run evidence can be
+	// recorded on a row that ALREADY exists — create never had the only
+	// door. An omitted flag leaves the key (and the detail bytes) untouched.
+	Priority      *string
+	EvidenceRunID string
 	// BT-025: normalize mode — rewrite ONLY the row's status (via the
 	// read-alias table) and guard_result/ci_result (via NormalizeResultValue)
 	// to their canonical forms. Any present field whose value cannot be
@@ -802,13 +812,47 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
+	// DF-BOARDCTL-13: priority goes through the SAME write-time gate as
+	// create (BT-007) — bare digits ("1") and case variants ("p2") map onto
+	// the canonical P0-P3 set, anything else fails the whole update with
+	// create's error text and NOTHING is written. The value is stored
+	// canonical, so the row's priority field keeps speaking BT-048's
+	// on-disk vocabulary no matter which command wrote it.
+	if spec.Priority != nil {
+		p := NormalizePriority(*spec.Priority)
+		if !PriorityVocabulary[p] {
+			return nil, fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3} (bare 0-3 are normalized; use e.g. --priority P1)", *spec.Priority)
+		}
+		if err := set("priority", p); err != nil {
+			return nil, err
+		}
+	}
+	// SG-126: --evidence-run-id records run evidence on an EXISTING row —
+	// the update-path twin of create's --evidence-run-id. The entry merges
+	// into the row's detail envelope via ParseFindingDetail/withEvidence:
+	// object-form details keep every unknown key and their bytes, prose
+	// details are preserved under "text", a prior identical entry makes the
+	// merge idempotent, and EncodeFindingDetail renders the result in the
+	// row's own style. Only set("detail") after the full merge succeeds, so
+	// an encode failure leaves the row (and the changed list) untouched.
+	if spec.EvidenceRunID != "" {
+		pd := ParseFindingDetail(target.Get("detail"))
+		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: now}})
+		enc, err := EncodeFindingDetail(pd, style)
+		if err != nil {
+			return nil, fmt.Errorf("detail: %w", err)
+		}
+		if err := set("detail", json.RawMessage(enc)); err != nil {
+			return nil, err
+		}
+	}
 	if target.Has("updated_at") {
 		if err := set("updated_at", now); err != nil {
 			return nil, err
 		}
 	}
 	if len(changed) == 0 && !spec.Normalize {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session) or --normalize")
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))

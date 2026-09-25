@@ -73,7 +73,9 @@ func TestBT060TitlePriorityMismatchWarns(t *testing.T) {
 		`"P2"`, // the row's priority field, quoted
 		"priority field wins",
 		"boardctl update BT060-MISMATCH --title",
-		"update has no --priority",
+		// DF-BOARDCTL-13: update now carries --priority, so the FIELD fix is
+		// named first and the re-file path is the fallback, not the only door.
+		"boardctl update BT060-MISMATCH --priority <Pn>",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("warning missing %q, got: %s", want, got)
