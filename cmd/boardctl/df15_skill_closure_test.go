@@ -412,10 +412,15 @@ func TestUsageSkillDateGateBitesOnHeaderMutations(t *testing.T) {
 	}{
 		{
 			// A one-day-old date must pass — freshness is a window, not
-			// an equality check on today.
-			name:   "date one day old passes",
-			mutate: setDate(yesterday),
-			wantOK: true,
+			// an equality check on today. When the skill was stamped
+			// yesterday this mutation is a no-op: the live body asserted
+			// at the top of this test IS the one-day-old specimen (same
+			// rule as the current-date case below).
+			name:       "date one day old passes",
+			mutate:     setDate(yesterday),
+			wantOK:     true,
+			allowNoOp:  true,
+			noOpReason: "the live header date is already one day old — the live body is the one-day-old specimen",
 		},
 		{
 			name:   "date just inside tolerance passes",

@@ -96,8 +96,46 @@ func rawLastLine(path string) []byte {
 	return nil
 }
 
+// ensureTrailingNewline guarantees the file ends with '\n' before an append.
+//
+// Without it, appending onto a file whose last line has no newline GLUES the new row
+// onto the previous one: both rows then live on one line, every line-based reader sees
+// a single malformed row ("Extra data" from any JSON parser), and both ids disappear.
+// Observed live on a real board whose last row was the only line lacking a terminator.
+func ensureTrailingNewline(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // O_CREATE handles it; an absent file has no last line
+		}
+		return err
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil || st.Size() == 0 {
+		return nil
+	}
+	last := make([]byte, 1)
+	if _, err := f.ReadAt(last, st.Size()-1); err != nil {
+		return err
+	}
+	if last[0] == '\n' {
+		return nil
+	}
+	af, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer af.Close()
+	_, err = af.Write([]byte("\n"))
+	return err
+}
+
 // appendBytes appends with O_APPEND semantics — never rewrites the file.
 func appendBytes(path string, data []byte) error {
+	if err := ensureTrailingNewline(path); err != nil {
+		return err
+	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
