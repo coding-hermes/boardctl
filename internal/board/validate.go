@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -183,6 +184,24 @@ func (b *Board) validateTasks(rep *Report) {
 					idx+1, id, p)
 			}
 		}
+		// BT-060: a title carrying a Pn token that DISAGREES with the row's
+		// priority field is a drift tell — the fleet titles rows "[P1] ..."
+		// by hand and then re-priorities the row, so the token goes stale.
+		// The priority FIELD wins for what the row means (BT-048: it is the
+		// machine-read value); the warning only points at the stale token.
+		// Rules: exactly one P0-P3 token is searched (the same regex used in
+		// the warning text); out-of-vocabulary spellings (P4, P9) are NOT
+		// this class — the BT-048 priority check already owns the row's
+		// priority drift, and guessing what P4 "should" be would invent a
+		// decision. Multiple tokens each get their own warning (a title like
+		// "[P2] fix P1 regression" carries two independent tells). No token,
+		// no finding; exit stays 0 (warn severity, like every cross-check).
+		for _, tok := range TitlePriorityTokens(row.String("title")) {
+			if PriorityVocabulary[tok] && tok != p {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): title carries %q but priority is %q — the priority field wins; rewrite the title with 'boardctl update %s --title' or the priority with 'boardctl update %s --priority' if the field is the stale half",
+					idx+1, id, tok, p, id, id)
+			}
+		}
 		// BT-055: the depends_on shape is checked before the cross-check
 		// below. rowStringSlice deliberately returns nil for any non-array
 		// value, which made a malformed shape (legacy/hand-written rows:
@@ -358,6 +377,40 @@ func decodeJSONString(raw []byte) (string, bool) {
 		return "", false
 	}
 	return s, true
+}
+
+// titlePriorityToken matches a P0-P3 token standing ALONE in a title: the
+// letter P (any case — the drift class includes hand-typed "[p1]") preceded
+// by the start of the string or a non-alphanumeric character, followed by a
+// single digit 0-3, followed by the end of the string or a non-alphanumeric
+// character. "P1" inside "P10" or "API2" does not match (the digit and the
+// leading letter are part of a larger token); "[P1]" and "P1:" and "p1 " do.
+var titlePriorityToken = regexp.MustCompile(`(^|[^A-Za-z0-9])([Pp][0-3])([^A-Za-z0-9]|$)`)
+
+// TitlePriorityTokens returns the priority tokens a title carries, in
+// order of appearance (BT-060's title-priority cross-check). Multiple
+// tokens each yield an entry — "[P1] a (P2) b" and the adjacent form
+// "P1 P2" both yield two tokens, each an independent drift tell when it
+// disagrees with the row's priority field. The scan restarts at the end
+// of the TOKEN, not the end of the whole match: RE2 has no lookahead, so
+// the boundary character after a token must stay consumable as the START
+// boundary of the next one.
+func TitlePriorityTokens(title string) []string {
+	var out []string
+	pos := 0
+	for pos <= len(title) {
+		loc := titlePriorityToken.FindStringSubmatchIndex(title[pos:])
+		if loc == nil {
+			break
+		}
+		tokStart, tokEnd := pos+loc[4], pos+loc[5]
+		out = append(out, strings.ToUpper(title[tokStart:tokEnd]))
+		if tokEnd <= pos { // cannot happen ([Pp][0-3] is 2 bytes); guard anyway
+			break
+		}
+		pos = tokEnd
+	}
+	return out
 }
 
 // validateEvents parses events.jsonl: parse errors are errors; numeric ids

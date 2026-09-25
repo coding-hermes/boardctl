@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.7.0
-date: 2026-09-24
+version: 1.8.0
+date: 2026-09-25
 category: software-development
 ---
 
@@ -19,7 +19,10 @@ database, no caches: what git tracks is the board.
 
 Run-15 (2026-09-24) additions: `sweep-status` + `install` in Proven commands;
 `--force` on create does NOT bypass the dangling-dep check (only the id-format
-guard); `update` still has no `--priority/--title` (BT-060 half-open).
+guard). BT-060 (2026-09-25) closed the half-open item: `update` now accepts
+`--title`, and `validate` warns when a title's Pn token disagrees with the
+row's priority field (the priority field wins; fix via `update --title` or
+`update --priority`).
 
 ## Entry points
 
@@ -69,6 +72,7 @@ boardctl -C R create --id FEAT-1 --title "T" --priority P1 \
     --capability-tags go,cli
 boardctl -C R update FEAT-1 --status complete \
     --commit-hash <sha> --guard PASS --ci GREEN --summary "done (+80/-12)"
+boardctl -C R update FEAT-1 --title "renamed: retry with backoff"  # BT-060
 
 # worktree / branch / Hermes session audit trail (first-class row fields).
 # Omitted flag = NO key written (main-checkout work has no worktree);
@@ -141,6 +145,12 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
   worked the row (repeatable; the array is REPLACED wholesale, never merged).
   They are change flags for `update` and are refused in combination with
   `--normalize`.
+- `--title` (create and update, BT-060): free text, no vocabulary. On update
+  an omitted `--title` leaves the row untouched; a title rewrite appends the
+  `task_updated` event. If `validate` warns that a title's Pn token
+  disagrees with the row's `priority` field, the priority FIELD wins — fix
+  with `update <id> --title ...` (or `--priority` if the field is the stale
+  half) instead of hand-editing tasks.jsonl.
 - `event --type`: must be one of the enumerated event types (`audit`,
   `tick`, `task_created`, `task_completed`, `task_updated`, `idle`,
   `dogfood`, `e2e_verified`, ... — the error message lists them all).

@@ -609,7 +609,11 @@ func neutralValue(key string) json.RawMessage {
 
 // UpdateSpec carries the user-supplied update fields (nil pointer = untouched).
 type UpdateSpec struct {
-	Status        *string
+	Status *string
+	// BT-060: title is updatable like any other field — create has always
+	// accepted --title, update could only rewrite it by hand-editing the
+	// row. nil leaves the title (and its byte position) untouched.
+	Title         *string
 	WorkerStatus  *string
 	CommitHash    *string
 	Guard         *string // stored upper-cased (PASS|FAIL|SKIP)
@@ -715,6 +719,15 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
+	// BT-060: --title rewrites the row's title. Like every other update
+	// field the value is written verbatim (no vocabulary, no trimming) —
+	// the title is free text, and validate's BT-060 title-priority
+	// cross-check is where a drift tell gets surfaced, not here.
+	if spec.Title != nil {
+		if err := set("title", *spec.Title); err != nil {
+			return nil, err
+		}
+	}
 	if spec.WorkerStatus != nil {
 		if err := set("worker_status", *spec.WorkerStatus); err != nil {
 			return nil, err
@@ -795,7 +808,7 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 		}
 	}
 	if len(changed) == 0 && !spec.Normalize {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session) or --normalize")
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))
@@ -827,6 +840,19 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 			Detail: []byte(fmt.Sprintf(`{"status":%q}`, *spec.Status)),
 		}); err != nil {
 			return changed, fmt.Errorf("task row updated but %s event failed: %w", etype, err)
+		}
+	} else if spec.Title != nil {
+		// BT-060: a title rewrite is a task update — appending the
+		// task_updated event here keeps the audit trail complete for a
+		// title-only update (no --status). Other flag-only updates keep
+		// their historical no-event behavior; the detail names the new
+		// title so the trail shows WHAT the rename was.
+		if _, err := b.AppendEvent(EventSpec{
+			Type:   "task_updated",
+			TaskID: id,
+			Detail: []byte(fmt.Sprintf(`{"title":%q}`, *spec.Title)),
+		}); err != nil {
+			return changed, fmt.Errorf("task row updated but task_updated event failed: %w", err)
 		}
 	}
 	return changed, nil
