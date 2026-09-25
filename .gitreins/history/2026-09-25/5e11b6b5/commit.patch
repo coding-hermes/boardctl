@@ -1,0 +1,18 @@
+commit edf582e9b9584eda150c6c71ef951eaf2a813119
+Merge: b9a57bd 334b1e5
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 25 17:24:19 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 25 17:24:19 2026 -0500
+
+    merge: BT-060 flag documentation closure + --title on update + title-priority validate warning (worker 4082186 + foreman 334b1e5)
+
+ README.md                                   |  25 ++++
+ cmd/boardctl/bt060_cli_test.go              | 183 ++++++++++++++++++++++++++++
+ cmd/boardctl/main.go                        |  24 ++--
+ internal/board/bt060_title_priority_test.go | 177 +++++++++++++++++++++++++++
+ internal/board/bt060_update_title_test.go   | 154 +++++++++++++++++++++++
+ internal/board/validate.go                  |  53 ++++++++
+ internal/board/write.go                     |  30 ++++-
+ skills/boardctl-usage/SKILL.md              |  16 ++-
+ 8 files changed, 650 insertions(+), 12 deletions(-)

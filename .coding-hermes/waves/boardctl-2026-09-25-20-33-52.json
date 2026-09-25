@@ -1,0 +1,50 @@
+{
+  "tick": "boardctl-2026-09-25-20-33-52",
+  "project": "boardctl",
+  "repo": "/home/kara/coding-hermes-boardctl",
+  "base": "origin/main",
+  "base_sha": "5737be9",
+  "budget": 4,
+  "workers": [
+    {
+      "task": "BT-060",
+      "worktree": "/home/kara/worktrees/boardctl-BT-060",
+      "branch": "wt/BT-060",
+      "brief": "/tmp/bt060-brief.md",
+      "msgfile": "/tmp/bt060-msg.txt",
+      "log": "/tmp/w-bt060.log",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm",
+      "files": "cmd/boardctl/main.go (create/update flag registration + usage closures + usageText), internal/board/validate.go (+ tests)"
+    },
+    {
+      "task": "BT-061",
+      "worktree": "/home/kara/worktrees/boardctl-BT-061",
+      "branch": "wt/BT-061",
+      "brief": "/tmp/bt061-brief.md",
+      "msgfile": "/tmp/bt061-msg.txt",
+      "log": "/tmp/w-bt061.log",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm",
+      "files": "docs/muster-protocol-scope.md (new, docs-only)"
+    },
+    {
+      "task": "DF-BOARDCTL-14",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-14",
+      "branch": "wt/DF-BOARDCTL-14",
+      "brief": "/tmp/df14-brief.md",
+      "msgfile": "/tmp/df14-msg.txt",
+      "log": "/tmp/w-df14.log",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm",
+      "files": "cmd/boardctl/df_boardctl_7_usage_test.go or new _test.go (test-only)"
+    }
+  ],
+  "not_dispatched": [
+    {"task": "BT-053", "why": "fleet-wide multi-repo rollout (58 board repos) + unresolved coexistence question with existing gitreins pre-commit hooks; needs its own serial slice, not a wave worktree"},
+    {"task": "DF-BOARDCTL-13", "why": "depends_on BT-060 (in_progress this tick)"},
+    {"task": "BT-062", "why": "depends_on BT-061 (in_progress this tick)"},
+    {"task": "BT-063", "why": "depends_on BT-062"},
+    {"task": "DF-BOARDCTL-14-status-note", "why": "row partially stale: install IS in root --help since 77f00c6; live work narrowed to the closure meta-test"}
+  ]
+}

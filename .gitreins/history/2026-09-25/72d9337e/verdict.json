@@ -1,0 +1,101 @@
+{
+  "task_id": "BT-061",
+  "task_title": "SCOPE: connecting to boardctl over the muster protocol",
+  "task_criteria": [
+    "A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "44fe8051de97ed9dab44bcc28c74c8cf92417ece",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.009s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n4:53PM INF scanned ~1721061 bytes (1.72 MB) in 438ms\n4:53PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 120 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260925T194141.915028Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.009s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.219s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260925T194141.915028Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes: docs/muster-protocol-scope.md (469 lines) is the only file changed in commit 44fe805 (git diff 5737be9..HEAD --name-only = docs/muster-protocol-scope.md only; no production code). (1) \u00a71.1 exposed-surface table (listBoards GET /api/boards, getUploaderForm GET /, getOpenapiSpec GET /openapi.json) + \u00a71.2 explicit exclusions (POST /, all board-write verbs); read-only-by-default boundary call in \u00a74 D4: 'read-only BY SCOPE rather than by generator configuration \u2014 a generator flag can be flipped; an absent operation cannot.' (2) \u00a72.1 verbatim mcpServers block with real --spec http://127.0.0.1:8787/openapi.json and --base-url http://127.0.0.1:8787 (plus \u00a72.2 file fallback). (3) \u00a73 A.1\u2013A.8 acceptance commands; I executed the jq assertions: A.4 fails on [] stub (exit 1) and on done+open!=task_total (exit 1), passes on valid data (exit 0); A.5 exact-set assertion fails when an extra tool is present (exit 1) and passes on the exact set (exit 0); A.7 negative control fails on isError:false (exit 1) \u2014 all non-vacuous. (4) \u00a74 cites muster PROTOCOLS.md \u00a74.5 (KindUnary, streaming/bidi caps, mutating ops require human gate + opt-in + state-boundary proof) and gates everything else by spec-level absence. (5) \u00a75 auth story: loopback-only hard gate, no credential/TLS; quoted refusal string matches cmd/boardctl/serve.go:94 verbatim. Foreman landed decisions D1\u2013D6 in the board row: tasks.jsonl BT-061 foreman_note = 'Decisions D1-D6 landed: D1 read-only surface; D2 served spec...; D3 consumer block verbatim; D4 agent-safe = GET-only...; D5 auth = loopback-only...; D6 generator generalizes ONLY if a second fleet chain adopts muster'. Doc's factual corrections verified against tree (no internal/describe or cmd/gendocs; no openapi code; routes() at serve.go:378; apiBoard at serve.go:741). Test suite green: `go test -count=1 ./...` exit 0 (all packages ok).\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes: docs/muster-protocol-scope.md (469 lines) is the only file changed in commit 44fe805 (git diff 5737be9..HEAD --name-only = docs/muster-protocol-scope.md only; no production code). (1) \u00a71.1 exposed-surface table (listBoards GET /api/boards, getUploaderForm GET /, getOpenapiSpec GET /openapi.json) + \u00a71.2 explicit exclusions (POST /, all board-write verbs); read-only-by-default boundary call in \u00a74 D4: 'read-only BY SCOPE rather than by generator configuration \u2014 a generator flag can be flipped; an absent operation cannot.' (2) \u00a72.1 verbatim mcpServers block with real --spec http://127.0.0.1:8787/openapi.json and --base-url http://127.0.0.1:8787 (plus \u00a72.2 file fallback). (3) \u00a73 A.1\u2013A.8 acceptance commands; I executed the jq assertions: A.4 fails on [] stub (exit 1) and on done+open!=task_total (exit 1), passes on valid data (exit 0); A.5 exact-set assertion fails when an extra tool is present (exit 1) and passes on the exact set (exit 0); A.7 negative control fails on isError:false (exit 1) \u2014 all non-vacuous. (4) \u00a74 cites muster PROTOCOLS.md \u00a74.5 (KindUnary, streaming/bidi caps, mutating ops require human gate + opt-in + state-boundary proof) and gates everything else by spec-level absence. (5) \u00a75 auth story: loopback-only hard gate, no credential/TLS; quoted refusal string matches cmd/boardctl/serve.go:94 verbatim. Foreman landed decisions D1\u2013D6 in the board row: tasks.jsonl BT-061 foreman_note = 'Decisions D1-D6 landed: D1 read-only surface; D2 served spec...; D3 consumer block verbatim; D4 agent-safe = GET-only...; D5 auth = loopback-only...; D6 generator generalizes ONLY if a second fleet chain adopts muster'. Doc's factual corrections verified against tree (no internal/describe or cmd/gendocs; no openapi code; routes() at serve.go:378; apiBoard at serve.go:741). Test suite green: `go test -count=1 ./...` exit 0 (all packages ok).\n",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes",
+                "status": "PASS",
+                "detail": "docs/muster-protocol-scope.md (469 lines) is the only file changed in commit 44fe805 (git diff 5737be9..HEAD --name-only = docs/muster-protocol-scope.md only; no production code). (1) \u00a71.1 exposed-surface table (listBoards GET /api/boards, getUploaderForm GET /, getOpenapiSpec GET /openapi.json) + \u00a71.2 explicit exclusions (POST /, all board-write verbs); read-only-by-default boundary call in \u00a74 D4: 'read-only BY SCOPE rather than by generator configuration \u2014 a generator flag can be flipped; an absent operation cannot.' (2) \u00a72.1 verbatim mcpServers block with real --spec http://127.0.0.1:8787/openapi.json and --base-url http://127.0.0.1:8787 (plus \u00a72.2 file fallback). (3) \u00a73 A.1\u2013A.8 acceptance commands; I executed the jq assertions: A.4 fails on [] stub (exit 1) and on done+open!=task_total (exit 1), passes on valid data (exit 0); A.5 exact-set assertion fails when an extra tool is present (exit 1) and passes on the exact set (exit 0); A.7 negative control fails on isError:false (exit 1) \u2014 all non-vacuous. (4) \u00a74 cites muster PROTOCOLS.md \u00a74.5 (KindUnary, streaming/bidi caps, mutating ops require human gate + opt-in + state-boundary proof) and gates everything else by spec-level absence. (5) \u00a75 auth story: loopback-only hard gate, no credential/TLS; quoted refusal string matches cmd/boardctl/serve.go:94 verbatim. Foreman landed decisions D1\u2013D6 in the board row: tasks.jsonl BT-061 foreman_note = 'Decisions D1-D6 landed: D1 read-only surface; D2 served spec...; D3 consumer block verbatim; D4 agent-safe = GET-only...; D5 auth = loopback-only...; D6 generator generalizes ONLY if a second fleet chain adopts muster'. Doc's factual corrections verified against tree (no internal/describe or cmd/gendocs; no openapi code; routes() at serve.go:378; apiBoard at serve.go:741). Test suite green: `go test -count=1 ./...` exit 0 (all packages ok)."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-061\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.009s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes: docs/muster-protocol-scope.md (469 lines) is the only file changed in commit 44fe805 (git diff 5737be9..HEAD --name-only = docs/muster-protocol-scope.md only; no production code). (1) \u00a71.1 exposed-surface table (listBoards GET /api/boards, getUploaderForm GET /, getOpenapiSpec GET /openapi.json) + \u00a71.2 explicit exclusions (POST /, all board-write verbs); read-only-by-default boundary call in \u00a74 D4: 'read-only BY SCOPE rather than by generator configuration \u2014 a generator flag can be flipped; an absent operation cannot.' (2) \u00a72.1 verbatim mcpServers block with real --spec http://127.0.0.1:8787/openapi.json and --base-url http://127.0.0.1:8787 (plus \u00a72.2 file fallback). (3) \u00a73 A.1\u2013A.8 acceptance commands; I executed the jq assertions: A.4 fails on [] stub (exit 1) and on done+open!=task_total (exit 1), passes on valid data (exit 0); A.5 exact-set assertion fails when an extra tool is present (exit 1) and passes on the exact set (exit 0); A.7 negative control fails on isError:false (exit 1) \u2014 all non-vacuous. (4) \u00a74 cites muster PROTOCOLS.md \u00a74.5 (KindUnary, streaming/bidi caps, mutating ops require human gate + opt-in + state-boundary proof) and gates everything else by spec-level absence. (5) \u00a75 auth story: loopback-only hard gate, no credential/TLS; quoted refusal string matches cmd/boardctl/serve.go:94 verbatim. Foreman landed decisions D1\u2013D6 in the board row: tasks.jsonl BT-061 foreman_note = 'Decisions D1-D6 landed: D1 read-only surface; D2 served spec...; D3 consumer block verbatim; D4 agent-safe = GET-only...; D5 auth = loopback-only...; D6 generator generalizes ONLY if a second fleet chain adopts muster'. Doc's factual corrections verified against tree (no internal/describe or cmd/gendocs; no openapi code; routes() at serve.go:378; apiBoard at serve.go:741). Test suite green: `go test -count=1 ./...` exit 0 (all packages ok).\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-25T21:54:41.972975",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-25T21:54:41.990043+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 501,
+        "truncated": false,
+        "source": "git show 44fe8051de97"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 47668,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-061"
+  }
+}

@@ -1,0 +1,30 @@
+# Verdict: DF-BOARDCTL-14
+
+**Task:** Usage-closure meta-test walks the command switch instead of pinning a count
+**Evaluated:** 2026-09-25T21:58:13.330508
+**Result:** ✓ PASS
+
+## Pipeline Stages
+
+- ✓ **tier1**
+  -   ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
+  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	1.731s
+- ✓ **tier2**
+  - COMPLETE
+  ✓ The usage-closure meta-test derives its expectation from the command switch in main.go: every production command case must have an fs.Usage closure and every closure must belong to a command, so a 17th command without usage text FAILS the test instead of passing a stale pinned count; the pinned want:=16 is gone; install/docs gap verified fixed by 77f00c6 stays fixed; go test -count=1 green: New cmd/boardctl/df14_closure_switch_test.go (362 lines) derives expectations from main.go's switch: switchVerbsFromLines() parses `switch cmd {` (depth-counted to closing brace) and extracts `case "<verb>":` verbs, excluding the help case by shape (body prints usageText); attributedClosures() maps each fs.Usage closure to the most recent preceding newFlagSet("V"); closureGateFailures() flags (a) switch verb with 0 closures, (b) verb with >1 closure, (c) closure attributed to a non-switch verb (orphan), (d) unattributed closures. TestUsageClosureGateDerivesFromCommandSwitch runs the gate over productionGoFiles with vacuity guards; TestUsageClosureGateNegativeControl drives the same primitives on synthetic lines. MUTATION PROOF: inserting `case "newcmd17":` into main.go's switch with NO closure made `go test -count=1 -run TestUsageClosureGateDerivesFromCommandSwitch` FAIL with `df14_closure_switch_test.go:250: command "newcmd17" is in run()'s switch but owns NO fs.Usage closure`; adding the same case WITH a newFlagSet("newcmd17")+fs.Usage closure made the tests PASS (ok, exit 0) with no test edit — so no stale pinned count. PINNED COUNT GONE: grep `seen != want|want := 16|want:=16` in cmd/boardctl/*.go returns only comments (df14:6, df14:215, df7:244, df7:278) documenting removal; df_boardctl_7_usage_test.go:278 confirms the old fatal is replaced by a `seen == 0` vacuity guard. 77f00c6 FIX INTACT: main.go:613 create usage closure prints all seven field flags (--status --priority --complexity --depends-on --reasoning --capability-tags --evidence-run-id) and main.go:75 usageText lists `install`; TestCreateHelpListsFieldFlags PASSES. TESTS GREEN: `cd cmd/boardctl && go test -count=1 ./...` -> `ok github.com/coding-hermes/boardctl/cmd/boardctl 1.604s` EXIT=0; verbose run shows TestUsageClosureGateDerivesFromCommandSwitch PASS, TestUsageClosureGateNegativeControl PASS, TestEveryUsageClosureEndsWithRealNewline PASS, TestCreateHelpListsFieldFlags PASS. main.go restored clean (git status --porcelain cmd/boardctl/ empty).
+The usage-closure meta-test now derives its command set from main.go's switch (mutation-proven: a 17th closure-less command FAILS naming it, a 17th command with a closure passes), the pinned want:=16 is gone, the 77f00c6 install/create-docs fix is intact, and go test -count=1 is green.
+
+## Summary
+
+Judge Result: DF-BOARDCTL-14
+
+Stage tier1: PASS
+    ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
+  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	1.731s
+
+Stage tier2: PASS
+  COMPLETE
+  ✓ The usage-closure meta-test derives its expectation from the command switch in main.go: every production command case must have an fs.Usage closure and every closure must belong to a command, so a 17th command without usage text FAILS the test instead of passing a stale pinned count; the pinned want:=16 is gone; install/docs gap verified fixed by 77f00c6 stays fixed; go test -count=1 green: New cmd/boardctl/df14_closure_switch_test.go (362 lines) derives expectations from main.go's switch: switchVerbsFromLines() parses `switch cmd {` (depth-counted to closing brace) and extracts `case "<verb>":` verbs, excluding the help case by shape (body prints usageText); attributedClosures() maps each fs.Usage closure to the most recent preceding newFlagSet("V"); closureGateFailures() flags (a) switch verb with 0 closures, (b) verb with >1 closure, (c) closure attributed to a non-switch verb (orphan), (d) unattributed closures. TestUsageClosureGateDerivesFromCommandSwitch runs the gate over productionGoFiles with vacuity guards; TestUsageClosureGateNegativeControl drives the same primitives on synthetic lines. MUTATION PROOF: inserting `case "newcmd17":` into main.go's switch with NO closure made `go test -count=1 -run TestUsageClosureGateDerivesFromCommandSwitch` FAIL with `df14_closure_switch_test.go:250: command "newcmd17" is in run()'s switch but owns NO fs.Usage closure`; adding the same case WITH a newFlagSet("newcmd17")+fs.Usage closure made the tests PASS (ok, exit 0) with no test edit — so no stale pinned count. PINNED COUNT GONE: grep `seen != want|want := 16|want:=16` in cmd/boardctl/*.go returns only comments (df14:6, df14:215, df7:244, df7:278) documenting removal; df_boardctl_7_usage_test.go:278 confirms the old fatal is replaced by a `seen == 0` vacuity guard. 77f00c6 FIX INTACT: main.go:613 create usage closure prints all seven field flags (--status --priority --complexity --depends-on --reasoning --capability-tags --evidence-run-id) and main.go:75 usageText lists `install`; TestCreateHelpListsFieldFlags PASSES. TESTS GREEN: `cd cmd/boardctl && go test -count=1 ./...` -> `ok github.com/coding-hermes/boardctl/cmd/boardctl 1.604s` EXIT=0; verbose run shows TestUsageClosureGateDerivesFromCommandSwitch PASS, TestUsageClosureGateNegativeControl PASS, TestEveryUsageClosureEndsWithRealNewline PASS, TestCreateHelpListsFieldFlags PASS. main.go restored clean (git status --porcelain cmd/boardctl/ empty).
+The usage-closure meta-test now derives its command set from main.go's switch (mutation-proven: a 17th closure-less command FAILS naming it, a 17th command with a closure passes), the pinned want:=16 is gone, the 77f00c6 install/create-docs fix is intact, and go test -count=1 is green.
+
+Overall: PASS ✓

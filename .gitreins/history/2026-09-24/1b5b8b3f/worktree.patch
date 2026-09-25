@@ -1,0 +1,11 @@
+diff --git a/.coding-hermes/board/events.jsonl b/.coding-hermes/board/events.jsonl
+index e048f93..03d5e3a 100644
+--- a/.coding-hermes/board/events.jsonl
++++ b/.coding-hermes/board/events.jsonl
+@@ -242,3 +242,6 @@
+ {"id":242,"timestamp":"2026-09-24 15:16:47","event_type":"task_created","task_id":"BT-61","actor":"foreman","detail":"{\"id\":\"BT-61\",\"status\":\"pending\"}","tick_number":null}
+ {"id":243,"timestamp":"2026-09-24 15:16:47","event_type":"task_created","task_id":"BT-62","actor":"foreman","detail":"{\"id\":\"BT-62\",\"status\":\"pending\"}","tick_number":null}
+ {"id":244,"timestamp":"2026-09-24 15:16:47","event_type":"task_created","task_id":"BT-63","actor":"foreman","detail":"{\"id\":\"BT-63\",\"status\":\"pending\"}","tick_number":null}
++{"id":245,"timestamp":"2026-09-24 22:27:58","event_type":"task_updated","task_id":"BT-057","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
++{"id":246,"timestamp":"2026-09-24 22:27:58","event_type":"task_updated","task_id":"DF-BOARDCTL-12","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
++{"id":247,"timestamp":"2026-09-24 22:27:58","event_type":"task_updated","task_id":"DF-BOARDCTL-15","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}

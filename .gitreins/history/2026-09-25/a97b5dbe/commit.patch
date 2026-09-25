@@ -1,0 +1,12 @@
+commit b9a57bd0054335cfc3d42b2c8e54151c26c3ecd2
+Merge: 44fe805 9f4eb67
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 25 16:54:48 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 25 16:54:48 2026 -0500
+
+    merge: DF-BOARDCTL-14 usage-closure meta-test derives from command switch (worker 9f4eb67)
+
+ cmd/boardctl/df14_closure_switch_test.go | 362 +++++++++++++++++++++++++++++++
+ cmd/boardctl/df_boardctl_7_usage_test.go |  34 ++-
+ 2 files changed, 386 insertions(+), 10 deletions(-)

@@ -1,0 +1,10 @@
+diff --git a/.coding-hermes/board/events.jsonl b/.coding-hermes/board/events.jsonl
+index 1865bae..4243bf3 100644
+--- a/.coding-hermes/board/events.jsonl
++++ b/.coding-hermes/board/events.jsonl
+@@ -249,3 +249,5 @@
+ {"id":249,"timestamp":"2026-09-24 23:11:46","event_type":"task_completed","task_id":"DF-BOARDCTL-12","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+ {"id":250,"timestamp":"2026-09-24 23:12:10","event_type":"task_updated","task_id":"DF-BOARDCTL-15","actor":"foreman","detail":"{\"status\":\"pending\"}","tick_number":null}
+ {"id":251,"timestamp":"2026-09-24 23:35:47","event_type":"task_completed","task_id":"DF-BOARDCTL-15","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
++{"id":252,"timestamp":"2026-09-25 13:09:05","event_type":"task_created","task_id":"BT-064","actor":"foreman","detail":"{\"id\":\"BT-064\",\"status\":\"complete\"}","tick_number":null}
++{"id":253,"timestamp":"2026-09-25 13:09:05","event_type":"task_created","task_id":"BT-065","actor":"foreman","detail":"{\"id\":\"BT-065\",\"status\":\"complete\"}","tick_number":null}

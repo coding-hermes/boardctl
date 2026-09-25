@@ -1,0 +1,12 @@
+commit 7d53f8f78fc74840fc4cc3880a6938c6ce626152
+Merge: 38b7db8 1e09d45
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Thu Sep 24 18:31:43 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Thu Sep 24 18:31:43 2026 -0500
+
+    merge: DF-BOARDCTL-15 fixup — skill-header date freshness assertion (wt/DF-BOARDCTL-15-fix @ 1e09d45, guard PASS)
+
+ cmd/boardctl/df15_skill_closure_test.go | 224 ++++++++++++++++++++++++++++++++
+ skills/boardctl-usage/SKILL.md          |   1 +
+ 2 files changed, 225 insertions(+)

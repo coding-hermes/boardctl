@@ -1,0 +1,34 @@
+# Verdict: BT-057
+
+**Task:** Deployment freshness gate
+**Evaluated:** 2026-09-24T23:10:38.153956
+**Result:** ✓ PASS
+
+## Pipeline Stages
+
+- ✓ **tier1**
+  -   ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
+  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	3.571s
+- ✓ **tier2**
+  - COMPLETE
+  ✓ Running a boardctl binary built from a commit older than the checkout's HEAD prints a freshness warning to stderr: names the deployed binary's commit (short+date), the current HEAD, and the count of commits the binary lacks: internal/freshness/freshness.go:96-101 emits exactly one stderr line: fmt.Fprintf(stderr, "boardctl: warning: this binary was built from commit %s (built %s), which is %d %s behind HEAD (%s) of the checkout at %s — rebuild (make build) or reinstall; silence with %s=1\n", short(binaryCommit), date, n, unit, short(head), root, SkipEnv). Wired at cmd/boardctl/main.go:133 freshness.Check(buildCommit, "", os.Stderr) before the dispatch switch. LIVE PROOF: built /tmp/bt057_stale with -ldflags "-X main.buildCommit=$(git rev-parse HEAD~3)" and ran it in the checkout — stderr: 'boardctl: warning: this binary was built from commit c9a764110d2a (built 2026-09-24), which is 6 commits behind HEAD (4400ae4545b5) of the checkout at /home/kara/coding-hermes-boardctl — rebuild (make build) or reinstall; silence with BOARDCTL_SKIP_FRESHNESS=1'; exit=0; stdout byte-identical 'boardctl version dev'. Tests TestNBehindWarns, TestTwoBehindCount, TestWarningShape PASS (go test -count=1 -v ./internal/freshness/ => PASS, ok 0.281s).
+  ✓ A warning appears exactly when the embedded commit sha exists in HEAD history and is not HEAD itself; the check is skippable via an env var or flag: freshness.go:55-95 Check(): returns early on empty stamp; honors SkipEnv (BOARDCTL_SKIP_FRESHNESS, const at freshness.go:44) before any probe, treating "0"/"false"/"" as NOT a skip; requires isAncestor (freshness.go:154-156, `git merge-base --is-ancestor <sha> HEAD`) and headOf != sha. LIVE PROOF: BOARDCTL_SKIP_FRESHNESS=1 /tmp/bt057_stale version => stderr 0 bytes; BOARDCTL_SKIP_FRESHNESS=0 => warning still printed. Tests TestEnvSkipSilent, TestSkipVarVariants, TestForeignSHASilent, TestRebasedAwaySHASilent all PASS (go test -count=1 -v ./internal/freshness/ => PASS).
+  ✓ The warning is absent for: a binary at HEAD, a clean go install from source, and any commit sha not present in HEAD history (e.g. imported release build): LIVE PROOF of all three cases, each with stderr byte count 0: (A) binary stamped at HEAD (go build -ldflags "-X main.buildCommit=$(git rev-parse HEAD)") => 'stderr bytes: 0'; (B) plain `go build` with no stamp (equivalent to clean go install from source) => 'stderr bytes: 0'; (C) foreign sha 0123456789abcdef0123456789abcdef01234567 not in HEAD history => 'stderr bytes: 0'. Backed by TestAtHEADSilent, TestEmptyCommitSilent, TestForeignSHASilent, TestRebasedAwaySHASilent, TestNoGitFoundSilent, TestGitMissingSilent — all PASS. Full suite: `go test -count=1 ./...` exit 0, all packages ok (cmd/boardctl 1.731s, internal/freshness 0.364s, internal/board, fmtcheck, render, versioncheck, vulncheck, workflowcheck).
+All three BT-057 criteria pass, verified by live end-to-end runs of ldflags-stamped binaries (stale warns with sha+date+HEAD+count; at-HEAD, unstamped, and foreign-sha builds are silent; BOARDCTL_SKIP_FRESHNESS=1 silences) plus a green `go test -count=1 ./...`.
+
+## Summary
+
+Judge Result: BT-057
+
+Stage tier1: PASS
+    ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
+  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	3.571s
+
+Stage tier2: PASS
+  COMPLETE
+  ✓ Running a boardctl binary built from a commit older than the checkout's HEAD prints a freshness warning to stderr: names the deployed binary's commit (short+date), the current HEAD, and the count of commits the binary lacks: internal/freshness/freshness.go:96-101 emits exactly one stderr line: fmt.Fprintf(stderr, "boardctl: warning: this binary was built from commit %s (built %s), which is %d %s behind HEAD (%s) of the checkout at %s — rebuild (make build) or reinstall; silence with %s=1\n", short(binaryCommit), date, n, unit, short(head), root, SkipEnv). Wired at cmd/boardctl/main.go:133 freshness.Check(buildCommit, "", os.Stderr) before the dispatch switch. LIVE PROOF: built /tmp/bt057_stale with -ldflags "-X main.buildCommit=$(git rev-parse HEAD~3)" and ran it in the checkout — stderr: 'boardctl: warning: this binary was built from commit c9a764110d2a (built 2026-09-24), which is 6 commits behind HEAD (4400ae4545b5) of the checkout at /home/kara/coding-hermes-boardctl — rebuild (make build) or reinstall; silence with BOARDCTL_SKIP_FRESHNESS=1'; exit=0; stdout byte-identical 'boardctl version dev'. Tests TestNBehindWarns, TestTwoBehindCount, TestWarningShape PASS (go test -count=1 -v ./internal/freshness/ => PASS, ok 0.281s).
+  ✓ A warning appears exactly when the embedded commit sha exists in HEAD history and is not HEAD itself; the check is skippable via an env var or flag: freshness.go:55-95 Check(): returns early on empty stamp; honors SkipEnv (BOARDCTL_SKIP_FRESHNESS, const at freshness.go:44) before any probe, treating "0"/"false"/"" as NOT a skip; requires isAncestor (freshness.go:154-156, `git merge-base --is-ancestor <sha> HEAD`) and headOf != sha. LIVE PROOF: BOARDCTL_SKIP_FRESHNESS=1 /tmp/bt057_stale version => stderr 0 bytes; BOARDCTL_SKIP_FRESHNESS=0 => warning still printed. Tests TestEnvSkipSilent, TestSkipVarVariants, TestForeignSHASilent, TestRebasedAwaySHASilent all PASS (go test -count=1 -v ./internal/freshness/ => PASS).
+  ✓ The warning is absent for: a binary at HEAD, a clean go install from source, and any commit sha not present in HEAD history (e.g. imported release build): LIVE PROOF of all three cases, each with stderr byte count 0: (A) binary stamped at HEAD (go build -ldflags "-X main.buildCommit=$(git rev-parse HEAD)") => 'stderr bytes: 0'; (B) plain `go build` with no stamp (equivalent to clean go install from source) => 'stderr bytes: 0'; (C) foreign sha 0123456789abcdef0123456789abcdef01234567 not in HEAD history => 'stderr bytes: 0'. Backed by TestAtHEADSilent, TestEmptyCommitSilent, TestForeignSHASilent, TestRebasedAwaySHASilent, TestNoGitFoundSilent, TestGitMissingSilent — all PASS. Full suite: `go test -count=1 ./...` exit 0, all packages ok (cmd/boardctl 1.731s, internal/freshness 0.364s, internal/board, fmtcheck, render, versioncheck, vulncheck, workflowcheck).
+All three BT-057 criteria pass, verified by live end-to-end runs of ldflags-stamped binaries (stale warns with sha+date+HEAD+count; at-HEAD, unstamped, and foreign-sha builds are silent; BOARDCTL_SKIP_FRESHNESS=1 silences) plus a green `go test -count=1 ./...`.
+
+Overall: PASS ✓

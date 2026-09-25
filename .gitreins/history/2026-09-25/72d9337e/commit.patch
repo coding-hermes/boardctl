@@ -1,0 +1,11 @@
+commit 44fe8051de97ed9dab44bcc28c74c8cf92417ece
+Merge: 5737be9 d8fd31a
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 25 16:51:02 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 25 16:51:02 2026 -0500
+
+    merge: BT-061 muster protocol connection scope (docs-only, worker d8fd31a)
+
+ docs/muster-protocol-scope.md | 469 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 469 insertions(+)

@@ -1,0 +1,12 @@
+commit 4400ae4545b5cbf28dc444742d9b427c9f3cfc95
+Merge: 639fff8 1f52629
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Thu Sep 24 18:09:10 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Thu Sep 24 18:09:10 2026 -0500
+
+    merge: DF-BOARDCTL-15 usage-skill freshness gate (wt/DF-BOARDCTL-15 @ 1f52629, guard PASS)
+
+ cmd/boardctl/df15_skill_closure_test.go | 256 ++++++++++++++++++++++++++++++++
+ skills/boardctl-usage/SKILL.md          |  11 +-
+ 2 files changed, 266 insertions(+), 1 deletion(-)

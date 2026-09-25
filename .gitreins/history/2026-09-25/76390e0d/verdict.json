@@ -1,0 +1,101 @@
+{
+  "task_id": "BT-RELEASE-0904",
+  "task_title": "create --help documents the field flags",
+  "task_criteria": [
+    "cmd/boardctl/main.go create usage closure lists --status/--priority/--complexity/--depends-on/--reasoning/--capability-tags/--evidence-run-id; new df_boardctl_7_usage_test.go assertion fails on the old string; build/vet/test -short green; diff limited to main.go usage string + new test"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "77f00c6917d8a05331447473874f28392c537515",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.608s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n11:46AM INF scanned ~1660072 bytes (1.66 MB) in 381ms\n11:46AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 116 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260925T164143.049242Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.608s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.151s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.088s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.329s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.021s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.467s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.006s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260925T164143.049242Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 cmd/boardctl/main.go create usage closure lists --status/--priority/--complexity/--depends-on/--reasoning/--capability-tags/--evidence-run-id; new df_boardctl_7_usage_test.go assertion fails on the old string; build/vet/test -short green; diff limited to main.go usage string + new test: main.go:613 create usage closure now prints all seven flags: \"boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH]...\". New TestCreateHelpListsFieldFlags (df_boardctl_7_usage_test.go:387-401) asserts all seven flags via run([\"create\",\"--help\"]). RED verified: reverting the usage string to the old text makes the test FAIL with 'create --help usage output missing \"--priority\"' etc. GREEN verified: go test -short -count=1 -run TestCreateHelpListsFieldFlags => PASS. go build ./... exit 0; go vet ./cmd/boardctl exit 0; go test -short -count=1 ./cmd/boardctl => 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.807s' exit 0. Diff (git show HEAD --stat) limited to cmd/boardctl/main.go (2 lines, 1 changed) + cmd/boardctl/df_boardctl_7_usage_test.go (27 insertions).\ncreate --help usage now documents all seven field flags, the new test is load-bearing (RED on old string, GREEN after fix), build/vet/test -short are green, and the diff is limited to the usage string plus the new test.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 cmd/boardctl/main.go create usage closure lists --status/--priority/--complexity/--depends-on/--reasoning/--capability-tags/--evidence-run-id; new df_boardctl_7_usage_test.go assertion fails on the old string; build/vet/test -short green; diff limited to main.go usage string + new test: main.go:613 create usage closure now prints all seven flags: \"boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH]...\". New TestCreateHelpListsFieldFlags (df_boardctl_7_usage_test.go:387-401) asserts all seven flags via run([\"create\",\"--help\"]). RED verified: reverting the usage string to the old text makes the test FAIL with 'create --help usage output missing \"--priority\"' etc. GREEN verified: go test -short -count=1 -run TestCreateHelpListsFieldFlags => PASS. go build ./... exit 0; go vet ./cmd/boardctl exit 0; go test -short -count=1 ./cmd/boardctl => 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.807s' exit 0. Diff (git show HEAD --stat) limited to cmd/boardctl/main.go (2 lines, 1 changed) + cmd/boardctl/df_boardctl_7_usage_test.go (27 insertions).\ncreate --help usage now documents all seven field flags, the new test is load-bearing (RED on old string, GREEN after fix), build/vet/test -short are green, and the diff is limited to the usage string plus the new test.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "cmd/boardctl/main.go create usage closure lists --status/--priority/--complexity/--depends-on/--reasoning/--capability-tags/--evidence-run-id; new df_boardctl_7_usage_test.go assertion fails on the old string; build/vet/test -short green; diff limited to main.go usage string + new test",
+                "status": "PASS",
+                "detail": "main.go:613 create usage closure now prints all seven flags: \"boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH]...\". New TestCreateHelpListsFieldFlags (df_boardctl_7_usage_test.go:387-401) asserts all seven flags via run([\"create\",\"--help\"]). RED verified: reverting the usage string to the old text makes the test FAIL with 'create --help usage output missing \"--priority\"' etc. GREEN verified: go test -short -count=1 -run TestCreateHelpListsFieldFlags => PASS. go build ./... exit 0; go vet ./cmd/boardctl exit 0; go test -short -count=1 ./cmd/boardctl => 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.807s' exit 0. Diff (git show HEAD --stat) limited to cmd/boardctl/main.go (2 lines, 1 changed) + cmd/boardctl/df_boardctl_7_usage_test.go (27 insertions)."
+              }
+            ],
+            "summary": "create --help usage now documents all seven field flags, the new test is load-bearing (RED on old string, GREEN after fix), build/vet/test -short are green, and the diff is limited to the usage string plus the new test."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-RELEASE-0904\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.608s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 cmd/boardctl/main.go create usage closure lists --status/--priority/--complexity/--depends-on/--reasoning/--capability-tags/--evidence-run-id; new df_boardctl_7_usage_test.go assertion fails on the old string; build/vet/test -short green; diff limited to main.go usage string + new test: main.go:613 create usage closure now prints all seven flags: \"boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH]...\". New TestCreateHelpListsFieldFlags (df_boardctl_7_usage_test.go:387-401) asserts all seven flags via run([\"create\",\"--help\"]). RED verified: reverting the usage string to the old text makes the test FAIL with 'create --help usage output missing \"--priority\"' etc. GREEN verified: go test -short -count=1 -run TestCreateHelpListsFieldFlags => PASS. go build ./... exit 0; go vet ./cmd/boardctl exit 0; go test -short -count=1 ./cmd/boardctl => 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.807s' exit 0. Diff (git show HEAD --stat) limited to cmd/boardctl/main.go (2 lines, 1 changed) + cmd/boardctl/df_boardctl_7_usage_test.go (27 insertions).\ncreate --help usage now documents all seven field flags, the new test is load-bearing (RED on old string, GREEN after fix), build/vet/test -short are green, and the diff is limited to the usage string plus the new test.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-25T16:46:28.146280",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-25T16:46:28.160542+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3583,
+        "truncated": false,
+        "source": "git show 77f00c6917d8"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 1111,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-RELEASE-0904"
+  }
+}

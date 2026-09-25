@@ -1,0 +1,113 @@
+{
+  "task_id": "DF-BOARDCTL-15",
+  "task_title": "Usage skill entry-points freshness",
+  "task_criteria": [
+    "skills/boardctl-usage/SKILL.md carries an automated freshness gate: a test (or make target wired into CI/guard) derives the CLI command list from the binary's --help output and asserts every top-level command appears in the skill's agent-facing entry-points/commands section",
+    "A headless test asserting skill-vs-CLI closure exists and passes at HEAD; the assertion provably fails when a command is added to the CLI but not the skill (verified by a temporary fixture run, not committed)",
+    "The gate covers the entry-points AND Proven commands sections; version and date in the skill header agree with the gate result"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "4400ae4545b5cbf28dc444742d9b427c9f3cfc95",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.954s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n6:09PM INF scanned ~1634857 bytes (1.63 MB) in 1.24s\n6:09PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 114 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260924T230922.901143Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.954s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.751s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.589s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260924T230922.901143Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2713 skills/boardctl-usage/SKILL.md carries an automated freshness gate: a test (or make target wired into CI/guard) derives the CLI command list from the binary's --help output and asserts every top-level command appears in the skill's agent-facing entry-points/commands section: cmd/boardctl/df15_skill_closure_test.go:144 TestUsageSkillCoversEveryTopLevelCommand calls usageSkillCommands() which parses the real usageText constant (cmd/boardctl/main.go:43, the same text printed for --help at main.go:120/170) and asserts each command appears in the '## Entry points' or '## Proven commands' section. Wired into CI: .github/workflows/ci.yml:48 runs `go test -short -count=1 ./...` (test has no testing.Short guard, verified passing under -short) and Makefile `test: go test ./...`. Fresh run: `go test -count=1 ./cmd/boardctl/ -run 'TestUsageSkill|TestSkillCoverage'` => ok github.com/coding-hermes/boardctl/cmd/boardctl 0.006s.\n  \u2713 A headless test asserting skill-vs-CLI closure exists and passes at HEAD; the assertion provably fails when a command is added to the CLI but not the skill (verified by a temporary fixture run, not committed): At HEAD the gate passes: `go test -count=1 ./cmd/boardctl/ -run 'TestUsageSkill|TestSkillCoverage' -v` => PASS TestUsageSkillCoversEveryTopLevelCommand, PASS TestSkillCoverageParserProvesGatesBite, PASS TestUsageSkillVersionTracksGateResult. Negative fixture (temporary, restored): added `zz-newcmd` to usageText in main.go -> FAIL 'usage skill drift: top-level command \"zz-newcmd\" appears in the real --help output but in NEITHER the \"Entry points\" list NOR the \"Proven commands\" block'; also removing `sweep-status` from the skill -> FAIL. main.go and SKILL.md restored (git diff clean; only runtime .coding-hermes/board/events.jsonl and .gitreins logs modified).\n  \u2717 The gate covers the entry-points AND Proven commands sections; version and date in the skill header agree with the gate result: Section coverage is met: skillEntrySections requires both '## Entry points' and '## Proven commands' (df15_skill_closure_test.go:104-107, 149-155); renaming the '## Proven commands' heading -> FAIL 'usage skill lost its \"Proven commands\" section'. Version is asserted: TestUsageSkillVersionTracksGateResult (line 238) requires frontmatter `version: X.Y.Z` >= 1.7.0 and SKILL.md:7 has `version: 1.7.0`. HOWEVER the date half is missing: grep for date/Date/Parse/time in df15_skill_closure_test.go returns no date assertion, and the skill frontmatter has no date field (date '2026-09-24' appears only in body text at SKILL.md:19). The criterion requires the date in the skill header to agree with the gate result, which no test verifies.\nThe freshness gate exists, is CI-wired, passes at HEAD, and provably fails on CLI/skill drift, but criterion 3 is unmet because the gate asserts only the version and never the date in the skill header.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2713 skills/boardctl-usage/SKILL.md carries an automated freshness gate: a test (or make target wired into CI/guard) derives the CLI command list from the binary's --help output and asserts every top-level command appears in the skill's agent-facing entry-points/commands section: cmd/boardctl/df15_skill_closure_test.go:144 TestUsageSkillCoversEveryTopLevelCommand calls usageSkillCommands() which parses the real usageText constant (cmd/boardctl/main.go:43, the same text printed for --help at main.go:120/170) and asserts each command appears in the '## Entry points' or '## Proven commands' section. Wired into CI: .github/workflows/ci.yml:48 runs `go test -short -count=1 ./...` (test has no testing.Short guard, verified passing under -short) and Makefile `test: go test ./...`. Fresh run: `go test -count=1 ./cmd/boardctl/ -run 'TestUsageSkill|TestSkillCoverage'` => ok github.com/coding-hermes/boardctl/cmd/boardctl 0.006s.\n  \u2713 A headless test asserting skill-vs-CLI closure exists and passes at HEAD; the assertion provably fails when a command is added to the CLI but not the skill (verified by a temporary fixture run, not committed): At HEAD the gate passes: `go test -count=1 ./cmd/boardctl/ -run 'TestUsageSkill|TestSkillCoverage' -v` => PASS TestUsageSkillCoversEveryTopLevelCommand, PASS TestSkillCoverageParserProvesGatesBite, PASS TestUsageSkillVersionTracksGateResult. Negative fixture (temporary, restored): added `zz-newcmd` to usageText in main.go -> FAIL 'usage skill drift: top-level command \"zz-newcmd\" appears in the real --help output but in NEITHER the \"Entry points\" list NOR the \"Proven commands\" block'; also removing `sweep-status` from the skill -> FAIL. main.go and SKILL.md restored (git diff clean; only runtime .coding-hermes/board/events.jsonl and .gitreins logs modified).\n  \u2717 The gate covers the entry-points AND Proven commands sections; version and date in the skill header agree with the gate result: Section coverage is met: skillEntrySections requires both '## Entry points' and '## Proven commands' (df15_skill_closure_test.go:104-107, 149-155); renaming the '## Proven commands' heading -> FAIL 'usage skill lost its \"Proven commands\" section'. Version is asserted: TestUsageSkillVersionTracksGateResult (line 238) requires frontmatter `version: X.Y.Z` >= 1.7.0 and SKILL.md:7 has `version: 1.7.0`. HOWEVER the date half is missing: grep for date/Date/Parse/time in df15_skill_closure_test.go returns no date assertion, and the skill frontmatter has no date field (date '2026-09-24' appears only in body text at SKILL.md:19). The criterion requires the date in the skill header to agree with the gate result, which no test verifies.\nThe freshness gate exists, is CI-wired, passes at HEAD, and provably fails on CLI/skill drift, but criterion 3 is unmet because the gate asserts only the version and never the date in the skill header.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "skills/boardctl-usage/SKILL.md carries an automated freshness gate: a test (or make target wired into CI/guard) derives the CLI command list from the binary's --help output and asserts every top-level command appears in the skill's agent-facing entry-points/commands section",
+                "status": "PASS",
+                "detail": "cmd/boardctl/df15_skill_closure_test.go:144 TestUsageSkillCoversEveryTopLevelCommand calls usageSkillCommands() which parses the real usageText constant (cmd/boardctl/main.go:43, the same text printed for --help at main.go:120/170) and asserts each command appears in the '## Entry points' or '## Proven commands' section. Wired into CI: .github/workflows/ci.yml:48 runs `go test -short -count=1 ./...` (test has no testing.Short guard, verified passing under -short) and Makefile `test: go test ./...`. Fresh run: `go test -count=1 ./cmd/boardctl/ -run 'TestUsageSkill|TestSkillCoverage'` => ok github.com/coding-hermes/boardctl/cmd/boardctl 0.006s."
+              },
+              {
+                "criterion": "A headless test asserting skill-vs-CLI closure exists and passes at HEAD; the assertion provably fails when a command is added to the CLI but not the skill (verified by a temporary fixture run, not committed)",
+                "status": "PASS",
+                "detail": "At HEAD the gate passes: `go test -count=1 ./cmd/boardctl/ -run 'TestUsageSkill|TestSkillCoverage' -v` => PASS TestUsageSkillCoversEveryTopLevelCommand, PASS TestSkillCoverageParserProvesGatesBite, PASS TestUsageSkillVersionTracksGateResult. Negative fixture (temporary, restored): added `zz-newcmd` to usageText in main.go -> FAIL 'usage skill drift: top-level command \"zz-newcmd\" appears in the real --help output but in NEITHER the \"Entry points\" list NOR the \"Proven commands\" block'; also removing `sweep-status` from the skill -> FAIL. main.go and SKILL.md restored (git diff clean; only runtime .coding-hermes/board/events.jsonl and .gitreins logs modified)."
+              },
+              {
+                "criterion": "The gate covers the entry-points AND Proven commands sections; version and date in the skill header agree with the gate result",
+                "status": "FAIL",
+                "detail": "Section coverage is met: skillEntrySections requires both '## Entry points' and '## Proven commands' (df15_skill_closure_test.go:104-107, 149-155); renaming the '## Proven commands' heading -> FAIL 'usage skill lost its \"Proven commands\" section'. Version is asserted: TestUsageSkillVersionTracksGateResult (line 238) requires frontmatter `version: X.Y.Z` >= 1.7.0 and SKILL.md:7 has `version: 1.7.0`. HOWEVER the date half is missing: grep for date/Date/Parse/time in df15_skill_closure_test.go returns no date assertion, and the skill frontmatter has no date field (date '2026-09-24' appears only in body text at SKILL.md:19). The criterion requires the date in the skill header to agree with the gate result, which no test verifies."
+              }
+            ],
+            "summary": "The freshness gate exists, is CI-wired, passes at HEAD, and provably fails on CLI/skill drift, but criterion 3 is unmet because the gate asserts only the version and never the date in the skill header."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-15\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.954s\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2713 skills/boardctl-usage/SKILL.md carries an automated freshness gate: a test (or make target wired into CI/guard) derives the CLI command list from the binary's --help output and asserts every top-level command appears in the skill's agent-facing entry-points/commands section: cmd/boardctl/df15_skill_closure_test.go:144 TestUsageSkillCoversEveryTopLevelCommand calls usageSkillCommands() which parses the real usageText constant (cmd/boardctl/main.go:43, the same text printed for --help at main.go:120/170) and asserts each command appears in the '## Entry points' or '## Proven commands' section. Wired into CI: .github/workflows/ci.yml:48 runs `go test -short -count=1 ./...` (test has no testing.Short guard, verified passing under -short) and Makefile `test: go test ./...`. Fresh run: `go test -count=1 ./cmd/boardctl/ -run 'TestUsageSkill|TestSkillCoverage'` => ok github.com/coding-hermes/boardctl/cmd/boardctl 0.006s.\n  \u2713 A headless test asserting skill-vs-CLI closure exists and passes at HEAD; the assertion provably fails when a command is added to the CLI but not the skill (verified by a temporary fixture run, not committed): At HEAD the gate passes: `go test -count=1 ./cmd/boardctl/ -run 'TestUsageSkill|TestSkillCoverage' -v` => PASS TestUsageSkillCoversEveryTopLevelCommand, PASS TestSkillCoverageParserProvesGatesBite, PASS TestUsageSkillVersionTracksGateResult. Negative fixture (temporary, restored): added `zz-newcmd` to usageText in main.go -> FAIL 'usage skill drift: top-level command \"zz-newcmd\" appears in the real --help output but in NEITHER the \"Entry points\" list NOR the \"Proven commands\" block'; also removing `sweep-status` from the skill -> FAIL. main.go and SKILL.md restored (git diff clean; only runtime .coding-hermes/board/events.jsonl and .gitreins logs modified).\n  \u2717 The gate covers the entry-points AND Proven commands sections; version and date in the skill header agree with the gate result: Section coverage is met: skillEntrySections requires both '## Entry points' and '## Proven commands' (df15_skill_closure_test.go:104-107, 149-155); renaming the '## Proven commands' heading -> FAIL 'usage skill lost its \"Proven commands\" section'. Version is asserted: TestUsageSkillVersionTracksGateResult (line 238) requires frontmatter `version: X.Y.Z` >= 1.7.0 and SKILL.md:7 has `version: 1.7.0`. HOWEVER the date half is missing: grep for date/Date/Parse/time in df15_skill_closure_test.go returns no date assertion, and the skill frontmatter has no date field (date '2026-09-24' appears only in body text at SKILL.md:19). The criterion requires the date in the skill header to agree with the gate result, which no test verifies.\nThe freshness gate exists, is CI-wired, passes at HEAD, and provably fails on CLI/skill drift, but criterion 3 is unmet because the gate asserts only the version and never the date in the skill header.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-09-24T23:10:36.883958",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-24T23:10:36.898592+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 583,
+        "truncated": false,
+        "source": "git show 4400ae4545b5"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 1285,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-15"
+  }
+}

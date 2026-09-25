@@ -1,0 +1,101 @@
+{
+  "task_id": "BT-061",
+  "task_title": "SCOPE: connecting to boardctl over the muster protocol",
+  "task_criteria": [
+    "A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "44fe8051de97ed9dab44bcc28c74c8cf92417ece",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.789s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n4:52PM INF scanned ~1719582 bytes (1.72 MB) in 754ms\n4:52PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 120 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260925T194141.915028Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.789s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.258s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.652s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t4.072s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260925T194141.915028Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes: The doc and four of five sub-requirements pass, but the required 'foreman lands the decisions on the board row' sub-item is unmet. PASSING parts: docs/muster-protocol-scope.md (469 lines) is docs-only (git show --stat 44fe805: only that file, +469; git diff HEAD~1 --name-only = docs/muster-protocol-scope.md + .coding-hermes/board/tasks.jsonl, no .go files). (1) \u00a71.1 lines 54-64 expose exactly listBoards/getUploaderForm/getOpenapiSpec, \u00a71.2 lines 66-84 explicit exclusions, \u00a74 lines 279-307 read-only-by-default boundary call. (2) \u00a72.1 lines 104-122 verbatim mcpServers JSON with real concrete values --spec http://127.0.0.1:8787/openapi.json and --base-url http://127.0.0.1:8787 (matches serve.go:52 defaultServeAddr=\"127.0.0.1:8787\"). (3) \u00a73 lines 168-277 A.1-A.8 with non-vacuous jq payload invariants (done+open==task_total, topology enum), exact tool-SET assertion, negative control (putBoards isError), sha256 no-write proof. (4) \u00a74 lines 279-307 cites muster specs/PROTOCOLS.md \u00a74.5, KindUnary, mutating-op gate. (5) \u00a75 lines 308-337 auth story (loopback-only hard gate; serve.go:94 refusal message verified). No production code changes: go test -short -count=1 ./... => all packages ok (cmd/boardctl, internal/board, fmtcheck, freshness, render, versioncheck, vulncheck, workflowcheck). FAILING part: the board row BT-061 in .coding-hermes/board/tasks.jsonl still has status=\"pending\", commit_hash=null, foreman_note=null, worker_summary=null; the only change was worker_status pending->in_progress (updated_at 2026-09-25T20:46:34). The reasoning field is unchanged original task text with no reference to the scope doc or the D1-D6 decisions. .coding-hermes/waves/boardctl-2026-09-25-20-33-52.json lists BT-061 as in_progress and BT-062 as not_dispatched (\"depends_on BT-061 (in_progress this tick)\"); events.jsonl has zero BT-061 entries. The decisions were never landed on the board row.\nThe scope doc is complete, accurate, docs-only, and covers all five row items, but the criterion's explicit requirement that the foreman land the decisions on the board row was not done (BT-061 remains pending/in_progress with no commit_hash or foreman_note).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes: The doc and four of five sub-requirements pass, but the required 'foreman lands the decisions on the board row' sub-item is unmet. PASSING parts: docs/muster-protocol-scope.md (469 lines) is docs-only (git show --stat 44fe805: only that file, +469; git diff HEAD~1 --name-only = docs/muster-protocol-scope.md + .coding-hermes/board/tasks.jsonl, no .go files). (1) \u00a71.1 lines 54-64 expose exactly listBoards/getUploaderForm/getOpenapiSpec, \u00a71.2 lines 66-84 explicit exclusions, \u00a74 lines 279-307 read-only-by-default boundary call. (2) \u00a72.1 lines 104-122 verbatim mcpServers JSON with real concrete values --spec http://127.0.0.1:8787/openapi.json and --base-url http://127.0.0.1:8787 (matches serve.go:52 defaultServeAddr=\"127.0.0.1:8787\"). (3) \u00a73 lines 168-277 A.1-A.8 with non-vacuous jq payload invariants (done+open==task_total, topology enum), exact tool-SET assertion, negative control (putBoards isError), sha256 no-write proof. (4) \u00a74 lines 279-307 cites muster specs/PROTOCOLS.md \u00a74.5, KindUnary, mutating-op gate. (5) \u00a75 lines 308-337 auth story (loopback-only hard gate; serve.go:94 refusal message verified). No production code changes: go test -short -count=1 ./... => all packages ok (cmd/boardctl, internal/board, fmtcheck, freshness, render, versioncheck, vulncheck, workflowcheck). FAILING part: the board row BT-061 in .coding-hermes/board/tasks.jsonl still has status=\"pending\", commit_hash=null, foreman_note=null, worker_summary=null; the only change was worker_status pending->in_progress (updated_at 2026-09-25T20:46:34). The reasoning field is unchanged original task text with no reference to the scope doc or the D1-D6 decisions. .coding-hermes/waves/boardctl-2026-09-25-20-33-52.json lists BT-061 as in_progress and BT-062 as not_dispatched (\"depends_on BT-061 (in_progress this tick)\"); events.jsonl has zero BT-061 entries. The decisions were never landed on the board row.\nThe scope doc is complete, accurate, docs-only, and covers all five row items, but the criterion's explicit requirement that the foreman land the decisions on the board row was not done (BT-061 remains pending/in_progress with no commit_hash or foreman_note).",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes",
+                "status": "FAIL",
+                "detail": "The doc and four of five sub-requirements pass, but the required 'foreman lands the decisions on the board row' sub-item is unmet. PASSING parts: docs/muster-protocol-scope.md (469 lines) is docs-only (git show --stat 44fe805: only that file, +469; git diff HEAD~1 --name-only = docs/muster-protocol-scope.md + .coding-hermes/board/tasks.jsonl, no .go files). (1) \u00a71.1 lines 54-64 expose exactly listBoards/getUploaderForm/getOpenapiSpec, \u00a71.2 lines 66-84 explicit exclusions, \u00a74 lines 279-307 read-only-by-default boundary call. (2) \u00a72.1 lines 104-122 verbatim mcpServers JSON with real concrete values --spec http://127.0.0.1:8787/openapi.json and --base-url http://127.0.0.1:8787 (matches serve.go:52 defaultServeAddr=\"127.0.0.1:8787\"). (3) \u00a73 lines 168-277 A.1-A.8 with non-vacuous jq payload invariants (done+open==task_total, topology enum), exact tool-SET assertion, negative control (putBoards isError), sha256 no-write proof. (4) \u00a74 lines 279-307 cites muster specs/PROTOCOLS.md \u00a74.5, KindUnary, mutating-op gate. (5) \u00a75 lines 308-337 auth story (loopback-only hard gate; serve.go:94 refusal message verified). No production code changes: go test -short -count=1 ./... => all packages ok (cmd/boardctl, internal/board, fmtcheck, freshness, render, versioncheck, vulncheck, workflowcheck). FAILING part: the board row BT-061 in .coding-hermes/board/tasks.jsonl still has status=\"pending\", commit_hash=null, foreman_note=null, worker_summary=null; the only change was worker_status pending->in_progress (updated_at 2026-09-25T20:46:34). The reasoning field is unchanged original task text with no reference to the scope doc or the D1-D6 decisions. .coding-hermes/waves/boardctl-2026-09-25-20-33-52.json lists BT-061 as in_progress and BT-062 as not_dispatched (\"depends_on BT-061 (in_progress this tick)\"); events.jsonl has zero BT-061 entries. The decisions were never landed on the board row."
+              }
+            ],
+            "summary": "The scope doc is complete, accurate, docs-only, and covers all five row items, but the criterion's explicit requirement that the foreman land the decisions on the board row was not done (BT-061 remains pending/in_progress with no commit_hash or foreman_note)."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-061\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.789s\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 A written scope doc (no code) in the worktree covering all five row items: (1) exposed surface and explicit exclusions with read-only-by-default boundary call, (2) the verbatim mcpServers consumer config block with real --spec and --base-url, (3) acceptance test commands with non-vacuous assertions, (4) agent-safe vs gated operations per muster MCP safety contract, (5) auth story; foreman lands the decisions on the board row; no production code changes: The doc and four of five sub-requirements pass, but the required 'foreman lands the decisions on the board row' sub-item is unmet. PASSING parts: docs/muster-protocol-scope.md (469 lines) is docs-only (git show --stat 44fe805: only that file, +469; git diff HEAD~1 --name-only = docs/muster-protocol-scope.md + .coding-hermes/board/tasks.jsonl, no .go files). (1) \u00a71.1 lines 54-64 expose exactly listBoards/getUploaderForm/getOpenapiSpec, \u00a71.2 lines 66-84 explicit exclusions, \u00a74 lines 279-307 read-only-by-default boundary call. (2) \u00a72.1 lines 104-122 verbatim mcpServers JSON with real concrete values --spec http://127.0.0.1:8787/openapi.json and --base-url http://127.0.0.1:8787 (matches serve.go:52 defaultServeAddr=\"127.0.0.1:8787\"). (3) \u00a73 lines 168-277 A.1-A.8 with non-vacuous jq payload invariants (done+open==task_total, topology enum), exact tool-SET assertion, negative control (putBoards isError), sha256 no-write proof. (4) \u00a74 lines 279-307 cites muster specs/PROTOCOLS.md \u00a74.5, KindUnary, mutating-op gate. (5) \u00a75 lines 308-337 auth story (loopback-only hard gate; serve.go:94 refusal message verified). No production code changes: go test -short -count=1 ./... => all packages ok (cmd/boardctl, internal/board, fmtcheck, freshness, render, versioncheck, vulncheck, workflowcheck). FAILING part: the board row BT-061 in .coding-hermes/board/tasks.jsonl still has status=\"pending\", commit_hash=null, foreman_note=null, worker_summary=null; the only change was worker_status pending->in_progress (updated_at 2026-09-25T20:46:34). The reasoning field is unchanged original task text with no reference to the scope doc or the D1-D6 decisions. .coding-hermes/waves/boardctl-2026-09-25-20-33-52.json lists BT-061 as in_progress and BT-062 as not_dispatched (\"depends_on BT-061 (in_progress this tick)\"); events.jsonl has zero BT-061 entries. The decisions were never landed on the board row.\nThe scope doc is complete, accurate, docs-only, and covers all five row items, but the criterion's explicit requirement that the foreman land the decisions on the board row was not done (BT-061 remains pending/in_progress with no commit_hash or foreman_note).\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-09-25T21:53:14.445947",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-25T21:53:14.460244+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 501,
+        "truncated": false,
+        "source": "git show 44fe8051de97"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 45181,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-061"
+  }
+}
