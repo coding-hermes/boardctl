@@ -234,11 +234,22 @@ func productionGoFiles(t *testing.T) []string {
 	return out
 }
 
-// TestEveryUsageClosureEndsWithRealNewline is the preventive half of the fix:
-// acceptance criterion 2 is only structurally guaranteed if EVERY usage
-// printer's format string ends with a real newline. Brace-depth walking finds
-// each `fs.Usage = func() {...}` block, so a new subcommand is covered
-// automatically rather than when someone extends a list.
+// TestEveryUsageClosureEndsWithRealNewline is the preventive half of the
+// DF-BOARDCTL-7 fix: acceptance criterion 2 is only structurally guaranteed
+// if EVERY usage printer's format string ends with a real newline.
+// Brace-depth walking finds each `fs.Usage = func() {...}` block, so a new
+// subcommand is covered automatically rather than when someone extends a
+// list.
+//
+// DF-BOARDCTL-14 removed this test's pinned `want := 16` fatal: a PINNED
+// count cannot prove a 17th command has a closure (adding a closure-less
+// command to the switch would have kept the count true by coincidence, and
+// moving a closure between same-package files would have failed a healthy
+// tree). Coverage attribution now lives in
+// TestUsageClosureGateDerivesFromCommandSwitch (df14_closure_switch_test.go),
+// which derives the expected command set from run()'s switch; this test
+// keeps the per-closure shape checks (prints something, real trailing
+// newline).
 func TestEveryUsageClosureEndsWithRealNewline(t *testing.T) {
 	seen := 0
 	for _, f := range productionGoFiles(t) {
@@ -264,11 +275,14 @@ func TestEveryUsageClosureEndsWithRealNewline(t *testing.T) {
 			}
 		}
 	}
-	// 13 closures live in main.go (12 commands + REVIEW-BOARDCTL-001's
-	// sweep-status), 1 each in import.go, render.go, serve.go, and 1 in
-	// install.go (BT-054 `boardctl install`).
-	if want := 16; seen != want {
-		t.Fatalf("found %d fs.Usage closures, want %d — the walker missed blocks or a command lost its usage text", seen, want)
+	// The old `if want := 16; seen != want { ... }` fatal is GONE on
+	// purpose (DF-BOARDCTL-14): a zero-closure tree is caught by the
+	// vacuity guard in TestUsageClosureGateDerivesFromCommandSwitch, and
+	// the count itself is derived from the command switch there. seen is
+	// still asserted non-zero here so a walker regression cannot slip
+	// through as a silent pass.
+	if seen == 0 {
+		t.Fatal("found 0 fs.Usage closures — the walker found no blocks; the scan is vacuous")
 	}
 }
 
