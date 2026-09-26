@@ -53,11 +53,11 @@ commands:
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
           [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
           [--session ID]...   (a re-detected finding is REFUSED with exit 2)
-  update  <id> --status complete [--title T] [--worker-status S]
+  update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
           [--summary S] [--note S] [--blocked-reason R] [--completed-at TS]
-          [--worktree PATH] [--branch NAME] [--session ID]... [--normalize]
-          [--force]
+          [--worktree PATH] [--branch NAME] [--session ID]...
+          [--evidence-run-id RUN] [--normalize] [--force]
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N]
@@ -673,7 +673,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session", "priority", "evidence-run-id"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -694,6 +694,11 @@ func cmdUpdate(dir string, args []string) error {
 	branch := fs.String("branch", "", "git branch of --worktree, e.g. wt/cht-031")
 	var sessions stringListFlag
 	fs.Var(&sessions, "session", "Hermes session id that worked this task (repeatable; REPLACES the row's sessions array with the ids given)")
+	// DF-BOARDCTL-13: priority + SG-126 run evidence, mirroring create's
+	// flags (create line ~598/603). Omitted = the field is untouched; junk
+	// priority is rejected by the same write-time gate create uses.
+	priority := fs.String("priority", "", "priority (P0-P3; bare 0-3 and case variants are normalized; omitted = leave untouched)")
+	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence on the existing row's detail (SG-126)")
 	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
 	// to their canonical forms (read-alias fix path). Takes no value, so it
 	// must NOT join the reorderArgs valueFlags list.
@@ -702,10 +707,10 @@ func cmdUpdate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--worker-status S] [--commit-hash SHA]\n")
+		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S]\n")
 		fmt.Fprintf(fs.Output(), "          [--blocked-reason R] [--completed-at TS] [--worktree PATH] [--branch NAME]\n")
-		fmt.Fprintf(fs.Output(), "          [--session ID]... [--normalize] [--force] [flags] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -728,7 +733,7 @@ func cmdUpdate(dir string, args []string) error {
 	// --normalize alone satisfies the change-flag gate and needs no --force
 	// beyond the fleet-id escape hatch.
 	if *normalize {
-		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session"} {
+		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session", "priority", "evidence-run-id"} {
 			if fs.Lookup(f).Value.String() != "" {
 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
 			}
@@ -752,6 +757,10 @@ func cmdUpdate(dir string, args []string) error {
 		}
 		return &s
 	}
+	// DF-BOARDCTL-13: an empty --priority is the "untouched" sentinel (same
+	// nil-untouched discipline as every other optional field) — mirror
+	// create's default-P2 is deliberately NOT applied here: update repairs
+	// existing rows, it never invents a default.
 	spec := board.UpdateSpec{
 		Status:        ptr(*status),
 		Title:         ptr(*title),
@@ -764,6 +773,12 @@ func cmdUpdate(dir string, args []string) error {
 		BlockedReason: ptr(*blockedReason),
 		CompletedAt:   ptr(*completedAt),
 		Force:         *force,
+	}
+	if *priority != "" {
+		spec.Priority = priority
+	}
+	if *evidenceRunID != "" {
+		spec.EvidenceRunID = *evidenceRunID
 	}
 	if *worktree != "" {
 		spec.Worktree = worktree

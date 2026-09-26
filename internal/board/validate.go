@@ -198,8 +198,12 @@ func (b *Board) validateTasks(rep *Report) {
 		// no finding; exit stays 0 (warn severity, like every cross-check).
 		for _, tok := range TitlePriorityTokens(row.String("title")) {
 			if PriorityVocabulary[tok] && tok != p {
-				rep.Add("warn", "tasks.jsonl line %d (task %s): title carries %q but priority is %q — the priority field wins; rewrite the title with 'boardctl update %s --title', or re-file the row with 'boardctl create --id %s --force --priority <Pn>' if the field is the stale half (update has no --priority)",
-					idx+1, id, tok, p, id, id)
+				// DF-BOARDCTL-13: update now carries --priority, so the
+				// FIELD is the first repair path (no re-file needed);
+				// create --force stays as the escape hatch when the row
+				// should be re-filed wholesale.
+				rep.Add("warn", "tasks.jsonl line %d (task %s): title carries %q but priority is %q — the priority field wins; rewrite the title with 'boardctl update %s --title', or fix the field with 'boardctl update %s --priority <Pn>', or re-file the row with 'boardctl create --id %s --force --priority <Pn>' if it should be re-filed",
+					idx+1, id, tok, p, id, id, id)
 			}
 		}
 		// BT-055: the depends_on shape is checked before the cross-check
