@@ -72,6 +72,35 @@ var sanctionedExtras = []string{
 	// for the opposite reason: it may be a dialect of `perpetual`, and resolving
 	// that is the owning project's decision, not a rename this canon may guess.
 	"labels",
+	// Evidence envelopes and ownership keys — sanctioned on the 2026-09-26
+	// census (125 boards / 26,088 rows). Each names a concept the create schema
+	// has no field for and that more than one project family writes:
+	//   - attributes: the de facto evidence envelope on the tools + scheduler
+	//     families (124 rows / 2 families, incl. the scheduler's HEALTH/CHARTS/
+	//     cadence sub-boards): a JSON object mapping aspect names (tick, worker,
+	//     red_commit, green_commit, tier2, gitreins, remote, gates, ci,
+	//     live_probe, ...) to provenance strings or nested objects. ~70 distinct
+	//     subkeys across rows; the subkey vocabulary is board-local and evolves
+	//     per row, which is exactly why it sits behind one container key instead
+	//     of exploding the canon.
+	//   - assignee: the person or lane that owns the row (104 rows / 4 families:
+	//     tools, crier, duckbrain, terminal-jail), distinct from worker (who ran
+	//     the task) and from the row's primary_* assignment columns.
+	//   - judge: the judge outcome or verdict provenance written as one record
+	//     (66 rows / ~10 families: 9router, bunker, tools, duckbrain,
+	//     hermes-dagger, siblings). Distinct concept from judge_verdict /
+	//     judge_result / tier2_verdict — those are canon already, but rows write
+	//     the whole outcome line here (e.g. tier1+tier2 PASS with a verdict path).
+	//   - worker: the worker session or model@provider that did the work (14
+	//     rows / 4 families: tools, crier, duckbrain, auger), distinct from
+	//     worker_model/worker_provider (canon already) and from primary_*.
+	//   - evidence: a free-form evidence pointer or note on the row (70 rows /
+	//     6 families: bunker, tools, h3, heading, hermes-canopy, hermes-dagger).
+	"attributes",
+	"assignee",
+	"judge",
+	"worker",
+	"evidence",
 }
 
 // SanctionedTaskRowKeys is the full allowed set: the create schema plus the
