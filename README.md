@@ -109,6 +109,14 @@ boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
 # on a board with NO header (no board.jsonl and line 1 of tasks.jsonl is a
 # task row) both forms refuse with "no header on this board" (exit 1) —
 # nothing is written, so a header write can never land in a task row
+
+# round-trip a report export into the board (BT-022): a board-report/v1
+# JSON from `render --json`. Identical rows are no-ops; same-id rows with
+# different content are SKIPPED — --renumber appends them under the next
+# free fleet-style id instead (same prefix, same digit width). The plan
+# (including every renumber) is built before any byte is written.
+boardctl -C ~/myproject import export.json --dry-run --renumber   # preview
+boardctl -C ~/myproject import export.json --renumber             # apply
 ```
 
 ### Headerless boards
@@ -164,6 +172,29 @@ otherwise HTTP 400) and carries a visible banner notice:
 ```
 0 boards found in upload: a board is a directory containing BOTH tasks.jsonl and events.jsonl
 ```
+
+### render
+
+`boardctl render` writes the self-contained analytics HTML report from one or
+more boards (read-only — the board files are never touched):
+
+```bash
+boardctl -C ~/myproject render -o report.html      # default -o: board-report.html in the working directory
+boardctl render -C ~/myproject -o report.html --tz America/Bogota --json report.json
+boardctl render -C ~/myproject -o -                # -o - writes the HTML to stdout
+```
+
+- `-o out.html` — output HTML file; `-` writes to stdout.
+- `--tz <IANA zone>` — report timezone for all day bucketing (e.g.
+  `America/Bogota`); default is the machine's local zone. Pin it for
+  reproducible output.
+- `--json <path>` — ALSO write the raw `board-report/v1` payload as JSON to
+  `<path>`; that file is the exact format `boardctl import` consumes, so
+  `render --json` + `import` round-trips a report into another board.
+- `--skip-bad-lines` — degrade with evidence: keep every line that parses,
+  report unparseable lines on stderr, exit 1 when anything was skipped.
+
+Full metric semantics: [`docs/specs/board-analytics-report.md`](docs/specs/board-analytics-report.md).
 
 ## Start a board
 
@@ -227,6 +258,13 @@ completed, done                     -> complete
 todo, open, reopen, reopened        -> pending
 in-progress, inprogress             -> in_progress
 ```
+
+One more non-canonical status is read-tolerated by the OPEN-row logic:
+`dispatched` — a scheduler-dispatched row that has not been picked up yet
+(live fleet boards carry it). It is NOT writable and NOT an alias —
+`validate` still reports it as off-vocabulary — but `list`/`show`/`stats`
+pass it through untouched and finding-fingerprint dedupe counts it as an
+OPEN row (`internal/board/fingerprint.go`).
 
 An alias status is a WARNING on `validate`/`doctor` naming the canonical
 value — e.g. `status "todo" is a read alias for "pending"` — so a board full
@@ -371,6 +409,14 @@ there is no fleet sweep), and refuses a board whose lane is not in `--lanes`:
 dedupe-board --board-dir ~/myproject            # report only, zero writes
 dedupe-board --board-dir ~/myproject --apply    # collapse the groups
 ```
+
+`import --renumber` (BT-022) applies the same "never lose a finding" idea to
+round-tripped exports: when an imported row shares an id with an existing row
+but its content differs, plain `import` skips it, while
+`boardctl import export.json --renumber` appends it under the next free
+fleet-style id (same prefix, same digit width — `BT-022` arriving onto a board
+that already has `BT-022` lands as `BT-023`) instead of dropping it. Preview
+the renumber plan with `--dry-run --renumber` before applying.
 
 `dedupe-board` is **source-only** — it is a second entrypoint, not a release
 asset (every published asset is the `boardctl` CLI). Install it from the module:

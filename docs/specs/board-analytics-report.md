@@ -585,17 +585,20 @@ error / `2` usage-or-board-not-found (`ErrBoardNotFound` → 2). New
 subcommands slot into the same dispatch and the same usage text block:
 
 ```
-render   [-C dir] [-o out.html] [--tz Zone] [--json out.json]
+render   [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]
 serve    [-C dir] [--addr 127.0.0.1:8787]
-import   <export.json> [--dry-run] [-C dir]
+import   <export.json> [--dry-run] [--renumber] [-C dir]
 ```
 
 - `render` reads the board, writes the self-contained HTML to `-o`
   (default `board-report.html` in the working directory; `-o -` writes to
   stdout). `--tz` pins the report timezone (2.5). `--json` additionally
   writes the raw payload (6.2) as JSON — this file is the BT-022 export
-  format. Exit `2` when `-C` resolves to no board, `1` on write failure,
-  `0` otherwise. Render NEVER writes board files.
+  format. `--skip-bad-lines` (DF-BOARDCTL-9, post-spec addition) degrades
+  with evidence: rows/lines that fail to parse are reported on stderr and
+  excluded, and the exit is 1 when anything was skipped. Exit `2` when
+  `-C` resolves to no board, `1` on write failure, `0` otherwise. Render
+  NEVER writes board files.
 - `serve` starts an HTTP server bound EXACTLY to the requested address,
   default `127.0.0.1:8787`. Startup refuses (exit `2`, message) any
   `--addr` host that is not `127.0.0.1`, `localhost`, or `::1`. It serves
@@ -604,9 +607,13 @@ import   <export.json> [--dry-run] [-C dir]
 - `import` reads an export.json (6.2) and applies it to the `-C` board with
   a printed diff plan; `--dry-run` prints the identical plan and writes
   nothing (exit `0`). See BT-022 acceptance criteria (8.3) for semantics.
+  `--renumber` (post-spec addition) changes the same-id-different-content
+  case from SKIP to APPEND: the row lands under the next free fleet-style
+  id (same prefix, same digit width) instead of being dropped.
 
-No other flags are authorized by this spec. Anything else needs a spec
-amendment first.
+No other flags are authorized by this spec beyond the post-spec additions
+named above (`--skip-bad-lines` on render, `--renumber` on import).
+Anything else needs a spec amendment first.
 
 ### 6.2 Payload shape (the JSON island and the export format)
 

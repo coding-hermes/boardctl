@@ -60,7 +60,21 @@ boardctl -C R stats [--json] [--all]       # counts by status/priority
 boardctl -C R list [--status pending] [--priority P1] [--json] [--all]
 boardctl -C R show <ID> [--events]         # searches tasks AND fixtures
 boardctl -C R header --json
-boardctl -C R validate                     # shape: JSONL parse, header, ids
+boardctl -C R validate                     # shape: JSONL parse, header, ids.
+                                           # Flags: --repair (salvage every
+                                           # parseable row into
+                                           # tasks.rewritten.jsonl for manual
+                                           # review — tasks.jsonl is NEVER
+                                           # modified, exits 0 even when rows
+                                           # were dropped), --strict-keys
+                                           # (promote BT-056 key-uniformity
+                                           # drift from warn to error), and
+                                           # --fail-on dangling-dep (promote
+                                           # ONE named warning class to exit-1
+                                           # error; unknown class = exit 2.
+                                           # The pre-commit hook installs this
+                                           # so a dangling depends_on blocks
+                                           # the commit)
 boardctl -C R doctor                       # validate + git tracked-set (no
                                            # .db/.parquet), counter drift,
                                            # fixture orphans — run this FIRST
@@ -105,16 +119,20 @@ boardctl -C R sweep-status                 # census of off-vocabulary statuses:
                                            # retired) are NEVER touched.
 
 # pre-commit board lint (run 15, v0.1.8+, BT-054)
-boardctl -C R install [--dry-run]          # writes .git/hooks/pre-commit with
-                                           # a managed `boardctl validate`
-                                           # block. A slow/missing/wedged
-                                           # boardctl SKIPS (never wedges
-                                           # commits); timeout(1) required.
-                                           # --dry-run prints the hook block
-                                           # (useful to inspect an existing
-                                           # install's chaining). Chained
-                                           # installs (gitreins + board-lint)
-                                           # honor BOTH exit statuses.
+boardctl -C R install [--hook-path P] [--timeout S] [--dry-run]
+                                           # writes .git/hooks/pre-commit (or
+                                           # --hook-path P) with a managed
+                                           # `boardctl validate` block.
+                                           # --timeout S caps validate at S
+                                           # seconds (default 30, min 1): a
+                                           # slow/missing/wedged boardctl
+                                           # SKIPS (never wedges commits);
+                                           # timeout(1) required. --dry-run
+                                           # prints the hook block (useful to
+                                           # inspect an existing install's
+                                           # chaining). Chained installs
+                                           # (gitreins + board-lint) honor
+                                           # BOTH exit statuses.
 
 # report surface (BT-020..022 — details + pitfalls in "Report surface" below)
 boardctl -C R render -o report.html        # self-contained HTML report:
@@ -129,7 +147,10 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
 ## Write vocabularies (all enforced since BT-007)
 
 - `--status`: `failed, pending, in_progress, review, blocked, complete` —
-  anything else rejected with exit 1.
+  anything else rejected with exit 1. (Reads: `dispatched` is tolerated as a
+  non-writable scheduler state on live boards — `list`/`show`/`stats` pass it
+  through and finding-fingerprint dedupe counts it as an OPEN row, while
+  `validate` still reports it off-vocabulary. It is never a legal write.)
 - `--guard`: `{PASS,FAIL,SKIP}`; `--ci`: `{GREEN,RED,SKIP}` — junk values
   rejected at write (BT-007 closed the old accept-anything hole; trust
   these fields on boards written by recent binaries).
@@ -232,10 +253,18 @@ shape before you trust a number.
 
 ```bash
 boardctl -C R render -o report.html                 # self-contained HTML, no network
+boardctl -C R render -o r.html --tz America/Bogota  # --tz: report timezone (IANA name);
+                                                    # default machine local; pin for
+                                                    # reproducible output
 boardctl -C R render -o r.html --json r.json        # ALSO emit the payload
+boardctl render -C R -o -                           # -o - writes HTML to stdout
 boardctl serve --addr 127.0.0.1:8787                # loopback-only uploader
 boardctl serve --addr 127.0.0.1:8787 -C ~/myrepo    # -C board prepended to every report
 boardctl -C R import r.json --dry-run               # report -> board, plan only
+boardctl -C R import r.json --renumber              # same-id-DIFFERENT-content rows are
+                                                    # appended under the next free
+                                                    # fleet-style id instead of skipped
+                                                    # (preview with --dry-run --renumber)
 ```
 
 Rules that are real (verified):
