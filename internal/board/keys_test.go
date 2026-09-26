@@ -27,6 +27,23 @@ func TestIsSanctionedTaskKey(t *testing.T) {
 			t.Errorf("key %q should NOT be sanctioned (it is drift)", k)
 		}
 	}
+	// BT-067: the multi-family evidence keys. Sanctioned on the 2026-09-26
+	// census (125 boards / 26,088 rows) — each names a real concept written by
+	// more than one project family.
+	newKeys := []string{"attributes", "assignee", "judge", "worker", "evidence"}
+	for _, k := range newKeys {
+		if !IsSanctionedTaskKey(k) {
+			t.Errorf("key %q should be sanctioned (BT-067 census evidence)", k)
+		}
+	}
+	// the mutation-detection pair: near-misses that must stay drift, each one
+	// respelling (or pluralising) a sanctioned key rather than naming a concept.
+	nearMisses := []string{"attribute", "evidences", "judgement", "workers", "asignee"}
+	for _, k := range nearMisses {
+		if IsSanctionedTaskKey(k) {
+			t.Errorf("key %q should NOT be sanctioned (it is drift, not a sanctioned evidence key)", k)
+		}
+	}
 }
 
 // A clean board must REPORT zero drift explicitly, not merely stay silent —
@@ -264,5 +281,44 @@ func TestNormalizeTaskRenamesKeyAlias(t *testing.T) {
 	}
 	if rep.Keys.Keys["why"] != 1 {
 		t.Fatalf("expected exactly 1 remaining why row, got %+v", rep.Keys)
+	}
+}
+
+// BT-067: a task row carrying the multi-family evidence keys is CANON, not
+// drift — validate must stop warning for exactly these keys. attributes carries
+// a JSON object value here because that is how the fleet writes it (the de
+// facto evidence envelope), so this also proves the value kind round-trips.
+func TestValidateEvidenceKeysAreNotDrift(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl": `{"id":"EV-1","title":"evidence-bearing row","status":"complete","priority":"P1",` +
+			`"assignee":"foreman","worker":"glm-5.3-flash@xkiro s-1234","judge":"tier1+tier2 PASS (verdict: .gitreins/history/BT-067/verdict.json)",` +
+			`"evidence":"red 3192119 / green e91f3a2","attributes":{"tick":95,"red_commit":"3192119","green_commit":"e91f3a2","tier2":{"verdict":"PASS"}}}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := b.Validate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Keys.Rows != 1 {
+		t.Fatalf("expected 1 row examined, got %d", rep.Keys.Rows)
+	}
+	if rep.Keys.Clean != 1 {
+		t.Fatalf("expected 1 clean row, got %d (%+v)", rep.Keys.Clean, rep.Keys)
+	}
+	if len(rep.Keys.Keys) != 0 {
+		t.Fatalf("expected zero drift rows, got %+v", rep.Keys.Keys)
+	}
+	if !strings.Contains(rep.Keys.Summary(), "1/1") || !strings.Contains(rep.Keys.Summary(), "0 drift") {
+		t.Fatalf("summary must quote 1/1 and 0 drift, got %q", rep.Keys.Summary())
+	}
+	rendered := rep.RenderText()
+	if strings.Contains(rendered, "outside the declared canon") {
+		t.Fatalf("the evidence keys must not trigger the canon warning:\n%s", rendered)
 	}
 }
