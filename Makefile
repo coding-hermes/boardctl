@@ -13,13 +13,31 @@ PLATFORMS := \
 	windows/amd64 \
 	freebsd/amd64
 
-.PHONY: build test vet fmt fmt-check version-check vuln-check release clean
+.PHONY: build test vet fmt fmt-check version-check vuln-check release install install-check clean
 
 # BT-057: the build commit stamped into every make-built binary. The guard
 # keeps non-git builds working (a tarball without .git yields an empty
 # stamp and the freshness gate stays silent); inside a checkout it is HEAD.
 # main.buildCommit feeds internal/freshness.Check — see README Development.
 BUILD_COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
+
+# BT-042: install surface. `make install` installs the RELEASED asset (the
+# dist/ download staged per README "## Install") — never a from-HEAD build;
+# `make install-check` is the standing drift probe for the deployed copy.
+# INSTALL_DIR/INSTALL_BIN are overridable for non-default deploy targets.
+INSTALL_DIR ?= $(HOME)/.local/bin
+INSTALL_BIN ?= $(INSTALL_DIR)/$(BINARY)
+# ASSET resolves to the local platform so the default name is the one the
+# release publishes on this machine (boardctl_linux_amd64, .exe on windows).
+ASSET_OS := $(shell go env GOOS 2>/dev/null || echo linux)
+ASSET_ARCH := $(shell go env GOARCH 2>/dev/null || echo amd64)
+ASSET_EXT := $(if $(filter windows,$(ASSET_OS)),.exe,)
+ASSET := $(BINARY)_$(ASSET_OS)_$(ASSET_ARCH)$(ASSET_EXT)
+# Expected release identity for install-check: the newest tag (same
+# resolution as VERSION). Pin a specific release explicitly:
+# `make install-check RELEASE_TAG=v0.1.8`. Empty on an untagged checkout —
+# the target then fails loudly instead of guessing.
+RELEASE_TAG ?= $(shell git describe --tags --abbrev=0 2>/dev/null)
 
 build:
 	go build -o bin/$(BINARY) \
@@ -89,6 +107,109 @@ release: test
 	done
 	@cd $(DIST) && sha256sum $(BINARY)_* > SHA256SUMS
 	@echo "release artifacts in $(DIST)/"
+
+# BT-042: install the RELEASED binary — the dist/ asset + SHA256SUMS staged by
+# README "## Install" (curl to <repo>/dist) or any release audit's dist/ — into
+# $(INSTALL_BIN). NEVER a from-HEAD build: a checkout build reports `dev` (or a
+# date) and vcs.modified=true, which is exactly the deployed-binary drift this
+# target exists to prevent. Refuses loudly when dist/ is missing or the
+# checksum check fails; installs only a verified asset.
+#
+#   curl -sSL -o boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/vX.Y.Z/boardctl_linux_amd64
+#   curl -sSL -o SHA256SUMS          https://github.com/coding-hermes/boardctl/releases/download/vX.Y.Z/SHA256SUMS
+#   mkdir -p dist && mv boardctl_linux_amd64 SHA256SUMS dist/ && make install
+#
+# (Recipe lines reach the shell once; `$$` is the recipe escape for the
+# shell's own variables.)
+install:
+	@if [ ! -f "$(DIST)/SHA256SUMS" ]; then \
+		echo "install: $(DIST)/SHA256SUMS not found — download the released asset + SHA256SUMS per README '## Install' first" >&2; \
+		echo "  curl -sSL -o $(DIST)/boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/vX.Y.Z/boardctl_linux_amd64" >&2; \
+		echo "  curl -sSL -o $(DIST)/SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/vX.Y.Z/SHA256SUMS" >&2; \
+		echo "  make install" >&2; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(DIST)/$(ASSET)" ]; then \
+		echo "install: $(DIST)/$(ASSET) not found — download the asset for this platform ($(ASSET_OS)/$(ASSET_ARCH)) into $(DIST)/" >&2; \
+		exit 1; \
+	fi
+	@echo "== install: verifying $(DIST)/$(ASSET) against $(DIST)/SHA256SUMS"
+	@cd $(DIST) && sha256sum -c --ignore-missing SHA256SUMS
+	@echo "== install: $(DIST)/$(ASSET) verified, installing to $(INSTALL_BIN)"
+	@mkdir -p $(INSTALL_DIR)
+	@install -m 0755 $(DIST)/$(ASSET) $(INSTALL_BIN)
+	@echo "install: $(INSTALL_BIN) installed; verify the deployed identity with 'make install-check'"
+
+# BT-042: the standing drift probe for the DEPLOYED binary (the live shared
+# artifact at $(INSTALL_BIN) — never a target `make install` runs against).
+# Verifies the released identity and exits 1 loudly on any drift:
+#
+#   1. `boardctl version` names RELEASE_TAG
+#   2. `go version -m` module version == RELEASE_TAG
+#      (a from-HEAD build reports e.g. v0.1.9-0.<sha>+dirty instead)
+#   3. vcs.modified=false
+#      (a dirty from-HEAD build stamps vcs.modified=true)
+#   4. vcs.revision is an ANCESTOR of the release tag — degrades to checks
+#      1-3 with a stated degraded notice when the ancestry cannot be
+#      determined offline (no git binary, or the revision is absent from the
+#      local checkout's history, e.g. the deploy host has no checkout)
+#
+# Failures name the observed values and the fix (make install).
+install-check:
+	@if [ -z "$(RELEASE_TAG)" ]; then \
+		echo "install-check: no RELEASE_TAG resolved (untagged checkout) — pass one: make install-check RELEASE_TAG=v0.1.8" >&2; \
+		exit 1; \
+	fi
+	@if [ ! -x "$(INSTALL_BIN)" ]; then \
+		echo "install-check: $(INSTALL_BIN) not found or not executable — install the released asset first (README '## Install' / make install)" >&2; \
+		exit 1; \
+	fi
+	@echo "== install-check: deployed $(INSTALL_BIN) vs release $(RELEASE_TAG)"
+	@drift=0; \
+	observed_version=`$(INSTALL_BIN) version 2>/dev/null | awk '{print $$3}'`; \
+	if [ "$$observed_version" != "$(RELEASE_TAG)" ]; then \
+		echo "install-check: FAIL version: '$(INSTALL_BIN) version' prints '$${observed_version:-<none>}' but the release is $(RELEASE_TAG)" >&2; \
+		drift=1; \
+	else \
+		echo "install-check: ok version == $(RELEASE_TAG)"; \
+	fi; \
+	mod_version=`go version -m $(INSTALL_BIN) 2>/dev/null | awk '$$1=="mod" {print $$3}'`; \
+	if [ -z "$$mod_version" ]; then \
+		echo "install-check: FAIL: 'go version -m $(INSTALL_BIN)' produced no mod line — not a Go binary built from this module?" >&2; \
+		drift=1; \
+	elif [ "$$mod_version" != "$(RELEASE_TAG)" ]; then \
+		echo "install-check: FAIL module version: go version -m reports '$$mod_version' but the release is $(RELEASE_TAG) (a from-HEAD build reports e.g. v0.1.9-0.<sha>+dirty)" >&2; \
+		drift=1; \
+	else \
+		echo "install-check: ok module version == $(RELEASE_TAG)"; \
+	fi; \
+	vcs_modified=`go version -m $(INSTALL_BIN) 2>/dev/null | awk '$$1=="build" && $$2 ~ /^vcs\\.modified=/ {sub(/^vcs\\.modified=/, "", $$2); print $$2}'`; \
+	if [ "$$vcs_modified" != "false" ]; then \
+		echo "install-check: FAIL vcs.modified: '$${vcs_modified:-<absent>}' (want false — a dirty from-HEAD build stamps true)" >&2; \
+		drift=1; \
+	else \
+		echo "install-check: ok vcs.modified=false"; \
+	fi; \
+	vcs_rev=`go version -m $(INSTALL_BIN) 2>/dev/null | awk '$$1=="build" && $$2 ~ /^vcs\\.revision=/ {sub(/^vcs\\.revision=/, "", $$2); print $$2}'`; \
+	if [ -z "$$vcs_rev" ]; then \
+		echo "install-check: FAIL vcs.revision absent from 'go version -m' — binary not built from a git checkout?" >&2; \
+		drift=1; \
+	elif rev_date=`git log -1 --format=%cd --date=short $$vcs_rev 2>/dev/null` && [ -n "$$rev_date" ]; then \
+		if git merge-base --is-ancestor $$vcs_rev $(RELEASE_TAG) >/dev/null 2>&1; then \
+			echo "install-check: ok vcs.revision $$vcs_rev is an ancestor of $(RELEASE_TAG)"; \
+		else \
+			rev_subject=`git log -1 --format=%s $$vcs_rev`; \
+			echo "install-check: FAIL vcs.revision: $$vcs_rev ($$rev_subject, committed $$rev_date) is NOT an ancestor of $(RELEASE_TAG) — the binary was built from an unrelated commit" >&2; \
+			drift=1; \
+		fi; \
+	else \
+		echo "install-check: DEGRADED: vcs.revision $$vcs_rev is not in this checkout's history (or git is unavailable) — the ancestry check cannot run offline; version, module-version and vcs.modified checks still enforced" >&2; \
+	fi; \
+	if [ "$$drift" = "1" ]; then \
+		echo "install-check: DRIFT detected — deployed $(INSTALL_BIN) does not match release $(RELEASE_TAG); fix: make install (after staging the released asset + SHA256SUMS in $(DIST)/, see README '## Install')" >&2; \
+		exit 1; \
+	fi; \
+	echo "install-check: deployed $(INSTALL_BIN) matches release $(RELEASE_TAG)"
 
 clean:
 	rm -rf bin $(DIST)

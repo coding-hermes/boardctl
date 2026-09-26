@@ -40,6 +40,13 @@ checkout (see [Development](#development)).
 
 Move `boardctl` somewhere on your `PATH` (or invoke it as `./boardctl_linux_amd64`).
 
+From a checkout, `make install` performs that move with the checksum gate
+enforced: it verifies `dist/` against `dist/SHA256SUMS` and installs the
+verified asset to `~/.local/bin/boardctl`, refusing loudly on any mismatch —
+it never builds from the checkout (see
+[Development](#deployment-freshness-gate-bt-057) for the probe that keeps the
+installed copy provably on-release).
+
 With a Go toolchain, `go install` works too:
 
 ```bash
@@ -590,6 +597,53 @@ library shipped reachable advisories that 1.26.6 fixes — `net/http`
 toolchain, fails this gate. With `GOTOOLCHAIN=auto` (the default) the pinned
 patch toolchain is fetched automatically. Do not lower the directive to
 silence the gate; raise it to the patched release instead.
+
+### Installing the deployed copy (BT-042)
+
+From a checkout, install the release into `~/.local/bin` with:
+
+```bash
+# 1. download the release asset + SHA256SUMS (the curl block under Install above)
+mkdir -p dist && mv boardctl_linux_amd64 SHA256SUMS dist/
+# 2. verify the checksum, then install the verified asset
+make install
+```
+
+`make install` never builds from the checkout — it installs the RELEASED
+asset after `sha256sum -c --ignore-missing dist/SHA256SUMS` passes, and fails
+loudly on a missing `dist/`, a checksum mismatch, or an absent asset for this
+platform (`make install INSTALL_DIR=<dir>` retargets the install location).
+
+### Deployment drift probe (BT-042)
+
+A deployed binary can silently stop matching the release: a from-HEAD build
+reports `dev`, carries `vcs.modified=true`, and (the exact drift BT-042
+fixes) can come from a commit unrelated to the release tag. `make
+install-check` is the standing probe for the deployed copy — run it any
+time, not only during a release audit. It verifies the binary at
+`~/.local/bin/boardctl` (`make install-check INSTALL_BIN=<path>` overrides)
+against the release. Expected values on the v0.1.8 asset:
+
+| check | probe | expected on-release |
+|---|---|---|
+| version string | `boardctl version` | `boardctl version v0.1.8` |
+| module version | `go version -m` | `mod github.com/coding-hermes/boardctl v0.1.8` |
+| dirty flag | `go version -m` | `vcs.modified=false` |
+| build revision | `go version -m` | `vcs.revision` is an ancestor of the tag (`a3328d7…`) |
+
+The expected tag is the newest one in the checkout (`git describe --tags
+--abbrev=0`, the same resolution `make release` stamps); pin it explicitly
+with `make install-check RELEASE_TAG=v0.1.8`. A from-HEAD build fails all
+four: `version` prints `dev`, the module version reads
+`v0.1.9-0.<sha>+dirty`, `vcs.modified=true`, and the revision is not an
+ancestor of the tag. The target exits non-zero, names every failed check
+with its observed value, and points at `make install` as the fix.
+
+When the ancestry check cannot run offline — no `git` on PATH, or the
+binary's revision is absent from the local checkout's history (a deploy host
+without a checkout) — the target prints `DEGRADED` and enforces the
+remaining checks (version string, module version, `vcs.modified=false`),
+still failing on any of them.
 
 Cutting a release is one command: push a `vX.Y.Z` tag. The repo's
 [`.github/workflows/multiarch.yml`](.github/workflows/multiarch.yml) calls the
