@@ -613,13 +613,21 @@ type UpdateSpec struct {
 	// BT-060: title is updatable like any other field — create has always
 	// accepted --title, update could only rewrite it by hand-editing the
 	// row. nil leaves the title (and its byte position) untouched.
-	Title         *string
-	WorkerStatus  *string
-	CommitHash    *string
-	Guard         *string // stored upper-cased (PASS|FAIL|SKIP)
-	CI            *string // stored upper-cased (GREEN|RED|SKIP)
-	Summary       *string // worker_summary
-	Note          *string // foreman_note
+	Title        *string
+	WorkerStatus *string
+	CommitHash   *string
+	Guard        *string // stored upper-cased (PASS|FAIL|SKIP)
+	CI           *string // stored upper-cased (GREEN|RED|SKIP)
+	Summary      *string // worker_summary
+	Note         *string // foreman_note
+	// BT-68: append-vs-replace selector for Note. false (the CLI default)
+	// makes a --note update APPEND to a non-empty existing foreman_note
+	// (existing + "\n\n" + new) — the old REPLACE let a second --note
+	// silently destroy the first with exit 0. --replace opts back into the
+	// overwrite, which stays the behaviour for a first write too (an
+	// absent, null or empty existing note takes the new value verbatim
+	// either way). Only consulted when Note != nil.
+	NoteReplace   bool
 	BlockedReason *string
 	CompletedAt   *string
 	Force         bool // BT-023: bypass the fleet task-id format check on the target id
@@ -778,7 +786,22 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 		}
 	}
 	if spec.Note != nil {
-		if err := set("foreman_note", *spec.Note); err != nil {
+		// BT-68: --note APPENDS to a non-empty existing foreman_note
+		// (existing + "\n\n" + new) so a second note can never silently
+		// destroy the first — the old REPLACE dropped it with exit 0 and
+		// no warning. --replace restores the overwrite; an absent, null
+		// or empty existing note takes the new value verbatim either way
+		// (no leading separator). The existing value is read through the
+		// raw-row accessor (Row.String), which maps absent and null to ""
+		// — foreman_note has no typed field on the row and can be any of
+		// the three shapes on a seeded board.
+		noteVal := *spec.Note
+		if !spec.NoteReplace {
+			if existing := target.String("foreman_note"); existing != "" {
+				noteVal = existing + "\n\n" + noteVal
+			}
+		}
+		if err := set("foreman_note", noteVal); err != nil {
 			return nil, err
 		}
 	}
