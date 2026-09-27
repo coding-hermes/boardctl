@@ -279,3 +279,8 @@
 {"id":279,"timestamp":"2026-09-26 10:29:40","event_type":"task_completed","task_id":"DOC-17","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":280,"timestamp":"2026-09-26 10:29:40","event_type":"task_completed","task_id":"DOC-18","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":281,"timestamp":"2026-09-26 10:29:40","event_type":"task_completed","task_id":"DOC-19","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":282,"timestamp":"2026-09-26 22:52:34","event_type":"task_created","task_id":"BT-68","actor":"foreman","detail":"{\"id\":\"BT-68\",\"status\":\"pending\"}","tick_number":null}
+{"id":283,"timestamp":"2026-09-27 17:34:43","event_type":"task_completed","task_id":"BT-68","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":284,"timestamp":"2026-09-27 17:39:47","event_type":"task_created","task_id":"RELEASE-2026-09-27-01","actor":"foreman","detail":"{\"id\":\"RELEASE-2026-09-27-01\",\"status\":\"pending\"}","tick_number":null}
+{"id":285,"timestamp":"2026-09-27 17:39:47","event_type":"task_created","task_id":"REVIEW-BOARDCTL-006","actor":"foreman","detail":"{\"id\":\"REVIEW-BOARDCTL-006\",\"status\":\"pending\"}","tick_number":null}
+{"id":286,"timestamp":"2026-09-27 17:39:47","event_type":"task_verified","task_id":"RELEASE-2026-09-27-02","actor":"foreman","detail":"{\"id\":\"RELEASE-2026-09-27-02\",\"status\":\"complete\",\"commit\":\"8626ae9\",\"note\":\"stranded-commit claim disproved on the current tree; residual verdicts named in the row\"}","tick_number":null}

@@ -1,0 +1,61 @@
+{
+  "tick": "boardctl-2026-09-27-16-30-01",
+  "project": "boardctl",
+  "repo": "~/coding-hermes-boardctl",
+  "base": "origin/main",
+  "base_sha": "a85b417",
+  "budget": 1,
+  "note": "WAVE_BUDGET=1 -> single-worker wave. ONE code task picked (BT-68, the only actionable non-review row). The three review/release rows on the board were dispositioned foreman-direct (REVIEW-BOARDCTL-002 disproved + closed, RELEASE-2026-09-27-01/02 filed, REVIEW-BOARDCTL-006 filed for the stale-premise half) rather than dispatched, per the coding-hermes-board rule that a pending row is a finding, not proof that work remains.",
+  "workers": [
+    {
+      "task": "BT-68",
+      "worktree": "~/worktrees/coding-hermes-boardctl-BT-68",
+      "branch": "wt/BT-68",
+      "brief": "/tmp/bc-0930-bt68-brief.md",
+      "launcher": "/tmp/dispatch-bt68.sh",
+      "log": "/tmp/w-bc0930-bt68.log",
+      "session": "20260927_121059_f640b9",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm",
+      "commit": "dbaee4a",
+      "merge": "8626ae9",
+      "files": "internal/board/write.go (UpdateSpec.NoteReplace + append semantics), cmd/boardctl/main.go (--replace bool flag + both usage surfaces), internal/board/bt068_note_append_test.go, cmd/boardctl/bt068_cli_test.go"
+    }
+  ],
+  "foreman_direct": [
+    {
+      "task": "REVIEW-BOARDCTL-002",
+      "disposition": "closed as REVIEW-only — the stranded-commit claim is disproved on the current tree (merge-base rc0 for c45893e and 3830d7a; both branches 0 ahead of origin/main). Residual named in the row: no Tier-2 verdict artifacts exist for either task id and BT-042/DF-BOARDCTL-13 rows are still in_progress."
+    },
+    {
+      "task": "RELEASE-2026-09-27-01",
+      "disposition": "filed — the deployed ~/.local/bin/boardctl is 75 commits behind HEAD and make install-check RELEASE_TAG=v0.1.8 FAILs all four arms; the BT-042 targets work, the deploy is what is stale."
+    },
+    {
+      "task": "RELEASE-2026-09-27-02",
+      "disposition": "filed and immediately closed with the ancestor/parity evidence for the two merged worker commits."
+    },
+    {
+      "task": "REVIEW-BOARDCTL-006",
+      "disposition": "filed — stale premise on REVIEW-BOARDCTL-005: the fleet census shows the 'active' key now lives on 9 boards only (this repo + 7 worktree clones + 1 old release-cleanup clone); the decision is local."
+    }
+  ],
+  "not_dispatched": [
+    {
+      "task": "REVIEW-BOARDCTL-003",
+      "why": "row-closure work (close RELEASE-2026-09-23-04/-05 as superseded). Requires confirming BT-041's residual is genuinely done; left for the next tick rather than re-dispatching duplicate implementation."
+    },
+    {
+      "task": "REVIEW-BOARDCTL-004",
+      "why": "duplicate-blocker dedupe between RELEASE-2026-09-23-03 and RELEASE-2026-09-25-01; both still carry the same off-vocab fleet finding. Needs one row kept and one closed — a decision, not a worker slice."
+    },
+    {
+      "task": "REVIEW-BOARDCTL-005",
+      "why": "superseded in substance by REVIEW-BOARDCTL-006 (the fleet half is settled); the local cleanup decision is now carried there."
+    },
+    {
+      "task": "RELEASE-2026-09-25-01",
+      "why": "P1 operational sweep across live fleet boards (apply per board, verify by re-census) — multi-repo writes outside this repo's wave isolation; its own serial lane slice."
+    }
+  ]
+}

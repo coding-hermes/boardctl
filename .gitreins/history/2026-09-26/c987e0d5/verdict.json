@@ -1,0 +1,101 @@
+{
+  "task_id": "BT-067",
+  "task_title": "Sanction the multi-family evidence keys in the task-row key canon",
+  "task_criteria": [
+    "keys attributes,assignee,judge,worker,evidence are sanctioned in internal/board/keys.go with census-evidence comments; new tests in keys_test.go prove zero key-drift for rows carrying them and fail without the entries; go build ./... and go test ./... green; gofmt clean"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "4036eb44754d1a45da6c3514b32acb0d3717ac72",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.876s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n3:56AM INF scanned ~1781343 bytes (1.78 MB) in 566ms\n3:56AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 125 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260926T085458.372909Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.876s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.148s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.077s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.352s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.018s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.702s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260926T085458.372909Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 keys attributes,assignee,judge,worker,evidence are sanctioned in internal/board/keys.go with census-evidence comments; new tests in keys_test.go prove zero key-drift for rows carrying them and fail without the entries; go build ./... and go test ./... green; gofmt clean: internal/board/keys.go:75-103 adds a census-evidence comment block ('Evidence envelopes and ownership keys \u2014 sanctioned on the 2026-09-26 census (125 boards / 26,088 rows)') with per-key evidence (attributes 124 rows/2 families line 78-85; assignee 104/4 line 86-88; judge 66/~10 line 89-93; worker 14/4 line 94-96; evidence 70/6 line 97-98) and appends \"attributes\",\"assignee\",\"judge\",\"worker\",\"evidence\" to sanctionedExtras (lines 99-103). keys_test.go:30-47 (TestIsSanctionedTaskKey) asserts the 5 keys are sanctioned and near-misses attribute/evidences/judgement/workers/asignee stay drift; keys_test.go:287-323 (TestValidateEvidenceKeysAreNotDrift) builds a row carrying all 5 keys and asserts Rows==1, Clean==1, len(Keys)==0, summary contains '1/1' and '0 drift', and rendered text lacks 'outside the declared canon'. Mutation proof: after deleting the 5 sanctionedExtras lines, `go test -count=1 ./internal/board/` produced '--- FAIL: TestIsSanctionedTaskKey \u2014 keys_test.go:36: key \"attributes\" should be sanctioned (BT-067 census evidence)' (all 5 keys) and '--- FAIL: TestValidateEvidenceKeysAreNotDrift \u2014 keys_test.go:312: expected 1 clean row, got 0 ({Rows:1 Clean:0 Keys:map[assignee:1 attributes:1 evidence:1 judge:1 worker:1] Fixable:0})'; file restored (git diff empty, grep count of 5 keys == 5). `go build ./...` exit 0 with no output. `go test -count=1 ./...` all packages ok (cmd/boardctl ok, internal/board ok, internal/fmtcheck ok, internal/freshness ok, internal/render ok, internal/versioncheck ok, internal/vulncheck ok, internal/workflowcheck ok), no FAIL. `gofmt -l .` exit 0 with empty output (clean).\nAll five multi-family evidence keys are sanctioned in keys.go with census-evidence comments, keys_test.go proves zero drift and fails when the entries are removed, and build/test/gofmt are all green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 keys attributes,assignee,judge,worker,evidence are sanctioned in internal/board/keys.go with census-evidence comments; new tests in keys_test.go prove zero key-drift for rows carrying them and fail without the entries; go build ./... and go test ./... green; gofmt clean: internal/board/keys.go:75-103 adds a census-evidence comment block ('Evidence envelopes and ownership keys \u2014 sanctioned on the 2026-09-26 census (125 boards / 26,088 rows)') with per-key evidence (attributes 124 rows/2 families line 78-85; assignee 104/4 line 86-88; judge 66/~10 line 89-93; worker 14/4 line 94-96; evidence 70/6 line 97-98) and appends \"attributes\",\"assignee\",\"judge\",\"worker\",\"evidence\" to sanctionedExtras (lines 99-103). keys_test.go:30-47 (TestIsSanctionedTaskKey) asserts the 5 keys are sanctioned and near-misses attribute/evidences/judgement/workers/asignee stay drift; keys_test.go:287-323 (TestValidateEvidenceKeysAreNotDrift) builds a row carrying all 5 keys and asserts Rows==1, Clean==1, len(Keys)==0, summary contains '1/1' and '0 drift', and rendered text lacks 'outside the declared canon'. Mutation proof: after deleting the 5 sanctionedExtras lines, `go test -count=1 ./internal/board/` produced '--- FAIL: TestIsSanctionedTaskKey \u2014 keys_test.go:36: key \"attributes\" should be sanctioned (BT-067 census evidence)' (all 5 keys) and '--- FAIL: TestValidateEvidenceKeysAreNotDrift \u2014 keys_test.go:312: expected 1 clean row, got 0 ({Rows:1 Clean:0 Keys:map[assignee:1 attributes:1 evidence:1 judge:1 worker:1] Fixable:0})'; file restored (git diff empty, grep count of 5 keys == 5). `go build ./...` exit 0 with no output. `go test -count=1 ./...` all packages ok (cmd/boardctl ok, internal/board ok, internal/fmtcheck ok, internal/freshness ok, internal/render ok, internal/versioncheck ok, internal/vulncheck ok, internal/workflowcheck ok), no FAIL. `gofmt -l .` exit 0 with empty output (clean).\nAll five multi-family evidence keys are sanctioned in keys.go with census-evidence comments, keys_test.go proves zero drift and fails when the entries are removed, and build/test/gofmt are all green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "keys attributes,assignee,judge,worker,evidence are sanctioned in internal/board/keys.go with census-evidence comments; new tests in keys_test.go prove zero key-drift for rows carrying them and fail without the entries; go build ./... and go test ./... green; gofmt clean",
+                "status": "PASS",
+                "detail": "internal/board/keys.go:75-103 adds a census-evidence comment block ('Evidence envelopes and ownership keys \u2014 sanctioned on the 2026-09-26 census (125 boards / 26,088 rows)') with per-key evidence (attributes 124 rows/2 families line 78-85; assignee 104/4 line 86-88; judge 66/~10 line 89-93; worker 14/4 line 94-96; evidence 70/6 line 97-98) and appends \"attributes\",\"assignee\",\"judge\",\"worker\",\"evidence\" to sanctionedExtras (lines 99-103). keys_test.go:30-47 (TestIsSanctionedTaskKey) asserts the 5 keys are sanctioned and near-misses attribute/evidences/judgement/workers/asignee stay drift; keys_test.go:287-323 (TestValidateEvidenceKeysAreNotDrift) builds a row carrying all 5 keys and asserts Rows==1, Clean==1, len(Keys)==0, summary contains '1/1' and '0 drift', and rendered text lacks 'outside the declared canon'. Mutation proof: after deleting the 5 sanctionedExtras lines, `go test -count=1 ./internal/board/` produced '--- FAIL: TestIsSanctionedTaskKey \u2014 keys_test.go:36: key \"attributes\" should be sanctioned (BT-067 census evidence)' (all 5 keys) and '--- FAIL: TestValidateEvidenceKeysAreNotDrift \u2014 keys_test.go:312: expected 1 clean row, got 0 ({Rows:1 Clean:0 Keys:map[assignee:1 attributes:1 evidence:1 judge:1 worker:1] Fixable:0})'; file restored (git diff empty, grep count of 5 keys == 5). `go build ./...` exit 0 with no output. `go test -count=1 ./...` all packages ok (cmd/boardctl ok, internal/board ok, internal/fmtcheck ok, internal/freshness ok, internal/render ok, internal/versioncheck ok, internal/vulncheck ok, internal/workflowcheck ok), no FAIL. `gofmt -l .` exit 0 with empty output (clean)."
+              }
+            ],
+            "summary": "All five multi-family evidence keys are sanctioned in keys.go with census-evidence comments, keys_test.go proves zero drift and fails when the entries are removed, and build/test/gofmt are all green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-067\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.876s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 keys attributes,assignee,judge,worker,evidence are sanctioned in internal/board/keys.go with census-evidence comments; new tests in keys_test.go prove zero key-drift for rows carrying them and fail without the entries; go build ./... and go test ./... green; gofmt clean: internal/board/keys.go:75-103 adds a census-evidence comment block ('Evidence envelopes and ownership keys \u2014 sanctioned on the 2026-09-26 census (125 boards / 26,088 rows)') with per-key evidence (attributes 124 rows/2 families line 78-85; assignee 104/4 line 86-88; judge 66/~10 line 89-93; worker 14/4 line 94-96; evidence 70/6 line 97-98) and appends \"attributes\",\"assignee\",\"judge\",\"worker\",\"evidence\" to sanctionedExtras (lines 99-103). keys_test.go:30-47 (TestIsSanctionedTaskKey) asserts the 5 keys are sanctioned and near-misses attribute/evidences/judgement/workers/asignee stay drift; keys_test.go:287-323 (TestValidateEvidenceKeysAreNotDrift) builds a row carrying all 5 keys and asserts Rows==1, Clean==1, len(Keys)==0, summary contains '1/1' and '0 drift', and rendered text lacks 'outside the declared canon'. Mutation proof: after deleting the 5 sanctionedExtras lines, `go test -count=1 ./internal/board/` produced '--- FAIL: TestIsSanctionedTaskKey \u2014 keys_test.go:36: key \"attributes\" should be sanctioned (BT-067 census evidence)' (all 5 keys) and '--- FAIL: TestValidateEvidenceKeysAreNotDrift \u2014 keys_test.go:312: expected 1 clean row, got 0 ({Rows:1 Clean:0 Keys:map[assignee:1 attributes:1 evidence:1 judge:1 worker:1] Fixable:0})'; file restored (git diff empty, grep count of 5 keys == 5). `go build ./...` exit 0 with no output. `go test -count=1 ./...` all packages ok (cmd/boardctl ok, internal/board ok, internal/fmtcheck ok, internal/freshness ok, internal/render ok, internal/versioncheck ok, internal/vulncheck ok, internal/workflowcheck ok), no FAIL. `gofmt -l .` exit 0 with empty output (clean).\nAll five multi-family evidence keys are sanctioned in keys.go with census-evidence comments, keys_test.go proves zero drift and fails when the entries are removed, and build/test/gofmt are all green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-26T08:57:04.209848",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-26T08:57:04.230859+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 58363,
+        "truncated": false,
+        "source": "git show 4036eb44754d"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 6650,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-067"
+  }
+}

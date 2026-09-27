@@ -1,0 +1,41 @@
+{
+  "tick": "boardctl-2026-09-25-20-33-52-r2",
+  "rework_of": "boardctl-2026-09-25-20-33-52",
+  "note": "Re-fired tick: original instance completed 3-task wave BT-060/BT-061/DF-BOARDCTL-14 (merged, judges PASS, commit 3192119). This manifest covers the R2 rework picks from live board state.",
+  "project": "boardctl",
+  "repo": "~/coding-hermes-boardctl",
+  "base": "origin/main",
+  "base_sha": "3192119",
+  "budget": 4,
+  "workers": [
+    {
+      "task": "DF-BOARDCTL-13",
+      "worktree": "~/worktrees/boardctl-DF-BOARDCTL-13",
+      "branch": "wt/DF-BOARDCTL-13",
+      "brief": "/tmp/bc96-df13-brief.md",
+      "msgfile": "/tmp/bc96-df13-msg.txt",
+      "log": "/tmp/w-bc96-df13.log",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm",
+      "files": "cmd/boardctl/main.go (update flag registration + usage closure), internal/board/validate.go (title-priority warning reword) + tests"
+    },
+    {
+      "task": "BT-042",
+      "worktree": "~/worktrees/boardctl-BT-042",
+      "branch": "wt/BT-042",
+      "brief": "/tmp/bc96-bt042-brief.md",
+      "msgfile": "/tmp/bc96-bt042-msg.txt",
+      "log": "/tmp/w-bc96-bt042.log",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm",
+      "files": "Makefile (install + install-check targets), README.md Development section (install + drift probe docs)"
+    }
+  ],
+  "not_dispatched": [
+    {"task": "RELEASE-2026-09-25-01", "why": "P1 operational sweep across ~42 live fleet boards (sweep-status --apply per board, dry-run first, verify by re-census) — multi-repo writes outside this repo's wave isolation; needs its own serial lane slice, not a code worktree"},
+    {"task": "BT-062", "why": "deps BT-061 complete — eligible, but OpenAPI spec authoring is a research-heavy single slice; deferred to next tick to keep this wave merge-clean within tick budget"},
+    {"task": "BT-053", "why": "fleet-wide multi-repo rollout (58 board repos) — serial slice by design"},
+    {"task": "DF-BOARDCTL-10", "why": "complexity-3 multi-board hygiene tool design; not wave-disjoint with this tick's picks, deferred"},
+    {"task": "BT-050", "why": "design-heavy (route writers through boardctl create); deferred"}
+  ]
+}
