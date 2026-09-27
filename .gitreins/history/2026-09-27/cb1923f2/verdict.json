@@ -1,0 +1,91 @@
+{
+  "task_id": "BT-68",
+  "task_title": "boardctl update --note must not silently destroy the existing foreman_note",
+  "task_criteria": [
+    "boardctl update <id> --note APPENDS to foreman_note with an explicit separator by default; replacing requires an explicit --replace; the update usage closure documents both; a regression test proves append semantics and that --replace still replaces; the full go build/vet/test -count=1 suite is green."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "b50ee1a144672314ba08cbc962076ec768f35aeb",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.272s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n12:44PM INF scanned ~1858638 bytes (1.86 MB) in 542ms\n12:44PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 130 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.272s\n?   \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.286s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.477s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.314s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 boardctl update <id> --note APPENDS to foreman_note with an explicit separator by default; replacing requires an explicit --replace; the update usage closure documents both; a regression test proves append semantics and that --replace still replaces; the full go build/vet/test -count=1 suite is green.: Append default: internal/board/write.go:789-806 \u2014 `noteVal := *spec.Note; if !spec.NoteReplace { if existing := target.String(\"foreman_note\"); existing != \"\" { noteVal = existing + \"\\n\\n\" + noteVal } }` then set(\"foreman_note\", noteVal) (explicit \"\\n\\n\" separator). --replace: cmd/boardctl/main.go:692 `replace := fs.Bool(\"replace\", false, \"with --note: overwrite foreman_note instead of appending\")`, wired at main.go:778 `NoteReplace: *replace`; UpdateSpec.NoteReplace documented at write.go:622-631. Usage closure documents both: main.go:714-719 prints \"[--note S (appends)]\" and \"[--replace]\"; top-level usageText main.go:57-59 likewise. Regression tests: internal/board/bt068_note_append_test.go TestUpdateNoteAppendsToExisting (asserts \"A\\n\\nB\"), TestUpdateNoteAppendsTwice (\"A\\n\\nB\\n\\nC\"), TestUpdateNoteFirstWriteNoSeparator, TestUpdateNoteReplaceOverwrites (asserts \"Z\"), TestUpdateNoteOmittedLeavesKeyUntouched, TestUpdateNoteAppendPreservesEveryOtherLine; cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends, TestCmdUpdateNoteReplaceFlagOverwrites, TestCmdUpdateNoteOmittedLeavesNoteUntouched, TestCmdUpdateHelpListsReplace. Command evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 \u2014 all packages ok (cmd/boardctl ok 2.077s, internal/board ok 0.293s, internal/render ok, etc.); targeted `go test -count=1 -run 'BT068|NoteAppend|NoteReplace|UpdateNote|HelpListsReplace'` shows all 10 BT-68 tests --- PASS.\nBT-68 is fully implemented: --note appends with an explicit \"\\n\\n\" separator by default, --replace restores overwrite, both usage surfaces document the flags, regression tests cover append and replace semantics, and build/vet/test -count=1 are all green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 boardctl update <id> --note APPENDS to foreman_note with an explicit separator by default; replacing requires an explicit --replace; the update usage closure documents both; a regression test proves append semantics and that --replace still replaces; the full go build/vet/test -count=1 suite is green.: Append default: internal/board/write.go:789-806 \u2014 `noteVal := *spec.Note; if !spec.NoteReplace { if existing := target.String(\"foreman_note\"); existing != \"\" { noteVal = existing + \"\\n\\n\" + noteVal } }` then set(\"foreman_note\", noteVal) (explicit \"\\n\\n\" separator). --replace: cmd/boardctl/main.go:692 `replace := fs.Bool(\"replace\", false, \"with --note: overwrite foreman_note instead of appending\")`, wired at main.go:778 `NoteReplace: *replace`; UpdateSpec.NoteReplace documented at write.go:622-631. Usage closure documents both: main.go:714-719 prints \"[--note S (appends)]\" and \"[--replace]\"; top-level usageText main.go:57-59 likewise. Regression tests: internal/board/bt068_note_append_test.go TestUpdateNoteAppendsToExisting (asserts \"A\\n\\nB\"), TestUpdateNoteAppendsTwice (\"A\\n\\nB\\n\\nC\"), TestUpdateNoteFirstWriteNoSeparator, TestUpdateNoteReplaceOverwrites (asserts \"Z\"), TestUpdateNoteOmittedLeavesKeyUntouched, TestUpdateNoteAppendPreservesEveryOtherLine; cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends, TestCmdUpdateNoteReplaceFlagOverwrites, TestCmdUpdateNoteOmittedLeavesNoteUntouched, TestCmdUpdateHelpListsReplace. Command evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 \u2014 all packages ok (cmd/boardctl ok 2.077s, internal/board ok 0.293s, internal/render ok, etc.); targeted `go test -count=1 -run 'BT068|NoteAppend|NoteReplace|UpdateNote|HelpListsReplace'` shows all 10 BT-68 tests --- PASS.\nBT-68 is fully implemented: --note appends with an explicit \"\\n\\n\" separator by default, --replace restores overwrite, both usage surfaces document the flags, regression tests cover append and replace semantics, and build/vet/test -count=1 are all green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "boardctl update <id> --note APPENDS to foreman_note with an explicit separator by default; replacing requires an explicit --replace; the update usage closure documents both; a regression test proves append semantics and that --replace still replaces; the full go build/vet/test -count=1 suite is green.",
+                "status": "PASS",
+                "detail": "Append default: internal/board/write.go:789-806 \u2014 `noteVal := *spec.Note; if !spec.NoteReplace { if existing := target.String(\"foreman_note\"); existing != \"\" { noteVal = existing + \"\\n\\n\" + noteVal } }` then set(\"foreman_note\", noteVal) (explicit \"\\n\\n\" separator). --replace: cmd/boardctl/main.go:692 `replace := fs.Bool(\"replace\", false, \"with --note: overwrite foreman_note instead of appending\")`, wired at main.go:778 `NoteReplace: *replace`; UpdateSpec.NoteReplace documented at write.go:622-631. Usage closure documents both: main.go:714-719 prints \"[--note S (appends)]\" and \"[--replace]\"; top-level usageText main.go:57-59 likewise. Regression tests: internal/board/bt068_note_append_test.go TestUpdateNoteAppendsToExisting (asserts \"A\\n\\nB\"), TestUpdateNoteAppendsTwice (\"A\\n\\nB\\n\\nC\"), TestUpdateNoteFirstWriteNoSeparator, TestUpdateNoteReplaceOverwrites (asserts \"Z\"), TestUpdateNoteOmittedLeavesKeyUntouched, TestUpdateNoteAppendPreservesEveryOtherLine; cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends, TestCmdUpdateNoteReplaceFlagOverwrites, TestCmdUpdateNoteOmittedLeavesNoteUntouched, TestCmdUpdateHelpListsReplace. Command evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 \u2014 all packages ok (cmd/boardctl ok 2.077s, internal/board ok 0.293s, internal/render ok, etc.); targeted `go test -count=1 -run 'BT068|NoteAppend|NoteReplace|UpdateNote|HelpListsReplace'` shows all 10 BT-68 tests --- PASS."
+              }
+            ],
+            "summary": "BT-68 is fully implemented: --note appends with an explicit \"\\n\\n\" separator by default, --replace restores overwrite, both usage surfaces document the flags, regression tests cover append and replace semantics, and build/vet/test -count=1 are all green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-68\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.272s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 boardctl update <id> --note APPENDS to foreman_note with an explicit separator by default; replacing requires an explicit --replace; the update usage closure documents both; a regression test proves append semantics and that --replace still replaces; the full go build/vet/test -count=1 suite is green.: Append default: internal/board/write.go:789-806 \u2014 `noteVal := *spec.Note; if !spec.NoteReplace { if existing := target.String(\"foreman_note\"); existing != \"\" { noteVal = existing + \"\\n\\n\" + noteVal } }` then set(\"foreman_note\", noteVal) (explicit \"\\n\\n\" separator). --replace: cmd/boardctl/main.go:692 `replace := fs.Bool(\"replace\", false, \"with --note: overwrite foreman_note instead of appending\")`, wired at main.go:778 `NoteReplace: *replace`; UpdateSpec.NoteReplace documented at write.go:622-631. Usage closure documents both: main.go:714-719 prints \"[--note S (appends)]\" and \"[--replace]\"; top-level usageText main.go:57-59 likewise. Regression tests: internal/board/bt068_note_append_test.go TestUpdateNoteAppendsToExisting (asserts \"A\\n\\nB\"), TestUpdateNoteAppendsTwice (\"A\\n\\nB\\n\\nC\"), TestUpdateNoteFirstWriteNoSeparator, TestUpdateNoteReplaceOverwrites (asserts \"Z\"), TestUpdateNoteOmittedLeavesKeyUntouched, TestUpdateNoteAppendPreservesEveryOtherLine; cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends, TestCmdUpdateNoteReplaceFlagOverwrites, TestCmdUpdateNoteOmittedLeavesNoteUntouched, TestCmdUpdateHelpListsReplace. Command evidence: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 \u2014 all packages ok (cmd/boardctl ok 2.077s, internal/board ok 0.293s, internal/render ok, etc.); targeted `go test -count=1 -run 'BT068|NoteAppend|NoteReplace|UpdateNote|HelpListsReplace'` shows all 10 BT-68 tests --- PASS.\nBT-68 is fully implemented: --note appends with an explicit \"\\n\\n\" separator by default, --replace restores overwrite, both usage surfaces document the flags, regression tests cover append and replace semantics, and build/vet/test -count=1 are all green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-27T17:45:05.129552",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-27T17:45:05.148485+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 187426,
+        "truncated": false,
+        "source": "git show b50ee1a14467"
+      }
+    ],
+    "task_id": "BT-68"
+  }
+}
