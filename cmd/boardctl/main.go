@@ -55,8 +55,8 @@ commands:
           [--session ID]...   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
-          [--summary S] [--note S] [--blocked-reason R] [--completed-at TS]
-          [--worktree PATH] [--branch NAME] [--session ID]...
+          [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
+          [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
           [--evidence-run-id RUN] [--normalize] [--force]
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
@@ -684,7 +684,12 @@ func cmdUpdate(dir string, args []string) error {
 	guard := fs.String("guard", "", "guard_result: PASS|FAIL|SKIP")
 	ci := fs.String("ci", "", "ci_result: GREEN|RED|SKIP")
 	summary := fs.String("summary", "", "worker_summary")
-	note := fs.String("note", "", "foreman_note")
+	note := fs.String("note", "", "foreman_note (appends to the existing note; --replace overwrites)")
+	// BT-68: bool flag — --replace opts back into the pre-BT-68 behaviour
+	// (foreman_note is overwritten instead of appended to). Takes no value,
+	// so it must NOT join the reorderArgs valueFlags list (same as
+	// --normalize/--force). An omitted --note makes it a no-op either way.
+	replace := fs.Bool("replace", false, "with --note: overwrite foreman_note instead of appending")
 	blockedReason := fs.String("blocked-reason", "", "blocked_reason")
 	completedAt := fs.String("completed-at", "", "completed_at timestamp")
 	// BT-037: build-location + session audit fields. An omitted flag leaves
@@ -708,8 +713,8 @@ func cmdUpdate(dir string, args []string) error {
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
-		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S]\n")
-		fmt.Fprintf(fs.Output(), "          [--blocked-reason R] [--completed-at TS] [--worktree PATH] [--branch NAME]\n")
+		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
+		fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--worktree PATH] [--branch NAME]\n")
 		fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
@@ -770,6 +775,7 @@ func cmdUpdate(dir string, args []string) error {
 		CI:            ptr(*ci),
 		Summary:       ptr(*summary),
 		Note:          ptr(*note),
+		NoteReplace:   *replace,
 		BlockedReason: ptr(*blockedReason),
 		CompletedAt:   ptr(*completedAt),
 		Force:         *force,
