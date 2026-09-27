@@ -366,3 +366,35 @@ What the diagnostics trail should record for the next agent:
 Right way to re-run this verification: see
 `docs/dogfood/2026-09-24-run15-verify.md` — every step is a one-liner against
 the released v0.1.8 asset, plus the node-VM chart proof.
+
+## Run-16 addendum — 2026-09-27 (the release-cut path, from the releaser's seat)
+
+Full report: `docs/dogfood/2026-09-27-run16-release-path-integration.md`.
+Short version, as a lesson in how this project's release path behaves:
+
+1. **Go VCS stamping has a host-layout trap that no boardctl gate covers.**
+   Builds from any *linked worktree* whose path is nested under another git
+   repo (this box: `/home/kara/.git`, a deliberate archive repo) stamp the
+   OUTER repo's HEAD + dirty flag into `go version -m`. Mechanism is in the
+   toolchain source (`vcsGit.RootNames` matches `.git` directories only, so a
+   worktree's `.git` file doesn't stop `FromDir`'s parent walk). Manifested
+   mid-day 09-27 when the home repo's HEAD moved; older worktrees started
+   stamping the foreign SHA the same day. `sha256` and the `version` string
+   pass; only `make install-check` catches it (proven). Filed DF-BOARDCTL-16;
+   fix direction = stamp assertion in the `release` target + a docs warning.
+2. **`version-check` enforces agreement, not currency.** It has no input for
+   the tag being cut, so "move the README, then run the gate" is discipline,
+   not enforcement. Filed DF-BOARDCTL-17.
+3. **The install gate's soundness is an ordering invariant.** coreutils
+   `sha256sum -c --ignore-missing` exits 0 when zero files matched; `make
+   install` is safe only because the exact-name pre-check runs first. Filed
+   DF-BOARDCTL-18 (calibrates run 15's DF-BOARDCTL-12 — refusal held E2E).
+4. **What held:** gate failure UX (precise messages naming the drifted value
+   and the fix), the VERSION-is-a-tag refusal on tagged checkouts, stale-dist
+   wipe, install-check's honest DEGRADED arm, and the 6-second zero-dep
+   install + full smoke on a fresh Debian bunker agent (las-bunker-03,
+   ef54aa8a, destroyed).
+
+Environment note for future runners: the mis-stamp applies to EVERY worktree
+Go build on this host until the home repo's HEAD is considered — build
+identity-sensitive things from the main checkout (stamps correctly) or CI.

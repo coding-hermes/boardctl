@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.8.0
-date: 2026-09-25
+version: 1.9.0
+date: 2026-09-27
 category: software-development
 ---
 
@@ -22,7 +22,9 @@ Run-15 (2026-09-24) additions: `sweep-status` + `install` in Proven commands;
 guard). BT-060 (2026-09-25) closed the half-open item: `update` now accepts
 `--title`, and `validate` warns when a title's Pn token disagrees with the
 row's priority field (the priority field wins; fix via `update --title` or
-`update --priority`).
+`update --priority`). Run-16 (2026-09-27) added pitfalls 13-15 from replaying
+the release-cut path: Go VCS stamping's nested-repo trap, version-check's
+agreement-not-currency scope, and the sha256 zero-match exit-0 note.
 
 ## Entry points
 
@@ -243,8 +245,26 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
     integrity ritual available and it found real debt on day one.
 12. **dedupe-board dry-run groups=[] can be the CORRECT answer.** Same id on
     N rows with different titles/reasoning = different findings (fingerprint
-    is sha over normalized title+reasoning). Never force it; fix the lane
-    that recycled the id (see pitfall 2).
+    is sha over normalized title+reasoning). Never force it; fix the lane that
+    recycled the id (see pitfall 2).
+13. **`version`'s tag string is not provenance — check `go version -m` before
+    trusting a locally-built or offline-cut binary (run 16, DF-BOARDCTL-16).**
+    On hosts where the build path is nested under another git repo (here: a
+    `.git` directory at `$HOME`), Go stamps binaries built from linked
+    worktrees with the OUTER repo's HEAD + `vcs.modified=true`; sha256 and
+    the `version` string still pass. After any offline `make release`, run
+    `make install-check RELEASE_TAG=<tag>` — it is the only gate that reads
+    build provenance (module version, vcs.modified, revision ancestry).
+    Builds from the main checkout stamp correctly; CI stamps clean.
+14. **`version-check` enforces README *agreement*, not *currency* (run 16,
+    DF-BOARDCTL-17).** The gate has no input for the tag you are cutting, so
+    moving the README surfaces before `make version-check` is procedure, not
+    enforcement — skipping it leaves every gate green while the install URLs
+    keep fetching the previous release. (Drift fails loudly once present.)
+15. **`sha256sum -c --ignore-missing` exits 0 when zero files matched (run 16,
+    DF-BOARDCTL-18).** "no file was verified" is exit 0, not an error —
+    `make install` stays sound only because its exact-asset-name pre-check
+    runs before the checksum. If you re-implement the gate, count OK lines.
 
 ## Report surface — `render`, `serve`, `import`
 
