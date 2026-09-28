@@ -4,11 +4,12 @@
 // three enforcement surfaces (mirrors internal/fmtcheck and
 // internal/versioncheck):
 //
-//   - `make spec-check` would run: go test -count=1 -run TestSpeccheck ./internal/speccheck
-//     (the Makefile target itself is owned by the foreman; the command above
-//     is the exact wiring point)
-//   - .github/workflows/ci.yml has (or should gain) a step with the
-//     byte-identical command — same ownership note
+//   - `make spec-check` runs: go test -count=1 ./internal/speccheck
+//     (wired by the foreman after BT-062; TestRepoParity is the repo-level
+//     arm, and the package run is the gate — `-run TestSpeccheck` alone
+//     would miss TestRepoParity)
+//   - .github/workflows/ci.yml runs the byte-identical command in the
+//     Spec-check step
 //   - plain `go test ./...` (incl. `-short`) picks this package up like any
 //     other
 //

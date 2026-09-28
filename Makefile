@@ -70,6 +70,14 @@ export VERSION_TAG
 version-check:
 	go test -count=1 -run TestVersioncheck ./internal/versioncheck
 
+# BT-062: check-only boardctl<->OpenAPI parity gate (never rewrites files).
+# The Makefile, CI, and `go test ./...` all run the same checker over
+# docs/muster/openapi.yaml vs the serve wiring (TestRepoParity is the
+# repo-level arm; the rest of the package proves the gate itself). The whole
+# package is the check, so the gate command is the package run.
+spec-check:
+	go test -count=1 ./internal/speccheck
+
 # BT-033: dependency-vulnerability gate (check-only, never rewrites go.mod).
 # It runs the Go checker in internal/vulncheck, which shells out to
 # govulncheck and FAILS on any reachable finding (exit 3) or on a broken scan

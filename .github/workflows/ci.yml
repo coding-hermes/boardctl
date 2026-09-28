@@ -35,6 +35,9 @@ jobs:
       - name: Version-check
         run: go test -count=1 -run TestVersioncheck ./internal/versioncheck
 
+      - name: Spec-check
+        run: go test -count=1 ./internal/speccheck
+
       # BT-033: the dependency-vulnerability gate runs the pinned scanner, so
       # the "Install govulncheck v1.7.0" step must precede it (and the Test
       # step below, which also runs TestVulncheck).
