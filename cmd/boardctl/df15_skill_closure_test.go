@@ -326,11 +326,25 @@ func usageSkillDateError(skill string) string {
 	if err != nil {
 		return fmt.Sprintf("usage skill frontmatter date %q does not parse as a calendar date: %v", m[1], err)
 	}
-	if age := time.Since(d); age > skillHeaderStaleTolerance {
+	// Calendar-day freshness, not instant arithmetic: the battery derives its
+	// edge dates by formatting time.Now() to a date string, so comparing the
+	// parsed (UTC-midnight) header date against the live instant folds the
+	// time-of-day — and the local-vs-UTC Format/Parse round trip up to another
+	// 24h — into the tolerance. The boundary case ("just inside" at 44 days)
+	// then fails whenever local and UTC disagree on the date. Diff CALENDAR
+	// dates (both sides parsed from YYYY-MM-DD) so the gate is deterministic
+	// at every hour and timezone.
+	today := time.Now().Format("2006-01-02")
+	td, err := time.Parse("2006-01-02", today)
+	if err != nil { // unreachable: time.Now() always formats as YYYY-MM-DD
+		return fmt.Sprintf("gate clock failed to format run date: %v", err)
+	}
+	days := int(td.Sub(d).Hours() / 24)
+	if days > int(skillHeaderStaleTolerance.Hours()/24) {
 		return fmt.Sprintf("usage skill frontmatter date %s is %d days behind the run date (%s) — beyond the %d-day tolerance; re-verify the skill against the current CLI and refresh the header date",
 			d.Format("2006-01-02"),
-			int(age.Hours()/24),
-			time.Now().Format("2006-01-02"),
+			days,
+			today,
 			int(skillHeaderStaleTolerance.Hours()/24))
 	}
 	return ""
