@@ -14,11 +14,11 @@ The zero-dependency path: grab a static binary from
 amd64, freebsd amd64) — no Go toolchain needed. Verify the binary's checksum
 before running it:
 
-Current release: **v0.1.8**.
+Current release: **v0.1.9**.
 
 ```bash
-curl -sL -o boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.8/boardctl_linux_amd64
-curl -sL -o SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/v0.1.8/SHA256SUMS
+curl -sL -o boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.1.9/boardctl_linux_amd64
+curl -sL -o SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/v0.1.9/SHA256SUMS
 sha256sum -c --ignore-missing SHA256SUMS   # verify the binary you downloaded
 chmod +x boardctl_linux_amd64 && ./boardctl_linux_amd64 version
 ```
@@ -32,8 +32,8 @@ paths emit exactly these names: the tag-push CI cut and the offline
 ones you did not download (without it, `sha256sum -c` exits 1 on the absent
 files). The downloaded binary must keep its release filename for this to verify.
 
-The last line prints the binary's release identity — for a v0.1.8 asset it
-prints `boardctl version v0.1.8`. Release binaries are stamped from the release
+The last line prints the binary's release identity — for a v0.1.9 asset it
+prints `boardctl version v0.1.9`. Release binaries are stamped from the release
 tag, so the printed version must match the release you downloaded; a bare date
 stamp (e.g. `20260915`) or `dev` means the binary was not cut from a tagged
 checkout (see [Development](#development)).
@@ -73,11 +73,11 @@ boardctl -C ~/myproject validate
 boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
                                    # (no .db/.parquet), header vs events ticks,
                                    # fixture orphans
-boardctl version                   # prints e.g. "boardctl version v0.1.8"
+boardctl version                   # prints e.g. "boardctl version v0.1.9"
                                    # (the release tag; a UTC date for release
                                    # builds from untagged checkouts, "dev" for
                                    # unstamped local builds)
-boardctl version --json            # {"version":"v0.1.8","build":"v0.1.8"}
+boardctl version --json            # {"version":"v0.1.9","build":"v0.1.9"}
                                    # ("build" is the raw build stamp)
 
 # create a task row (appends tasks.jsonl + task_created event).
@@ -642,18 +642,18 @@ fixes) can come from a commit unrelated to the release tag. `make
 install-check` is the standing probe for the deployed copy — run it any
 time, not only during a release audit. It verifies the binary at
 `~/.local/bin/boardctl` (`make install-check INSTALL_BIN=<path>` overrides)
-against the release. Expected values on the v0.1.8 asset:
+against the release. Expected values on the v0.1.9 asset:
 
 | check | probe | expected on-release |
 |---|---|---|
-| version string | `boardctl version` | `boardctl version v0.1.8` |
-| module version | `go version -m` | `mod github.com/coding-hermes/boardctl v0.1.8` |
+| version string | `boardctl version` | `boardctl version v0.1.9` |
+| module version | `go version -m` | `mod github.com/coding-hermes/boardctl v0.1.9` |
 | dirty flag | `go version -m` | `vcs.modified=false` |
 | build revision | `go version -m` | `vcs.revision` is an ancestor of the tag (`a3328d7…`) |
 
 The expected tag is the newest one in the checkout (`git describe --tags
 --abbrev=0`, the same resolution `make release` stamps); pin it explicitly
-with `make install-check RELEASE_TAG=v0.1.8`. A from-HEAD build fails all
+with `make install-check RELEASE_TAG=v0.1.9`. A from-HEAD build fails all
 four: `version` prints `dev`, the module version reads
 `v0.1.9-0.<sha>+dirty`, `vcs.modified=true`, and the revision is not an
 ancestor of the tag. The target exits non-zero, names every failed check
@@ -690,34 +690,34 @@ the primary cut:
    names the previous release passes, so pin the tag you are about to cut.
    Commit and push `main`.
 2. Tag the release commit and push the tag:
-   `git tag v0.1.8 && git push origin v0.1.8`. The tag push triggers
+   `git tag v0.1.9 && git push origin v0.1.9`. The tag push triggers
    `.github/workflows/multiarch.yml`, whose Release job runs on tag refs only:
    it cross-builds the platform set in the workflow's `platforms:` input
    (`boardctl_<goos>_<goarch>`, `.exe` on windows), writes `SHA256SUMS`,
    attests provenance, and publishes the release. Push the branch too — the
    Release job runs on the tag ref and the tag must point at a pushed commit.
-3. Verify the published release: `gh release view v0.1.8` lists the seven
+3. Verify the published release: `gh release view v0.1.9` lists the seven
    platform binaries plus `SHA256SUMS`; then download per the install block and
    confirm the identity — `./boardctl_linux_amd64 version` prints
-   `boardctl version v0.1.8`.
+   `boardctl version v0.1.9`.
 4. Offline / local equivalent, when CI cannot publish: `make release` from the
    tagged checkout. VERSION resolves via `git describe --tags --abbrev=0` (a UTC
    date only on checkouts with no tags), and every binary reports it:
-   `./dist/boardctl_linux_amd64 version` prints `boardctl version v0.1.8`. If
+   `./dist/boardctl_linux_amd64 version` prints `boardctl version v0.1.9`. If
    the repo HAS tags but VERSION resolved to a non-tag, the target FAILS instead
-   of silently shipping a date stamp; `make release VERSION=v0.1.8` overrides
+   of silently shipping a date stamp; `make release VERSION=v0.1.9` overrides
    deliberately. It writes the same underscore names and `dist/SHA256SUMS` the
    CI job publishes, so publish them verbatim:
 
    ```bash
-   gh release create v0.1.8 --title v0.1.8 --generate-notes --verify-tag dist/*
+   gh release create v0.1.9 --title v0.1.9 --generate-notes --verify-tag dist/*
    ```
 
    Never delete and re-push a tag to re-cut a release: that re-drafts the
    published release.
 
 Scripts read the identity as JSON: `boardctl version --json` prints
-`{"version":"v0.1.8","build":"v0.1.8"}` — `build` is the raw build stamp and
+`{"version":"v0.1.9","build":"v0.1.9"}` — `build` is the raw build stamp and
 differs from `version` only when a binary was hand-stamped with a non-tag
 value while carrying an embedded tag.
 
