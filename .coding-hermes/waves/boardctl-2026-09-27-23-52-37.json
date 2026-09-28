@@ -1,0 +1,23 @@
+{
+  "tick_id": "boardctl-2026-09-27-23-52-37",
+  "project": "coding-hermes-boardctl",
+  "composed_at": "2026-09-28T00:12:00-05:00",
+  "wave_budget": 8,
+  "workers": 7,
+  "worker_model": "glm-5.3-flash",
+  "worker_provider": "zai-glm",
+  "base": "origin/main",
+  "base_sha": "ae429f1",
+  "merge_policy": "serial, full gate on merged tree after each merge, push before gitreins task complete",
+  "tasks": [
+    {"id": "DF-BOARDCTL-16", "priority": "P1", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-16", "branch": "wt/DF-BOARDCTL-16", "surface": "Makefile release target + README Development", "brief": "/tmp/brief-DF-BOARDCTL-16.txt"},
+    {"id": "DF-BOARDCTL-17", "priority": "P2", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-17", "branch": "wt/DF-BOARDCTL-17", "surface": "internal/versioncheck + Makefile version-check + README Cutting-a-release", "brief": "/tmp/brief-DF-BOARDCTL-17.txt"},
+    {"id": "DF-BOARDCTL-18", "priority": "P2", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-18", "branch": "wt/DF-BOARDCTL-18", "surface": "Makefile install target only", "brief": "/tmp/brief-DF-BOARDCTL-18.txt"},
+    {"id": "BT-062", "priority": "P2", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-062", "branch": "wt/BT-062", "surface": "OpenAPI spec + generator + parity check + docs/muster", "brief": "/tmp/brief-BT-062.txt"},
+    {"id": "DF-BOARDCTL-10", "priority": "P2", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-10", "branch": "wt/DF-BOARDCTL-10", "surface": "cmd/dedupe-board + new internal/board/iddupe.go", "brief": "/tmp/brief-DF-BOARDCTL-10.txt"},
+    {"id": "BT-050", "priority": "P2", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-050", "branch": "wt/BT-050", "surface": "internal/board write path locking (write.go/lock.go)", "brief": "/tmp/brief-BT-050.txt"},
+    {"id": "BT-053", "priority": "P1", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-053", "branch": "wt/BT-053", "surface": "cmd/boardctl install --fleet mode + installer tests", "brief": "/tmp/brief-BT-053.txt"}
+  ],
+  "independence": "no depends_on edges between any pair (BT-063 excluded: depends_on BT-062); file-surface overlap limited to Makefile (3 workers, disjoint targets) and README (2 workers, disjoint sections), resolved at serial merge",
+  "foreman_direct": ["DF-BOARDCTL-13 closeout", "REVIEW-BOARDCTL-002/003/004/007 dispositions"]
+}

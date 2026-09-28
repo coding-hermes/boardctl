@@ -288,3 +288,13 @@
 {"id":288,"timestamp":"2026-09-27 22:50:01","event_type":"task_created","task_id":"DF-BOARDCTL-17","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-17\",\"status\":\"pending\"}","tick_number":null}
 {"id":289,"timestamp":"2026-09-27 22:50:01","event_type":"task_created","task_id":"DF-BOARDCTL-18","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-18\",\"status\":\"pending\"}","tick_number":null}
 {"id":290,"timestamp":"2026-09-27 21:27:34","event_type":"task_created","task_id":"REVIEW-BOARDCTL-007","actor":"foreman","detail":"{\"id\":\"REVIEW-BOARDCTL-007\",\"status\":\"pending\"}","tick_number":null}
+{"id":291,"timestamp":"2026-09-28 00:13:26","event_type":"task_completed","task_id":"DF-BOARDCTL-13","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":292,"timestamp":"2026-09-28 00:13:26","event_type":"task_completed","task_id":"RELEASE-2026-09-23-04","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":293,"timestamp":"2026-09-28 00:13:26","event_type":"task_completed","task_id":"RELEASE-2026-09-23-05","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":294,"timestamp":"2026-09-28 00:13:38","event_type":"task_completed","task_id":"RELEASE-2026-09-25-01","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":295,"timestamp":"2026-09-28 00:14:17","event_type":"task_completed","task_id":"REVIEW-BOARDCTL-002","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":296,"timestamp":"2026-09-28 00:14:17","event_type":"task_completed","task_id":"REVIEW-BOARDCTL-003","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":297,"timestamp":"2026-09-28 00:14:17","event_type":"task_completed","task_id":"REVIEW-BOARDCTL-004","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":298,"timestamp":"2026-09-28 00:14:17","event_type":"task_completed","task_id":"REVIEW-BOARDCTL-007","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":299,"timestamp":"2026-09-28 00:18:08","event_type":"task_completed","task_id":"REVIEW-BOARDCTL-005","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":300,"timestamp":"2026-09-28 00:18:08","event_type":"task_completed","task_id":"REVIEW-BOARDCTL-006","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
