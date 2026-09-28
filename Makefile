@@ -129,6 +129,23 @@ release: test
 #
 # (Recipe lines reach the shell once; `$$` is the recipe escape for the
 # shell's own variables.)
+#
+# DF-BOARDCTL-18: the checksum gate does NOT trust `sha256sum`'s exit code
+# alone. With --ignore-missing, a SHA256SUMS whose entries match NONE of the
+# staged files ("SHA256SUMS: no file was verified") exited 0 on older
+# coreutils, which would install an UNVERIFIED binary (the classic trigger:
+# the release asset saved under a slightly wrong name). The gate therefore
+# also requires at least one ": OK" verification line, so the soundness no
+# longer depends on the coreutils version installed on the deploy host.
+#
+# ORDERING INVARIANT (load-bearing): the exact-asset-name pre-check below
+# (the second `if [ ! -f "$(DIST)/$(ASSET)" ]`) must stay BEFORE/with the
+# checksum gate — it is what turns a wrongly-named download into a precise
+# "$(DIST)/$(ASSET) not found" failure before the checksum step runs. The
+# zero-match gate then covers the case the pre-check cannot see (a file that
+# exists under the right name but matches no SHA256SUMS entry). If the two
+# checks are ever reordered or the gate is ported elsewhere, both halves must
+# move together — the checksum step alone is not a complete gate.
 install:
 	@if [ ! -f "$(DIST)/SHA256SUMS" ]; then \
 		echo "install: $(DIST)/SHA256SUMS not found — download the released asset + SHA256SUMS per README '## Install' first" >&2; \
@@ -142,7 +159,13 @@ install:
 		exit 1; \
 	fi
 	@echo "== install: verifying $(DIST)/$(ASSET) against $(DIST)/SHA256SUMS"
-	@cd $(DIST) && sha256sum -c --ignore-missing SHA256SUMS
+	@out=`cd $(DIST) && sha256sum -c --ignore-missing SHA256SUMS`; rc=$$?; \
+	echo "$$out"; \
+	if [ $$rc -ne 0 ] || ! printf '%s\n' "$$out" | grep -q ': OK$$'; then \
+		echo "install: checksum gate FAILED (sha256sum exit $$rc): the checksum step verified ZERO files ('no file was verified') — nothing in $(DIST)/SHA256SUMS matches a staged file; expected $(ASSET)" >&2; \
+		echo "  fix: download the asset for this platform ($(ASSET_OS)/$(ASSET_ARCH)) under its RELEASED name into $(DIST)/ (README '## Install')" >&2; \
+		exit 1; \
+	fi
 	@echo "== install: $(DIST)/$(ASSET) verified, installing to $(INSTALL_BIN)"
 	@mkdir -p $(INSTALL_DIR)
 	@install -m 0755 $(DIST)/$(ASSET) $(INSTALL_BIN)
