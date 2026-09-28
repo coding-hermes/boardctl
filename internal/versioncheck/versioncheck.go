@@ -78,7 +78,38 @@ func ReadSurfaces(readmePath string) (Surfaces, error) {
 // vX.Y.Z tag, and that the required surfaces exist at all (a pin line, at
 // least one download URL). The error names every surface found with its
 // value and the fix command.
+//
+// Check verifies agreement only: a README that consistently names the
+// previous release passes. To also require the surfaces to be CURRENT with a
+// specific candidate tag, use CheckExpected (DF-BOARDCTL-17).
 func Check(readmePath string) error {
+	return check(readmePath, "")
+}
+
+// VERSION_TAGEnvVar is the environment variable the Makefile exports so the
+// byte-identical `go test -run TestVersioncheck` gate command receives the
+// candidate tag: `make version-check VERSION_TAG=vX.Y.Z`.
+const VERSION_TAGEnvVar = "VERSION_TAG"
+
+// tagShapeRe is the vX.Y.Z shape every release surface must carry.
+var tagShapeRe = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
+
+// CheckExpected is Check with the candidate release tag pinned: on top of
+// internal agreement, every surface (the pin line and every download URL)
+// must name expectedTag exactly. This is the currency gate for a cut —
+// `make version-check VERSION_TAG=vX.Y.Z` fails while any README surface
+// still names an older tag. The tag is data in, never looked up: this
+// package performs no network calls and no git invocation (CI checkouts are
+// shallow), so a tag that does not exist yet is fine — it is the tag you are
+// about to cut.
+func CheckExpected(readmePath, expectedTag string) error {
+	if !tagShapeRe.MatchString(expectedTag) {
+		return fmt.Errorf("versioncheck: expected tag %q is not a vX.Y.Z tag (example: v0.1.8)", expectedTag)
+	}
+	return check(readmePath, expectedTag)
+}
+
+func check(readmePath, expectedTag string) error {
 	s, err := ReadSurfaces(readmePath)
 	if err != nil {
 		return err
@@ -110,11 +141,29 @@ func Check(readmePath string) error {
 		}
 	}
 
+	// Currency (only when a candidate tag is pinned): every surface must
+	// name it. Agreement problems above already name the drifted values, so
+	// these extra lines only fire where agreement holds but the tag is old.
+	if expectedTag != "" && base != "" && base != expectedTag {
+		problems = append(problems, fmt.Sprintf(
+			"stale release pin line #1: says %q, expected %q", base, expectedTag))
+	}
+	for i, tag := range s.URLTags {
+		if expectedTag != "" && tag != expectedTag {
+			problems = append(problems, fmt.Sprintf(
+				"stale download URL #%d: pins %q, expected %q", i+1, tag, expectedTag))
+		}
+	}
+
 	if len(problems) == 0 {
 		return nil
 	}
-	return fmt.Errorf("versioncheck: %d problem(s) in %s:\n  %s\nfix: edit every release surface (the Current release line and all /releases/download/ URLs) to the same vX.Y.Z tag, then re-run make version-check",
-		len(problems), readmePath, strings.Join(problems, "\n  "))
+	fix := "fix: edit every release surface (the Current release line and all /releases/download/ URLs) to the same vX.Y.Z tag, then re-run make version-check"
+	if expectedTag != "" {
+		fix = fmt.Sprintf("fix: move every release surface (the Current release line and all /releases/download/ URLs) to %s, then re-run make version-check VERSION_TAG=%s", expectedTag, expectedTag)
+	}
+	return fmt.Errorf("versioncheck: %d problem(s) in %s:\n  %s\n%s",
+		len(problems), readmePath, strings.Join(problems, "\n  "), fix)
 }
 
 // RepoRoot returns the module root by walking up from start to the nearest

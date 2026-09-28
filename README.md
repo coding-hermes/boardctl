@@ -663,9 +663,12 @@ the primary cut:
 
 1. Move every README release surface to the new tag — the
    `Current release: **vX.Y.Z**` line and every `/releases/download/<tag>/`
-   install URL — then run `make version-check`, which FAILS naming the drifted
-   values until they all agree (CI runs the identical check on every push and
-   PR). Commit and push `main`.
+   install URL — then run `make version-check VERSION_TAG=<new tag>`, which
+   FAILS naming the drifted value until every surface names that tag (CI
+   runs the identical check on every push and PR). The gate checks
+   agreement, not currency: without `VERSION_TAG` a README that consistently
+   names the previous release passes, so pin the tag you are about to cut.
+   Commit and push `main`.
 2. Tag the release commit and push the tag:
    `git tag v0.1.8 && git push origin v0.1.8`. The tag push triggers
    `.github/workflows/multiarch.yml`, whose Release job runs on tag refs only:

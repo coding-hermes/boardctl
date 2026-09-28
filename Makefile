@@ -59,6 +59,14 @@ fmt-check:
 # the Go checker in internal/versioncheck, so the Makefile, CI, and
 # `go test ./...` all enforce the exact same rule over README.md's release
 # surfaces (the "Current release:" line and every /releases/download/ URL).
+# DF-BOARDCTL-17: pass the candidate tag to also enforce CURRENCY, not just
+# agreement: `make version-check VERSION_TAG=vX.Y.Z` fails while any README
+# surface still names an older tag. Unset, the gate stays agreement-only.
+# (Sibling convention: install-check's RELEASE_TAG resolves the newest tag
+# when unset; here there is deliberately no default — the checker stays
+# offline, so the candidate tag is data in, never a tag lookup.)
+VERSION_TAG ?=
+export VERSION_TAG
 version-check:
 	go test -count=1 -run TestVersioncheck ./internal/versioncheck
 

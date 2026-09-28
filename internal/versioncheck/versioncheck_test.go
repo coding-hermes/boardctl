@@ -47,10 +47,11 @@ func TestCheckTable(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		content string
-		wantErr []string // substrings the error must contain
-		wantOK  bool
+		name     string
+		content  string
+		expected string   // candidate tag for CheckExpected; "" = agreement-only Check
+		wantErr  []string // substrings the error must contain
+		wantOK   bool
 	}{
 		{
 			name:    "consistent README passes",
@@ -78,11 +79,55 @@ func TestCheckTable(t *testing.T) {
 				"curl -sL -o sha256sums.txt https://github.com/coding-hermes/boardctl/releases/download/v1.2.3/sha256sums.txt", ""),
 			wantErr: []string{"no /releases/download"},
 		},
+
+		// DF-BOARDCTL-17: expected-tag (currency) mode. Agreement alone
+		// passes a README that consistently names the PREVIOUS release; the
+		// candidate tag turns that into a failure naming the stale surface.
+		{
+			name:     "every surface naming the expected tag passes",
+			content:  goodREADME,
+			expected: "v1.2.3",
+			wantOK:   true,
+		},
+		{
+			name: "stale URL vs expected tag fails naming BOTH values",
+			content: urlSwap(goodREADME,
+				"releases/download/v1.2.3/boardctl-linux-amd64",
+				"releases/download/v9.8.7/boardctl-linux-amd64"),
+			expected: "v1.2.3",
+			wantErr:  []string{"stale download URL #1", "v9.8.7", "v1.2.3"},
+		},
+		{
+			name:     "stale pin line vs expected tag fails naming BOTH values",
+			content:  strings.Replace(goodREADME, "Current release: **v1.2.3**", "Current release: **v0.9.0**", 1),
+			expected: "v1.2.3",
+			wantErr:  []string{"stale release pin line #1", "v0.9.0", "v1.2.3"},
+		},
+		{
+			name:     "malformed expected tag fails with a shape error",
+			content:  goodREADME,
+			expected: "1.2.3",
+			wantErr:  []string{"1.2.3", "not a vX.Y.Z tag"},
+		},
+		{
+			// Agreement-only mode is unchanged: with no candidate tag, a
+			// README that consistently names an OLDER release still passes
+			// (currency is only enforced when the tag is pinned).
+			name:     "agreement-only mode passes a consistent older tag",
+			content:  strings.ReplaceAll(goodREADME, "v1.2.3", "v0.9.0"),
+			expected: "",
+			wantOK:   true,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := Check(writeREADME(t, tc.content))
+			var err error
+			if tc.expected == "" {
+				err = Check(writeREADME(t, tc.content))
+			} else {
+				err = CheckExpected(writeREADME(t, tc.content), tc.expected)
+			}
 			if tc.wantOK {
 				if err != nil {
 					t.Fatalf("Check() = %v, want nil", err)
@@ -155,6 +200,37 @@ func TestVersioncheck(t *testing.T) {
 	checkReleaseSurfaces(t, root)
 }
 
+// TestVersioncheckExpectedTag is the currency half of the gate
+// (DF-BOARDCTL-17): when the caller pins the candidate tag (make
+// version-check VERSION_TAG=vX.Y.Z — the Makefile exports it into this
+// process), the repo README must name it on EVERY surface, not merely agree
+// with itself; this is what fails a cut whose install URLs still point at
+// the previous release. Without the pin it skips and the gate stays
+// agreement-only (back-compat). The -run TestVersioncheck prefix in the
+// byte-identical gate command runs both halves.
+func TestVersioncheckExpectedTag(t *testing.T) {
+	expected := os.Getenv(VERSION_TAGEnvVar)
+	if expected == "" {
+		t.Skipf("%s unset — agreement-only mode (pin the candidate tag with %s=vX.Y.Z to enforce currency)",
+			VERSION_TAGEnvVar, VERSION_TAGEnvVar)
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	root, err := RepoRoot(cwd)
+	if err != nil {
+		t.Fatalf("locate repo root: %v", err)
+	}
+	readme := filepath.Join(root, READMEName)
+	if _, err := os.Stat(readme); err != nil {
+		t.Fatalf("repo README missing at %s: %v", readme, err)
+	}
+	if err := CheckExpected(readme, expected); err != nil {
+		t.Fatalf("repo README is stale vs the expected release %s:\n%v", expected, err)
+	}
+}
+
 // checkReleaseSurfaces pins the ONE published naming + platform set across the
 // three surfaces that must agree (BT-036). A tag-push cut and a `make release`
 // cut are supposed to be interchangeable, so the install block README documents,
@@ -212,6 +288,16 @@ func checkReleaseSurfaces(t *testing.T, root string) {
 	//    filter skips tag refs, so the Release job (tag refs only) never runs.
 	if !strings.Contains(wf, "tags:") {
 		t.Errorf("workflow %s has no `tags:` trigger — pushing a release tag would not run the release job at all", workflowName)
+	}
+
+	// 5. The expected-tag input must stay explicitly wired: `export
+	//    VERSION_TAG` (line-anchored, so a comment mentioning it cannot
+	//    satisfy this) plus the `VERSION_TAG ?=` declaration make the
+	//    candidate-tag knob discoverable in the target itself, instead of
+	//    relying on make's implicit command-line-variable export
+	//    (DF-BOARDCTL-17).
+	if !regexp.MustCompile(`(?m)^export VERSION_TAG$`).MatchString(mk) {
+		t.Errorf("Makefile version-check target no longer declares `VERSION_TAG ?=` + `export VERSION_TAG` — the candidate-tag input to `make version-check VERSION_TAG=vX.Y.Z` would lose its documented wiring")
 	}
 }
 
