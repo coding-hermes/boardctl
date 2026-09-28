@@ -569,6 +569,16 @@ make vuln-check       # dependency-vulnerability gate (CI enforces it too)
 make release          # cross-compile all targets into dist/ (same asset names + SHA256SUMS the CI cut publishes)
 ```
 
+Go's vcs stamping matches only a `.git` **directory** when walking parent
+directories, so a build from a linked worktree nested under another repo's
+checkout embeds THAT repo's `vcs.revision` with `vcs.modified=true` — and a
+build path with no `.git` directory above it stamps nothing at all — while the
+version string and every sha256 still check out. Cut releases from a checkout
+whose ancestor path contains no other `.git` directory (or from CI, which
+provably stamps clean): `make release` verifies the linux/amd64 asset's stamp
+(DF-BOARDCTL-16) and fails loudly naming the foreign or missing revision
+otherwise.
+
 `make vuln-check` (BT-033) runs `govulncheck` over the module and fails on any
 reachable vulnerability, or on a scan that did not complete. A non-zero exit
 that is neither 0 (clean) nor 3 (findings) is reported as a `TOOL-ERROR` —
