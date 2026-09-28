@@ -1,0 +1,178 @@
+# GENERATED FILE — do not edit by hand.
+#
+# Generation rule (boardctl's contract doctrine): this document is
+# GENERATED from the live route wiring via internal/describe (the
+# registry) by `go run ./cmd/gendocs`. The registry re-derives the
+# surface from cmd/boardctl/serve.go's serveServer.routes() mux
+# registrations and run()'s command switch; a hand-edit here is
+# overwritten by the next regeneration and the parity gate
+# (internal/speccheck) fails a document that drifted from the wiring.
+#
+# Consumed by muster (github.com/wojons/muster): openapi-cli generates
+# one verb per operationId below; openapi-mcp exposes them as tools.
+# Regenerate + verify after every serve-surface change:
+#
+#	go run ./cmd/gendocs && go test ./internal/speccheck
+#
+# See docs/muster/quickstart.md for the consumer wiring.
+openapi: 3.0.3
+info:
+  title: boardctl serve
+  description: |
+    Loopback uploader/report HTTP surface of `boardctl serve` (BT-021),
+    published as an OpenAPI 3.0.3 contract for muster consumption
+    (BT-062). serve is loopback-only by design: it refuses any
+    non-loopback --addr host, keeps no auth, and writes nothing to the
+    uploaded board files. Board files themselves are JSONL
+    (tasks.jsonl / events.jsonl / board.jsonl); the report is a
+    self-contained HTML page.
+  version: 0.1.0
+servers:
+  - url: http://127.0.0.1:8787
+    description: |
+      Default loopback listener of `boardctl serve` (--addr default
+      127.0.0.1:8787). ABSOLUTE on purpose: muster dereferences
+      servers[].url as-is when --base-url is omitted, and a relative
+      server URL cannot be dereferenced from a local-file spec. Override
+      with --base-url (openapi-cli) or the mcpServers args (openapi-mcp)
+      when the server runs on another loopback spelling or port.
+tags:
+  - name: uploader
+    description: browser-facing uploader form and report rendering
+  - name: boards
+    description: live board inventory of the running serve instance
+paths:
+  '/':
+    get:
+      operationId: getUploaderForm
+      summary: the self-contained uploader page (HTML form for folder and .zip uploads)
+      tags: [uploader]
+      description: |
+        Serves the self-contained uploader page (inline CSS+JS, no
+        external fetches). A browser form POSTs to `/` with
+        multipart/form-data: field `files` (webkitdirectory folder
+        upload, relative paths preserved) or field `zip` (one .zip
+        archive). Paths other than `/` answer 404 via mux routing.
+      responses:
+        '200':
+          description: the uploader HTML page
+          content:
+            text/html:
+              schema:
+                type: string
+    post:
+      operationId: uploadBoardReport
+      summary: upload a board folder or .zip and receive the rendered multi-board HTML report
+      tags: [uploader]
+      description: |
+        Accepts a multipart/form-data upload of a board folder
+        (webkitdirectory: every file under the chosen directory, one
+        part per file, relative paths preserved in the filenames) or a
+        single .zip part. Every directory containing BOTH
+        tasks.jsonl and events.jsonl registers as a board (Topology A
+        or B); a `board.jsonl` header row is honored for Topology A.
+        Caps: 512 MB payload (HTTP 413 above), 50 boards per upload
+        (HTTP 413 above). The response IS the rendered multi-board
+        HTML report; nothing is written to the uploaded board files.
+        Note: an upload that registers 0 boards while a -C board is
+        loaded still answers 200 with the -C board's report plus a
+        visible upload_notice banner (BT-027) — it does not error.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BoardUpload'
+      responses:
+        '200':
+          description: the rendered multi-board analytics report (self-contained HTML; carries an upload_notice banner when the upload registered 0 boards but a -C board rendered)
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: bad multipart form, unreadable zip, no files, or no board found in the upload (plain-text error body)
+          content:
+            text/plain:
+              schema:
+                type: string
+        '413':
+          description: payload exceeds the 512 MB cap, or the upload registers more than 50 boards
+          content:
+            text/plain:
+              schema:
+                type: string
+  '/api/boards':
+    get:
+      operationId: listLoadedBoards
+      summary: list the boards currently loaded by the running serve instance
+      tags: [boards]
+      description: |
+        Answers with the boards currently loaded by the running serve
+        instance: the optional -C board plus every board registered by
+        uploads so far (superseded re-uploads dropped). Board task
+        totals come from the same payload derivation as the report
+        (fixture exclusion, last-row-wins dedup), so the numbers match
+        what the report page shows.
+      responses:
+        '200':
+          description: the loaded boards (possibly an empty array)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiBoard'
+        '500':
+          description: board payload could not be built (plain-text error body)
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  schemas:
+    BoardUpload:
+      type: object
+      description: |
+        multipart/form-data body of POST `/`. Exactly one of the two
+        shapes is required: a single `zip` part (a .zip archive of one
+        or more board directories, max 512 MB) OR a `files` folder
+        upload (one part per file, wire filenames carrying the
+        directory-relative paths). A `zip` part wins when both are
+        present (handleUpload checks zip first).
+      properties:
+        zip:
+          type: string
+          format: binary
+          description: one .zip archive containing one or more board directories (a directory holding BOTH tasks.jsonl and events.jsonl)
+        files:
+          type: array
+          description: webkitdirectory folder upload — every file under the chosen directory, directory-relative paths preserved in the part filenames
+          items:
+            type: string
+            format: binary
+    ApiBoard:
+      type: object
+      description: one entry of GET /api/boards (mirrors cmd/boardctl apiBoard's json wire shape)
+      properties:
+        name:
+          type: string
+          description: board display name (header project, else the directory base name)
+        slug:
+          type: string
+          description: report-display slug of the name
+        topology:
+          type: string
+          description: board topology (A = board.jsonl header + tasks.jsonl, B = tasks.jsonl only)
+        task_total:
+          type: integer
+          description: non-fixture task rows counted by the report payload derivation
+          format: int64
+        done:
+          type: integer
+          description: complete task count
+          format: int64
+        open:
+          type: integer
+          description: open task count
+          format: int64
