@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-16",
+  "task_title": "wave tick boardctl-2026-09-27-23-52-37: DF-BOARDCTL-16",
+  "task_criteria": [
+    "see board row DF-BOARDCTL-16 acceptance criteria"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "61ef9ba48c1d39c2dc53d3d379e8eed6caf91ad2",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.119s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n8:04PM INF scanned ~1979706 bytes (1.98 MB) in 825ms\n8:04PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 139 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260928T004725.139045Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.119s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.176s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.014s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260928T004725.139045Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 see board row DF-BOARDCTL-16 acceptance criteria: Board row acceptance (from /tmp/brief-DF-BOARDCTL-16.txt) requires: (1) release FAILS non-zero when linux-amd64 vcs.revision is empty / not an ancestor of VERSION / vcs.modified!=false, naming the observed SHA; (2) clean stamp proceeds and prints the verified revision; (3) both arms proven with quoted output; (4) one README note under ## Development; (5) gofmt/build/vet/test green. VERIFIED LIVE: Makefile release target (lines 101-148) adds the stamp assertion after the build loop. NEGATIVE arms all exit 2 before SHA256SUMS is written: (a) foreign stamp in this worktree -> 'release: FAIL vcs.modified: true ... vcs.revision c6af73f1b4da97a112e634be98285598961fed26', no dist/SHA256SUMS; (b) clean outer repo stamping foreign rev with modified=false -> 'release: FAIL vcs.revision: e8c17518... is not the HEAD of this checkout'; (c) build outside any .git -> 'release: FAIL vcs.revision absent'. POSITIVE arm (clean nested worktree, HEAD==tag) -> 'release: ok vcs.revision cc999ce... is an ancestor of v0.1.8', SHA256SUMS written, asset prints 'boardctl version v0.1.8'. README.md:562-571 has the one docs note under ## Development. Gates: gofmt -l clean (exit 0), go build ./... exit 0, go vet ./... exit 0. go test ./... -count=1 has ONE failure, TestUsageSkillDateGateBitesOnHeaderMutations (df15_skill_closure_test.go:478), PROVEN pre-existing at base ae429f1 by an independent detached-worktree run with identical output (date-based test, run date 2026-09-27); the diff touches no Go files. Minor documented gap: the 'not an ancestor of VERSION' arm is enforced only when .git is a FILE (linked worktree) \u2014 in a plain checkout it prints DEGRADED and ships (reproduced: HEAD d602f88 not ancestor of v0.1.8 still wrote SHA256SUMS). This is a deliberate, commit-documented degradation ('non-worktree roots ... the stamp cannot be foreign by construction') and the central requirement \u2014 refuse foreign-SHA builds and name the SHA \u2014 is fully met and proven in the exact bug scenario.\nDF-BOARDCTL-16's release vcs-stamp assertion is implemented and verified live: all foreign/absent/modified failure arms exit non-zero naming the observed SHA before SHA256SUMS, the clean path proceeds printing the verified revision, the README note is present, and gofmt/build/vet are clean (the single test failure is proven pre-existing at base ae429f1).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 see board row DF-BOARDCTL-16 acceptance criteria: Board row acceptance (from /tmp/brief-DF-BOARDCTL-16.txt) requires: (1) release FAILS non-zero when linux-amd64 vcs.revision is empty / not an ancestor of VERSION / vcs.modified!=false, naming the observed SHA; (2) clean stamp proceeds and prints the verified revision; (3) both arms proven with quoted output; (4) one README note under ## Development; (5) gofmt/build/vet/test green. VERIFIED LIVE: Makefile release target (lines 101-148) adds the stamp assertion after the build loop. NEGATIVE arms all exit 2 before SHA256SUMS is written: (a) foreign stamp in this worktree -> 'release: FAIL vcs.modified: true ... vcs.revision c6af73f1b4da97a112e634be98285598961fed26', no dist/SHA256SUMS; (b) clean outer repo stamping foreign rev with modified=false -> 'release: FAIL vcs.revision: e8c17518... is not the HEAD of this checkout'; (c) build outside any .git -> 'release: FAIL vcs.revision absent'. POSITIVE arm (clean nested worktree, HEAD==tag) -> 'release: ok vcs.revision cc999ce... is an ancestor of v0.1.8', SHA256SUMS written, asset prints 'boardctl version v0.1.8'. README.md:562-571 has the one docs note under ## Development. Gates: gofmt -l clean (exit 0), go build ./... exit 0, go vet ./... exit 0. go test ./... -count=1 has ONE failure, TestUsageSkillDateGateBitesOnHeaderMutations (df15_skill_closure_test.go:478), PROVEN pre-existing at base ae429f1 by an independent detached-worktree run with identical output (date-based test, run date 2026-09-27); the diff touches no Go files. Minor documented gap: the 'not an ancestor of VERSION' arm is enforced only when .git is a FILE (linked worktree) \u2014 in a plain checkout it prints DEGRADED and ships (reproduced: HEAD d602f88 not ancestor of v0.1.8 still wrote SHA256SUMS). This is a deliberate, commit-documented degradation ('non-worktree roots ... the stamp cannot be foreign by construction') and the central requirement \u2014 refuse foreign-SHA builds and name the SHA \u2014 is fully met and proven in the exact bug scenario.\nDF-BOARDCTL-16's release vcs-stamp assertion is implemented and verified live: all foreign/absent/modified failure arms exit non-zero naming the observed SHA before SHA256SUMS, the clean path proceeds printing the verified revision, the README note is present, and gofmt/build/vet are clean (the single test failure is proven pre-existing at base ae429f1).",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "see board row DF-BOARDCTL-16 acceptance criteria",
+                "status": "PASS",
+                "detail": "Board row acceptance (from /tmp/brief-DF-BOARDCTL-16.txt) requires: (1) release FAILS non-zero when linux-amd64 vcs.revision is empty / not an ancestor of VERSION / vcs.modified!=false, naming the observed SHA; (2) clean stamp proceeds and prints the verified revision; (3) both arms proven with quoted output; (4) one README note under ## Development; (5) gofmt/build/vet/test green. VERIFIED LIVE: Makefile release target (lines 101-148) adds the stamp assertion after the build loop. NEGATIVE arms all exit 2 before SHA256SUMS is written: (a) foreign stamp in this worktree -> 'release: FAIL vcs.modified: true ... vcs.revision c6af73f1b4da97a112e634be98285598961fed26', no dist/SHA256SUMS; (b) clean outer repo stamping foreign rev with modified=false -> 'release: FAIL vcs.revision: e8c17518... is not the HEAD of this checkout'; (c) build outside any .git -> 'release: FAIL vcs.revision absent'. POSITIVE arm (clean nested worktree, HEAD==tag) -> 'release: ok vcs.revision cc999ce... is an ancestor of v0.1.8', SHA256SUMS written, asset prints 'boardctl version v0.1.8'. README.md:562-571 has the one docs note under ## Development. Gates: gofmt -l clean (exit 0), go build ./... exit 0, go vet ./... exit 0. go test ./... -count=1 has ONE failure, TestUsageSkillDateGateBitesOnHeaderMutations (df15_skill_closure_test.go:478), PROVEN pre-existing at base ae429f1 by an independent detached-worktree run with identical output (date-based test, run date 2026-09-27); the diff touches no Go files. Minor documented gap: the 'not an ancestor of VERSION' arm is enforced only when .git is a FILE (linked worktree) \u2014 in a plain checkout it prints DEGRADED and ships (reproduced: HEAD d602f88 not ancestor of v0.1.8 still wrote SHA256SUMS). This is a deliberate, commit-documented degradation ('non-worktree roots ... the stamp cannot be foreign by construction') and the central requirement \u2014 refuse foreign-SHA builds and name the SHA \u2014 is fully met and proven in the exact bug scenario."
+              }
+            ],
+            "summary": "DF-BOARDCTL-16's release vcs-stamp assertion is implemented and verified live: all foreign/absent/modified failure arms exit non-zero naming the observed SHA before SHA256SUMS, the clean path proceeds printing the verified revision, the README note is present, and gofmt/build/vet are clean (the single test failure is proven pre-existing at base ae429f1)."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-16\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.119s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 see board row DF-BOARDCTL-16 acceptance criteria: Board row acceptance (from /tmp/brief-DF-BOARDCTL-16.txt) requires: (1) release FAILS non-zero when linux-amd64 vcs.revision is empty / not an ancestor of VERSION / vcs.modified!=false, naming the observed SHA; (2) clean stamp proceeds and prints the verified revision; (3) both arms proven with quoted output; (4) one README note under ## Development; (5) gofmt/build/vet/test green. VERIFIED LIVE: Makefile release target (lines 101-148) adds the stamp assertion after the build loop. NEGATIVE arms all exit 2 before SHA256SUMS is written: (a) foreign stamp in this worktree -> 'release: FAIL vcs.modified: true ... vcs.revision c6af73f1b4da97a112e634be98285598961fed26', no dist/SHA256SUMS; (b) clean outer repo stamping foreign rev with modified=false -> 'release: FAIL vcs.revision: e8c17518... is not the HEAD of this checkout'; (c) build outside any .git -> 'release: FAIL vcs.revision absent'. POSITIVE arm (clean nested worktree, HEAD==tag) -> 'release: ok vcs.revision cc999ce... is an ancestor of v0.1.8', SHA256SUMS written, asset prints 'boardctl version v0.1.8'. README.md:562-571 has the one docs note under ## Development. Gates: gofmt -l clean (exit 0), go build ./... exit 0, go vet ./... exit 0. go test ./... -count=1 has ONE failure, TestUsageSkillDateGateBitesOnHeaderMutations (df15_skill_closure_test.go:478), PROVEN pre-existing at base ae429f1 by an independent detached-worktree run with identical output (date-based test, run date 2026-09-27); the diff touches no Go files. Minor documented gap: the 'not an ancestor of VERSION' arm is enforced only when .git is a FILE (linked worktree) \u2014 in a plain checkout it prints DEGRADED and ships (reproduced: HEAD d602f88 not ancestor of v0.1.8 still wrote SHA256SUMS). This is a deliberate, commit-documented degradation ('non-worktree roots ... the stamp cannot be foreign by construction') and the central requirement \u2014 refuse foreign-SHA builds and name the SHA \u2014 is fully met and proven in the exact bug scenario.\nDF-BOARDCTL-16's release vcs-stamp assertion is implemented and verified live: all foreign/absent/modified failure arms exit non-zero naming the observed SHA before SHA256SUMS, the clean path proceeds printing the verified revision, the README note is present, and gofmt/build/vet are clean (the single test failure is proven pre-existing at base ae429f1).\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-28T01:06:49.947365",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-28T01:06:49.963518+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 467,
+        "truncated": false,
+        "source": "git show 61ef9ba48c1d"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-16"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "task_id": "BT-053",
+  "task_title": "wave tick boardctl-2026-09-27-23-52-37: BT-053",
+  "task_criteria": [
+    "see board row BT-053 acceptance criteria"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "9a0e73f9ff981458d163f3da8a5ebf354f747054",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.635s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n8:16PM INF scanned ~2096372 bytes (2.10 MB) in 468ms\n8:16PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 152 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260928T011617.314197Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.635s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.430s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.097s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.020s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.428s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.005s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260928T011617.314197Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 see board row BT-053 acceptance criteria: All BT-053 acceptance criteria (from /tmp/brief-BT-053.txt) verified. (1) --fleet enumerates repos and prints one outcome line per repo covering all five classes: cmd/boardctl/fleet.go:130-146 emits '<class>: <repo>[ \u2014 detail]' + summary; classes defined fleet.go:55-61 (installed/already present/skipped-no-board/skipped-no-binary/skipped/FAILED); TestBT053FleetOutcomeClasses PASS and live run reproduced 'installed: /home/kara/dexdat-core \u2014 would update the managed block', 'skipped-no-board: /home/kara/duckbrain/namespaces/dexdat-core', 'skipped: ...worktree checkout: .git is a file'. (2) Idempotent: TestBT053FleetIdempotentByteIdentical PASS; live run3 on dexdat-core reported 'already present' with sha256 38b04a26... byte-identical before==after. (3) Chain-not-clobber: TestBT053FleetChainNotClobber PASS; live dexdat-core hook (sha ef0415b9) preserves the gitreins guard body (lines 54-59) with the board-lint epilogue chained (line 62). (4) Interrupt-safe: TestBT053FleetRerunCompletesAfterPartial PASS; atomic temp-file+rename (fleet.go:319-336); all writes confined to .git/hooks (grep confirms no board/.gitreins writes). (5) Tests: 12 TestBT053* tests PASS via 'go test ./cmd/boardctl/ -run TestBT053 -count=1 -v'; usage-closure meta-tests (TestUsageClosureGateDerivesFromCommandSwitch, TestBT053FleetUsageClosureStillGreen) PASS. (6) Live proof: commit 9789e1b body quotes outcome lines; reproduced on real repos. (7) Gates: 'gofmt -l' on touched files exit 0 (clean); 'go build ./...' exit 0; 'go vet ./...' exit 0; 'go test ./... -count=1' all packages ok exit 0; LSP diagnostics count 0.\nBT-053 fleet rollout mode is fully implemented and all acceptance criteria (five outcome classes, idempotency, chain-not-clobber, interrupt-safety, tests, live proof, and green gates) are verified with passing tests and reproduced live evidence.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 see board row BT-053 acceptance criteria: All BT-053 acceptance criteria (from /tmp/brief-BT-053.txt) verified. (1) --fleet enumerates repos and prints one outcome line per repo covering all five classes: cmd/boardctl/fleet.go:130-146 emits '<class>: <repo>[ \u2014 detail]' + summary; classes defined fleet.go:55-61 (installed/already present/skipped-no-board/skipped-no-binary/skipped/FAILED); TestBT053FleetOutcomeClasses PASS and live run reproduced 'installed: /home/kara/dexdat-core \u2014 would update the managed block', 'skipped-no-board: /home/kara/duckbrain/namespaces/dexdat-core', 'skipped: ...worktree checkout: .git is a file'. (2) Idempotent: TestBT053FleetIdempotentByteIdentical PASS; live run3 on dexdat-core reported 'already present' with sha256 38b04a26... byte-identical before==after. (3) Chain-not-clobber: TestBT053FleetChainNotClobber PASS; live dexdat-core hook (sha ef0415b9) preserves the gitreins guard body (lines 54-59) with the board-lint epilogue chained (line 62). (4) Interrupt-safe: TestBT053FleetRerunCompletesAfterPartial PASS; atomic temp-file+rename (fleet.go:319-336); all writes confined to .git/hooks (grep confirms no board/.gitreins writes). (5) Tests: 12 TestBT053* tests PASS via 'go test ./cmd/boardctl/ -run TestBT053 -count=1 -v'; usage-closure meta-tests (TestUsageClosureGateDerivesFromCommandSwitch, TestBT053FleetUsageClosureStillGreen) PASS. (6) Live proof: commit 9789e1b body quotes outcome lines; reproduced on real repos. (7) Gates: 'gofmt -l' on touched files exit 0 (clean); 'go build ./...' exit 0; 'go vet ./...' exit 0; 'go test ./... -count=1' all packages ok exit 0; LSP diagnostics count 0.\nBT-053 fleet rollout mode is fully implemented and all acceptance criteria (five outcome classes, idempotency, chain-not-clobber, interrupt-safety, tests, live proof, and green gates) are verified with passing tests and reproduced live evidence.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "see board row BT-053 acceptance criteria",
+                "status": "PASS",
+                "detail": "All BT-053 acceptance criteria (from /tmp/brief-BT-053.txt) verified. (1) --fleet enumerates repos and prints one outcome line per repo covering all five classes: cmd/boardctl/fleet.go:130-146 emits '<class>: <repo>[ \u2014 detail]' + summary; classes defined fleet.go:55-61 (installed/already present/skipped-no-board/skipped-no-binary/skipped/FAILED); TestBT053FleetOutcomeClasses PASS and live run reproduced 'installed: /home/kara/dexdat-core \u2014 would update the managed block', 'skipped-no-board: /home/kara/duckbrain/namespaces/dexdat-core', 'skipped: ...worktree checkout: .git is a file'. (2) Idempotent: TestBT053FleetIdempotentByteIdentical PASS; live run3 on dexdat-core reported 'already present' with sha256 38b04a26... byte-identical before==after. (3) Chain-not-clobber: TestBT053FleetChainNotClobber PASS; live dexdat-core hook (sha ef0415b9) preserves the gitreins guard body (lines 54-59) with the board-lint epilogue chained (line 62). (4) Interrupt-safe: TestBT053FleetRerunCompletesAfterPartial PASS; atomic temp-file+rename (fleet.go:319-336); all writes confined to .git/hooks (grep confirms no board/.gitreins writes). (5) Tests: 12 TestBT053* tests PASS via 'go test ./cmd/boardctl/ -run TestBT053 -count=1 -v'; usage-closure meta-tests (TestUsageClosureGateDerivesFromCommandSwitch, TestBT053FleetUsageClosureStillGreen) PASS. (6) Live proof: commit 9789e1b body quotes outcome lines; reproduced on real repos. (7) Gates: 'gofmt -l' on touched files exit 0 (clean); 'go build ./...' exit 0; 'go vet ./...' exit 0; 'go test ./... -count=1' all packages ok exit 0; LSP diagnostics count 0."
+              }
+            ],
+            "summary": "BT-053 fleet rollout mode is fully implemented and all acceptance criteria (five outcome classes, idempotency, chain-not-clobber, interrupt-safety, tests, live proof, and green gates) are verified with passing tests and reproduced live evidence."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-053\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.635s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 see board row BT-053 acceptance criteria: All BT-053 acceptance criteria (from /tmp/brief-BT-053.txt) verified. (1) --fleet enumerates repos and prints one outcome line per repo covering all five classes: cmd/boardctl/fleet.go:130-146 emits '<class>: <repo>[ \u2014 detail]' + summary; classes defined fleet.go:55-61 (installed/already present/skipped-no-board/skipped-no-binary/skipped/FAILED); TestBT053FleetOutcomeClasses PASS and live run reproduced 'installed: /home/kara/dexdat-core \u2014 would update the managed block', 'skipped-no-board: /home/kara/duckbrain/namespaces/dexdat-core', 'skipped: ...worktree checkout: .git is a file'. (2) Idempotent: TestBT053FleetIdempotentByteIdentical PASS; live run3 on dexdat-core reported 'already present' with sha256 38b04a26... byte-identical before==after. (3) Chain-not-clobber: TestBT053FleetChainNotClobber PASS; live dexdat-core hook (sha ef0415b9) preserves the gitreins guard body (lines 54-59) with the board-lint epilogue chained (line 62). (4) Interrupt-safe: TestBT053FleetRerunCompletesAfterPartial PASS; atomic temp-file+rename (fleet.go:319-336); all writes confined to .git/hooks (grep confirms no board/.gitreins writes). (5) Tests: 12 TestBT053* tests PASS via 'go test ./cmd/boardctl/ -run TestBT053 -count=1 -v'; usage-closure meta-tests (TestUsageClosureGateDerivesFromCommandSwitch, TestBT053FleetUsageClosureStillGreen) PASS. (6) Live proof: commit 9789e1b body quotes outcome lines; reproduced on real repos. (7) Gates: 'gofmt -l' on touched files exit 0 (clean); 'go build ./...' exit 0; 'go vet ./...' exit 0; 'go test ./... -count=1' all packages ok exit 0; LSP diagnostics count 0.\nBT-053 fleet rollout mode is fully implemented and all acceptance criteria (five outcome classes, idempotency, chain-not-clobber, interrupt-safety, tests, live proof, and green gates) are verified with passing tests and reproduced live evidence.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-28T01:17:45.517547",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-28T01:17:45.535190+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 713,
+        "truncated": false,
+        "source": "git show 9a0e73f9ff98"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 95912,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-053"
+  }
+}

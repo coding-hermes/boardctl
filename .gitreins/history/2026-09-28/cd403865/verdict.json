@@ -1,0 +1,93 @@
+{
+  "task_id": "BT-050",
+  "task_title": "wave tick boardctl-2026-09-27-23-52-37: BT-050",
+  "task_criteria": [
+    "see board row BT-050 acceptance criteria"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "9a99f11c0c6ab967c8434f15c925535c15919106",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.978s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n7:54PM INF scanned ~1975820 bytes (1.98 MB) in 517ms\n7:54PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 139 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260928T004725.139045Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.978s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.008s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.452s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.093s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.028s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.008s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.605s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260928T004725.139045Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 see board row BT-050 acceptance criteria: BT-050 acceptance criteria (from /tmp/brief-BT-050.txt) all met in commit 6a3981e (worktree /home/kara/worktrees/coding-hermes-boardctl-BT-050). (a) Concurrent writers serialize: TestConcurrentWritersSerializeUnderLock PASS \u2014 3 rounds x 6 real goroutines each resolving its own *Board, auditBoard asserts every line valid JSON, task ids unique, event ids unique+strictly increasing, exact counts (37 task/73 event lines). RED control TestConcurrentWritersWithoutLockIsUnsafe PASS and reproduced real corruption on round 0: 'events.jsonl line 4: DUPLICATE event id 3 / id 3 not strictly increasing'; GREEN counterpart 0 problems. (b) create safe under concurrency: TestParallelCreateSameIDExactlyOneWinner PASS \u2014 12 racers x 20 rounds, exactly 1 winner, 11 ErrDuplicateTaskID, RACE-1 appears once on disk. (c) advisory flock on sidecar .lock: lock_unix.go flock(2) LOCK_EX, lock_windows.go LockFileEx, boardLockFileName=\".lock\"; TestWriteLockIsExclusive PASS, TestLockReleasesWhenHolderDiesWithoutCleanup PASS (fd closed without release -> next acquirer succeeds, no stale-lock path), TestReadersDoNotTakeTheWriteLock PASS (validate under held lock, 3s timeout); no read path calls withWriteLock (grep confirms only 5 write verbs). (d) Byte-preservation + BT-68 note-append tests PASS: TestUpdateNoteAppendsToExisting/Twice/FirstWriteNoSeparator/ReplaceOverwrites/OmittedLeavesKeyUntouched/AppendPreservesEveryOtherLine, TestUpdatePriorityRewritesRowBytePreserving, TestUpdateWritesWorktreeBranchSessionsBytePreserving. (e) Gates: gofmt -l internal/board/ empty (clean); go build ./... exit 0; go vet ./... exit 0; go test ./internal/board/ -count=1 -race ok; cross-compiles windows/darwin/freebsd exit 0. Full go test ./... shows ONE FAIL: cmd/boardctl TestUsageSkillDateGateBitesOnHeaderMutations/date_just_inside_tolerance_passes \u2014 reproduced identically on pristine base ae429f1 (wall-clock date arithmetic, 45-day tolerance boundary), and the commit touches no cmd/ files, so it is an attributed pre-existing failure outside this task's scope. (f) docs note: README.md +10 lines in the write-path section stating writers must go through boardctl create/update and what the lock guarantees. (g) file scope respected: commit touches only README.md, internal/board/{board.go,lock.go,lock_unix.go,lock_windows.go,write.go,write_concurrency_test.go} \u2014 no Makefile, no cmd/, no iddupe.go. No LSP diagnostics.\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 see board row BT-050 acceptance criteria: BT-050 acceptance criteria (from /tmp/brief-BT-050.txt) all met in commit 6a3981e (worktree /home/kara/worktrees/coding-hermes-boardctl-BT-050). (a) Concurrent writers serialize: TestConcurrentWritersSerializeUnderLock PASS \u2014 3 rounds x 6 real goroutines each resolving its own *Board, auditBoard asserts every line valid JSON, task ids unique, event ids unique+strictly increasing, exact counts (37 task/73 event lines). RED control TestConcurrentWritersWithoutLockIsUnsafe PASS and reproduced real corruption on round 0: 'events.jsonl line 4: DUPLICATE event id 3 / id 3 not strictly increasing'; GREEN counterpart 0 problems. (b) create safe under concurrency: TestParallelCreateSameIDExactlyOneWinner PASS \u2014 12 racers x 20 rounds, exactly 1 winner, 11 ErrDuplicateTaskID, RACE-1 appears once on disk. (c) advisory flock on sidecar .lock: lock_unix.go flock(2) LOCK_EX, lock_windows.go LockFileEx, boardLockFileName=\".lock\"; TestWriteLockIsExclusive PASS, TestLockReleasesWhenHolderDiesWithoutCleanup PASS (fd closed without release -> next acquirer succeeds, no stale-lock path), TestReadersDoNotTakeTheWriteLock PASS (validate under held lock, 3s timeout); no read path calls withWriteLock (grep confirms only 5 write verbs). (d) Byte-preservation + BT-68 note-append tests PASS: TestUpdateNoteAppendsToExisting/Twice/FirstWriteNoSeparator/ReplaceOverwrites/OmittedLeavesKeyUntouched/AppendPreservesEveryOtherLine, TestUpdatePriorityRewritesRowBytePreserving, TestUpdateWritesWorktreeBranchSessionsBytePreserving. (e) Gates: gofmt -l internal/board/ empty (clean); go build ./... exit 0; go vet ./... exit 0; go test ./internal/board/ -count=1 -race ok; cross-compiles windows/darwin/freebsd exit 0. Full go test ./... shows ONE FAIL: cmd/boardctl TestUsageSkillDateGateBitesOnHeaderMutations/date_just_inside_tolerance_passes \u2014 reproduced identically on pristine base ae429f1 (wall-clock date arithmetic, 45-day tolerance boundary), and the commit touches no cmd/ files, so it is an attributed pre-existing failure outside this task's scope. (f) docs note: README.md +10 lines in the write-path section stating writers must go through boardctl create/update and what the lock guarantees. (g) file scope respected: commit touches only README.md, internal/board/{board.go,lock.go,lock_unix.go,lock_windows.go,write.go,write_concurrency_test.go} \u2014 no Makefile, no cmd/, no iddupe.go. No LSP diagnostics.\n",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "see board row BT-050 acceptance criteria",
+                "status": "PASS",
+                "detail": "BT-050 acceptance criteria (from /tmp/brief-BT-050.txt) all met in commit 6a3981e (worktree /home/kara/worktrees/coding-hermes-boardctl-BT-050). (a) Concurrent writers serialize: TestConcurrentWritersSerializeUnderLock PASS \u2014 3 rounds x 6 real goroutines each resolving its own *Board, auditBoard asserts every line valid JSON, task ids unique, event ids unique+strictly increasing, exact counts (37 task/73 event lines). RED control TestConcurrentWritersWithoutLockIsUnsafe PASS and reproduced real corruption on round 0: 'events.jsonl line 4: DUPLICATE event id 3 / id 3 not strictly increasing'; GREEN counterpart 0 problems. (b) create safe under concurrency: TestParallelCreateSameIDExactlyOneWinner PASS \u2014 12 racers x 20 rounds, exactly 1 winner, 11 ErrDuplicateTaskID, RACE-1 appears once on disk. (c) advisory flock on sidecar .lock: lock_unix.go flock(2) LOCK_EX, lock_windows.go LockFileEx, boardLockFileName=\".lock\"; TestWriteLockIsExclusive PASS, TestLockReleasesWhenHolderDiesWithoutCleanup PASS (fd closed without release -> next acquirer succeeds, no stale-lock path), TestReadersDoNotTakeTheWriteLock PASS (validate under held lock, 3s timeout); no read path calls withWriteLock (grep confirms only 5 write verbs). (d) Byte-preservation + BT-68 note-append tests PASS: TestUpdateNoteAppendsToExisting/Twice/FirstWriteNoSeparator/ReplaceOverwrites/OmittedLeavesKeyUntouched/AppendPreservesEveryOtherLine, TestUpdatePriorityRewritesRowBytePreserving, TestUpdateWritesWorktreeBranchSessionsBytePreserving. (e) Gates: gofmt -l internal/board/ empty (clean); go build ./... exit 0; go vet ./... exit 0; go test ./internal/board/ -count=1 -race ok; cross-compiles windows/darwin/freebsd exit 0. Full go test ./... shows ONE FAIL: cmd/boardctl TestUsageSkillDateGateBitesOnHeaderMutations/date_just_inside_tolerance_passes \u2014 reproduced identically on pristine base ae429f1 (wall-clock date arithmetic, 45-day tolerance boundary), and the commit touches no cmd/ files, so it is an attributed pre-existing failure outside this task's scope. (f) docs note: README.md +10 lines in the write-path section stating writers must go through boardctl create/update and what the lock guarantees. (g) file scope respected: commit touches only README.md, internal/board/{board.go,lock.go,lock_unix.go,lock_windows.go,write.go,write_concurrency_test.go} \u2014 no Makefile, no cmd/, no iddupe.go. No LSP diagnostics."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-050\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t1.978s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 see board row BT-050 acceptance criteria: BT-050 acceptance criteria (from /tmp/brief-BT-050.txt) all met in commit 6a3981e (worktree /home/kara/worktrees/coding-hermes-boardctl-BT-050). (a) Concurrent writers serialize: TestConcurrentWritersSerializeUnderLock PASS \u2014 3 rounds x 6 real goroutines each resolving its own *Board, auditBoard asserts every line valid JSON, task ids unique, event ids unique+strictly increasing, exact counts (37 task/73 event lines). RED control TestConcurrentWritersWithoutLockIsUnsafe PASS and reproduced real corruption on round 0: 'events.jsonl line 4: DUPLICATE event id 3 / id 3 not strictly increasing'; GREEN counterpart 0 problems. (b) create safe under concurrency: TestParallelCreateSameIDExactlyOneWinner PASS \u2014 12 racers x 20 rounds, exactly 1 winner, 11 ErrDuplicateTaskID, RACE-1 appears once on disk. (c) advisory flock on sidecar .lock: lock_unix.go flock(2) LOCK_EX, lock_windows.go LockFileEx, boardLockFileName=\".lock\"; TestWriteLockIsExclusive PASS, TestLockReleasesWhenHolderDiesWithoutCleanup PASS (fd closed without release -> next acquirer succeeds, no stale-lock path), TestReadersDoNotTakeTheWriteLock PASS (validate under held lock, 3s timeout); no read path calls withWriteLock (grep confirms only 5 write verbs). (d) Byte-preservation + BT-68 note-append tests PASS: TestUpdateNoteAppendsToExisting/Twice/FirstWriteNoSeparator/ReplaceOverwrites/OmittedLeavesKeyUntouched/AppendPreservesEveryOtherLine, TestUpdatePriorityRewritesRowBytePreserving, TestUpdateWritesWorktreeBranchSessionsBytePreserving. (e) Gates: gofmt -l internal/board/ empty (clean); go build ./... exit 0; go vet ./... exit 0; go test ./internal/board/ -count=1 -race ok; cross-compiles windows/darwin/freebsd exit 0. Full go test ./... shows ONE FAIL: cmd/boardctl TestUsageSkillDateGateBitesOnHeaderMutations/date_just_inside_tolerance_passes \u2014 reproduced identically on pristine base ae429f1 (wall-clock date arithmetic, 45-day tolerance boundary), and the commit touches no cmd/ files, so it is an attributed pre-existing failure outside this task's scope. (f) docs note: README.md +10 lines in the write-path section stating writers must go through boardctl create/update and what the lock guarantees. (g) file scope respected: commit touches only README.md, internal/board/{board.go,lock.go,lock_unix.go,lock_windows.go,write.go,write_concurrency_test.go} \u2014 no Makefile, no cmd/, no iddupe.go. No LSP diagnostics.\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-28T00:55:38.450092",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-28T00:55:38.470294+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 781,
+        "truncated": false,
+        "source": "git show 9a99f11c0c6a"
+      }
+    ],
+    "task_id": "BT-050"
+  }
+}

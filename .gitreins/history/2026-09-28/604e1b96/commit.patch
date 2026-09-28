@@ -1,0 +1,21 @@
+commit 522a33ed3322ec20f5b31097e1182f23c6819c2c
+Merge: 61ef9ba 2efdb3a
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Sep 27 20:07:01 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Sep 27 20:07:01 2026 -0500
+
+    Merge branch 'wt/BT-062'
+
+ cmd/gendocs/main.go                  |  75 +++++++++
+ docs/muster/openapi.yaml             | 178 +++++++++++++++++++++
+ docs/muster/quickstart.md            | 115 +++++++++++++
+ go.mod                               |  15 ++
+ go.sum                               |  37 +++++
+ internal/describe/describe.go        | 299 ++++++++++++++++++++++++++++++++++
+ internal/describe/describe_test.go   | 182 +++++++++++++++++++++
+ internal/describe/openapi.go         | 291 +++++++++++++++++++++++++++++++++
+ internal/speccheck/kin_parse_test.go | 109 +++++++++++++
+ internal/speccheck/speccheck.go      | 301 +++++++++++++++++++++++++++++++++++
+ internal/speccheck/speccheck_test.go | 268 +++++++++++++++++++++++++++++++
+ 11 files changed, 1870 insertions(+)

@@ -1,0 +1,14 @@
+commit 9c73a8e213094de46073a214d6782feb07b26289
+Merge: db0da4b 6e4cfa8
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Sep 27 19:48:03 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Sep 27 19:48:03 2026 -0500
+
+    Merge branch 'wt/DF-BOARDCTL-17'
+
+ Makefile                                   |  8 +++
+ README.md                                  |  9 ++-
+ internal/versioncheck/versioncheck.go      | 53 ++++++++++++++++-
+ internal/versioncheck/versioncheck_test.go | 96 ++++++++++++++++++++++++++++--
+ 4 files changed, 156 insertions(+), 10 deletions(-)

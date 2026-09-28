@@ -1,0 +1,30 @@
+# Verdict: BT-062
+
+**Task:** wave tick boardctl-2026-09-27-23-52-37: BT-062
+**Evaluated:** 2026-09-28T01:08:24.930763
+**Result:** ✓ PASS
+
+## Pipeline Stages
+
+- ✓ **tier1**
+  -   ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
+  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	3.051s
+- ✓ **tier2**
+  - COMPLETE
+  ✓ see board row BT-062 acceptance criteria: Board row BT-062 (from .coding-hermes/board/tasks.jsonl) requires: (1) an OpenAPI 3.x doc with location + generation rule stated; (2) operationIds, request/response schemas, servers[] url with relative/absolute case stated; (3) consumer config block + 3-line quickstart in repo docs; (4) parity rule as an executable check. ACCEPTANCE: spec parses in muster's own parser, consumer block copy-pasteable, parity rule executable. ALL MET. (1) docs/muster/openapi.yaml (openapi: 3.0.3) with header stating 'GENERATED from the live route wiring via internal/describe ... by `go run ./cmd/gendocs`'; verified generated-not-hand-written — `go run ./cmd/gendocs` produced a byte-identical file (git diff empty). (2) operationIds getUploaderForm/uploadBoardReport/listLoadedBoards curated at internal/describe/describe.go:90-103; schemas BoardUpload + ApiBoard and 200/400/413 responses in openapi.yaml; servers[0].url = http://127.0.0.1:8787 ABSOLUTE with explicit comment (internal/describe/openapi.go:8-18) stating a relative URL cannot be dereferenced from a local-file spec. (3) mcpServers JSON block + 3-line CLI quickstart (openapi-cli get-uploader-form) in docs/muster/quickstart.md. (4) Executable parity gate internal/speccheck/speccheck.go Check() re-derives routes from serve.go via internal/describe and fails on drift; negative probes TestCheck_FakeRouteAddedFailsNamingTheDrift / TestCheck_SpecMutationArms / TestCheck_DerivationLossFails. ACCEPTANCE evidence: spec parses in muster's own parser — TestSpeccheck_ParsesWithKinOpenAPI loads+validates docs/muster/openapi.yaml with github.com/getkin/kin-openapi v0.149.0 (muster's parser, pinned in go.mod). Fresh test runs: `go test -count=1 ./internal/speccheck/ ./internal/describe/` -> 'ok github.com/coding-hermes/boardctl/internal/speccheck 0.016s' and 'ok .../internal/describe 0.004s'; `go test -count=1 ./...` -> all packages ok; `go build ./...` -> exit 0. Parity gate proven live: injecting a fake route into the spec made `go test -count=1 -run TestSpeccheck ./internal/speccheck/` FAIL with 'unexpected operationId "fakeDrift"' (file restored). LSP diagnostics: 0. Minor note: no Makefile/CI spec-check target was added, but quickstart.md documents the exact wiring command and states the Makefile target is owned by the foreman; the criterion requires an executable check, which exists as a Go test.
+BT-062's board-row acceptance criteria are fully met: a generated OpenAPI 3.0.3 contract with curated operationIds/schemas/absolute servers url, consumer config + quickstart docs, and an executable parity gate that parses under muster's own kin-openapi parser and fails on drift — all tests pass.
+
+## Summary
+
+Judge Result: BT-062
+
+Stage tier1: PASS
+    ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
+  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	3.051s
+
+Stage tier2: PASS
+  COMPLETE
+  ✓ see board row BT-062 acceptance criteria: Board row BT-062 (from .coding-hermes/board/tasks.jsonl) requires: (1) an OpenAPI 3.x doc with location + generation rule stated; (2) operationIds, request/response schemas, servers[] url with relative/absolute case stated; (3) consumer config block + 3-line quickstart in repo docs; (4) parity rule as an executable check. ACCEPTANCE: spec parses in muster's own parser, consumer block copy-pasteable, parity rule executable. ALL MET. (1) docs/muster/openapi.yaml (openapi: 3.0.3) with header stating 'GENERATED from the live route wiring via internal/describe ... by `go run ./cmd/gendocs`'; verified generated-not-hand-written — `go run ./cmd/gendocs` produced a byte-identical file (git diff empty). (2) operationIds getUploaderForm/uploadBoardReport/listLoadedBoards curated at internal/describe/describe.go:90-103; schemas BoardUpload + ApiBoard and 200/400/413 responses in openapi.yaml; servers[0].url = http://127.0.0.1:8787 ABSOLUTE with explicit comment (internal/describe/openapi.go:8-18) stating a relative URL cannot be dereferenced from a local-file spec. (3) mcpServers JSON block + 3-line CLI quickstart (openapi-cli get-uploader-form) in docs/muster/quickstart.md. (4) Executable parity gate internal/speccheck/speccheck.go Check() re-derives routes from serve.go via internal/describe and fails on drift; negative probes TestCheck_FakeRouteAddedFailsNamingTheDrift / TestCheck_SpecMutationArms / TestCheck_DerivationLossFails. ACCEPTANCE evidence: spec parses in muster's own parser — TestSpeccheck_ParsesWithKinOpenAPI loads+validates docs/muster/openapi.yaml with github.com/getkin/kin-openapi v0.149.0 (muster's parser, pinned in go.mod). Fresh test runs: `go test -count=1 ./internal/speccheck/ ./internal/describe/` -> 'ok github.com/coding-hermes/boardctl/internal/speccheck 0.016s' and 'ok .../internal/describe 0.004s'; `go test -count=1 ./...` -> all packages ok; `go build ./...` -> exit 0. Parity gate proven live: injecting a fake route into the spec made `go test -count=1 -run TestSpeccheck ./internal/speccheck/` FAIL with 'unexpected operationId "fakeDrift"' (file restored). LSP diagnostics: 0. Minor note: no Makefile/CI spec-check target was added, but quickstart.md documents the exact wiring command and states the Makefile target is owned by the foreman; the criterion requires an executable check, which exists as a Go test.
+BT-062's board-row acceptance criteria are fully met: a generated OpenAPI 3.0.3 contract with curated operationIds/schemas/absolute servers url, consumer config + quickstart docs, and an executable parity gate that parses under muster's own kin-openapi parser and fails on drift — all tests pass.
+
+Overall: PASS ✓

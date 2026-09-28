@@ -3,7 +3,9 @@ dist/
 *.test
 __pycache__/
 .gitreins/tasks.yaml
+.gitreins/tasks.yaml.lock
 .gitreins/usage.jsonl
+.coding-hermes/board/.lock
 dagger.db
 dagger.db-shm
 dagger.db-wal
