@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.9.0
-date: 2026-09-27
+version: 1.10.0
+date: 2026-09-28
 category: software-development
 ---
 
@@ -24,7 +24,11 @@ guard). BT-060 (2026-09-25) closed the half-open item: `update` now accepts
 row's priority field (the priority field wins; fix via `update --title` or
 `update --priority`). Run-16 (2026-09-27) added pitfalls 13-15 from replaying
 the release-cut path: Go VCS stamping's nested-repo trap, version-check's
-agreement-not-currency scope, and the sha256 zero-match exit-0 note.
+agreement-not-currency scope, and the sha256 zero-match exit-0 note. Run-17
+(2026-09-28) added "Gates are real code" below and pitfalls 16-17 from
+tamper-probing the internal checker family (fmtcheck, versioncheck, speccheck,
+workflowcheck, vulncheck, freshness) — including the one gap found: CI wiring
+of three gates is unverified (DF-BOARDCTL-19).
 
 ## Entry points
 
@@ -178,6 +182,31 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
   `tick`, `task_created`, `task_completed`, `task_updated`, `idle`,
   `dogfood`, `e2e_verified`, ... — the error message lists them all).
 
+## Gates are real code (run 17)
+
+The repo's quality gates are Go packages under `internal/`, not shell
+incantations — run them, don't re-implement them:
+
+```bash
+make fmt-check                           # gofmt conformance over cmd/ + internal/
+make version-check                       # README release-pin agreement
+VERSION_TAG=vX.Y.Z make version-check    # ... plus CURRENCY vs the tag being cut
+make spec-check     # docs/muster/openapi.yaml == serve wiring (BT-062)
+make vuln-check     # govulncheck exit contract: 0 clean / 3 findings / else TOOL-ERROR
+go test ./internal/workflowcheck         # Makefile PLATFORMS == CI platforms, order counts
+make build          # stamps main.buildCommit -> freshness gate at CLI runtime
+```
+
+Tamper-proven 2026-09-28 (run 17): a misformatted file fails fmtcheck on all
+surfaces naming the file; a stale README pin fails currency mode quoting each
+stale surface; a renamed operationId or a deleted path block fails speccheck
+naming both sides + the regen command; a platform swap fails workflowcheck
+with both lists; a broken scan (non-0/3 exit) fails vulncheck as TOOL-ERROR,
+never a pass; a stale binary warns on every CLI call until rebuilt (silence
+switch: `BOARDCTL_SKIP_FRESHNESS=1`). `go run ./cmd/gendocs` regenerates the
+OpenAPI spec deterministically — after any serve/describe change; never
+hand-edit the yaml.
+
 ## Common pitfalls
 
 1. **Bootstrap with `boardctl init` (BT-005, four files since BT-016).**
@@ -265,6 +294,23 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
     DF-BOARDCTL-18).** "no file was verified" is exit 0, not an error —
     `make install` stays sound only because its exact-asset-name pre-check
     runs before the checksum. If you re-implement the gate, count OK lines.
+    (Run-17 note: the zero-match hole is now hardened in the Makefile — the
+    gate fails loudly when the checksum step verifies ZERO files.)
+16. **speccheck's parity scope is routes/operationIds/servers[].url — not
+    prose (run 17).** Editing an operation's `summary` in openapi.yaml passes
+    the gate by design (matches its doc comment). Structural drift — a
+    renamed operationId, a deleted path block — fails loudly naming both
+    sides and the regen command. Summary-level parity would be a new gate,
+    not a bug in this one.
+17. **CI wiring of fmtcheck/versioncheck/speccheck is unverified (run 17,
+    DF-BOARDCTL-19).** vulncheck asserts its ci.yml step (govulncheck pin)
+    and workflowcheck parses the workflow — but nothing fails when the
+    Gofmt / Version-check / Spec-check steps are deleted from ci.yml (proven:
+    `go test ./...` and all make targets stay green with the steps gone).
+    Until DF-BOARDCTL-19 closes, "the CI runs it" is a README claim for those
+    three gates — check the workflow file when gate coverage matters.
+    Related (run 17, DF-BOARDCTL-20): a local `make vuln-check` never checks
+    WHICH govulncheck version is on PATH — only CI's install step is pinned.
 
 ## Report surface — `render`, `serve`, `import`
 

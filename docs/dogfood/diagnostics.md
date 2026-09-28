@@ -398,3 +398,56 @@ Short version, as a lesson in how this project's release path behaves:
 Environment note for future runners: the mis-stamp applies to EVERY worktree
 Go build on this host until the home repo's HEAD is considered — build
 identity-sensitive things from the main checkout (stamps correctly) or CI.
+
+## Run-17 addendum — 2026-09-28 (the gate family, attacked with tamper probes)
+
+Full report: `docs/dogfood/2026-09-28-run17-gate-family-integration.md`.
+The angle no prior run touched: `internal/{fmtcheck,versioncheck,speccheck,
+workflowcheck,vulncheck,freshness}` and `cmd/gendocs` used as a user would —
+by trying to sneak real drift past every enforcement surface (scratch clone,
+every probe reverted).
+
+1. **How the gates are built, and why the design is sound where it holds.**
+   Each gate is a check-only Go package; the Makefile target and the CI step
+   both run `go test` on THAT package, so Makefile/CI/go-test share one
+   definition of "clean" by construction — there is no second hand-maintained
+   rule list to drift. The right way to extend: grow the package, wire the
+   Makefile target, and mirror the exact command into ci.yml.
+2. **What held, tamper-proven:** fmtcheck (file named in the failure),
+   versioncheck currency mode (`VERSION_TAG` — the DF-BOARDCTL-17 fix works),
+   speccheck on real contract drift (operationId rename, deleted path block —
+   both messages name both sides + `go run ./cmd/gendocs`), workflowcheck
+   platform parity (both lists quoted, order noted), vulncheck's exit-code
+   contract (non-0/3 exit = TOOL-ERROR, never a silent pass), freshness
+   (BT-057: silent at HEAD, precise N-commits-behind warning naming the
+   rebuild command and the silence switch), and gendocs determinism
+   (regeneration at HEAD = empty diff).
+3. **What did not hold (DF-BOARDCTL-19): the CI wiring of
+   fmtcheck/versioncheck/speccheck is enforced by nobody.** Deleting those
+   three steps from ci.yml leaves `go test -short ./...` AND all make targets
+   green — "agreement by construction" covers only the two surfaces that
+   execute the same Go code; the workflow file is unverified text. The
+   precedent that this is a real gap, not pedantry: vulncheck self-asserts
+   its ci.yml wiring and workflowcheck parses the workflow. Fix = step-presence
+   census in workflowcheck or per-gate wiring tests.
+4. **Minor (DF-BOARDCTL-20):** a local `make vuln-check` never checks the
+   resolved govulncheck's VERSION — the v1.7.0 pin is asserted only against
+   ci.yml's install step. One `-version` probe would close it.
+5. **What a fresh machine proves (bunker-las-03, agent affa0eaf, destroyed):
+   the zero-dep install path is real.** README quickstart verbatim: 4 seconds
+   from empty box to checksum-verified working binary; stats/validate/doctor
+   green on the repo's own 109-task board; create→update→show write probe
+   first-try. **Transfer lesson recorded:** a per-file ssh `cat` relay must
+   carry `< /dev/null` on the sibling `mkdir` ssh when driven from a
+   `while read` loop (the mkdir ssh eats the loop's stdin — the loop dies
+   after one file), and `ssh -n` on the relay instead zero-fills EVERY file
+   while the counter says ok. Verify transfers with a sha256 census, never
+   the loop counter.
+6. **Method note for future dogfooders of this repo:** speccheck ignores
+   summary/description edits by design — tamper the operationId or delete a
+   path block or the gate (correctly) passes your "drift". The canonical
+   fingerprint formula for hand-filed rows lives in
+   `internal/board/fingerprint.go`: sha256(normalize(title) + \x1f +
+   normalize(reasoning)); calibrate your re-implementation against a known
+   row before appending.
+
