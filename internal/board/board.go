@@ -41,6 +41,11 @@ type Board struct {
 	// could not parse, across every file the command read, in encounter
 	// order. Read it via SkippedLines.
 	skipped []SkippedLine
+
+	// lock is the BT-050 write guard this Board value currently holds
+	// (nil when no write is in flight on this value). Write verbs take it
+	// for their whole check-then-act window; see lock.go.
+	lock *boardLock
 }
 
 // ErrBoardNotFound is wrapped with the directories probed. It is also the

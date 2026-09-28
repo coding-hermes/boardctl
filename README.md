@@ -519,6 +519,16 @@ Writes are append-only for `events.jsonl`; task-row updates rewrite
 per-board: sorted vs insertion-order keys, compact vs spaced separators) so
 git diffs stay minimal and byte-stable.
 
+Concurrent writers must go through `boardctl create`/`update` (BT-050): every
+write verb takes an exclusive advisory flock on `.coding-hermes/board/.lock`
+for its whole check-then-act window, so simultaneous writers cannot interleave
+appends, mint duplicate event ids, or double-file the same task id — under the
+lock, exactly one concurrent create of a given id wins. The kernel releases the
+lock if a writer crashes, so there is no stale-lock cleanup, and readers
+(`list`, `show`, `validate`, `doctor`) never take it. Appending rows with your
+own JSON serialization bypasses the id-refusal and shape guards AND this lock —
+that bypass is the known source of duplicate-id corruption on fleet boards.
+
 ## Repository layout
 
 | Path | Purpose |

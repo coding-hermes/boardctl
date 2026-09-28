@@ -237,6 +237,25 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	if spec.ID == "" {
 		return "", fmt.Errorf("create requires --id")
 	}
+	// BT-050: the whole check-then-act window — duplicate-id scan through
+	// final append (and the audit event) — runs under the exclusive write
+	// guard, so two concurrent creates of the same id cannot both pass the
+	// scan and both append. The lock is re-entrant on this Board value: the
+	// internal AppendEvent calls below re-enter without self-deadlocking.
+	var created string
+	var createErr error
+	lockErr := b.withWriteLock(b.tasksPath, func() error {
+		created, createErr = b.createLocked(spec)
+		return nil // the guard must drop even when create fails; err rides createErr
+	})
+	if lockErr != nil {
+		return "", lockErr
+	}
+	return created, createErr
+}
+
+// createLocked is Create's body, running under the write guard.
+func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	// BT-023: ids are machine keys — task-router chains and board-scan
 	// dedupe (keep-LAST by id) parse them, so a junk id ("bad id!")
 	// wedges downstream parsers. Enforce the fleet format at write time;
@@ -679,6 +698,25 @@ type UpdateSpec struct {
 // drift pointer (BT-024) — a task fix commit must NOT overwrite it; the
 // explicit way to move the pointer is `header --set-last-commit` (SetHeader).
 func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
+	// BT-050: the read-modify-write — file snapshot through atomic rewrite
+	// (and the audit event) — runs under the exclusive write guard, so two
+	// concurrent updates rebase on DIFFERENT snapshots instead of the same
+	// one (the second would otherwise silently drop the first's change: a
+	// lost update that no byte-equality assert can catch).
+	var changed []string
+	var updateErr error
+	lockErr := b.withWriteLock(b.tasksPath, func() error {
+		changed, updateErr = b.updateTaskLocked(id, spec)
+		return nil // err rides updateErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	return changed, updateErr
+}
+
+// updateTaskLocked is UpdateTask's body, running under the write guard.
+func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
 		return nil, err
@@ -959,6 +997,22 @@ type fieldChange struct {
 // updated_at — normalize is a pure spelling repair of values already on the
 // board, not a state transition.
 func (b *Board) NormalizeTask(id string, force bool) ([]fieldChange, error) {
+	// BT-050: same read-modify-write shape as UpdateTask — the whole
+	// classify-then-rewrite window runs under the write guard.
+	var pending []fieldChange
+	var normErr error
+	lockErr := b.withWriteLock(b.tasksPath, func() error {
+		pending, normErr = b.normalizeTaskLocked(id, force)
+		return nil // err rides normErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	return pending, normErr
+}
+
+// normalizeTaskLocked is NormalizeTask's body, running under the write guard.
+func (b *Board) normalizeTaskLocked(id string, force bool) ([]fieldChange, error) {
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
 		return nil, err
@@ -1110,6 +1164,25 @@ type EventSpec struct {
 // the counter goes stale and the very next `doctor` run fails the drift
 // check. Tick-less events (plain audit rows) never touch the header.
 func (b *Board) AppendEvent(spec EventSpec) (int64, error) {
+	// BT-050: the event id is derived from MAX(existing id) — the same
+	// read-derive-append shape as create's duplicate scan — so the whole
+	// window runs under the write guard (two concurrent events would
+	// otherwise mint the SAME id and interleave their appends). Re-entrant:
+	// create/update paths already hold the guard when they call this.
+	var evID int64
+	var evErr error
+	lockErr := b.withWriteLock(b.eventsPath, func() error {
+		evID, evErr = b.appendEventLocked(spec)
+		return nil // err rides evErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return 0, lockErr
+	}
+	return evID, evErr
+}
+
+// appendEventLocked is AppendEvent's body, running under the write guard.
+func (b *Board) appendEventLocked(spec EventSpec) (int64, error) {
 	rows, _, err := ReadAllRows(b.eventsPath)
 	if err != nil {
 		return 0, err
@@ -1285,6 +1358,23 @@ func (b *Board) SetHeader(u HeaderUpdate) ([]string, error) {
 	if !b.HasHeader() {
 		return nil, b.noHeaderError()
 	}
+	// BT-050: the header rewrite is a read-modify-write like update — run
+	// it under the write guard. Re-entrant: AppendEvent's tick bump lands
+	// here while create/update already hold the guard.
+	var changed []string
+	var hdrErr error
+	lockErr := b.withWriteLock(b.headerPathFor(), func() error {
+		changed, hdrErr = b.setHeaderLocked(u)
+		return nil // err rides hdrErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	return changed, hdrErr
+}
+
+// setHeaderLocked is SetHeader's body, running under the write guard.
+func (b *Board) setHeaderLocked(u HeaderUpdate) ([]string, error) {
 	headerPath := b.headerPathFor()
 	lines, err := ReadJSONLLines(headerPath)
 	if err != nil {
