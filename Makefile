@@ -86,6 +86,18 @@ vet:
 # release when the repo HAS tags — that is exactly the v0.1.3 bug this
 # task fixes (published binaries said 20260915, not v0.1.3). Escaping the
 # guard is a deliberate, explicit VERSION that names the tag.
+#
+# DF-BOARDCTL-16 guard: after the build loop, assert the vcs stamp the toolchain
+# embedded in the linux/amd64 asset. Go's vcs stamping (cmd/go/internal/vcs)
+# matches only a .git DIRECTORY when walking parents, so a build run from a
+# linked worktree (a .git FILE) nested under another repo's checkout — e.g. a
+# worktree under /home/<user>/ — can be stamped with THAT repo's vcs.revision
+# and vcs.modified=true while `boardctl version` still prints the tag and every
+# sha256 in SHA256SUMS matches. The assertion mirrors `make install-check`'s
+# semantics (same go version -m parsing, same ancestry rule) and FAILS LOUDLY
+# naming the observed revision; it degrades to the revision+modified arms only
+# when this makefile is not running from a linked worktree root, where the
+# stamp cannot be foreign by construction.
 release: test
 	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && [ -n "$$(git tag)" ]; then \
 		if ! printf '%s' '$(VERSION)' | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$$'; then \
@@ -105,6 +117,37 @@ release: test
 			-ldflags "-s -w -X main.version=$(VERSION) -X main.buildCommit=$(BUILD_COMMIT)" \
 			-o $(DIST)/$(BINARY)_$${os}_$${arch}$${ext} $(CMD) || exit 1; \
 	done
+	@stamp_bin=$(DIST)/$(BINARY)_linux_amd64; \
+	vcs_rev=`go version -m $$stamp_bin 2>/dev/null | awk '$$1=="build" && $$2 ~ /^vcs\\.revision=/ {sub(/^vcs\\.revision=/, "", $$2); print $$2}'`; \
+	vcs_modified=`go version -m $$stamp_bin 2>/dev/null | awk '$$1=="build" && $$2 ~ /^vcs\\.modified=/ {sub(/^vcs\\.modified=/, "", $$2); print $$2}'`; \
+	echo "== release: verifying vcs stamp on $$stamp_bin (vcs.revision=$${vcs_rev:-<absent>} vcs.modified=$${vcs_modified:-<absent>})"; \
+	if [ -z "$$vcs_rev" ]; then \
+		echo "release: FAIL vcs.revision absent from 'go version -m $$stamp_bin' — the toolchain stamped no git revision (built outside any checkout)" >&2; \
+		echo "  fix: run make release from a checkout of this repo (README '## Development')" >&2; \
+		exit 1; \
+	fi; \
+	if [ "$$vcs_modified" != "false" ]; then \
+		echo "release: FAIL vcs.modified: '$$vcs_modified' (want false) with vcs.revision $$vcs_rev — the binary was stamped from a dirty tree or an unrelated repo's worktree" >&2; \
+		echo "  fix: cut from a clean checkout of this repo whose ancestor path contains no other .git directory (README '## Development')" >&2; \
+		exit 1; \
+	fi; \
+	if git_work_root=`git rev-parse --show-toplevel 2>/dev/null` && [ -f "$$git_work_root/.git" ]; then \
+		if [ "$$vcs_rev" != "`git -C $$git_work_root rev-parse HEAD`" ]; then \
+			echo "release: FAIL vcs.revision: $$vcs_rev is not the HEAD of this checkout — the build was stamped with a foreign repo's revision (a .git directory above the build path wins Go's parent walk)" >&2; \
+			echo "  fix: cut from a checkout whose ancestor path contains no other .git directory (README '## Development')" >&2; \
+			exit 1; \
+		fi; \
+		if git merge-base --is-ancestor $$vcs_rev $(VERSION) >/dev/null 2>&1; then \
+			echo "release: ok vcs.revision $$vcs_rev is an ancestor of $(VERSION)"; \
+		else \
+			rev_subject=`git log -1 --format=%s $$vcs_rev 2>/dev/null || echo subject unavailable`; \
+			echo "release: FAIL vcs.revision: $$vcs_rev ($$rev_subject) is NOT an ancestor of $(VERSION) — refusing to ship binaries stamped with an unrelated commit" >&2; \
+			echo "  fix: cut from a checkout where HEAD is an ancestor of $(VERSION) (README '## Development')" >&2; \
+			exit 1; \
+		fi; \
+	else \
+		echo "release: DEGRADED: not running from a linked worktree root — vcs.revision/vcs.modified verified, tag ancestry skipped (cannot resolve this checkout's HEAD offline)"; \
+	fi
 	@cd $(DIST) && sha256sum $(BINARY)_* > SHA256SUMS
 	@echo "release artifacts in $(DIST)/"
 
