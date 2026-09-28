@@ -55,26 +55,62 @@ const (
 )
 
 // cmdInstall implements `boardctl install [-C repo] [--hook-path P]
-// [--timeout S] [--dry-run]`.
+// [--timeout S] [--dry-run] [--fleet PAT] [--fleet-root DIR]`.
+//
+// BT-053: --fleet switches into the rollout mode (fleet.go): enumerate the
+// git repos under --fleet-root, classify each, install the same hook this
+// command writes for a single repo, print one outcome line per repo. The
+// single-repo contract (chaining, no clobber, idempotent update) is the
+// SAME code path — generateHookContent — so a fleet install can never
+// drift from the installer the tests pin. In fleet mode -C and --hook-path
+// are meaningless: they are refused as a usage error rather than silently
+// ignored.
 func cmdInstall(dir string, args []string) error {
 	fs := newFlagSet("install")
-	args = reorderArgs(args, valueFlags("C"))
+	// BT-053: every VALUE flag of this command must be in the reorder set,
+	// else `--fleet PAT --fleet-root DIR` misparses (the first flag swallows
+	// the next flag name as its value when both precede their positional
+	// usage). --hook-path/--timeout had the same latent flaw before the
+	// fleet flags joined them; all four are listed now.
+	args = reorderArgs(args, valueFlags("C", "hook-path", "timeout", "fleet", "fleet-root"))
 	var cdir string
 	addCFlag(fs, &cdir)
 	hookPath := fs.String("hook-path", "", "path of the hook file to write (default <repo-root>/.git/hooks/pre-commit)")
 	timeout := fs.Int("timeout", boardLintDefaultTTL, "seconds granted to boardctl validate before the hook skips it")
 	dryRun := fs.Bool("dry-run", false, "print the hook file content that would be written and write nothing")
+	fleet := fs.String("fleet", "", "roll out across the fleet: comma-separated glob-or-path list selecting repos (e.g. '/home/me/*' or 'axiom,crier'); prints one outcome line per repo")
+	fleetRoot := fs.String("fleet-root", "", "directory the --fleet walk enumerates under (default the home directory)")
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl install [-C repo] [--hook-path P] [--timeout S] [--dry-run]\n")
+		fmt.Fprintf(fs.Output(), "boardctl install [-C repo] [--hook-path P] [--timeout S] [--dry-run] [--fleet PAT] [--fleet-root DIR]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
-	if dir == "" {
-		dir = cdir
-	}
 	if *timeout < 1 {
 		return errUsage
+	}
+	if *fleet != "" {
+		if dir != "" || cdir != "" || *hookPath != "" {
+			return errUsage
+		}
+		binPath, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("boardctl install: cannot resolve the boardctl binary path: %w", err)
+		}
+		binPath, err = filepath.Abs(binPath)
+		if err != nil {
+			return fmt.Errorf("boardctl install: cannot resolve the boardctl binary path: %w", err)
+		}
+		return fleetInstall(fleetInstallRequest{
+			pattern: *fleet,
+			root:    *fleetRoot,
+			binPath: binPath,
+			timeout: *timeout,
+			dryRun:  *dryRun,
+		}, os.Stdout, os.Stderr)
+	}
+	if dir == "" {
+		dir = cdir
 	}
 
 	root, err := repoRootFor(dir)
@@ -290,7 +326,21 @@ func generateHookContent(existing, binPath, root string, timeout int) string {
 		}
 		if end >= 0 {
 			end += begin + len(boardLintMarkerEnd)
-			return existing[:begin] + block + existing[end:]
+			// BT-053 fix (byte-idempotency): the block ends with its own
+			// newline and every composition places the remainder directly
+			// after it (a chained hook's wrapped body follows with no
+			// separator). The old code re-appended the remainder's leading
+			// newline run — growing every re-installed hook by one byte
+			// per run and inserting a blank line after the block. Strip
+			// the whole leading-newline run and append the rest directly:
+			// a re-install then reads byte-identical to the first install
+			// for both shapes, and a pure-newline tail (the artifact
+			// itself) is dropped.
+			trimmed := strings.TrimLeft(existing[end:], "\n")
+			if trimmed == "" {
+				return existing[:begin] + block
+			}
+			return existing[:begin] + block + trimmed
 		}
 		// Unterminated block: keep everything before the marker and rebuild.
 		return existing[:begin] + block

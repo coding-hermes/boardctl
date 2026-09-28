@@ -326,11 +326,30 @@ func usageSkillDateError(skill string) string {
 	if err != nil {
 		return fmt.Sprintf("usage skill frontmatter date %q does not parse as a calendar date: %v", m[1], err)
 	}
-	if age := time.Since(d); age > skillHeaderStaleTolerance {
+	// BT-053 rider (pre-existing defect, found failing while running the
+	// package gate): time.Since(UTC-midnight instant) mixed time zones.
+	// After ~19:00 in a negative-offset local zone the run's LOCAL calendar
+	// date is still today, but time.Since(parsed UTC midnight) already
+	// exceeds the tolerance by up to a day — the "just inside tolerance"
+	// specimen failed with the self-contradictory message "2026-09-27 is 45
+	// days behind the run date (2026-09-27)". Freshness is a statement
+	// about CALENDAR dates ("N days behind the run date"), so both sides
+	// are normalized to UTC midnights of their calendar date and the
+	// difference is an exact multiple of 24h — the verdict no longer
+	// depends on the wall clock.
+	todayLocal := time.Now().Format("2006-01-02")
+	runDate, err := time.Parse("2006-01-02", todayLocal)
+	if err != nil {
+		// Unreachable: Format emits exactly the layout Parse consumes.
+		// Fall back to the raw instant rather than crashing a gate.
+		runDate = time.Now()
+	}
+	days := int(runDate.Sub(d).Hours() / 24)
+	if days > int(skillHeaderStaleTolerance.Hours()/24) {
 		return fmt.Sprintf("usage skill frontmatter date %s is %d days behind the run date (%s) — beyond the %d-day tolerance; re-verify the skill against the current CLI and refresh the header date",
 			d.Format("2006-01-02"),
-			int(age.Hours()/24),
-			time.Now().Format("2006-01-02"),
+			days,
+			todayLocal,
 			int(skillHeaderStaleTolerance.Hours()/24))
 	}
 	return ""
