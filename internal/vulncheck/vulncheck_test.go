@@ -1,6 +1,7 @@
 package vulncheck
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -121,7 +122,7 @@ func TestDecideOffline(t *testing.T) {
 }
 
 // TestSummarizeExit3Fixture asserts the parser pulls the actionable facts —
-// id, package, and the Fixed in version — out of the real exit-3 report.
+// id, package, and the Fixed in versions — out of the real exit-3 report.
 func TestSummarizeExit3Fixture(t *testing.T) {
 	findings := Summarize(readFixture(t, "report-exit3.txt"))
 	if len(findings) != 3 {
@@ -183,15 +184,41 @@ func heredocScript(report string, code int) string {
 	return "echo FAKE-GOVULNCHECK-RAN >&2\ncat <<'VULN_FIXTURE_EOF'\n" + report + "VULN_FIXTURE_EOF\nexit " + strconv.Itoa(code) + "\n"
 }
 
+// captureStderr runs fn with os.Stderr redirected into a pipe and returns
+// whatever fn wrote. The warn path of CheckVersion is user-visible surface,
+// so the tests assert on the real channel rather than on a seam variable.
+// Assertions belong AFTER fn returns — a t.Fatal inside fn would exit the
+// test with the pipe still swapped in.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	orig := os.Stderr
+	os.Stderr = w
+	defer func() { os.Stderr = orig }()
+	fn()
+	if err := w.Close(); err != nil {
+		t.Fatalf("close stderr pipe: %v", err)
+	}
+	data, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("read stderr pipe: %v", err)
+	}
+	return string(data)
+}
+
 // TestCheckWithFakeBinary proves the whole chain, not just the mapping: the
 // binary is located through $GOVULNCHECK, its output is consumed, and the
 // verdict reaches the caller as an actionable error (or as nil).
 //
-// The last three subtests pin the DF-BOARDCTL-20 contract on top: a binary
-// whose -version arm reports a scanner version other than PinnedToolVersion
-// is refused before scanning, one reporting the pin proceeds, and one whose
-// -version carries no parsable Scanner line leaves the gate's behavior
-// unchanged (the exit code decides alone).
+// The last four subtests pin the version dimension on top: a binary whose
+// -version arm reports a scanner version other than PinnedToolVersion is
+// refused before scanning, one reporting the pin proceeds, and one whose
+// -version carries no parsable Scanner line warns and proceeds by default
+// but refuses the gate before scanning under StrictScannerEnv=1
+// (DF-BOARDCTL-23: the silent pass was the hole).
 func TestCheckWithFakeBinary(t *testing.T) {
 	exit3 := readFixture(t, "report-exit3.txt")
 
@@ -252,13 +279,34 @@ func TestCheckWithFakeBinary(t *testing.T) {
 		}
 	})
 
-	t.Run("missing -version skips the check and the scan decides", func(t *testing.T) {
+	t.Run("missing -version warns and the scan decides", func(t *testing.T) {
 		// The plain heredoc fake prints no Scanner line for -version, so the
-		// probe reports nothing: the check must be skipped and the gate must
-		// decide on the exit code alone (the pre-DF-BOARDCTL-20 behavior).
+		// pin cannot be verified: the default contract is WARN on stderr and
+		// proceed — the exit code still decides (DF-BOARDCTL-23).
 		t.Setenv(BinaryEnv, fakeGovulncheck(t, heredocScript("No vulnerabilities found.\n", ExitClean)))
-		if err := Check(t.TempDir()); err != nil {
-			t.Fatalf("Check() = %v when -version reports no scanner version, want the gate to proceed unchanged", err)
+		var err error
+		stderr := captureStderr(t, func() { err = Check(t.TempDir()) })
+		if err != nil {
+			t.Fatalf("Check() = %v when -version reports no scanner version, want the warn-and-proceed default", err)
+		}
+		if !strings.Contains(stderr, "WARN") {
+			t.Errorf("stderr %q carries no WARN for the unparsable -version output", stderr)
+		}
+	})
+
+	t.Run("missing -version refuses the gate in strict mode before scanning", func(t *testing.T) {
+		// Strict mode turns the unparsable -version into a pre-scan refusal:
+		// a stub must not be able to launder a green verdict through the pin.
+		t.Setenv(StrictScannerEnv, "1")
+		t.Setenv(BinaryEnv, fakeGovulncheck(t, heredocScript("No vulnerabilities found.\n", ExitClean)))
+		err := Check(t.TempDir())
+		if err == nil {
+			t.Fatal("Check() = nil in strict mode when -version reports no scanner version, want a refusal before the scan")
+		}
+		for _, substr := range []string{"Scanner", InstallHint, StrictScannerEnv} {
+			if !strings.Contains(err.Error(), substr) {
+				t.Errorf("error %q does not mention %q", err.Error(), substr)
+			}
 		}
 	})
 }
@@ -395,9 +443,10 @@ func TestVulncheck(t *testing.T) {
 
 // TestCheckVersionOffline covers the probe in isolation: a matching pin
 // passes, any other self-reported version is a *MismatchErr naming expected
-// and actual, a binary with no parsable Scanner line is "absent" (nil — the
-// caller's fallback behavior is unchanged), and a non-zero -version exit is
-// data, not an error, when the banner is still printed.
+// and actual, a binary whose exit-0 -version carries no parsable Scanner line
+// WARNs and passes by default but is a *UnverifiedBinaryErr under
+// StrictScannerEnv=1 (DF-BOARDCTL-23), and a non-zero -version exit is data,
+// not an error, when the banner is still printed.
 func TestCheckVersionOffline(t *testing.T) {
 	t.Run("pinned version reports nil", func(t *testing.T) {
 		path := fakeGovulncheck(t, versionArm(PinnedToolVersion))
@@ -434,10 +483,81 @@ func TestCheckVersionOffline(t *testing.T) {
 		}
 	})
 
-	t.Run("no scanner line is treated as absent", func(t *testing.T) {
+	t.Run("no scanner line warns and passes by default", func(t *testing.T) {
+		// DF-BOARDCTL-23: an exit-0 -version with no Scanner line is no
+		// longer a silent pass — the warn default keeps the gate usable
+		// while naming the hole loudly.
 		path := fakeGovulncheck(t, "exit 0\n")
-		if err := CheckVersion(path); err != nil {
-			t.Fatalf("CheckVersion() = %v for output with no Scanner line, want nil (absent)", err)
+		var err error
+		stderr := captureStderr(t, func() { err = CheckVersion(path) })
+		if err != nil {
+			t.Fatalf("CheckVersion() = %v for exit-0 output with no Scanner line, want nil (warn default)", err)
+		}
+		if !strings.Contains(stderr, "WARN") {
+			t.Errorf("stderr %q carries no WARN — a Scanner-line-less -version must warn by default", stderr)
+		}
+		for _, substr := range []string{path, StrictScannerEnv} {
+			if !strings.Contains(stderr, substr) {
+				t.Errorf("stderr warn %q does not mention %q", stderr, substr)
+			}
+		}
+	})
+
+	t.Run("no scanner line fails under StrictScannerEnv=1", func(t *testing.T) {
+		t.Setenv(StrictScannerEnv, "1")
+		path := fakeGovulncheck(t, "exit 0\n")
+		var err error
+		stderr := captureStderr(t, func() { err = CheckVersion(path) })
+		if err == nil {
+			t.Fatal("CheckVersion() = nil in strict mode for output with no Scanner line, want a *UnverifiedBinaryErr")
+		}
+		if _, ok := err.(*UnverifiedBinaryErr); !ok {
+			t.Errorf("CheckVersion() = %T, want *UnverifiedBinaryErr", err)
+		}
+		for _, substr := range []string{path, InstallHint, StrictScannerEnv} {
+			if !strings.Contains(err.Error(), substr) {
+				t.Errorf("error %q does not mention %q", err.Error(), substr)
+			}
+		}
+		if strings.Contains(stderr, "WARN") {
+			t.Errorf("strict mode still warned on stderr %q — the refusal replaces the warning", stderr)
+		}
+	})
+
+	t.Run("strict env parsing accepts 1/true/yes and warns otherwise", func(t *testing.T) {
+		path := fakeGovulncheck(t, "exit 0\n")
+		for _, tc := range []struct {
+			val    string
+			strict bool
+		}{
+			{"1", true},
+			{"true", true},
+			{"YES", true},
+			{" 1 ", true}, // operators quote; surrounding whitespace is trimmed
+			{"", false},
+			{"0", false},
+			{"off", false},
+		} {
+			t.Setenv(StrictScannerEnv, tc.val)
+			err := CheckVersion(path)
+			if tc.strict && err == nil {
+				t.Errorf("StrictScannerEnv=%q: CheckVersion() = nil, want the strict refusal", tc.val)
+			}
+			if !tc.strict && err != nil {
+				t.Errorf("StrictScannerEnv=%q: CheckVersion() = %v, want the warn default", tc.val, err)
+			}
+		}
+	})
+
+	t.Run("strict mode keeps the wrong-version mismatch", func(t *testing.T) {
+		// Strict mode governs only the unparsable arm: a parseable wrong
+		// version is a *MismatchErr with or without it.
+		t.Setenv(StrictScannerEnv, "1")
+		path := fakeGovulncheck(t, versionArm("v1.5.2"))
+		err := CheckVersion(path)
+		mm, ok := err.(*MismatchErr)
+		if !ok || mm.Actual != "v1.5.2" {
+			t.Fatalf("CheckVersion() = %v in strict mode, want the v1.5.2 *MismatchErr", err)
 		}
 	})
 

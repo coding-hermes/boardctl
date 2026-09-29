@@ -26,9 +26,12 @@
 // Scanner version sits on a different major.minor line than
 // PinnedToolVersion — a scan by a different scanner rule set must not stand
 // in for the pinned gate (offline fakes prove the arm). Patch drift within
-// the pinned minor line is tolerated, and a binary whose -version yields no
-// parsable Scanner line is skipped (the PATH-fallback behavior is
-// unchanged).
+// the pinned minor line is tolerated. A binary whose exit-0 -version yields
+// no parsable Scanner line cannot prove which scanner rule set produced the
+// verdict: by default the gate WARNS on stderr and proceeds (keeping PATH
+// fallbacks usable), and under StrictScannerEnv=1 it refuses before
+// scanning, so a stub/reimplementation cannot silently defeat the pin
+// (DF-BOARDCTL-23).
 //
 // This package is a CHECK, never a fixer: nothing here edits go.mod, and the
 // remediation for a finding is a deliberate toolchain or dependency bump.
@@ -63,6 +66,13 @@ const PinnedToolVersion = "v1.7.0"
 
 // InstallHint is the one-line remediation quoted when the binary is missing.
 const InstallHint = "go install golang.org/x/vuln/cmd/govulncheck@" + PinnedToolVersion
+
+// StrictScannerEnv names the environment variable that turns the
+// no-Scanner-line arm of CheckVersion from a stderr warning into a gate
+// refusal. Accepts 1/true/yes (case-insensitive, surrounding whitespace
+// ignored); anything else — including unset and empty — keeps the default
+// warn-and-proceed behavior. Named so an operator can find it in one grep.
+const StrictScannerEnv = "VULNCHECK_STRICT_SCANNER"
 
 // TestName is the single gate test every enforcement surface runs.
 const TestName = "TestVulncheck"
@@ -138,16 +148,24 @@ var (
 // CheckVersion probes `<bin> -version` and compares the self-reported
 // Scanner version against PinnedToolVersion. It returns:
 //
-//   - nil:            the binary reports PinnedToolVersion — the gate proceeds
-//   - *MismatchErr:   the binary reports a different version — the gate must
+//   - nil:              the binary reports PinnedToolVersion — the gate proceeds
+//   - *MismatchErr:     the binary reports a different version — the gate must
 //     FAIL naming expected and actual, because a scan by a different scanner
 //     rule set must never masquerade as this repo's gate
-//   - any other error: the probe never ran (process start failure)
-//   - nil with no Scanner line parsable: the version could not be produced —
-//     treated as absent, so the caller's PATH-fallback behavior is unchanged
+//   - *UnverifiedBinaryErr: the binary exists and its -version exited 0 but
+//     produced no parsable Scanner line, so the pin could not be verified.
+//     Default: WARN on stderr and nil (proceed — the exit-code contract
+//     decides); under StrictScannerEnv=1: returned as the gate-refusing
+//     error (DF-BOARDCTL-23)
+//   - any other error:  the probe never ran (process start failure)
 //
 // A non-zero -version exit is data (some builds print the banner before
-// failing), not an error: the output is probed regardless.
+// failing), not an error: the output is probed regardless. The unparsable
+// arm is governed by the -version exit status: an exit-0 with no Scanner
+// line is the strict-governed warn/fail arm; a non-zero exit with no
+// parsable banner keeps the pre-DF-BOARDCTL-23 "absent" semantics (treated
+// as absent, caller's PATH-fallback behavior unchanged) — data cannot be
+// strict about output that never arrived.
 func CheckVersion(bin string) error {
 	out, err := exec.Command(bin, "-version").CombinedOutput()
 	if err != nil {
@@ -157,12 +175,33 @@ func CheckVersion(bin string) error {
 	}
 	ver := scannerVersion(string(out))
 	if ver == "" {
+		if _, wasExit := err.(*exec.ExitError); !wasExit {
+			if strictScanner() {
+				return &UnverifiedBinaryErr{Bin: bin}
+			}
+			warnf("the resolved binary %s exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line — the version pin could not be verified; set %s=1 to fail the gate on this instead", bin, StrictScannerEnv)
+		}
 		return nil
 	}
 	if ver != PinnedToolVersion {
 		return &MismatchErr{Expected: PinnedToolVersion, Actual: ver, Bin: bin}
 	}
 	return nil
+}
+
+// UnverifiedBinaryErr is the strict-mode verdict of CheckVersion (DF-
+// BOARDCTL-23): the binary ran and its -version exited 0 but the output
+// carried no parsable Scanner line, so the version pin could not be
+// verified. Gated behind StrictScannerEnv; the default behavior is a
+// stderr warning.
+type UnverifiedBinaryErr struct {
+	// Bin is the binary path whose -version output could not be verified.
+	Bin string
+}
+
+func (e *UnverifiedBinaryErr) Error() string {
+	return fmt.Sprintf("govulncheck version could not be verified: the binary %s exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line, so this repo's %s pin is unproven — a stub or reimplementation defeats the pin (fix: %s; or unset %s to only warn)",
+		e.Bin, PinnedToolVersion, InstallHint, StrictScannerEnv)
 }
 
 // MismatchErr is the version-mismatch verdict of CheckVersion: the resolved
@@ -200,6 +239,25 @@ func sameMinorLine(a, b string) bool {
 		return a == b
 	}
 	return pa[0] == pb[0] && pa[1] == pb[1]
+}
+
+// strictScanner reports whether StrictScannerEnv opts the no-Scanner-line
+// arm of CheckVersion into a hard gate refusal. 1/true/yes (case-
+// insensitive, whitespace-trimmed) enable; anything else — unset, empty,
+// "0", "off" — keeps the default warn-and-proceed behavior. Malformed
+// values must NOT silently disable a safety opt-in, so they warn on stderr
+// and stay permissive rather than failing closed.
+func strictScanner() bool {
+	raw := strings.TrimSpace(strings.ToLower(strings.TrimSpace(os.Getenv(StrictScannerEnv))))
+	switch raw {
+	case "1", "true", "yes":
+		return true
+	default:
+		if raw != "" && raw != "0" && raw != "off" && raw != "false" && raw != "no" {
+			warnf("%s=%q is not a recognized value (1/true/yes enable strict mode; 0/false/no/off or unset keep the warn default) — staying permissive", StrictScannerEnv, raw)
+		}
+		return false
+	}
 }
 
 // LocateBinary resolves the govulncheck binary: $GOVULNCHECK when set and
@@ -370,16 +428,25 @@ func FormatFindings(findings []Finding) string {
 // DF-BOARDCTL-20 rule): a binary that self-reports a Scanner version other
 // than PinnedToolVersion FAILS the gate naming expected and actual, because a
 // green verdict produced by a different scanner rule set must not stand in
-// for the pinned gate. When the probe cannot be produced (binary absent, no
-// parsable Scanner line) the check is skipped and the exit-code contract
-// below decides alone — the PATH-fallback behavior is unchanged.
+// for the pinned gate. When the probe exits 0 but cannot be parsed (no
+// Scanner line), the default is a stderr warning and the exit-code contract
+// decides alone; StrictScannerEnv=1 refuses before scanning instead
+// (DF-BOARDCTL-23). When the probe never ran (binary absent) the check is
+// skipped and the exit-code contract below decides alone — the
+// PATH-fallback behavior is unchanged.
 func Check(dir string) error {
 	bin, err := LocateBinary()
 	if err != nil {
 		return err
 	}
-	if mismatch := CheckVersion(bin); mismatch != nil {
-		return fmt.Errorf("vulncheck: %w", mismatch)
+	switch vm := CheckVersion(bin).(type) {
+	case nil:
+	case *UnverifiedBinaryErr:
+		if strictScanner() {
+			return fmt.Errorf("vulncheck: %w", vm)
+		}
+	default:
+		return fmt.Errorf("vulncheck: %w", vm)
 	}
 	res, err := RunBinary(bin, dir)
 	if err != nil {
@@ -409,6 +476,13 @@ func indent(s string) string {
 		lines[i] = "  " + l
 	}
 	return strings.Join(lines, "\n")
+}
+
+// warnf writes one warning line to stderr. It resolves os.Stderr at call
+// time rather than capturing it in a package var, so tests can swap the
+// channel per invocation and the production default stays untouched.
+func warnf(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "vulncheck: WARN: "+format+"\n", args...)
 }
 
 // RepoRoot returns the module root by walking up from start to the nearest
