@@ -259,3 +259,172 @@ func TestRefPinned(t *testing.T) {
 		t.Fatalf("workflow %s has no pin-date comment: the pin must be documented as \"Pinned YYYY-MM-DD ...\" beside the uses line so a reader knows when the SHA was captured and can re-verify it", WorkflowName)
 	}
 }
+
+// goodCI mirrors the real .github/workflows/ci.yml step block, including the
+// BT-033 comment that MENTIONS the install step by name — the tamper test
+// below deletes the step while leaving that comment, proving the census is
+// not satisfied by a prose mention of the step (a strings.Contains check
+// would be).
+const goodCI = `name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: go build ./...
+
+      - name: Gofmt
+        run: go test -count=1 -run TestGofmt ./internal/fmtcheck
+
+      - name: Version-check
+        run: go test -count=1 -run TestVersioncheck ./internal/versioncheck
+
+      - name: Spec-check
+        run: go test -count=1 ./internal/speccheck
+
+      # BT-033: the dependency-vulnerability gate runs the pinned scanner, so
+      # the "Install govulncheck v1.7.0" step must precede it (and the Test
+      # step below, which also runs TestVulncheck).
+      - name: Install govulncheck v1.7.0
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+
+      - name: Vulnerability-check
+        run: go test -count=1 -run TestVulncheck ./internal/vulncheck
+
+      - name: Test
+        run: go test -short -count=1 ./...
+`
+
+// writeCIFixture materializes a ci.yml at the canonical path inside a temp
+// dir and returns the file's path.
+func writeCIFixture(t *testing.T, ci string) string {
+	t.Helper()
+	dir := t.TempDir()
+	wfDir := filepath.Join(dir, ".github", "workflows")
+	if err := os.MkdirAll(wfDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	path := filepath.Join(wfDir, "ci.yml")
+	if err := os.WriteFile(path, []byte(ci), 0o644); err != nil {
+		t.Fatalf("write ci.yml: %v", err)
+	}
+	return path
+}
+
+// removeStep deletes one `- name: <name>` step (the name line plus its
+// indented body) from a workflow's text, the same edit a tampering
+// contributor would make by hand.
+func removeStep(ci, name string) string {
+	lines := strings.Split(ci, "\n")
+	out := make([]string, 0, len(lines))
+	skipping := false
+	for _, l := range lines {
+		trimmed := strings.TrimSpace(l)
+		switch {
+		case trimmed == "- name: "+name:
+			skipping = true
+		case skipping:
+			// The step's body continues while lines stay indented; the next
+			// `- name:` or any dedented key ends it (and is kept).
+			if strings.HasPrefix(trimmed, "- ") || (trimmed != "" && !strings.HasPrefix(l, " ") && !strings.HasPrefix(l, "	")) {
+				skipping = false
+				out = append(out, l)
+			}
+		default:
+			out = append(out, l)
+		}
+	}
+	return strings.Join(out, "\n")
+}
+
+// TestGateStepCensusDeletedStepFails is the row's tamper proof, held as a
+// permanent fixture test: deleting any census step from a copy of ci.yml
+// must FAIL CheckGateSteps naming the deleted step. This is the exact tamper
+// dogfood run 17 proved silent at HEAD 9307bfa (Gofmt, Version-check and
+// Spec-check deletions were noticed by nothing). Non-vacuous by
+// construction: every arm asserts its tamper actually removed the step, and
+// the Install-govulncheck arm leaves behind the BT-033 comment that mentions
+// the step by name — a prose mention must not satisfy the census.
+func TestGateStepCensusDeletedStepFails(t *testing.T) {
+	for _, step := range ciGateSteps {
+		t.Run(step.Name, func(t *testing.T) {
+			tampered := removeStep(goodCI, step.Name)
+			if strings.Contains(tampered, "- name: "+step.Name) {
+				t.Fatalf("tamper did not apply: the %q step is still in the fixture copy", step.Name)
+			}
+			err := CheckGateSteps(writeCIFixture(t, tampered))
+			if err == nil {
+				t.Fatalf("CheckGateSteps() = nil after deleting the %q step — CI tamper is not noticed", step.Name)
+			}
+			if !strings.Contains(err.Error(), step.Name) {
+				t.Errorf("error %q does not name the deleted step %q", err, step.Name)
+			}
+			if !strings.Contains(err.Error(), step.Run) {
+				t.Errorf("error %q does not name the expected run command %q", err, step.Run)
+			}
+		})
+	}
+}
+
+// TestGateStepCensusEditedCommandFails: keeping the step name while editing
+// its command must also fail — the step exists but no longer runs what the
+// Makefile and the in-process tests run, which is drift just the same.
+func TestGateStepCensusEditedCommandFails(t *testing.T) {
+	edited := strings.Replace(goodCI,
+		"run: go test -count=1 ./internal/speccheck",
+		"run: go test -count=1 -run TestSpeccheck ./internal/speccheck", 1)
+	if edited == goodCI {
+		t.Fatal("tamper did not apply: the Spec-check command is unchanged")
+	}
+	err := CheckGateSteps(writeCIFixture(t, edited))
+	if err == nil {
+		t.Fatal("CheckGateSteps() = nil after editing the Spec-check command — command drift is not noticed")
+	}
+	for _, want := range []string{"Spec-check", "exists but does not run"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not contain %q", err, want)
+		}
+	}
+}
+
+// TestGateStepCensusCompleteFixturePasses: the undrifted fixture passes the
+// census — and doubles as a coverage guard, since ciGateSteps is ranged over
+// by the deletion test: a census entry added without a matching fixture step
+// turns this test red instead of silently narrowing the tamper coverage.
+func TestGateStepCensusCompleteFixturePasses(t *testing.T) {
+	if err := CheckGateSteps(writeCIFixture(t, goodCI)); err != nil {
+		t.Fatalf("CheckGateSteps() = %v on the complete fixture, want nil (add the new census step to goodCI):\n%v", err, err)
+	}
+}
+
+// TestGateStepsWiredInCI is the in-process census over the real repo tree:
+// every gate step the checker family relies on must still exist in ci.yml
+// with its byte-exact run command. Runs under plain `go test ./...` and
+// `-short` (CI's own Test step runs it — the same step the census covers);
+// there is deliberately no testing.Short() skip, matching TestWorkflowcheck.
+// This is the enforcement the vulncheck package gave itself with
+// TestGateWiring, extended to the gates that had none.
+func TestGateStepsWiredInCI(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	root, err := RepoRoot(cwd)
+	if err != nil {
+		t.Fatalf("locate repo root: %v", err)
+	}
+	if err := CheckGateSteps(filepath.Join(root, CIWorkflowName)); err != nil {
+		t.Fatalf("repo tree failed the CI gate-step census:\n%v", err)
+	}
+}
