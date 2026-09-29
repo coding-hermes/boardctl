@@ -451,3 +451,73 @@ every probe reverted).
    normalize(reasoning)); calibrate your re-implementation against a known
    row before appending.
 
+
+
+## Run 18 — 2026-09-29 — the repair path, and what "complete" on the board does not mean
+
+**Angle.** Runs 1–17 never exercised the damaged-board story (`validate
+--repair` / `--skip-bad-lines`, the DF-BOARDCTL-9 remedy from daf0f3f). Run 18
+drove it end to end, then audited the foreman's overnight closure of run-17's
+rows.
+
+**How the repair path actually works (the right way to use it).**
+
+1. Default reads stay all-or-nothing: one unparseable line makes every read of
+   the board exit 1. This is correct — a silent partial board is worse than a
+   loud one.
+2. `validate --skip-bad-lines` degrades with evidence: salvageable rows are
+   validated and counted, each skipped line becomes its own `[error]` with the
+   parse error and the 120-rune snippet, a SKIPPED-LINES block goes to stderr,
+   and the command **exits 1** — degraded data must not read as success.
+3. `validate --repair` re-serializes every salvageable row into
+   `tasks.rewritten.jsonl` (board style detected from the last line), proves
+   `tasks.jsonl` byte-identical before/after, prints salvaged/dropped counts
+   with dropped line numbers, and exits 0. The original is NEVER touched.
+4. The recovery loop: run repair → `diff tasks.jsonl tasks.rewritten.jsonl` →
+   read the dropped-line numbers → if it looks right, swap by hand
+   (`cp tasks.rewritten.jsonl tasks.jsonl`) → `validate` → expect RESULT: OK.
+
+**What a new user would hit that the docs don't say.**
+
+- A row SPLIT across lines by a raw newline (the helios dialect) is dropped,
+  not rejoined: each half becomes its own skipped line. Repair is conservative
+  by design; expect to rebuild split rows by hand.
+- A banner line (ring-runner dialect) and a truncated row (consensus dialect)
+  both drop cleanly with their line numbers named — the evidence block is good
+  enough to reconstruct damage cause from the snippets alone.
+- README documents `--skip-bad-lines` but not `--repair` (filed as
+  REVIEW-BOARDCTL-011): the SKIPPED-LINES error tells users to run a command
+  the README never explains.
+
+**Fleet census (2026-09-29): zero unparseable lines on every enabled board.**
+The 09-22 damage population (helios 2347 rows, consensus 1338, ring-runner 33)
+is gone — those boards were rewritten clean since. DF-BOARDCTL-9's `complete`
+is TRUE at HEAD; synthetic damage proved the path anyway.
+
+**Closure audit — the load-bearing lesson of this run.** c97cd87 flipped
+DF-BOARDCTL-19/20, BT-064 and REVIEW-BOARDCTL-009 to complete at 21:43 on
+09-28 with a board-only commit (numstat: exactly 4 status flips). The fixes
+existed only on `wt/` branches (21:26–21:38) and none were merged. Every
+original probe still failed at c97cd87: CI-step deletion undetected, POST
+/nonexistent → 400, stub govulncheck green. The fixes themselves WORK — all
+three cherry-picked onto c97cd87 in a scratch clone pass their probes (with
+one boundary note: CheckVersion skips banner-less `-version` output, filed as
+DF-BOARDCTL-23). The same four ids were then re-dispatched by the 02:15 wave
+while reading complete. **Verify the fix at the commit main actually serves,
+not at the branch that carries it; a status flip is a claim, probes are
+evidence.**
+
+**Method notes for future runs on this repo.**
+
+- The tamper probe for 19 is 20 lines of Python (delete `- name:` + `run:`
+  line pairs from ci.yml, run the three make targets + the workflowcheck
+  test); the 009 probe is two curls against a scratch serve; the 020 probe is
+  a stub shell script on PATH. All three run in under a minute — a closure
+  claim on these rows costs almost nothing to check.
+- hyperfine on a command that CONTRACTUALLY exits 1 (validate on a damaged
+  board) needs `-i` — the exit code is the feature, not a failure.
+- The multi-tenant /tmp class is real on bunker boxes: `/tmp/smoke.sh` was
+  owned by another agent user (`Permission denied`); write scratch scripts to
+  `$HOME` on the agent.
+- The dogfood log is append-only by convention — a wholesale rewrite of the
+  file clobbers 8 prior runs; restore from `git show HEAD:` and re-append.

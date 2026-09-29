@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.10.0
-date: 2026-09-28
+version: 1.11.0
+date: 2026-09-29
 category: software-development
 ---
 
@@ -28,7 +28,11 @@ agreement-not-currency scope, and the sha256 zero-match exit-0 note. Run-17
 (2026-09-28) added "Gates are real code" below and pitfalls 16-17 from
 tamper-probing the internal checker family (fmtcheck, versioncheck, speccheck,
 workflowcheck, vulncheck, freshness) — including the one gap found: CI wiring
-of three gates is unverified (DF-BOARDCTL-19).
+of three gates is unverified (DF-BOARDCTL-19). Run-18 (2026-09-29) added the
+damaged-board recovery section below (validate --repair / --skip-bad-lines,
+the DF-BOARDCTL-9 remedy) and pitfalls 18-19: closed-complete rows whose fixes
+sit unmerged on wt/ branches, and the vulncheck version pin's banner-less
+blind spot.
 
 ## Entry points
 
@@ -207,6 +211,49 @@ switch: `BOARDCTL_SKIP_FRESHNESS=1`). `go run ./cmd/gendocs` regenerates the
 OpenAPI spec deterministically — after any serve/describe change; never
 hand-edit the yaml.
 
+## Damaged-board recovery — `--skip-bad-lines` and `validate --repair` (run 18)
+
+One unparseable line makes every default read of a board exit 1 (correct: a
+silent partial board is worse than a loud one). The recovery loop, proven
+end-to-end on synthetic damage replicating all three historical fleet dialects
+(helios raw-newline split rows, consensus truncated rows, ring-runner banner
+lines):
+
+```bash
+boardctl -C R validate --skip-bad-lines   # census: salvageable rows validated,
+                                          # each skipped line an [error] with the
+                                          # parse error + 120-rune snippet + line
+                                          # number; SKIPPED-LINES block on stderr;
+                                          # exit 1 (degraded data must not read as
+                                          # success)
+boardctl -C R validate --repair           # re-serializes every salvageable row
+                                          # into <boarddir>/tasks.rewritten.jsonl,
+                                          # proves tasks.jsonl byte-identical,
+                                          # prints salvaged/dropped counts with
+                                          # dropped line numbers, exit 0
+diff R/.coding-hermes/board/tasks.jsonl R/.coding-hermes/board/tasks.rewritten.jsonl
+# read the dropped-line numbers; if it looks right, swap BY HAND:
+cp R/.coding-hermes/board/tasks.rewritten.jsonl R/.coding-hermes/board/tasks.jsonl
+boardctl -C R validate                    # expect RESULT: OK
+```
+
+Rules that are real (verified live + on a fresh bunker box with the published
+v0.1.9 binary):
+
+- `tasks.jsonl` is NEVER modified by `--repair`; the original board is
+  byte-identical before/after (sha256-checked in the run).
+- A row SPLIT across lines by a raw newline is dropped, not rejoined — each
+  half is its own skipped line. Repair is conservative; rebuild split rows by
+  hand from the two snippets.
+- Banner lines and truncated rows drop cleanly with their line numbers; the
+  evidence block is usually enough to identify the damage cause.
+- `--repair` is absent from the README (REVIEW-BOARDCTL-011) — the
+  SKIPPED-LINES error names it; this skill section is the full documentation
+  until the README lands it.
+- Fleet state 2026-09-29: zero unparseable lines on every enabled board — the
+  09-22 damage population (helios/consensus/ring-runner) is repaired; treat
+  any new damaged board as fresh damage, not legacy debt.
+
 ## Common pitfalls
 
 1. **Bootstrap with `boardctl init` (BT-005, four files since BT-016).**
@@ -311,6 +358,26 @@ hand-edit the yaml.
     three gates — check the workflow file when gate coverage matters.
     Related (run 17, DF-BOARDCTL-20): a local `make vuln-check` never checks
     WHICH govulncheck version is on PATH — only CI's install step is pinned.
+
+18. **A row marked `complete` means the fix is claimed, not that main has it
+    (run 18, DF-BOARDCTL-22).** The overnight wave closed DF-BOARDCTL-19/20,
+    BT-064 and REVIEW-BOARDCTL-009 via a board-only commit while all three
+    fixes sat unmerged on `wt/` branches — every original probe still failed
+    at the commit main served. Verify a closure at the commit MAIN actually
+    serves (`git rev-parse origin/main`), re-running the row's original
+    probe; the probes are cheap (a 20-line tamper script, two curls, a stub
+    on PATH). Also: a board-only closure commit can carry a misleading
+    message ("removed duplicate rows" = 4 status flips) — read the numstat,
+    not the subject. And a wave can RE-DISPATCH ids that already read
+    complete, double-booking workers on closed rows.
+19. **The vulncheck version pin has a banner-less blind spot (run 18,
+    DF-BOARDCTL-23).** `CheckVersion` (wt/BT-064) refuses a parseable wrong
+    version (`Scanner: govulncheck@v0.0.9` → gate fails, message names
+    expected/actual/fix) but SKIPS a binary whose `-version` output lacks the
+    `Scanner:` line — a stub or reimplementation defeats the pin by staying
+    silent. Real govulncheck prints the line; treat silent `-version` output
+    from any wrapper as unverified. (Applies once BT-064 merges; today even
+    the parseable case is unenforced on main.)
 
 ## Report surface — `render`, `serve`, `import`
 
