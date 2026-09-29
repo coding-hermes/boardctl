@@ -201,6 +201,36 @@ boardctl render -C ~/myproject -o -                # -o - writes the HTML to std
 - `--skip-bad-lines` — degrade with evidence: keep every line that parses,
   report unparseable lines on stderr, exit 1 when anything was skipped.
 
+Damaged-board salvage (DF-BOARDCTL-9): when a board fails to parse, `boardctl
+validate --repair` re-reads it tolerantly (no `--skip-bad-lines` needed
+alongside) and writes every salvageable row — re-serialized in the board's own
+style — to `tasks.rewritten.jsonl` in the board dir, dropping unparseable
+lines and reporting their line numbers in the repair summary. `tasks.jsonl`
+is NEVER modified by `--repair`: the review file is the deliverable, and the
+command exits 0 once it is written, even when lines were dropped. Applying it
+is a deliberate manual procedure — inspect, diff, validate the candidate,
+swap:
+
+```bash
+boardctl -C ~/myproject validate --repair
+# repair: wrote 142 salvaged row(s) to .../board/tasks.rewritten.jsonl
+# repair: dropped 2 unparseable line(s) (tasks.jsonl line(s): 57, 214)
+# review: tasks.rewritten.jsonl is FOR MANUAL REVIEW — tasks.jsonl was NOT
+#         modified. Diff, verify, then replace by hand if it looks right.
+
+diff ~/myproject/.coding-hermes/board/tasks.jsonl \
+     ~/myproject/.coding-hermes/board/tasks.rewritten.jsonl
+
+# validate the candidate before committing to it: stage it as tasks.jsonl in a
+# scratch dir beside copies of events.jsonl, board.jsonl and fixtures.jsonl,
+# then validate the scratch board — expect RESULT: OK
+boardctl -C ~/scratch-check validate
+
+cp ~/myproject/.coding-hermes/board/tasks.rewritten.jsonl \
+   ~/myproject/.coding-hermes/board/tasks.jsonl     # the swap is by hand, last
+boardctl -C ~/myproject validate                    # RESULT: OK
+```
+
 Full metric semantics: [`docs/specs/board-analytics-report.md`](docs/specs/board-analytics-report.md).
 
 ## Start a board
