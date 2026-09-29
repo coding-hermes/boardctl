@@ -460,6 +460,14 @@ document.getElementById("up").addEventListener("submit", function(){
 // fresh per-upload temp dir, resolves every board, and answers with the
 // rendered multi-board HTML report.
 func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
+	// Mirror handleIndex's path guard: "POST /" is a ServeMux subtree
+	// pattern matching EVERY POST path, so without this a POST to any
+	// non-/ path reaches the multipart parser and dies as a misleading
+	// 400 bad-multipart instead of the 404 GET already answers (7.2.1).
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
 	// Enforce the size cap before buffering the whole body (7.2.6): an
 	// oversized Content-Length is refused up front; a lying/absent one is
 	// caught while streaming through MaxBytesReader.

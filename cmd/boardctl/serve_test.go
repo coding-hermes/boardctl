@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"io"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -471,6 +472,117 @@ func TestServeAPIBoards(t *testing.T) {
 	if rec2.Code != 200 || strings.TrimSpace(rec2.Body.String()) != "[]" {
 		t.Fatalf("empty /api/boards = %d %q, want 200 []", rec2.Code, rec2.Body.String())
 	}
+}
+
+// TestServeUploadPathGuard404: "POST /" is a ServeMux subtree pattern, so
+// without handleUpload's own path guard every POST to a non-/ path fell
+// into the multipart parser and answered a misleading 400 bad-multipart.
+// GET / already 404s via handleIndex (7.2.1); POST must match, while the
+// real upload path POST / keeps its exact behavior (bad multipart stays
+// 400 there).
+func TestServeUploadPathGuard404(t *testing.T) {
+	h := newServeServer(nil).routes()
+
+	// The defect: POST /nonexistent answered 400 bad-multipart.
+	rec := postUploadTo(h, "/nonexistent", map[string][]byte{"zip": []byte("whatever")})
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("POST /nonexistent status = %d, want 404 (body: %q)", rec.Code, rec.Body.String())
+	}
+	// Same for the API prefix.
+	rec = postUploadTo(h, "/api/boards", map[string][]byte{"zip": []byte("whatever")})
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("POST /api/boards status = %d, want 404 (body: %q)", rec.Code, rec.Body.String())
+	}
+	// GET /nonexistent keeps its pre-existing 404 (parity pin).
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest("GET", "/nonexistent", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("GET /nonexistent status = %d, want 404", rec.Code)
+	}
+	// Control: POST / with a NON-multipart body still answers 400
+	// bad-multipart — the guard changes nothing on the real upload path.
+	req := httptest.NewRequest("POST", "/", strings.NewReader("not multipart at all"))
+	req.Header.Set("Content-Type", "text/plain")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("POST / non-multipart status = %d, want 400", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "bad multipart form") {
+		t.Fatalf("POST / non-multipart body = %q, want bad-multipart message", rec.Body.String())
+	}
+	// Control: the multipart contract on POST / is untouched — a malformed
+	// zip still answers its zip-specific 400 (not the guard's 404).
+	if rec := postUploadTo(h, "/", map[string][]byte{"zip": []byte("this is definitely not a zip file")}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("POST / malformed zip status = %d, want 400", rec.Code)
+	}
+	// And a valid upload still renders on POST /.
+	root := t.TempDir()
+	dirA := seedServeBoard(t, filepath.Join(root, "guardboard"), "A")
+	good := zipFromPaths(t, root, filepath.Join(dirA, "tasks.jsonl"), filepath.Join(dirA, "events.jsonl"))
+	rec = postUploadTo(h, "/", map[string][]byte{"zip": good})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST / valid upload status = %d, want 200 (upload path unchanged)", rec.Code)
+	}
+	if p := mustIslandPayload(t, rec.Body.String()); len(p.Boards) != 1 {
+		t.Fatalf("valid upload boards = %d, want 1", len(p.Boards))
+	}
+}
+
+// TestServeLiveServer404sNonRootPost starts a real httptest server (the
+// full net/http stack, not just the routes handler) and pins the 404s on
+// the live wire: POST to any non-/ path must answer 404, never the
+// multipart parser's 400.
+func TestServeLiveServer404sNonRootPost(t *testing.T) {
+	srv := httptest.NewServer(newServeServer(nil).routes())
+	t.Cleanup(srv.Close)
+
+	for _, path := range []string{"/nonexistent", "/api/boards", "/deeply/nested/path"} {
+		resp, err := http.Post(srv.URL+path, "application/octet-stream", strings.NewReader("junk"))
+		if err != nil {
+			t.Fatalf("POST %s: %v", path, err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("live POST %s status = %d, want 404 (body: %q)", path, resp.StatusCode, body)
+		}
+	}
+
+	// Live control: POST / still reaches the upload handler (its
+	// non-multipart 400 proves the guard did not swallow the root path).
+	resp, err := http.Post(srv.URL+"/", "text/plain", strings.NewReader("not multipart"))
+	if err != nil {
+		t.Fatalf("POST /: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("live POST / non-multipart status = %d, want 400 (body: %q)", resp.StatusCode, body)
+	}
+	if !strings.Contains(string(body), "bad multipart form") {
+		t.Fatalf("live POST / body = %q, want bad-multipart message", body)
+	}
+}
+
+// postUploadTo POSTs a multipart form to the given path on h. Same wire
+// shape as postUpload, path-explicit so tests can pin non-/ targets.
+func postUploadTo(h http.Handler, path string, fields map[string][]byte) *httptest.ResponseRecorder {
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	for name, data := range fields {
+		fw, err := mw.CreateFormFile(name, name)
+		if err != nil {
+			panic(err)
+		}
+		fw.Write(data)
+	}
+	mw.Close()
+	req := httptest.NewRequest("POST", path, &buf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
 }
 
 // TestServeTempRemovedOnShutdown: removeAllTemps deletes per-upload temp
