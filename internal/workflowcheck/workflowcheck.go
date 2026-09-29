@@ -1,8 +1,20 @@
-// Package workflowcheck is the repo's CI-vs-Makefile platform-parity gate plus
-// the reusable-workflow pin gate (mirrors internal/versioncheck): a check-only
-// scanner over two release surfaces that must never drift apart.
+// Package workflowcheck is the repo's CI-vs-Makefile platform-parity gate,
+// the reusable-workflow pin gate, and the CI gate-step census (mirrors
+// internal/versioncheck): check-only scanners over release surfaces that must
+// never drift apart.
 //
-// One checker, three gates (kept in agreement by construction):
+// The gate-step census (CheckGateSteps) closes the "three surfaces" gap for
+// the whole checker family: the Makefile targets and the go-test run both
+// invoke the checker code, so they cannot drift from each other — but ci.yml
+// is unverified YAML text next to that code. Before the census, deleting the
+// Gofmt, Version-check or Spec-check step from ci.yml was noticed by nothing:
+// `go test -short ./...` still exited 0 and every make target still passed
+// with the steps gone. The census pins each gate's step by its exact `run:`
+// command string (and, for the vulnerability gate, the pinned install step),
+// so a deleted step fails `go test ./internal/workflowcheck` naming the
+// missing step.
+//
+// One checker, four gates (kept in agreement by construction):
 //
 //   - plain `go test ./...` (incl. `-short`) picks this package up like any other
 //   - TestWorkflowcheck / TestRefPinned run in-process against the repo tree
@@ -44,6 +56,8 @@ const (
 	// WorkflowName is the CI workflow whose platforms input and uses ref are
 	// checked.
 	WorkflowName = ".github/workflows/multiarch.yml"
+	// CIWorkflowName is the CI workflow whose gate steps the census checks.
+	CIWorkflowName = ".github/workflows/ci.yml"
 	// MakefileName is the Makefile whose PLATFORMS list is checked.
 	MakefileName = "Makefile"
 )
@@ -193,6 +207,84 @@ func Check(workflowPath, makefilePath string) error {
 	}
 	return fmt.Errorf("workflowcheck: %d problem(s):\n  %s\nfix: edit .github/workflows/multiarch.yml's `platforms:` and the Makefile's PLATFORMS list to the same platforms in the same order, then re-run go test ./internal/workflowcheck",
 		len(problems), strings.Join(problems, "\n  "))
+}
+
+// GateStep is one CI step the census requires to exist in ci.yml. Name is
+// the step's `- name:` (what a deleted-step error reports), Run is the exact
+// `run:` command string the step must carry — matched as a whole line, so a
+// step that merely mentions the command in a comment does not satisfy it.
+type GateStep struct {
+	Name string
+	Run  string
+}
+
+// ciGateSteps is the census: every gate this repo enforces via a CI step,
+// with the byte-exact `run:` command each step must run. The strings here are
+// the single definition of the contract; the fixtures in the tests delete
+// these steps and expect the failure to name them.
+var ciGateSteps = []GateStep{
+	// Gofmt gate: the same in-process test `make fmt-check` runs.
+	{Name: "Gofmt", Run: "go test -count=1 -run TestGofmt ./internal/fmtcheck"},
+	// Version-check gate: the same in-process test `make version-check` runs.
+	{Name: "Version-check", Run: "go test -count=1 -run TestVersioncheck ./internal/versioncheck"},
+	// Spec-check gate: the whole package (TestSpeccheck + TestRepoParity),
+	// exactly what `make spec-check` runs.
+	{Name: "Spec-check", Run: "go test -count=1 ./internal/speccheck"},
+	// Install step for the vulnerability gate: govulncheck must be installed
+	// at the version internal/vulncheck pins (PinnedToolVersion) before any
+	// step runs TestVulncheck, or the gate would skip on the runner.
+	{Name: "Install govulncheck v1.7.0", Run: "go install golang.org/x/vuln/cmd/govulncheck@v1.7.0"},
+	// Vulnerability-check gate: the same in-process test `make vuln-check`
+	// runs (internal/vulncheck additionally self-asserts this step).
+	{Name: "Vulnerability-check", Run: "go test -count=1 -run TestVulncheck ./internal/vulncheck"},
+}
+
+// CheckGateSteps is the CI gate-step census: every step in ciGateSteps must
+// exist in the workflow at workflowPath as a `- name: <Name>` line whose step
+// body carries the exact `run: <Run>` command. Deleting a step — or editing
+// its command without updating the census — fails with an error naming the
+// step and the expected command, so the "three surfaces" doctrine (Makefile +
+// CI + go test enforce the same gate) is enforced instead of asserted.
+//
+// The name line and the run line are matched independently (the name must
+// appear as its own line; the run as `\trun: <Run>` anywhere in the file).
+// A step whose command is edited but whose name survives therefore still
+// fails, and so does a name-only husk left behind without its command.
+func CheckGateSteps(workflowPath string) error {
+	data, err := os.ReadFile(workflowPath)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(data), "\n")
+	var missing []string
+	for _, step := range ciGateSteps {
+		nameLine := "name: " + step.Name
+		display := "- name: " + step.Name
+		runLine := "run: " + step.Run
+		hasName, hasRun := false, false
+		for _, l := range lines {
+			trimmed := strings.TrimSpace(l)
+			if strings.HasPrefix(trimmed, "- ") {
+				trimmed = trimmed[2:]
+			}
+			if trimmed == nameLine {
+				hasName = true
+			}
+			if trimmed == runLine {
+				hasRun = true
+			}
+		}
+		if !hasName {
+			missing = append(missing, fmt.Sprintf("step %q (name line %q, expected `run: %s`) is absent", step.Name, display, step.Run))
+		} else if !hasRun {
+			missing = append(missing, fmt.Sprintf("step %q exists but does not run %q", step.Name, runLine))
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	return fmt.Errorf("workflowcheck: %s is missing %d required gate step(s):\n  %s\nci.yml is unverified text unless something reads it: every gate above must keep its CI step, or CI stops enforcing that gate while `go test ./...` and the Makefile stay green (dogfood run 17, DF-BOARDCTL-19).\nfix: restore the step(s) with the exact `run:` command(s) named above, or deliberately update this census alongside a reviewed CI change",
+		workflowPath, len(missing), strings.Join(missing, "\n  "))
 }
 
 // duplicates returns the values appearing more than once, in first-seen order.
