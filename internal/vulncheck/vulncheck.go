@@ -21,6 +21,15 @@
 // skip there. Everything else in this package (Run/Decide/Summarize over a
 // caller-supplied binary) stays offline: those tests never make a live call.
 //
+// Local version pin (DF-BOARDCTL-20): the live gate additionally probes the
+// resolved binary with `-version` and refuses it when its self-reported
+// Scanner version sits on a different major.minor line than
+// PinnedToolVersion — a scan by a different scanner rule set must not stand
+// in for the pinned gate (offline fakes prove the arm). Patch drift within
+// the pinned minor line is tolerated, and a binary whose -version yields no
+// parsable Scanner line is skipped (the PATH-fallback behavior is
+// unchanged).
+//
 // This package is a CHECK, never a fixer: nothing here edits go.mod, and the
 // remediation for a finding is a deliberate toolchain or dependency bump.
 package vulncheck
@@ -47,7 +56,9 @@ const BinaryName = "govulncheck"
 
 // PinnedToolVersion is the govulncheck version this repo's gates expect. CI
 // pins the identical version in its install step (a wiring test in this
-// package keeps the two in agreement).
+// package keeps the two in agreement), and — since DF-BOARDCTL-20 — the
+// local gate refuses a resolved binary that self-reports a scanner version
+// on a different major.minor line (see CheckVersion).
 const PinnedToolVersion = "v1.7.0"
 
 // InstallHint is the one-line remediation quoted when the binary is missing.
@@ -118,8 +129,78 @@ var (
 	// fixedInRe matches the block's fix line.
 	fixedInRe = regexp.MustCompile(`(?m)^[ \t]+Fixed in:[ \t]*(\S+)[ \t]*$`)
 	// foundInRe matches the block's affected-package line.
-	foundInRe = regexp.MustCompile(`(?m)^[ \t]+Found in:[ \t]*(\S+)[ \t]*$`)
+	foundInRe = regexp.MustCompile(`(?m)^[ 	]+Found in:[ 	]*(\S+)[ 	]*$`)
+	// scannerVersionRe matches the "Scanner: govulncheck@vX.Y.Z" line of
+	// `<binary> -version` output, capturing the version.
+	scannerVersionRe = regexp.MustCompile(`(?m)^Scanner:[ 	]*govulncheck@(\S+)`)
 )
+
+// CheckVersion probes `<bin> -version` and compares the self-reported
+// Scanner version against PinnedToolVersion. It returns:
+//
+//   - nil:            the binary reports PinnedToolVersion — the gate proceeds
+//   - *MismatchErr:   the binary reports a different version — the gate must
+//     FAIL naming expected and actual, because a scan by a different scanner
+//     rule set must never masquerade as this repo's gate
+//   - any other error: the probe never ran (process start failure)
+//   - nil with no Scanner line parsable: the version could not be produced —
+//     treated as absent, so the caller's PATH-fallback behavior is unchanged
+//
+// A non-zero -version exit is data (some builds print the banner before
+// failing), not an error: the output is probed regardless.
+func CheckVersion(bin string) error {
+	out, err := exec.Command(bin, "-version").CombinedOutput()
+	if err != nil {
+		if _, ok := err.(*exec.ExitError); !ok {
+			return fmt.Errorf("vulncheck: running %s -version: %w", bin, err)
+		}
+	}
+	ver := scannerVersion(string(out))
+	if ver == "" {
+		return nil
+	}
+	if ver != PinnedToolVersion {
+		return &MismatchErr{Expected: PinnedToolVersion, Actual: ver, Bin: bin}
+	}
+	return nil
+}
+
+// MismatchErr is the version-mismatch verdict of CheckVersion: the resolved
+// binary self-reports a Scanner version other than PinnedToolVersion.
+type MismatchErr struct {
+	Expected string
+	Actual   string
+	Bin      string
+}
+
+func (e *MismatchErr) Error() string {
+	return fmt.Sprintf("govulncheck version mismatch: this repo's gates pin %s but the resolved binary %s reports %s — a scan by a different scanner rule set must not stand in for the pinned gate (fix: %s)",
+		e.Expected, e.Bin, e.Actual, InstallHint)
+}
+
+// scannerVersion extracts the "Scanner: govulncheck@vX.Y.Z" version from
+// govulncheck -version output (empty when the output carries no such line).
+func scannerVersion(output string) string {
+	if m := scannerVersionRe.FindStringSubmatch(output); m != nil {
+		return m[1]
+	}
+	return ""
+}
+
+// sameMinorLine reports whether two vX.Y.Z version strings share their
+// major and minor components — the part of the x/vuln version that defines
+// the scanner's rule set. Patch drift alone (a locally installed release can
+// predate the patch the go.mod-pinned x/vuln module resolves to, or vice
+// versa) does not move it. Unparseable versions are only ever equal to
+// themselves.
+func sameMinorLine(a, b string) bool {
+	pa := strings.SplitN(strings.TrimPrefix(a, "v"), ".", 3)
+	pb := strings.SplitN(strings.TrimPrefix(b, "v"), ".", 3)
+	if len(pa) < 2 || len(pb) < 2 {
+		return a == b
+	}
+	return pa[0] == pb[0] && pa[1] == pb[1]
+}
 
 // LocateBinary resolves the govulncheck binary: $GOVULNCHECK when set and
 // non-empty, otherwise "govulncheck" from PATH. The override must itself
@@ -152,6 +233,17 @@ func Run(dir string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	return RunBinary(bin, dir)
+}
+
+// RunBinary executes `<bin> ./...` with dir as the working directory (the
+// module root) and returns the exit code plus the combined output. It is the
+// caller-supplied-binary half of Run, so Check can locate and version-probe
+// the binary once and scan with exactly what it probed. The error return is
+// reserved for "the scan never ran" — a process start failure; a non-zero
+// exit code is NOT an error: it is the scan's verdict, returned in
+// Result.Code for Decide.
+func RunBinary(bin, dir string) (Result, error) {
 	cmd := exec.Command(bin, "./...")
 	cmd.Dir = dir
 	out, runErr := cmd.CombinedOutput()
@@ -270,11 +362,26 @@ func FormatFindings(findings []Finding) string {
 }
 
 // Check is the gate: run govulncheck over the module rooted at dir and return
-// nil only on a clean scan (exit 0). Any finding or tool failure comes back as
-// an error naming the verdict, the affected ids with their fixed versions, and
-// the command to re-run.
+// nil only on a clean scan (exit 0) by a scanner whose version matches the
+// pin. Any finding or tool failure comes back as an error naming the verdict,
+// the affected ids with their fixed versions, and the command to re-run.
+//
+// Before scanning, the resolved binary is probed with `-version` (the
+// DF-BOARDCTL-20 rule): a binary that self-reports a Scanner version other
+// than PinnedToolVersion FAILS the gate naming expected and actual, because a
+// green verdict produced by a different scanner rule set must not stand in
+// for the pinned gate. When the probe cannot be produced (binary absent, no
+// parsable Scanner line) the check is skipped and the exit-code contract
+// below decides alone — the PATH-fallback behavior is unchanged.
 func Check(dir string) error {
-	res, err := Run(dir)
+	bin, err := LocateBinary()
+	if err != nil {
+		return err
+	}
+	if mismatch := CheckVersion(bin); mismatch != nil {
+		return fmt.Errorf("vulncheck: %w", mismatch)
+	}
+	res, err := RunBinary(bin, dir)
 	if err != nil {
 		return err
 	}
