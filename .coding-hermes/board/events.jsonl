@@ -313,3 +313,7 @@
 {"id": 313, "timestamp": "2026-09-28 23:05:43", "event_type": "task_created", "task_id": "REVIEW-BOARDCTL-008", "actor": "foreman", "detail": "{\"id\":\"REVIEW-BOARDCTL-008\",\"status\":\"pending\"}"}
 {"id": 314, "timestamp": "2026-09-28 23:05:43", "event_type": "task_created", "task_id": "REVIEW-BOARDCTL-009", "actor": "foreman", "detail": "{\"id\":\"REVIEW-BOARDCTL-009\",\"status\":\"pending\"}"}
 {"id": 315, "timestamp": "2026-09-28 23:05:43", "event_type": "task_created", "task_id": "REVIEW-BOARDCTL-010", "actor": "foreman", "detail": "{\"id\":\"REVIEW-BOARDCTL-010\",\"status\":\"pending\"}"}
+{"id": 316, "timestamp": "2026-09-29 02:43:09", "event_type": "task_completed", "task_id": "REVIEW-BOARDCTL-010", "actor": "foreman", "detail": "{\"status\":\"complete\"}"}
+{"id": 317, "timestamp": "2026-09-29 02:43:09", "event_type": "task_completed", "task_id": "REVIEW-BOARDCTL-009", "actor": "foreman", "detail": "{\"status\":\"complete\"}"}
+{"id": 318, "timestamp": "2026-09-29 02:43:09", "event_type": "task_completed", "task_id": "DF-BOARDCTL-19", "actor": "foreman", "detail": "{\"status\":\"complete\"}"}
+{"id": 319, "timestamp": "2026-09-29 02:43:09", "event_type": "task_completed", "task_id": "DF-BOARDCTL-20", "actor": "foreman", "detail": "{\"status\":\"complete\"}"}

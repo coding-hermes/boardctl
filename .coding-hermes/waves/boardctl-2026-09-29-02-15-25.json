@@ -1,0 +1,45 @@
+{
+  "tick_id": "boardctl-2026-09-29-02-15-25",
+  "project": "boardctl",
+  "workdir": "/home/kara/coding-hermes-boardctl",
+  "base_sha": "8cfbeb7",
+  "worker_model": "glm-5.3-flash",
+  "worker_provider": "zai-glm",
+  "tasks": [
+    {
+      "id": "DF-BOARDCTL-19",
+      "branch": "wt/DF-BOARDCTL-19",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-19",
+      "title": "CI step-presence enforcement: extend internal/workflowcheck with gate-step census"
+    },
+    {
+      "id": "DF-BOARDCTL-20",
+      "branch": "wt/BT-064",
+      "worktree": "/home/kara/worktrees/boardctl-BT-064",
+      "title": "make vuln-check: verify local govulncheck binary version matches PinnedToolVersion v1.7.0"
+    },
+    {
+      "id": "REVIEW-BOARDCTL-009",
+      "branch": "wt/REVIEW-BOARDCTL-009",
+      "worktree": "/home/kara/worktrees/boardctl-REVIEW-BOARDCTL-009",
+      "title": "serve: POST to non-/ path returns 400 instead of 404 \u2014 add path guard to handleUpload"
+    },
+    {
+      "id": "REVIEW-BOARDCTL-010",
+      "branch": "wt/REVIEW-BOARDCTL-010",
+      "worktree": "/home/kara/worktrees/boardctl-REVIEW-BOARDCTL-010",
+      "title": "event --help: enumerate flags (--task-id/--actor/--detail/--detail-text/--tick) like sibling subcommands"
+    }
+  ],
+  "finished_at": "2026-09-29T11:05:00Z",
+  "recovery": {
+    "merged_branches": [
+      "wt/DF-BOARDCTL-19",
+      "wt/BT-064",
+      "wt/REVIEW-BOARDCTL-009"
+    ],
+    "merge_head": "5f95947",
+    "verdicts": "all PASS",
+    "REVIEW-BOARDCTL-010": "already merged in c276128 pre-crash; no branch delta"
+  }
+}
