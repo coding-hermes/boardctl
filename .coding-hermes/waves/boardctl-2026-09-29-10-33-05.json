@@ -1,0 +1,13 @@
+{
+  "tick_id": "boardctl-2026-09-29-10-33-05",
+  "project": "boardctl",
+  "workdir": "/home/kara/coding-hermes-boardctl",
+  "base_sha": "7aa9c9e",
+  "worker_model": "glm-5.3-flash",
+  "worker_provider": "zai-glm",
+  "tasks": [
+    {"id": "DF-BOARDCTL-23", "branch": "wt/DF-BOARDCTL-23", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-23", "title": "vulncheck: WARN/fail on parseable-exit-0 but no Scanner-line -version output"},
+    {"id": "REVIEW-BOARDCTL-011", "branch": "wt/REVIEW-BOARDCTL-011", "worktree": "/home/kara/worktrees/boardctl-REVIEW-BOARDCTL-011", "title": "README: document validate --repair workflow"},
+    {"id": "REVIEW-BOARDCTL-008", "branch": "wt/REVIEW-BOARDCTL-008", "worktree": "/home/kara/worktrees/boardctl-REVIEW-BOARDCTL-008", "title": "event --tick silently rewrites board.jsonl ticks_total"}
+  ]
+}
