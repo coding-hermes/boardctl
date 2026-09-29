@@ -317,3 +317,4 @@
 {"id": 317, "timestamp": "2026-09-29 02:43:09", "event_type": "task_completed", "task_id": "REVIEW-BOARDCTL-009", "actor": "foreman", "detail": "{\"status\":\"complete\"}"}
 {"id": 318, "timestamp": "2026-09-29 02:43:09", "event_type": "task_completed", "task_id": "DF-BOARDCTL-19", "actor": "foreman", "detail": "{\"status\":\"complete\"}"}
 {"id": 319, "timestamp": "2026-09-29 02:43:09", "event_type": "task_completed", "task_id": "DF-BOARDCTL-20", "actor": "foreman", "detail": "{\"status\":\"complete\"}"}
+{"id": 320, "event_type": "tick_reconciliation", "task_id": "DF-BOARDCTL-22", "actor": "foreman", "timestamp": "2026-09-29T17:22:12Z", "tick_number": null, "detail": "{\"tick\":\"boardctl-2026-09-29-17-20-17\",\"rows_closed\":[\"DF-BOARDCTL-21\",\"DF-BOARDCTL-22\"],\"wave_manifest\":\"boardctl-2026-09-29-10-33-05 finished_at set\",\"proof\":\"3 merge-base ancestor checks + main==origin/main rev-list 0\"}"}
