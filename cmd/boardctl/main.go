@@ -823,7 +823,10 @@ func cmdEvent(dir string, args []string) error {
 	tick := fs.String("tick", "", "tick_number")
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl event --type audit [flags] [-C dir]\n") }
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "boardctl event --type task_created|task_dispatched|task_completed|audit|...\n")
+		fmt.Fprintf(fs.Output(), "          [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...'] [--tick N] [flags] [-C dir]\n")
+	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
