@@ -1150,6 +1150,26 @@ type EventSpec struct {
 	Detail     []byte // raw JSON payload from --detail @file (nil if unused)
 	DetailText *string
 	Tick       *int64
+	// NoTickWrite (REVIEW-BOARDCTL-008) suppresses the BT-014 header
+	// ticks_total bump for this event: board.jsonl (or tasks.jsonl on
+	// topology B) keeps its bytes even when the tick would have raised the
+	// CLI: `event --tick N --no-tick-write`.
+	NoTickWrite bool
+	// Report, when non-nil, receives one TickWriteNotice per ACTUAL header
+	// ticks_total rewrite performed on this event's behalf (a no-op bump
+	// reports nothing) — the CLI surfaces it as the stderr notice that
+	// makes the board.jsonl rewrite observable (REVIEW-BOARDCTL-008).
+	Report func(TickWriteNotice)
+}
+
+// TickWriteNotice describes one header ticks_total rewrite the event
+// append path performed: which file changed and what the counter read
+// before and after. Emitted only for real rewrites — a no-op bump (the
+// header already at or above the tick) stays silent.
+type TickWriteNotice struct {
+	Path string // header file that was rewritten (board.jsonl or tasks.jsonl)
+	Old  int64  // ticks_total before the rewrite
+	New  int64  // ticks_total after the rewrite
 }
 
 // AppendEvent appends one event row: id = MAX(existing numeric id)+1,
@@ -1159,10 +1179,17 @@ type EventSpec struct {
 // events.jsonl has no header in ANY topology, so this works unchanged on
 // topology-B boards (BT-010).
 //
-// BT-014: when the event carries a tick number it IS a completed tick, so
-// the header ticks_total is auto-bumped to max(current, tick) — otherwise
+// BT-014: a tick-bearing event is a completed tick, so the header
+// ticks_total is auto-bumped to max(current, tick) — otherwise
 // the counter goes stale and the very next `doctor` run fails the drift
 // check. Tick-less events (plain audit rows) never touch the header.
+//
+// REVIEW-BOARDCTL-008: the bump REWRITES the header file as a side
+// effect of appending to events.jsonl, which used to happen silently.
+// appendEventLocked now reports each actual rewrite (file path +
+// old->new counter) to the spec's Report func so the CLI can announce
+// it on stderr; the caller-supplied NoTickWrite flag skips the bump
+// entirely for callers that accept a stale counter.
 func (b *Board) AppendEvent(spec EventSpec) (int64, error) {
 	// BT-050: the event id is derived from MAX(existing id) — the same
 	// read-derive-append shape as create's duplicate scan — so the whole
@@ -1284,8 +1311,11 @@ func (b *Board) appendEventLocked(spec EventSpec) (int64, error) {
 	// BT-014: a tick-bearing event is a completed tick — keep the header
 	// counter from going stale (doctor's drift check compares ticks_total
 	// against the max event tick_number). Plain audit events do not bump.
-	if spec.Tick != nil {
-		if err := b.bumpHeaderTicksTotal(*spec.Tick); err != nil {
+	// REVIEW-BOARDCTL-008: --no-tick-write skips the bump entirely (the
+	// operator accepts a stale counter for this event); otherwise every
+	// ACTUAL rewrite is reported to spec.Report so the CLI can announce it.
+	if spec.Tick != nil && !spec.NoTickWrite {
+		if err := b.bumpHeaderTicksTotal(*spec.Tick, spec.Report); err != nil {
 			return nextID, fmt.Errorf("event row appended but header ticks_total bump failed: %w", err)
 		}
 	}
@@ -1314,7 +1344,12 @@ func embedDetail(content []byte, s Style) []byte {
 // a no-op — `event --tick` must still append to such a board (the event row
 // is the record), never fail because a header bump was attempted in a file
 // full of task rows.
-func (b *Board) bumpHeaderTicksTotal(n int64) error {
+//
+// REVIEW-BOARDCTL-008: when report is non-nil it is called exactly once
+// per ACTUAL rewrite, carrying the header file's path and the old->new
+// ticks_total — a no-op bump never calls it, so the CLI's stderr notice
+// fires only when board.jsonl really changed.
+func (b *Board) bumpHeaderTicksTotal(n int64, report func(TickWriteNotice)) error {
 	if !b.HasHeader() {
 		return nil
 	}
@@ -1325,8 +1360,15 @@ func (b *Board) bumpHeaderTicksTotal(n int64) error {
 	if cur, ok := hdr.Int("ticks_total"); ok && cur >= n {
 		return nil
 	}
+	old := int64(0)
+	if cur, ok := hdr.Int("ticks_total"); ok {
+		old = cur
+	}
 	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &n}); err != nil {
 		return err
+	}
+	if report != nil {
+		report(TickWriteNotice{Path: b.HeaderPath(), Old: old, New: n})
 	}
 	return nil
 }

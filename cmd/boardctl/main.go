@@ -60,7 +60,7 @@ commands:
           [--evidence-run-id RUN] [--normalize] [--force]
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
-          [--tick N]
+          [--tick N] [--no-tick-write]
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
   validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep]
   sweep-status [--apply] [--json] [--skip-bad-lines]
@@ -821,11 +821,19 @@ func cmdEvent(dir string, args []string) error {
 	detailFile := fs.String("detail", "", "detail JSON payload: @/path/file.json")
 	detailText := fs.String("detail-text", "", "detail plain text")
 	tick := fs.String("tick", "", "tick_number")
+	noTickWrite := fs.Bool("no-tick-write", false, "with --tick: skip the header ticks_total rewrite (board keeps its bytes; counter may go stale)")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "boardctl event --type task_created|task_dispatched|task_completed|audit|...\n")
 		fmt.Fprintf(fs.Output(), "          [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...'] [--tick N] [flags] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "\n")
+		fmt.Fprintf(fs.Output(), "          --tick N also rewrites the board header's ticks_total counter\n")
+		fmt.Fprintf(fs.Output(), "          (board.jsonl, or tasks.jsonl on legacy boards) to max(old, N);\n")
+		fmt.Fprintf(fs.Output(), "          each actual rewrite prints a notice to stderr naming the file\n")
+		fmt.Fprintf(fs.Output(), "          and the old -> new value. Pass --no-tick-write to append the\n")
+		fmt.Fprintf(fs.Output(), "          event without touching the header (the counter may then go\n")
+		fmt.Fprintf(fs.Output(), "          stale and fail the next `doctor` drift check).\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -862,6 +870,12 @@ func cmdEvent(dir string, args []string) error {
 		return err
 	}
 	spec := board.EventSpec{Type: *etype, TaskID: *taskID, Actor: *actor}
+	// REVIEW-BOARDCTL-008: every ACTUAL header rewrite the append performs
+	// is announced on stderr — the file named and the counter's old -> new
+	// value — so `event --tick` is never a silent board.jsonl write.
+	spec.Report = func(n board.TickWriteNotice) {
+		fmt.Fprintf(os.Stderr, "boardctl: notice: rewriting %s ticks_total %d -> %d\n", n.Path, n.Old, n.New)
+	}
 	if *detailFile != "" {
 		p := *detailFile
 		if strings.HasPrefix(p, "@") {
@@ -885,6 +899,7 @@ func cmdEvent(dir string, args []string) error {
 			return err
 		}
 		spec.Tick = &n
+		spec.NoTickWrite = *noTickWrite
 	}
 	id, err := b.AppendEvent(spec)
 	if err != nil {
