@@ -186,6 +186,12 @@ func heredocScript(report string, code int) string {
 // TestCheckWithFakeBinary proves the whole chain, not just the mapping: the
 // binary is located through $GOVULNCHECK, its output is consumed, and the
 // verdict reaches the caller as an actionable error (or as nil).
+//
+// The last three subtests pin the DF-BOARDCTL-20 contract on top: a binary
+// whose -version arm reports a scanner version other than PinnedToolVersion
+// is refused before scanning, one reporting the pin proceeds, and one whose
+// -version carries no parsable Scanner line leaves the gate's behavior
+// unchanged (the exit code decides alone).
 func TestCheckWithFakeBinary(t *testing.T) {
 	exit3 := readFixture(t, "report-exit3.txt")
 
@@ -221,6 +227,54 @@ func TestCheckWithFakeBinary(t *testing.T) {
 			}
 		}
 	})
+
+	// DF-BOARDCTL-20: the version dimension. The binary reports its own
+	// scanner version via -version; when it disagrees with PinnedToolVersion
+	// the gate FAILS before scanning — a green verdict produced by a
+	// different scanner rule set is not this repo's gate.
+	t.Run("wrong -version fails naming the mismatch", func(t *testing.T) {
+		t.Setenv(BinaryEnv, fakeGovulncheck(t, heredocScriptWithVersion("No vulnerabilities found.\n", ExitClean, "v1.5.2")))
+		err := Check(t.TempDir())
+		if err == nil {
+			t.Fatal("Check() = nil for a binary reporting a scanner version other than the pin, want an error")
+		}
+		for _, substr := range []string{"version mismatch", PinnedToolVersion, "v1.5.2", InstallHint} {
+			if !strings.Contains(err.Error(), substr) {
+				t.Errorf("error %q does not mention %q", err, substr)
+			}
+		}
+	})
+
+	t.Run("correct -version proceeds to the scan", func(t *testing.T) {
+		t.Setenv(BinaryEnv, fakeGovulncheck(t, heredocScriptWithVersion("No vulnerabilities found.\n", ExitClean, PinnedToolVersion)))
+		if err := Check(t.TempDir()); err != nil {
+			t.Fatalf("Check() = %v for a binary reporting the pinned version, want nil", err)
+		}
+	})
+
+	t.Run("missing -version skips the check and the scan decides", func(t *testing.T) {
+		// The plain heredoc fake prints no Scanner line for -version, so the
+		// probe reports nothing: the check must be skipped and the gate must
+		// decide on the exit code alone (the pre-DF-BOARDCTL-20 behavior).
+		t.Setenv(BinaryEnv, fakeGovulncheck(t, heredocScript("No vulnerabilities found.\n", ExitClean)))
+		if err := Check(t.TempDir()); err != nil {
+			t.Fatalf("Check() = %v when -version reports no scanner version, want the gate to proceed unchanged", err)
+		}
+	})
+}
+
+// versionArm emits the shell line that answers a `-version` invocation with
+// the given scanner version (the real tool's banner line, then exit 0).
+func versionArm(version string) string {
+	return "case \" $* \" in *' -version '*) echo \"Scanner: govulncheck@" + version + "\"; exit 0 ;; esac\n"
+}
+
+// heredocScriptWithVersion is heredocScript for a binary whose -version arm
+// reports the given scanner version. The case must PRECEDE the report/exit
+// section: the unconditional exit would otherwise end the script before the
+// version arm is ever reached.
+func heredocScriptWithVersion(report string, code int, version string) string {
+	return versionArm(version) + heredocScript(report, code)
 }
 
 // TestLocateBinaryOverrideMustResolve: a bad override is an error, never a
@@ -324,7 +378,93 @@ func TestVulncheck(t *testing.T) {
 	if err != nil {
 		t.Fatalf("locate repo root: %v", err)
 	}
+	// DF-BOARDCTL-20: the local binary must at least carry the pinned
+	// scanner's minor line before its verdict counts. A binary that
+	// self-reports a different minor line refuses the gate here, exactly as
+	// the offline fake-binary arm does (patch drift within the line is
+	// tolerated: see sameMinorLine).
+	if bin, err := LocateBinary(); err == nil {
+		if mm, ok := CheckVersion(bin).(*MismatchErr); ok && !sameMinorLine(mm.Actual, PinnedToolVersion) {
+			t.Fatalf("dependency-vulnerability gate refused: %v", mm)
+		}
+	}
 	if err := Check(root); err != nil {
 		t.Fatalf("dependency-vulnerability gate failed:\n%v", err)
+	}
+}
+
+// TestCheckVersionOffline covers the probe in isolation: a matching pin
+// passes, any other self-reported version is a *MismatchErr naming expected
+// and actual, a binary with no parsable Scanner line is "absent" (nil — the
+// caller's fallback behavior is unchanged), and a non-zero -version exit is
+// data, not an error, when the banner is still printed.
+func TestCheckVersionOffline(t *testing.T) {
+	t.Run("pinned version reports nil", func(t *testing.T) {
+		path := fakeGovulncheck(t, versionArm(PinnedToolVersion))
+		if err := CheckVersion(path); err != nil {
+			t.Fatalf("CheckVersion() = %v for the pinned version, want nil", err)
+		}
+	})
+
+	t.Run("wrong version is a mismatch naming expected and actual", func(t *testing.T) {
+		path := fakeGovulncheck(t, versionArm("v1.5.2"))
+		err := CheckVersion(path)
+		mm, ok := err.(*MismatchErr)
+		if !ok {
+			t.Fatalf("CheckVersion() = %T(%v), want *MismatchErr", err, err)
+		}
+		if mm.Expected != PinnedToolVersion || mm.Actual != "v1.5.2" {
+			t.Errorf("MismatchErr = %+v, want Expected=%s Actual=v1.5.2", mm, PinnedToolVersion)
+		}
+		for _, substr := range []string{"version mismatch", PinnedToolVersion, "v1.5.2", InstallHint} {
+			if !strings.Contains(mm.Error(), substr) {
+				t.Errorf("MismatchErr.Error() %q does not mention %q", mm.Error(), substr)
+			}
+		}
+	})
+
+	t.Run("non-zero -version exit with a banner is still probed", func(t *testing.T) {
+		// A build that prints the banner and then exits non-zero: the banner
+		// is data, so a wrong version is still caught.
+		path := fakeGovulncheck(t, versionArm("v1.5.2")+"exit 7\n")
+		err := CheckVersion(path)
+		mm, ok := err.(*MismatchErr)
+		if !ok || mm.Actual != "v1.5.2" {
+			t.Fatalf("CheckVersion() = %v, want a v1.5.2 mismatch from the banner", err)
+		}
+	})
+
+	t.Run("no scanner line is treated as absent", func(t *testing.T) {
+		path := fakeGovulncheck(t, "exit 0\n")
+		if err := CheckVersion(path); err != nil {
+			t.Fatalf("CheckVersion() = %v for output with no Scanner line, want nil (absent)", err)
+		}
+	})
+
+	t.Run("start failure surfaces as a plain error", func(t *testing.T) {
+		if err := CheckVersion(filepath.Join(t.TempDir(), "does-not-exist")); err == nil {
+			t.Fatal("CheckVersion() = nil for a binary that cannot start, want an error")
+		}
+	})
+}
+
+// TestSameMinorLine pins the leniency boundary: patch drift within the
+// pinned minor line is tolerated, a different minor or major is not.
+func TestSameMinorLine(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want bool
+	}{
+		{"v1.7.0", "v1.7.0", true},
+		{"v1.7.0", "v1.7.3", true},  // patch drift within the line
+		{"v1.7.0", "v1.8.0", false}, // minor moves the rule set
+		{"v1.7.0", "v2.7.0", false}, // major moves the rule set
+		{"v1.7.0", "not-semver", false},
+		{"not-semver", "not-semver", true}, // only equal to itself
+	}
+	for _, tc := range tests {
+		if got := sameMinorLine(tc.a, tc.b); got != tc.want {
+			t.Errorf("sameMinorLine(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+		}
 	}
 }
