@@ -228,7 +228,7 @@ func TestBT054HookBodyExitContract(t *testing.T) {
 // TestBT054GenerateHookContentNoShebang: an existing hook without a shebang
 // still gets the block, and the content is preserved.
 func TestBT054GenerateHookContentNoShebang(t *testing.T) {
-	out := generateHookContent("echo legacy\n", "/bin/boardctl", "/repo", 30)
+	out := generateHookContent("echo legacy\n", "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
 	if !strings.Contains(out, "echo legacy") {
 		t.Fatalf("legacy content lost:\n%s", out)
 	}
@@ -243,7 +243,7 @@ func TestBT054GenerateHookContentNoShebang(t *testing.T) {
 // that runs board-lint AFTER the body combines both statuses.
 func TestBT054GenerateHookContentChainedShape(t *testing.T) {
 	existing := "#!/bin/sh\necho legacy\ngitreins guard\nexit 0\n"
-	out := generateHookContent(existing, "/bin/boardctl", "/repo", 30)
+	out := generateHookContent(existing, "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
 	if !strings.Contains(out, "echo legacy") || !strings.Contains(out, "gitreins guard") {
 		t.Fatalf("existing logic lost:\n%s", out)
 	}
@@ -284,8 +284,8 @@ func TestBT054GenerateHookContentChainedShape(t *testing.T) {
 // the wrapped body, and leaves exactly one block.
 func TestBT054GenerateHookContentChainedIdempotent(t *testing.T) {
 	existing := "#!/bin/sh\necho legacy\nexit 0\n"
-	first := generateHookContent(existing, "/bin/boardctl", "/repo", 30)
-	second := generateHookContent(first, "/bin/boardctl", "/repo", 30)
+	first := generateHookContent(existing, "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
+	second := generateHookContent(first, "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
 	if n := strings.Count(second, boardLintMarkerBegin); n != 1 {
 		t.Fatalf("chained re-install produced %d blocks:\n%s", n, second)
 	}
@@ -300,7 +300,7 @@ func TestBT054GenerateHookContentChainedIdempotent(t *testing.T) {
 // TestBT054GenerateHookContentNoMarkerKeepsNonShebang: a shebang-less legacy
 // hook still gets the chained rewrite with a shebang supplied.
 func TestBT054GenerateHookContentNoShebangChained(t *testing.T) {
-	out := generateHookContent("echo legacy\nexit 0\n", "/bin/boardctl", "/repo", 30)
+	out := generateHookContent("echo legacy\nexit 0\n", "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
 	if !strings.HasPrefix(out, "#!/bin/sh\n") {
 		t.Fatalf("chained rewrite did not supply a shebang:\n%s", out)
 	}

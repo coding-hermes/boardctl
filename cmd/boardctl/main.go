@@ -84,13 +84,18 @@ commands:
   import  <export.json> [--dry-run] [--renumber]
   serve   [-C dir] [--addr 127.0.0.1:8787]
   install [-C repo] [--hook-path P] [--timeout S] [--dry-run]
-          [--fleet PAT] [--fleet-root DIR]
+          [--fleet PAT] [--fleet-root DIR] [--lint-mode enforce|warn]
           install the board-lint pre-commit hook; --fleet rolls out the same
           hook across every git repo under --fleet-root (default ~) matching
           the comma-separated glob-or-path list PAT, one outcome line per
           repo (installed / already present / skipped-no-board /
           skipped-no-binary / skipped / FAILED + why); a worktree checkout
-          (.git is a file) is skipped — its hook lives in the main checkout
+          (.git is a file) is skipped — its hook lives in the main checkout;
+          --lint-mode sets the reject-arm behavior on a boardctl validate
+          failure: enforce (default) blocks the commit, warn prints the
+          same evidence behind a WARN-ONLY banner and allows it (a
+          re-install flips the mode in place; --fleet carries the mode
+          into every hook it writes)
 
 --skip-bad-lines (list/show/stats/validate/render): read the board tolerantly,
 keeping every line that parses; unparseable lines are reported on stderr as a

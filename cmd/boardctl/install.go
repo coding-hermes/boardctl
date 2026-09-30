@@ -32,6 +32,18 @@
 // On exit 124 the hook SKIPS (prints one stderr note, exits 0) so a slow or
 // wedged boardctl can never wedge every commit in the repo. The same skip
 // applies when the recorded binary is missing and no `boardctl` is on PATH.
+//
+// Lint mode (BT-069): --lint-mode enforce (the default) keeps the exact
+// BT-054 behavior — a validate failure BLOCKS the commit. --lint-mode warn
+// records boardctl_lint_mode="warn" in the hook body; the reject arm prints
+// the same validate evidence behind a WARN-ONLY banner and ALLOWS the
+// commit — the survivable mode for boards carrying known, not-yet-fixed
+// lint debt. The mode is carried through every shape the installer writes
+// (standalone and chained) and the marker-based in-place replacement flips
+// it in place (enforce->warn, warn->enforce) without duplicating the block.
+// In --fleet mode the mode is carried into every hook the rollout writes,
+// so a warn re-roll lands fleet-wide with one invocation — the remediating
+// step for boards whose commits the freshly armed enforce hook rejects.
 package main
 
 import (
@@ -52,10 +64,20 @@ const (
 	boardLintChainStatus   = "boardctl_lint_status"
 	boardLintChainMain     = "boardctl_lint_main"
 	boardLintChainExisting = "boardctl_lint_existing_status"
+	// BT-069 lint modes: enforce (the default) rejects the commit on a
+	// validate failure, warn prints the same evidence behind a WARN-ONLY
+	// banner and allows it. boardLintModeVar names the shell variable that
+	// records the mode inside the hook body; boardLintWarnBanner is the warn
+	// arm's stderr prefix (the enforce arm keeps its historical wording).
+	boardLintModeEnforce = "enforce"
+	boardLintModeWarn    = "warn"
+	boardLintModeVar     = "boardctl_lint_mode"
+	boardLintWarnBanner  = "board-lint: WARN-ONLY — commit allowed (boardctl validate failed)"
 )
 
 // cmdInstall implements `boardctl install [-C repo] [--hook-path P]
-// [--timeout S] [--dry-run] [--fleet PAT] [--fleet-root DIR]`.
+// [--timeout S] [--dry-run] [--fleet PAT] [--fleet-root DIR]
+// [--lint-mode enforce|warn]`.
 //
 // BT-053: --fleet switches into the rollout mode (fleet.go): enumerate the
 // git repos under --fleet-root, classify each, install the same hook this
@@ -71,8 +93,8 @@ func cmdInstall(dir string, args []string) error {
 	// else `--fleet PAT --fleet-root DIR` misparses (the first flag swallows
 	// the next flag name as its value when both precede their positional
 	// usage). --hook-path/--timeout had the same latent flaw before the
-	// fleet flags joined them; all four are listed now.
-	args = reorderArgs(args, valueFlags("C", "hook-path", "timeout", "fleet", "fleet-root"))
+	// fleet flags joined them; --lint-mode (BT-069) joins the same set.
+	args = reorderArgs(args, valueFlags("C", "hook-path", "timeout", "fleet", "fleet-root", "lint-mode"))
 	var cdir string
 	addCFlag(fs, &cdir)
 	hookPath := fs.String("hook-path", "", "path of the hook file to write (default <repo-root>/.git/hooks/pre-commit)")
@@ -80,14 +102,22 @@ func cmdInstall(dir string, args []string) error {
 	dryRun := fs.Bool("dry-run", false, "print the hook file content that would be written and write nothing")
 	fleet := fs.String("fleet", "", "roll out across the fleet: comma-separated glob-or-path list selecting repos (e.g. '/home/me/*' or 'axiom,crier'); prints one outcome line per repo")
 	fleetRoot := fs.String("fleet-root", "", "directory the --fleet walk enumerates under (default the home directory)")
+	// BT-069: enforce (default) is the exact BT-054 behavior; warn lets a
+	// validate-failing board commit with the evidence on stderr.
+	lintMode := fs.String("lint-mode", boardLintModeEnforce, "reject arm behavior on a boardctl validate failure: enforce (default) blocks the commit, warn prints the evidence behind a WARN-ONLY banner and allows it")
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl install [-C repo] [--hook-path P] [--timeout S] [--dry-run] [--fleet PAT] [--fleet-root DIR]\n")
+		fmt.Fprintf(fs.Output(), "boardctl install [-C repo] [--hook-path P] [--timeout S] [--dry-run] [--fleet PAT] [--fleet-root DIR] [--lint-mode enforce|warn]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
 	if *timeout < 1 {
 		return errUsage
+	}
+	switch *lintMode {
+	case boardLintModeEnforce, boardLintModeWarn:
+	default:
+		return fmt.Errorf("boardctl install: unknown --lint-mode mode %q (recognized: enforce, warn): %w", *lintMode, errUsage)
 	}
 	if *fleet != "" {
 		if dir != "" || cdir != "" || *hookPath != "" {
@@ -102,11 +132,12 @@ func cmdInstall(dir string, args []string) error {
 			return fmt.Errorf("boardctl install: cannot resolve the boardctl binary path: %w", err)
 		}
 		return fleetInstall(fleetInstallRequest{
-			pattern: *fleet,
-			root:    *fleetRoot,
-			binPath: binPath,
-			timeout: *timeout,
-			dryRun:  *dryRun,
+			pattern:  *fleet,
+			root:     *fleetRoot,
+			binPath:  binPath,
+			timeout:  *timeout,
+			dryRun:   *dryRun,
+			lintMode: *lintMode,
 		}, os.Stdout, os.Stderr)
 	}
 	if dir == "" {
@@ -141,7 +172,7 @@ func cmdInstall(dir string, args []string) error {
 		return fmt.Errorf("boardctl install: cannot read existing hook %s: %w", target, readErr)
 	}
 
-	content := generateHookContent(string(existingContent), binPath, root, *timeout)
+	content := generateHookContent(string(existingContent), binPath, root, *timeout, *lintMode)
 
 	if *dryRun {
 		fmt.Print(content)
@@ -187,13 +218,15 @@ func repoRootFor(target string) (string, error) {
 
 // boardLintBlock renders the marked shell block a STANDALONE hook carries
 // (fresh install): the lint logic runs at the marker position and only the
-// reject arm exits — every skip arm falls through.
-func boardLintBlock(binPath, root string, timeout int) string {
+// reject arm exits (enforce) or falls through behind the WARN-ONLY banner
+// (warn) — every skip arm falls through.
+func boardLintBlock(binPath, root string, timeout int, lintMode string) string {
 	var b strings.Builder
 	b.WriteString(boardLintMarkerBegin + "\n")
 	fmt.Fprintf(&b, "boardctl_bin=%q\n", binPath)
 	fmt.Fprintf(&b, "board_root=%q\n", root)
 	fmt.Fprintf(&b, "boardctl_timeout=%d\n", timeout)
+	fmt.Fprintf(&b, "%s=%q\n", boardLintModeVar, lintMode)
 	b.WriteString(boardLintHookBody)
 	b.WriteString(boardLintMarkerEnd + "\n")
 	return b.String()
@@ -204,13 +237,15 @@ func boardLintBlock(binPath, root string, timeout int) string {
 // happens in the epilogue (boardLintChainWrap) AFTER the existing hook body,
 // so board-lint runs after it. Derived from boardLintHookBody with the reject
 // arm's `exit 1` -> `return 1` (that arm is the only exit in the body) so the
-// lint logic lives in exactly one place.
-func boardLintChainBlock(binPath, root string, timeout int) string {
-	const rejectExit = "\t\t\t\texit 1\n"
+// lint logic lives in exactly one place. In warn mode the reject arm holds no
+// exit at all — the function falls through to 0 on its own.
+func boardLintChainBlock(binPath, root string, timeout int, lintMode string) string {
+	const rejectExit = "				exit 1\n"
 	if !strings.Contains(boardLintHookBody, rejectExit) {
-		// Structural invariant of the shared lint body: the reject arm is
-		// the single `exit 1`. Fail the install loudly rather than generate
-		// a chained block whose reject arm still exits the whole hook.
+		// Structural invariant of the shared lint body: the enforce-mode
+		// reject arm is the single `exit 1`. Fail the install loudly rather
+		// than generate a chained block whose reject arm still exits the
+		// whole hook.
 		panic("boardctl install: boardLintHookBody lost its reject-arm `exit 1`")
 	}
 	var b strings.Builder
@@ -218,9 +253,21 @@ func boardLintChainBlock(binPath, root string, timeout int) string {
 	fmt.Fprintf(&b, "boardctl_bin=%q\n", binPath)
 	fmt.Fprintf(&b, "board_root=%q\n", root)
 	fmt.Fprintf(&b, "boardctl_timeout=%d\n", timeout)
+	fmt.Fprintf(&b, "%s=%q\n", boardLintModeVar, lintMode)
 	fmt.Fprintf(&b, "%s=0\n", boardLintChainStatus)
 	fmt.Fprintf(&b, "%s() {\n", boardLintChainMain)
-	b.WriteString(strings.Replace(boardLintHookBody, rejectExit, "\t\t\t\treturn 1\n", 1))
+	if lintMode == boardLintModeWarn {
+		// Warn mode: the shared body's enforce-only `exit 1` is REMOVED in
+		// the chained shape (the warn arm falls through to 0 on its own),
+		// and the remaining `exit 0` (validate OK) becomes `return 0` so the
+		// success path cannot exit the whole hook either. In enforce mode
+		// the `exit 0` at top level is the hook's success exit and must
+		// stay — only the warn derivation rewrites it.
+		warnBody := strings.Replace(boardLintHookBody, rejectExit, "", 1)
+		b.WriteString(strings.Replace(warnBody, "				:\n				;;\n			124)", "				return 0\n				;;\n			124)", 1))
+	} else {
+		b.WriteString(strings.Replace(boardLintHookBody, rejectExit, "				return 1\n", 1))
+	}
 	b.WriteString("}\n")
 	b.WriteString(boardLintMarkerEnd + "\n")
 	return b.String()
@@ -257,16 +304,25 @@ func boardLintChainWrap(body string) string {
 
 // boardLintHookBody is the executable lint logic shared by the standalone and
 // the chained block shape. In the standalone shape it runs at top level (the
-// reject arm's `exit 1` blocks the commit; every skip arm falls through). In
-// the chained shape the same text is wrapped in boardctl_lint_main() with the
-// reject arm rewritten to `return 1` (see boardLintChainBlock) — the call
-// happens in the epilogue after the existing hook body.
+// enforce-mode reject arm's `exit 1` blocks the commit; every skip arm falls
+// through). In the chained shape the same text is wrapped in
+// boardctl_lint_main() with the reject arm rewritten to `return 1` (see
+// boardLintChainBlock) — the call happens in the epilogue after the existing
+// hook body.
+//
+// Lint mode (BT-069): the body branches on $boardctl_lint_mode, written by
+// both block shapes. enforce keeps the historical reject arm (`exit 1` /
+// chained `return 1`, commit BLOCKED). warn prints the SAME validate
+// evidence behind the WARN-ONLY banner and falls through (chained: `return
+// 0`) — the commit is ALLOWED; an operator flips back with a plain
+// `boardctl install` (enforce) re-install.
 //
 // Exit contract: validate OK -> 0; validate failure (including a dangling
 // depends_on promoted by --fail-on dangling-dep) -> 1 with its output on
-// stderr (commit BLOCKED); no board, missing binary, missing timeout(1), or
-// timeout 124 -> 0 with a one-line stderr note (SKIP).
-const boardLintHookBody = `# board-lint: reject commits that break the JSONL board
+// stderr when enforce (commit BLOCKED), 0 with the same evidence behind the
+// WARN-ONLY banner when warn; no board, missing binary, missing timeout(1),
+// or timeout 124 -> 0 with a one-line stderr note (SKIP).
+const boardLintHookBody = `# board-lint: guard commits that break the JSONL board
 # (duplicate ids; dangling depends_on via --fail-on dangling-dep).
 # Installed by boardctl install.
 # A slow/missing/wedged boardctl SKIPS (no block) — it must never wedge commits.
@@ -290,9 +346,14 @@ if [ -d "$board_root/.coding-hermes/board" ]; then
 				echo "board-lint: skipped (no board found under $board_root)" >&2
 				;;
 			*)
-				echo "board-lint: commit rejected (boardctl validate failed)" >&2
-				echo "$lint_out" >&2
-				exit 1
+				if [ "$boardctl_lint_mode" = "warn" ]; then
+					echo "board-lint: WARN-ONLY — commit allowed (boardctl validate failed)" >&2
+					echo "$lint_out" >&2
+				else
+					echo "board-lint: commit rejected (boardctl validate failed)" >&2
+					echo "$lint_out" >&2
+					exit 1
+				fi
 				;;
 		esac
 	elif [ -z "${lint_bin:-}" ]; then
@@ -315,14 +376,19 @@ fi
 //     install is idempotent. The replacement block matches the hook's shape
 //     (chained hooks get the chained block, standalone hooks the standalone
 //     block) so a re-install never downgrades the chaining semantics.
-func generateHookContent(existing, binPath, root string, timeout int) string {
+//
+// lintMode (BT-069) is carried into every generated block, so a re-install
+// with the other mode flips the installed hook in place without changing its
+// shape: enforce (the default) keeps the BT-054 reject arm, warn swaps it for
+// the WARN-ONLY allow arm.
+func generateHookContent(existing, binPath, root string, timeout int, lintMode string) string {
 	trimmed := strings.TrimRight(existing, "\n")
 	if strings.Contains(existing, boardLintMarkerBegin) {
 		begin := strings.Index(existing, boardLintMarkerBegin)
 		end := strings.Index(existing[begin:], boardLintMarkerEnd)
-		block := boardLintBlock(binPath, root, timeout)
+		block := boardLintBlock(binPath, root, timeout, lintMode)
 		if strings.Contains(existing, boardLintChainExisting) {
-			block = boardLintChainBlock(binPath, root, timeout)
+			block = boardLintChainBlock(binPath, root, timeout, lintMode)
 		}
 		if end >= 0 {
 			end += begin + len(boardLintMarkerEnd)
@@ -346,7 +412,7 @@ func generateHookContent(existing, binPath, root string, timeout int) string {
 		return existing[:begin] + block
 	}
 	if trimmed == "" {
-		return "#!/bin/sh\n" + boardLintBlock(binPath, root, timeout)
+		return "#!/bin/sh\n" + boardLintBlock(binPath, root, timeout, lintMode)
 	}
 	// Chained rewrite: split off the shebang (line 1) if present, supply one
 	// when the hook lacks it, then emit chain block + wrapped body + epilogue.
@@ -359,5 +425,5 @@ func generateHookContent(existing, binPath, root string, timeout int) string {
 			head, body = body+"\n", ""
 		}
 	}
-	return head + boardLintChainBlock(binPath, root, timeout) + boardLintChainWrap(body)
+	return head + boardLintChainBlock(binPath, root, timeout, lintMode) + boardLintChainWrap(body)
 }

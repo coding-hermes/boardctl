@@ -87,11 +87,12 @@ var fleetSkipDirNames = map[string]bool{
 
 // fleetInstallRequest carries one --fleet invocation's resolved inputs.
 type fleetInstallRequest struct {
-	pattern string // comma-separated glob-or-path list (never empty)
-	root    string // enumeration root ("" = home directory)
-	binPath string // the running boardctl binary, recorded into hooks
-	timeout int    // hook timeout seconds (already validated >= 1)
-	dryRun  bool   // report outcomes, write nothing
+	pattern  string // comma-separated glob-or-path list (never empty)
+	root     string // enumeration root ("" = home directory)
+	binPath  string // the running boardctl binary, recorded into hooks
+	timeout  int    // hook timeout seconds (already validated >= 1)
+	dryRun   bool   // report outcomes, write nothing
+	lintMode string // BT-069 lint mode carried into every hook (validated by the caller)
 }
 
 // fleetInstall runs the rollout: enumerate, select, classify+install one
@@ -298,7 +299,11 @@ func fleetInstallOne(repo string, binUsable bool, req fleetInstallRequest) (stri
 		return fleetOutcomeFailed, fmt.Sprintf("cannot read existing hook: %v", readErr)
 	}
 
-	content := generateHookContent(string(existing), req.binPath, repo, req.timeout)
+	// BT-069: the rollout carries the requested --lint-mode into every hook
+	// it writes — the fleet contract is to install the SAME hook the
+	// single-repo command writes, and the mode composes cleanly (unlike
+	// -C/--hook-path, which name one repo and stay refused in fleet mode).
+	content := generateHookContent(string(existing), req.binPath, repo, req.timeout, req.lintMode)
 	if string(existing) == content {
 		return fleetOutcomePresent, ""
 	}

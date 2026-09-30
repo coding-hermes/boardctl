@@ -51,11 +51,12 @@ func fleetReqFor(root, pattern string, dryRun bool) fleetInstallRequest {
 		bin = os.Args[0]
 	}
 	return fleetInstallRequest{
-		pattern: pattern,
-		root:    root,
-		binPath: bin,
-		timeout: boardLintDefaultTTL,
-		dryRun:  dryRun,
+		pattern:  pattern,
+		root:     root,
+		binPath:  bin,
+		timeout:  boardLintDefaultTTL,
+		dryRun:   dryRun,
+		lintMode: boardLintModeEnforce,
 	}
 }
 
@@ -87,7 +88,7 @@ func TestBT053FleetOutcomeClasses(t *testing.T) {
 	req := fleetReqFor(root, "*", false)
 	if err := os.WriteFile(
 		filepath.Join(presentRepo, ".git", "hooks", "pre-commit"),
-		[]byte(generateHookContent("", req.binPath, presentRepo, req.timeout)), 0o755,
+		[]byte(generateHookContent("", req.binPath, presentRepo, req.timeout, boardLintModeEnforce)), 0o755,
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -520,9 +521,9 @@ func TestBT053FleetRunWiring(t *testing.T) {
 // after the managed block). Standalone re-install is pinned too.
 func TestBT053GenerateHookContentChainedByteIdempotent(t *testing.T) {
 	existing := "#!/bin/sh\necho legacy\nexit 0\n"
-	first := generateHookContent(existing, "/bin/boardctl", "/repo", 30)
-	second := generateHookContent(first, "/bin/boardctl", "/repo", 30)
-	third := generateHookContent(second, "/bin/boardctl", "/repo", 30)
+	first := generateHookContent(existing, "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
+	second := generateHookContent(first, "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
+	third := generateHookContent(second, "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
 	if first != second || second != third {
 		t.Fatalf("chained re-install is not byte-idempotent (%d -> %d -> %d bytes):\nfirst:\n%s\nsecond:\n%s", len(first), len(second), len(third), first, second)
 	}
@@ -531,8 +532,8 @@ func TestBT053GenerateHookContentChainedByteIdempotent(t *testing.T) {
 		t.Fatalf("blank line reintroduced after the managed block:\n%s", first)
 	}
 	// Standalone shape: same contract.
-	sfresh := generateHookContent("", "/bin/boardctl", "/repo", 30)
-	ssecond := generateHookContent(sfresh, "/bin/boardctl", "/repo", 30)
+	sfresh := generateHookContent("", "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
+	ssecond := generateHookContent(sfresh, "/bin/boardctl", "/repo", 30, boardLintModeEnforce)
 	if sfresh != ssecond {
 		t.Fatalf("standalone re-install is not byte-idempotent (%d -> %d bytes):\n%s\n---\n%s", len(sfresh), len(ssecond), sfresh, ssecond)
 	}
