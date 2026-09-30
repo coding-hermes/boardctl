@@ -63,11 +63,20 @@ commands:
           [--tick N] [--no-tick-write]
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
   validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep]
-  sweep-status [--apply] [--json] [--skip-bad-lines]
+  sweep-status [--apply] [--decide] [--json] [--skip-bad-lines]
            report (and with --apply fix) off-vocabulary task statuses on ONE
            board: known read aliases are normalized to their canonical form;
            unknown statuses (duplicate, parked, ...) are NEVER guessed — they
-           are reported with the explicit decision needed
+           are reported with the explicit decision needed. --decide adds the
+           machine-checkable decisions: off-vocab guard/ci prose maps by rule
+           (first token PASS|OK->PASS, FAIL|ERROR->FAIL, GREEN->GREEN,
+           RED->RED; standalone SKIP or N/A -> SKIP; standalone SUCCESS ->
+           GREEN on ci / PASS on guard; PENDING, ambiguous PASS+FAIL prose
+           and anything unmatched stays explicit), and a status "duplicate"
+           WITH an earlier same-id twin closes as superseded-by-earliest
+           (--apply only; one audit event quotes the preserved text). A
+           "duplicate" with no earlier twin is refused. --decide alone never
+           writes; only --decide --apply does
   doctor
   version [--json]
   stats   [--json] [--all] [--skip-bad-lines]
@@ -1083,18 +1092,28 @@ func cmdValidate(dir string, args []string) error {
 // nothing. With --apply it canonicalizes the KNOWN-ALIAS rows through
 // NormalizeTask (the BT-025 machinery — no hand-rolled rewriting) and leaves
 // every unknown-status row untouched (refuse-to-guess is the house rule).
+// --decide adds the machine-checkable decisions (help text documents the
+// exact table); --decide --apply writes them; --decide alone still writes
+// nothing.
 // Exit stays 0 in both modes: the report IS the product, and an off-vocab
 // census is a finding, not a failure (validate owns exit semantics).
 func cmdSweepStatus(dir string, args []string) error {
 	fs := newFlagSet("sweep-status")
 	args = reorderArgs(args, valueFlags("C"))
 	apply := fs.Bool("apply", false, "canonicalize the known-alias rows (default: dry-run, nothing is written)")
+	decide := fs.Bool("decide", false, "also re-classify explicit rows by machine-checkable decision rules (report; with --apply write them)")
 	asJSON := fs.Bool("json", false, "emit the report as JSON")
 	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl sweep-status [--apply] [--json] [--skip-bad-lines] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "boardctl sweep-status [--apply] [--decide] [--json] [--skip-bad-lines] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "\n--decide re-classifies off-vocabulary rows by machine-checkable rules:\n")
+		fmt.Fprintf(fs.Output(), "  %s\n", board.ResultDecideRuleDoc)
+		fmt.Fprintf(fs.Output(), "  a status \"duplicate\" WITH an earlier same-id twin closes as superseded-by-earliest\n")
+		fmt.Fprintf(fs.Output(), "  (with --apply): status=complete, superseded_by set, one audit event quoting the preserved text;\n")
+		fmt.Fprintf(fs.Output(), "  a \"duplicate\" with NO earlier twin, PENDING results, and every unmatched value\n")
+		fmt.Fprintf(fs.Output(), "  stay explicit decisions. --decide alone never writes; only --decide --apply does.\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -1110,7 +1129,7 @@ func cmdSweepStatus(dir string, args []string) error {
 		return err
 	}
 	armSkipBad(b, skipBad)
-	rep, err := b.StatusSweep(*apply)
+	rep, err := b.StatusSweepDecide(*apply, *decide)
 	if err != nil {
 		return err
 	}

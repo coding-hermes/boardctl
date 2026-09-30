@@ -293,3 +293,136 @@ func idDupeEventDetail(e idDupeEvent) ([]byte, error) {
 	}
 	return bytes.TrimSpace(buf.Bytes()), nil
 }
+
+// CloseIDDupeLine closes the ONE task line line1 (1-based) exactly the way
+// DedupeByID closes a later duplicate: status=complete, worker_summary
+// "superseded-by-earliest: recycled task id — kept line K (id-dupe backfill
+// <date>)", superseded_by <the kept row's id>, completed_at now (updated_at
+// refreshed only when the row carries the key), then one `audit` event
+// quoting the closed line's original title and reasoning verbatim.
+//
+// REVIEW-BOARDCTL-001 --decide uses this as the sanctioned per-row write
+// for a status="duplicate" row whose earlier same-id twin exists. Refusals
+// (nothing written): the line number out of range, the line is a topology-B
+// header, the line parses to no task id, or the line is ALREADY the
+// earliest line of its id (there is no earlier twin to supersede — the
+// keep-side must never close itself). Unlike DedupeByID this deliberately
+// does NOT require the line's old status to resolve: the caller has
+// already decided the row is a recyclable duplicate; "duplicate" is the
+// exact state this close exists to repair.
+func (b *Board) CloseIDDupeLine(line1 int) error {
+	var closeErr error
+	lockErr := b.withWriteLock(b.tasksPath, func() error {
+		closeErr = b.closeIDDupeLineLocked(line1)
+		return nil // err rides closeErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return lockErr
+	}
+	return closeErr
+}
+
+// closeIDDupeLineLocked is CloseIDDupeLine's body, running under the write guard.
+func (b *Board) closeIDDupeLineLocked(line1 int) error {
+	lines, err := ReadJSONLLines(b.tasksPath)
+	if err != nil {
+		return err
+	}
+	if line1 < 1 || line1 > len(lines) {
+		return fmt.Errorf("close id-dupe line: line %d out of range (file has %d lines)", line1, len(lines))
+	}
+	idx := line1 - 1
+	if b.skipTaskLine(lines, idx) {
+		return fmt.Errorf("close id-dupe line: line %d is the board header, not a task row", line1)
+	}
+	closed, err := ParseRow(bytes.TrimSpace(lines[idx]))
+	if err != nil {
+		return fmt.Errorf("close id-dupe line: line %d does not parse: %w", line1, err)
+	}
+	id := closed.String("id")
+	if id == "" {
+		return fmt.Errorf("close id-dupe line: line %d carries no task id", line1)
+	}
+	// Capture the event's verbatim quotes BEFORE the close mutates the row —
+	// the whole point of the event is the line's ORIGINAL text (the
+	// pre-close status included), same as DedupeByID's ClosedStatusWas.
+	statusWas := closed.String("status")
+	title := closed.String("title")
+	reasoning := RowFindingReasoning(closed)
+	// Locate the EARLIEST line carrying the same id; the caller's line must
+	// be a LATER duplicate of it — closing the keep-side would strand the id.
+	keptIdx := -1
+	if err := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+		if b.skipTaskLine(lines, idx) || row.String("id") != id {
+			return nil
+		}
+		if keptIdx == -1 {
+			keptIdx = idx
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	if keptIdx == -1 || keptIdx == idx {
+		return fmt.Errorf("close id-dupe line: line %d (task %q) has no EARLIER same-id line to supersede — refusing to close the kept side", line1, id)
+	}
+
+	// Rewrite exactly the one line (same shape as DedupeByID pass 2).
+	row := closed
+	style := DetectStyle(lines[idx])
+	if err := row.SetGoValue("status", "complete", style); err != nil {
+		return err
+	}
+	summary := fmt.Sprintf("superseded-by-earliest: recycled task id — kept line %d (id-dupe backfill %s)", keptIdx+1, time.Now().UTC().Format("2006-01-02"))
+	if err := row.SetGoValue("worker_summary", summary, style); err != nil {
+		return err
+	}
+	if err := row.SetGoValue("superseded_by", id, style); err != nil {
+		return err
+	}
+	now := b.tasksTSFormat(nil).Now()
+	if err := row.SetGoValue("completed_at", now, style); err != nil {
+		return err
+	}
+	if row.Has("updated_at") {
+		if err := row.SetGoValue("updated_at", now, style); err != nil {
+			return err
+		}
+	}
+	newLines := make([][]byte, len(lines))
+	copy(newLines, lines)
+	newLines[idx] = row.Marshal(style)
+	// Assert every untouched line round-trips byte-identical BEFORE writing.
+	for i, l := range lines {
+		if i != idx && !bytes.Equal(l, newLines[i]) {
+			return fmt.Errorf("internal error: untouched line %d would change — id-dupe line close aborted (nothing written)", i+1)
+		}
+	}
+	if err := atomicRewrite(b.tasksPath, JoinLines(newLines)); err != nil {
+		return err
+	}
+	// The audit event quotes the closed line's original title, reasoning and
+	// pre-close status verbatim — same contract as DedupeByID's per-line
+	// events.
+	detail, err := idDupeEventDetail(idDupeEvent{
+		ID:         id,
+		ClosedLine: line1,
+		KeptLine:   keptIdx + 1,
+		KeptID:     id,
+		StatusWas:  statusWas,
+		Title:      title,
+		Reasoning:  reasoning,
+	})
+	if err != nil {
+		return fmt.Errorf("line rewritten but id-dupe audit event detail failed: %w", err)
+	}
+	if _, err := b.AppendEvent(EventSpec{
+		Type:   "audit",
+		TaskID: id,
+		Actor:  "boardctl",
+		Detail: detail,
+	}); err != nil {
+		return fmt.Errorf("line rewritten but id-dupe audit event failed: %w", err)
+	}
+	return nil
+}

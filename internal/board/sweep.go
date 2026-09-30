@@ -61,6 +61,18 @@ type StatusSweepRow struct {
 	// advertised as fixable but NormalizeTask refused it (nothing was
 	// written); the census stays honest about what did not land.
 	Skipped bool `json:"skipped,omitempty"`
+	// REVIEW-BOARDCTL-001 --decide: set when the row was re-classified BY
+	// A DECISION RULE this run ("decided"), instead of staying explicit.
+	// Decided names the column the rule read and DecidedValue the
+	// canonical value it maps to; Reason quotes the rule that fired.
+	Decided      string `json:"decided,omitempty"`
+	DecidedValue string `json:"decided_value,omitempty"`
+	Reason       string `json:"reason,omitempty"`
+	// --decide, duplicate-status rows: the id-dupe plan entry this row
+	// resolved to (same shape as iddupe.go's group), so the report shows
+	// kept/closed lines before anything is written.
+	DupKeptLine  int   `json:"dup_kept_line,omitempty"`
+	DupSupersede *bool `json:"dup_supersede,omitempty"` // true: this row closes as superseded
 }
 
 // StatusSweepReport is the result of one sweep pass. Rows are in file order
@@ -68,11 +80,12 @@ type StatusSweepRow struct {
 type StatusSweepReport struct {
 	BoardPath  string           `json:"board_path"`
 	Apply      bool             `json:"apply"`
-	Rows       int              `json:"rows"`       // task rows examined
-	OffBefore  int              `json:"off_before"` // off-vocabulary rows before any write
-	Normalized []StatusSweepRow `json:"normalized"` // alias rows (fixable)
-	Explicit   []StatusSweepRow `json:"explicit"`   // unknown rows (human decision)
-	OffAfter   int              `json:"off_after"`  // off-vocabulary rows after the apply (== OffBefore when dry-run)
+	Decide     bool             `json:"decide,omitempty"` // REVIEW-BOARDCTL-001 --decide mode
+	Rows       int              `json:"rows"`             // task rows examined
+	OffBefore  int              `json:"off_before"`       // off-vocabulary rows before any write
+	Normalized []StatusSweepRow `json:"normalized"`       // alias rows (fixable)
+	Explicit   []StatusSweepRow `json:"explicit"`         // unknown rows (human decision)
+	OffAfter   int              `json:"off_after"`        // off-vocabulary rows after the apply (== OffBefore when dry-run)
 }
 
 // Summarize renders the one-line census: X/Y rows off-vocabulary, split into
@@ -87,16 +100,84 @@ func (r *StatusSweepReport) Summarize() string {
 // (one NormalizeTask call each — the sanctioned BT-025 rewrite) and recounts.
 // Unknown rows are never written in either mode.
 func (b *Board) StatusSweep(apply bool) (*StatusSweepReport, error) {
+	return b.StatusSweepDecide(apply, false)
+}
+
+// StatusSweepDecide is StatusSweep with the REVIEW-BOARDCTL-001 --decide
+// extensions; decide selects them, apply still owns every write.
+//
+// REVIEW-BOARDCTL-001 --decide: with decide=true the sweep additionally
+// re-classifies two explicit classes the fleet census showed dominate live
+// boards, by machine-checkable rules instead of a human pass:
+//
+//   - an off-vocabulary guard_result/ci_result value is re-classified by
+//     the DecideResultValue content table (first-token PASS/OK/FAIL/ERROR/
+//     GREEN/RED, standalone SKIP or N/A -> SKIP, standalone SUCCESS ->
+//     GREEN on ci / PASS on guard). Decided rows move from Explicit to
+//     Normalized, carrying the rule that fired; with apply=true they are
+//     written through SetResultValue, whose vocabulary gate keeps the
+//     decided value inside its own column's set. Values the rules cannot
+//     decide — PENDING, ambiguous PASS+FAIL prose, junk — stay explicit
+//     exactly as before.
+//   - a status of "duplicate" is resolved through the DF-BOARDCTL-10
+//     id-dupe path: when the row has an EARLIER same-id twin the row is
+//     planned for the superseded-by-earliest close (and with apply=true,
+//     actually closed with superseded_by + an audit event quoting the
+//     preserved text); with no earlier twin the row stays explicit. Every
+//     other unknown status is never guessed at, in any mode.
+//
+// Dry-run semantics are unchanged: decide alone computes and reports only;
+// only apply writes (and --decide --apply writes BOTH the decided result
+// values and the duplicate closes).
+func (b *Board) StatusSweepDecide(apply bool, decide bool) (*StatusSweepReport, error) {
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
 		return nil, err
 	}
-	rep := &StatusSweepReport{BoardPath: b.tasksPath, Apply: apply}
+	rep := &StatusSweepReport{BoardPath: b.tasksPath, Apply: apply, Decide: decide}
+
+	// --decide: one id-dupe plan for the whole board, so a "duplicate"
+	// row knows whether an earlier same-id twin exists (kept line) or
+	// not (refuse). Nil until first needed — the plan is computed
+	// lazily only when a duplicate row is actually met.
+	var dupPlan map[int]*IDDupeGroup // later-line index (0-based) -> its group
+	planDup := func() error {
+		if dupPlan != nil {
+			return nil
+		}
+		dupPlan = map[int]*IDDupeGroup{}
+		byID := map[string][]int{} // id -> task-line indexes in file order
+		err := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+			if b.skipTaskLine(lines, idx) || row.String("id") == "" {
+				return nil
+			}
+			byID[row.String("id")] = append(byID[row.String("id")], idx)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		for id, idxs := range byID {
+			if len(idxs) < 2 {
+				continue
+			}
+			g := &IDDupeGroup{ID: id, KeptLine: idxs[0] + 1}
+			for _, later := range idxs[1:] {
+				g.ClosedLines = append(g.ClosedLines, later+1)
+			}
+			for _, later := range idxs[1:] {
+				dupPlan[later] = g
+			}
+		}
+		return nil
+	}
 
 	// Classify only; nothing is mutated here. BT-066: every vocab column is
 	// classified up front — an off-vocabulary guard_result/ci_result makes
 	// the row explicit (never fixable), because NormalizeTask would refuse
 	// it and an apply would otherwise die mid-file on partial writes.
+	// --decide relaxes exactly one thing: a value the content table CAN
+	// decide becomes a Normalized row (fixable), the rest stay explicit.
 	err = IterParsed(lines, func(row *Row, idx int, _ []byte) error {
 		if b.skipTaskLine(lines, idx) {
 			return nil // topology B: the header is not a task row
@@ -123,6 +204,19 @@ func (b *Board) StatusSweep(apply bool) (*StatusSweepReport, error) {
 			if c.vocab[NormalizeResultValue(raw)] {
 				continue // canonical (or case-tolerant spelling of one)
 			}
+			if decide {
+				if target, ok, reason := DecideResultValue(c.key, raw); ok {
+					rep.Normalized = append(rep.Normalized, StatusSweepRow{
+						ID: id, Line: idx + 1, Status: row.String("status"),
+						Action:       fmt.Sprintf("--decide: %s %q -> %q (%s)", c.key, raw, target, reason),
+						Canonical:    target,
+						Decided:      c.key,
+						DecidedValue: target,
+						Reason:       reason,
+					})
+					return nil // decided; a status fix would still be refused, one repair per row
+				}
+			}
 			rep.Explicit = append(rep.Explicit, StatusSweepRow{
 				ID:           id,
 				Line:         idx + 1,
@@ -136,6 +230,35 @@ func (b *Board) StatusSweep(apply bool) (*StatusSweepReport, error) {
 		st := row.String("status")
 		if st == "" || StatusVocabulary[st] {
 			return nil // canonical (or absent — validate owns that warning)
+		}
+		// --decide: a "duplicate" status with an earlier same-id twin is
+		// exactly the state an earlier dedupe-style cleanup created — the
+		// DF-BOARDCTL-10 close path repairs it machine-readably. No twin,
+		// or any other unknown status: refused, still explicit.
+		if decide && st == "duplicate" {
+			if err := planDup(); err != nil {
+				return err
+			}
+			if g, hit := dupPlan[idx]; hit {
+				supersede := true
+				rep.Normalized = append(rep.Normalized, StatusSweepRow{
+					ID: id, Line: idx + 1, Status: st,
+					Action:       fmt.Sprintf("--decide: duplicate status closes as superseded-by-earliest (kept line %d, id %q)", g.KeptLine, g.ID),
+					Decided:      "status",
+					DecidedValue: "complete",
+					Reason:       fmt.Sprintf("status \"duplicate\" with an earlier same-id twin on line %d — superseded_by %q", g.KeptLine, g.ID),
+					DupKeptLine:  g.KeptLine,
+					DupSupersede: &supersede,
+				})
+				return nil
+			}
+			rep.Explicit = append(rep.Explicit, StatusSweepRow{
+				ID: id, Line: idx + 1, Status: st,
+				Action:       "--decide: status \"duplicate\" has NO earlier same-id twin to supersede — needs an explicit --status decision",
+				Blocked:      "status",
+				BlockedValue: st,
+			})
+			return nil
 		}
 		canonical, ok, _ := ResolveStatus(st)
 		entry := StatusSweepRow{ID: id, Line: idx + 1, Status: st}
@@ -168,22 +291,54 @@ func (b *Board) StatusSweep(apply bool) (*StatusSweepReport, error) {
 	// failed mid-file. The refused row stays byte-identical on disk, the
 	// report marks it skipped, and the measured recount below keeps it
 	// counted as still off-vocabulary.
+	//
+	// --decide rows are written through their OWN sanctioned paths before
+	// the normalize loop: a decided result value via SetResultValue (the
+	// update --guard machinery), a duplicate close via CloseIDDupeLine
+	// (the DF-BOARDCTL-10 close, including its audit event). The same
+	// skip-and-report discipline applies: a refusal leaves the row
+	// untouched and is surfaced, never fatal.
 	var fixed, skipped []StatusSweepRow
 	for _, entry := range rep.Normalized {
-		changes, err := b.NormalizeTask(entry.ID, false)
-		if err != nil {
+		switch {
+		case decide && entry.Decided == "status" && entry.DupSupersede != nil && *entry.DupSupersede:
+			if err := b.CloseIDDupeLine(entry.Line); err != nil {
+				e := entry
+				e.Skipped = true
+				e.Action = fmt.Sprintf("duplicate close refused: %v — row left unchanged", err)
+				skipped = append(skipped, e)
+				continue
+			}
 			e := entry
-			e.Skipped = true
-			e.Action = fmt.Sprintf("normalize refused: %v — row left unchanged", err)
-			skipped = append(skipped, e)
-			continue
+			e.Fixed = true
+			fixed = append(fixed, e)
+		case decide && entry.Decided != "" && entry.Decided != "status":
+			if err := b.SetResultValue(entry.ID, entry.Decided, entry.DecidedValue); err != nil {
+				e := entry
+				e.Skipped = true
+				e.Action = fmt.Sprintf("decided value write refused: %v — row left unchanged", err)
+				skipped = append(skipped, e)
+				continue
+			}
+			e := entry
+			e.Fixed = true
+			fixed = append(fixed, e)
+		default:
+			changes, err := b.NormalizeTask(entry.ID, false)
+			if err != nil {
+				e := entry
+				e.Skipped = true
+				e.Action = fmt.Sprintf("normalize refused: %v — row left unchanged", err)
+				skipped = append(skipped, e)
+				continue
+			}
+			if len(changes) == 0 {
+				continue // already canonical by the time the write ran — keep OffAfter honest
+			}
+			e := entry
+			e.Fixed = true
+			fixed = append(fixed, e)
 		}
-		if len(changes) == 0 {
-			continue // already canonical by the time the write ran — keep OffAfter honest
-		}
-		e := entry
-		e.Fixed = true
-		fixed = append(fixed, e)
 	}
 	if len(fixed) > 0 || len(skipped) > 0 {
 		kept := append(append([]StatusSweepRow{}, fixed...), skipped...)

@@ -1132,6 +1132,88 @@ func (b *Board) normalizeTaskLocked(id string, force bool) ([]fieldChange, error
 	return pending, nil
 }
 
+// SetResultValue writes ONE canonical result value (guard_result or
+// ci_result) onto the row with the given id — REVIEW-BOARDCTL-001's
+// --decide apply path. It is the update --guard/--ci machinery reduced to
+// one field, with the BT-007 write-time vocabulary gate INTACT: the value
+// must already be a canonical member of the named column's vocabulary
+// (PASS|FAIL|SKIP / GREEN|RED|SKIP, case-tolerant on input and stored
+// upper-cased by NormalizeResultValue) — this is NOT a door around the
+// vocab enforcement, it is the narrow writer the sweep's decided values
+// flow through. Everything else about the row — key order, other fields,
+// every other line — round-trips byte-identical (asserted before the
+// atomic rewrite, same discipline as UpdateTask); an id appearing on
+// multiple lines is refused; no audit event is appended and updated_at is
+// not touched (the sweep's report is the audit trail for the rewrite).
+func (b *Board) SetResultValue(id, column, value string) error {
+	var vocab map[string]bool
+	switch column {
+	case "guard_result":
+		vocab = GuardResultVocabulary
+	case "ci_result":
+		vocab = CIResultVocabulary
+	default:
+		return fmt.Errorf("set-result-value: unknown column %q (guard_result or ci_result)", column)
+	}
+	canonical := NormalizeResultValue(value)
+	if !vocab[canonical] {
+		return fmt.Errorf("set-result-value: %s %q is not in vocabulary {%s}", column, value, vocabKeys(vocab))
+	}
+	var setErr error
+	lockErr := b.withWriteLock(b.tasksPath, func() error {
+		setErr = b.setResultValueLocked(id, column, canonical)
+		return nil // err rides setErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return lockErr
+	}
+	return setErr
+}
+
+// setResultValueLocked is SetResultValue's body, running under the write guard.
+func (b *Board) setResultValueLocked(id, column, canonical string) error {
+	lines, err := ReadJSONLLines(b.tasksPath)
+	if err != nil {
+		return err
+	}
+	targetIdx := -1
+	var target *Row
+	if err := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+		if b.skipTaskLine(lines, idx) {
+			return nil // topology B: the header is not a task row
+		}
+		if row.String("id") != id {
+			return nil
+		}
+		if targetIdx != -1 {
+			return fmt.Errorf("task id %q appears on multiple lines (%d and %d) — refusing ambiguous result-value write", id, targetIdx+1, idx+1)
+		}
+		targetIdx = idx
+		target = row
+		return nil
+	}); err != nil {
+		return err
+	}
+	if targetIdx == -1 {
+		return fmt.Errorf("task %q not found in tasks.jsonl", id)
+	}
+	style := DetectStyle(lines[targetIdx])
+	if err := target.SetGoValue(column, canonical, style); err != nil {
+		return err
+	}
+	newLines := make([][]byte, len(lines))
+	copy(newLines, lines)
+	newLines[targetIdx] = target.Marshal(style)
+	// Assert every untouched line round-trips byte-identical BEFORE writing
+	// (same discipline as UpdateTask/NormalizeTask).
+	for i, l := range lines {
+		if i != targetIdx && !bytes.Equal(l, newLines[i]) {
+			return fmt.Errorf("internal error: untouched line %d would change — result-value write aborted (nothing written)", i+1)
+		}
+	}
+	return atomicRewrite(b.tasksPath, JoinLines(newLines))
+}
+
 // vocabKeys renders a vocabulary map sorted (deterministic error messages).
 func vocabKeys(vocab map[string]bool) string {
 	out := make([]string, 0, len(vocab))

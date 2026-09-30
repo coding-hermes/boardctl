@@ -338,6 +338,45 @@ boardctl -C ~/myproject sweep-status                # report only, zero writes
 boardctl -C ~/myproject sweep-status --apply        # normalize the alias rows
 ```
 
+### `--decide`: machine-checkable decisions (REVIEW-BOARDCTL-001)
+
+A fleet census (2026-09-30, ~52 boards) showed every remaining off-vocabulary
+row is either a `guard_result`/`ci_result` carrying recoverable prose
+(`"PASS 5/5"`, `"PASS (secrets)"`, `"pipeline 1166 SUCCESS all 6 jobs"`,
+`"N/A (bash script; ...)"`) or a recycled-id `status: "duplicate"` row the
+id-aware dedupe refuses. `--decide` decides exactly those two classes by
+rule — everything else keeps needing a human:
+
+- **Result columns, decided by the FIRST TOKEN** (upper-cased, surrounding
+  punctuation stripped): `PASS|OK -> PASS`, `FAIL|ERROR -> FAIL`,
+  `GREEN -> GREEN`, `RED -> RED`. `"PASS 5/5" -> PASS`.
+- **Anywhere in the value**: a standalone `SKIP`, or the literal token
+  `N/A` (the check does not apply) `-> SKIP`.
+- **Standalone `SUCCESS` with no first-token match**: `-> GREEN` in
+  `ci_result`, `-> PASS` in `guard_result`. Standalone `OK` with no
+  first-token match: `-> PASS`.
+- **NEVER decided**: `PENDING` (the check has not run — SKIP would be a
+  lie), any value naming both `PASS` and `FAIL` (ambiguous prose), and
+  anything the rules do not match. These stay explicit decisions.
+- **`status: "duplicate"` with an EARLIER same-id twin** is closed through
+  the DF-BOARDCTL-10 id-dupe path: `status=complete`, `superseded_by` set
+  to the kept row's id, `worker_summary` naming the kept line, and one
+  `audit` event quoting the closed row's original title/reasoning/status
+  verbatim. A `duplicate` with NO earlier twin stays explicit. Every other
+  unknown status (`parked`, `retired`, ...) is never guessed at.
+
+`--decide` alone is still a dry-run (report only). `--decide --apply`
+writes the decided values and closes — nothing else. The decision table is
+printed by `boardctl sweep-status --help`. Write-path vocabulary enforcement
+is unchanged: writers still reject every off-vocabulary value (BT-007);
+`--decide` only writes values the rules have already reduced to canonical
+members.
+
+```bash
+boardctl -C ~/myproject sweep-status --decide          # report the decisions, zero writes
+boardctl -C ~/myproject sweep-status --decide --apply  # write decided values + duplicate closes
+```
+
 ## Title-priority cross-check (BT-060)
 
 Fleet rows are titled by hand — `[P1] real title` — and later re-priorities
