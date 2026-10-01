@@ -108,7 +108,7 @@ Types/normalization (read-side only; the report never writes task files):
 |---|---|---|
 | `id` | string | required for a row to be a task; rows without `id` are skipped + parse warning |
 | `status` | string | `NormalizeStatus`: `"completed"` → `"complete"`; unknown values pass through as their own bucket; empty/missing → bucket `"(none)"` (matches `ComputeStats`) |
-| `priority` | string OR JSON number | string form as-is (`P0..P3`), numeric form rendered as decimal string `"1".."3"` (matches `priorityLabel`); missing → excluded from priority counts |
+| `priority` | string OR JSON number | string form as-is (`P0..P5`), numeric form rendered as decimal string `"1".."5"` (matches `priorityLabel`); missing → excluded from priority counts |
 | `created_at`, `updated_at`, `completed_at`, `blocked_since`, `dispatched_at` | timestamp strings | parsed per 2.5 |
 | `attempts`, `complexity`, `lines_added`, `lines_removed`, `exit_code` | JSON number | int; missing/null → shown as `—` |
 | `guard_result` | string | upper-cased display; PASS / FAIL / SKIP expected, anything else shown verbatim |

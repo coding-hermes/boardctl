@@ -477,8 +477,8 @@ func strictBase64(s string) ([]byte, bool) {
 	return nil, false
 }
 
-// priorityLabel mirrors board.priorityLabel: string form as-is (P0..P3),
-// JSON numbers as decimal strings ("1".."3"); missing/null/wrong-typed are
+// priorityLabel mirrors board.priorityLabel: string form as-is (P0..P5),
+// JSON numbers as decimal strings ("1".."5"); missing/null/wrong-typed are
 // excluded. String and numeric forms are DISTINCT buckets (live boards mix).
 func priorityLabel(row *board.Row) (string, bool) {
 	raw := row.Get("priority")

@@ -147,13 +147,17 @@ func TestUpdatePriorityRewritesRowBytePreserving(t *testing.T) {
 
 // TestUpdatePriorityNormalizesLikeCreate: the write-time gate is create's
 // BT-007 gate verbatim — bare digits and case/whitespace variants map onto
-// the canonical P0-P3 set so stats never splits groups.
+// the canonical P0-P5 set so stats never splits groups.
 func TestUpdatePriorityNormalizesLikeCreate(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{"1", "P1"},
 		{"p3", "P3"},
 		{" P0 ", "P0"},
 		{"P2", "P2"},
+		{"4", "P4"},
+		{"5", "P5"},
+		{"p4", "P4"},
+		{" P5 ", "P5"},
 	}
 	for _, c := range cases {
 		t.Run(c.in, func(t *testing.T) {
@@ -172,7 +176,7 @@ func TestUpdatePriorityNormalizesLikeCreate(t *testing.T) {
 // TestUpdateRejectsJunkPriority: out-of-vocabulary spellings fail the whole
 // update with create's error text style — and the file is untouched.
 func TestUpdateRejectsJunkPriority(t *testing.T) {
-	for _, junk := range []string{"PX", "P4", "p9", "high"} {
+	for _, junk := range []string{"PX", "P9", "p8", "high"} {
 		t.Run(junk, func(t *testing.T) {
 			b := seedDF13Board(t)
 			before, err := os.ReadFile(b.TasksPath())
@@ -184,7 +188,7 @@ func TestUpdateRejectsJunkPriority(t *testing.T) {
 			if err == nil {
 				t.Fatalf("junk priority %q accepted", junk)
 			}
-			if !strings.Contains(err.Error(), "not in vocabulary {P0,P1,P2,P3}") {
+			if !strings.Contains(err.Error(), "not in vocabulary {P0,P1,P2,P3,P4,P5}") {
 				t.Fatalf("error does not name the vocabulary gate: %v", err)
 			}
 			after, err := os.ReadFile(b.TasksPath())

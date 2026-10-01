@@ -1,6 +1,7 @@
 package board
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -38,7 +39,7 @@ func countPriorityWarns(rep *Report) int {
 }
 
 // BT-048: priority values already on boards must be spelled in the canonical
-// {P0,P1,P2,P3} vocabulary. The check is on the RAW stored value — bare
+// {P0,P1,P2,P3,P4,P5} vocabulary. The check is on the RAW stored value — bare
 // digits ("3") and case variants ("p2") warn even though the write path
 // normalizes them (BT-007) — because the flag exists to stop the
 // off-vocabulary class regrowing on disk (28 live rows measured 2026-09-22).
@@ -48,7 +49,7 @@ func TestValidateWarnsOnOffVocabularyPriority(t *testing.T) {
 		canonical string // "" = no canonical form exists; warning names the vocabulary
 	}{
 		{"3", "P3"},
-		{"P4", ""},
+		{"P9", ""},
 		{"p2", "P2"},
 		{"urgent", ""},
 	}
@@ -71,7 +72,7 @@ func TestValidateWarnsOnOffVocabularyPriority(t *testing.T) {
 		if !strings.Contains(msg, "PRIO-A") {
 			t.Fatalf("priority %q: warning does not name the row id; msg: %s", c.raw, msg)
 		}
-		if !strings.Contains(msg, "{P0,P1,P2,P3}") {
+		if !strings.Contains(msg, "{P0,P1,P2,P3,P4,P5}") {
 			t.Fatalf("priority %q: warning does not name the canonical vocabulary; msg: %s", c.raw, msg)
 		}
 		if c.canonical != "" && !strings.Contains(msg, `"`+c.canonical+`"`) {
@@ -81,9 +82,9 @@ func TestValidateWarnsOnOffVocabularyPriority(t *testing.T) {
 }
 
 // BT-048: canonical priorities stay silent — the flag exists only for
-// out-of-vocabulary values.
+// out-of-vocabulary values. BT-070: the canonical set is P0..P5.
 func TestValidateCanonicalPrioritiesSilent(t *testing.T) {
-	b := seedPriorityBoard(t, "P0", "P1", "P2", "P3")
+	b := seedPriorityBoard(t, "P0", "P1", "P2", "P3", "P4", "P5")
 	rep, err := b.Validate()
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +100,7 @@ func TestValidateCanonicalPrioritiesSilent(t *testing.T) {
 // BT-048: a board carrying ONLY priority warnings validates OK — warnings do
 // not block (the CLI exits non-zero on HasErrors, which stays false here).
 func TestValidatePriorityWarningsKeepBoardOK(t *testing.T) {
-	b := seedPriorityBoard(t, "3", "P4", "p2", "urgent")
+	b := seedPriorityBoard(t, "3", "P9", "p2", "urgent")
 	rep, err := b.Validate()
 	if err != nil {
 		t.Fatal(err)
@@ -137,5 +138,46 @@ func TestValidateMissingPriorityUntouched(t *testing.T) {
 	}
 	if got := countPriorityWarns(rep); got != 0 {
 		t.Fatalf("missing priority must not produce a priority warning: %+v", rep.Findings)
+	}
+}
+
+// BT-070: NormalizePriority maps the full P0..P5 span — bare digits 0-5 and
+// case/whitespace variants normalize onto the canonical set; junk passes
+// through unchanged for the write gate to reject.
+func TestNormalizePriorityFullVocabulary(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"0", "P0"},
+		{"1", "P1"},
+		{"2", "P2"},
+		{"3", "P3"},
+		{"4", "P4"},
+		{"5", "P5"},
+		{"P4", "P4"},
+		{"P5", "P5"},
+		{"p4", "P4"},
+		{" p5 ", "P5"},
+		{"banana", "BANANA"}, // junk passes through untouched (upper-cased)
+		{"P9", "P9"},         // out-of-vocab passes through untouched
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := NormalizePriority(c.in); got != c.want {
+			t.Errorf("NormalizePriority(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+	// every canonical spelling is in-vocabulary, P0..P5
+	for i := 0; i <= 5; i++ {
+		p := fmt.Sprintf("P%d", i)
+		if !PriorityVocabulary[p] {
+			t.Errorf("PriorityVocabulary missing %q — the canonical set must cover P0..P5", p)
+		}
+	}
+	for _, junk := range []string{"P6", "P7", "P8", "P9"} {
+		if PriorityVocabulary[junk] {
+			t.Errorf("PriorityVocabulary must not contain %q", junk)
+		}
 	}
 }

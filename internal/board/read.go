@@ -88,12 +88,14 @@ var CIResultVocabulary = map[string]bool{
 }
 
 // PriorityVocabulary is the canonical priority set used by every live fleet
-// board (P0 through P3).
+// board (P0 through P5).
 var PriorityVocabulary = map[string]bool{
 	"P0": true,
 	"P1": true,
 	"P2": true,
 	"P3": true,
+	"P4": true,
+	"P5": true,
 }
 
 // EventTypeVocabulary is the canonical event_type set enforced by
@@ -130,8 +132,8 @@ func NormalizeResultValue(v string) string {
 }
 
 // NormalizePriority maps accepted priority spellings onto the canonical
-// P0-P3 vocabulary: bare digits ("0".."3") and case/whitespace variants
-// (" p2 ") normalize to P0..P3. Anything else passes through unchanged for
+// P0-P5 vocabulary: bare digits ("0".."5") and case/whitespace variants
+// (" p2 ") normalize to P0..P5. Anything else passes through unchanged for
 // the caller to reject.
 func NormalizePriority(p string) string {
 	p = strings.ToUpper(strings.TrimSpace(p))
@@ -144,6 +146,10 @@ func NormalizePriority(p string) string {
 		return "P2"
 	case "3":
 		return "P3"
+	case "4":
+		return "P4"
+	case "5":
+		return "P5"
 	}
 	return p
 }
@@ -378,7 +384,7 @@ func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
 }
 
 // priorityLabel renders a row's priority as its display string: strings as-is
-// (P0..P3), JSON numbers as their decimal form ("1".."3"). Boards mix both.
+// (P0..P5), JSON numbers as their decimal form ("1".."5"). Boards mix both.
 func priorityLabel(r *Row) (string, bool) {
 	raw := r.Get("priority")
 	if raw == nil || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {

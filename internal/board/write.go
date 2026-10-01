@@ -280,13 +280,13 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	}
 	// BT-007: priority is normalized-or-rejected at write time — bare
 	// digits ("1") and case variants ("p2") map onto the canonical
-	// P0-P3 set every fleet board uses, so stats never splits groups.
+	// P0-P5 set every fleet board uses, so stats never splits groups.
 	priority := NormalizePriority(spec.Priority)
 	if priority == "" {
 		priority = "P2"
 	}
 	if !PriorityVocabulary[priority] {
-		return "", fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3} (bare 0-3 are normalized; use e.g. --priority P1)", spec.Priority)
+		return "", fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3,P4,P5} (bare 0-5 are normalized; use e.g. --priority P1)", spec.Priority)
 	}
 	spec.Priority = priority
 
@@ -420,7 +420,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	}
 	set := func(key string, v any) error { return row.SetGoValue(key, v, style) }
 
-	// spec.Priority is already normalized (P0-P3, default P2) and validated
+	// spec.Priority is already normalized (P0-P5, default P2) and validated
 	// above; complexity defaults to 3.
 	complexity := int64(3)
 	if spec.Complexity != nil {
@@ -875,14 +875,14 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	}
 	// DF-BOARDCTL-13: priority goes through the SAME write-time gate as
 	// create (BT-007) — bare digits ("1") and case variants ("p2") map onto
-	// the canonical P0-P3 set, anything else fails the whole update with
+	// the canonical P0-P5 set, anything else fails the whole update with
 	// create's error text and NOTHING is written. The value is stored
 	// canonical, so the row's priority field keeps speaking BT-048's
 	// on-disk vocabulary no matter which command wrote it.
 	if spec.Priority != nil {
 		p := NormalizePriority(*spec.Priority)
 		if !PriorityVocabulary[p] {
-			return nil, fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3} (bare 0-3 are normalized; use e.g. --priority P1)", *spec.Priority)
+			return nil, fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3,P4,P5} (bare 0-5 are normalized; use e.g. --priority P1)", *spec.Priority)
 		}
 		if err := set("priority", p); err != nil {
 			return nil, err

@@ -19,8 +19,9 @@ import (
 //   - NO Pn token in the title → silent (no new warning class)
 //   - token AGREEING with the field → silent
 //   - multiple tokens each warn independently
-//   - out-of-vocabulary tokens (P4/P9) are NOT this class (the BT-048
-//     priority check owns the row's own priority drift)
+//   - out-of-vocabulary tokens (P9) are NOT this class (the BT-048
+//     priority check owns the row's own priority drift); since BT-070 the
+//     P0..P5 span is in-vocabulary, so a [P4] title token IS drift-checkable
 //
 // seedBT060Board writes one row per case; each task id encodes its case so
 // findWarn can address it.
@@ -33,7 +34,7 @@ func seedBT060Board(t *testing.T) *Board {
 			`{"id":"BT060-NOTOKEN","title":"plain title, no token","status":"pending","priority":"P1"}` + "\n" +
 			`{"id":"BT060-BARE","title":"P3 spike","status":"pending","priority":"P0"}` + "\n" +
 			`{"id":"BT060-LOWER","title":"fix [p1] thing","status":"pending","priority":"P2"}` + "\n" +
-			`{"id":"BT060-P4","title":"[P4] out of vocab","status":"pending","priority":"P2"}` + "\n" +
+			`{"id":"BT060-P4","title":"[P4] paperwork lane","status":"pending","priority":"P2"}` + "\n" +
 			`{"id":"BT060-EMBED","title":"unstick API2 and P10 backlog","status":"pending","priority":"P1"}` + "\n" +
 			`{"id":"BT060-TWO","title":"[P0] a (P3) b","status":"pending","priority":"P2"}` + "\n" +
 			`{"id":"BT060-NOPRIO","title":"[P1] orphan token","status":"pending"}` + "\n",
@@ -91,19 +92,28 @@ func TestBT060TitlePriorityMismatchWarns(t *testing.T) {
 }
 
 // TestBT060TitlePrioritySilentCases: agreeing tokens, token-free titles,
-// embedded lookalikes (API2, P10), and out-of-vocabulary tokens (P4) stay
-// silent — the class must not grow false positives that train operators to
-// ignore it.
+// and embedded lookalikes (API2, P10) stay silent — the class must not grow
+// false positives that train operators to ignore it. BT-060 originally
+// excluded [P4] titles as out-of-vocabulary; BT-070 moved P4 into the
+// vocabulary, so the BT060-P4 row now warns as ordinary drift (covered by
+// the mismatch test's id list below).
 func TestBT060TitlePrioritySilentCases(t *testing.T) {
 	b := seedBT060Board(t)
 	rep, err := b.Validate()
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, id := range []string{"BT060-AGREE", "BT060-NOTOKEN", "BT060-EMBED", "BT060-P4"} {
+	for _, id := range []string{"BT060-AGREE", "BT060-NOTOKEN", "BT060-EMBED"} {
 		if got := findWarn(rep, id); got != "" {
 			t.Errorf("%s must not warn, got: %s", id, got)
 		}
+	}
+	// BT-070: [P4] is an in-vocabulary token again — a disagreeing one
+	// warns exactly like [P1]/[P2]/[P3] drift.
+	if got := findWarn(rep, "BT060-P4"); got == "" {
+		t.Errorf("BT060-P4: [P4] token vs P2 field is in-vocabulary drift since BT-070, must warn; findings: %+v", rep.Findings)
+	} else if !strings.Contains(got, `"P4"`) {
+		t.Errorf("BT060-P4 warning must name the [P4] token, got: %s", got)
 	}
 }
 
@@ -158,7 +168,9 @@ func TestTitlePriorityTokensTable(t *testing.T) {
 		{"end token P3:", []string{"P3"}},
 		{"[P1] a (P2) b", []string{"P1", "P2"}},
 		{"P10 is bigger than P3", []string{"P3"}}, // P10 must not yield a bare P1
-		{"API2 and P4", nil},                      // embedded letter, out-of-vocab digit
+		{"API2 and P9", nil},                      // embedded letter, out-of-vocab digit
+		{"[P4] paperwork", []string{"P4"}},        // BT-070: single digit 4 matches
+		{"[P5] cleanup", []string{"P5"}},          // BT-070: single digit 5 matches
 		{"no tokens here", nil},
 		{"", nil},
 		{"xP1y", nil}, // letters hugging the token make it part of a word

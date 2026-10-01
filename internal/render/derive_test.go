@@ -3,8 +3,10 @@ package render
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"math"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -437,6 +439,61 @@ func TestModelShare(t *testing.T) {
 }
 
 // ---------- 3.9 status/priority counts ----------
+
+// TestPriorityCountOrderingCoversP0toP5 pins BT-070's render-ordering
+// contract: priority buckets carry every canonical label P0..P5 and the
+// payload surfaces them in ascending priority order. There is no priority
+// rank table anywhere in the render path — ordering rides the lexical byte
+// order of the bucket keys (Go JSON marshals map keys sorted; the counts
+// panel's JS sorts equal-count keys by name ascending), and that lexical
+// order IS total across P0..P5 ("P4"/"P5" sort after "P3" as single-digit
+// labels). Pinning the full sorted key set here means a future rank map or
+// a key shape that breaks P0..P5 monotonicity (e.g. two-digit labels) fails
+// this test before it silently reorders the composition panel.
+func TestPriorityCountOrderingCoversP0toP5(t *testing.T) {
+	tasks := []*board.Row{}
+	for i := 0; i <= 5; i++ {
+		p := fmt.Sprintf("P%d", i)
+		tasks = append(tasks, mustRow(t, `{"id":"ORD-`+p+`","status":"pending","priority":"`+p+`","created_at":"2026-09-01 00:00:00"}`))
+	}
+	tasks = append(tasks, mustRow(t, `{"id":"ORD-NUM","status":"pending","priority":5,"created_at":"2026-09-01 00:00:00"}`))                     // numeric label is its own bucket
+	tasks = append(tasks, mustRow(t, `{"id":"ORD-FIX","status":"pending","priority":"P5","perpetual":true,"created_at":"2026-09-01 00:00:00"}`)) // fixture, excluded
+	d := mkBoard(tasks, nil)
+	der := derive(d)
+	if len(der.PriorityCount) != 7 {
+		t.Fatalf("priority counts = %v, want 7 buckets (P0..P5 + numeric \"5\")", der.PriorityCount)
+	}
+	for i := 0; i <= 5; i++ {
+		p := fmt.Sprintf("P%d", i)
+		if der.PriorityCount[p] != 1 {
+			t.Fatalf("priority counts = %v, want %s=1", der.PriorityCount, p)
+		}
+	}
+	// the wire order: Go JSON marshals map keys ascending, so the rendered
+	// composition panel receives the buckets in byte order — digits ("5")
+	// before the P-labels, P0,P1,P2,P3,P4,P5 in priority order. The
+	// BT-070-relevant property is P4/P5 after P3; the digit-bucket position
+	// is pre-existing behavior shared with numeric priority "2" on live
+	// boards.
+	keys := make([]string, 0, len(der.PriorityCount))
+	for k := range der.PriorityCount {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	want := []string{"5", "P0", "P1", "P2", "P3", "P4", "P5"}
+	for i := range want {
+		if keys[i] != want[i] {
+			t.Fatalf("sorted priority keys = %v, want %v — the panel's P0..P5 ordering broke", keys, want)
+		}
+	}
+	// byte-order monotonicity is the property the sort relies on: every Pn
+	// label sorts before P(n+1), and P4/P5 after P3, with no rank table.
+	for i := 0; i < 5; i++ {
+		if !(fmt.Sprintf("P%d", i) < fmt.Sprintf("P%d", i+1)) {
+			t.Fatalf("lexical order broken: P%d must sort before P%d", i, i+1)
+		}
+	}
+}
 
 func TestStatusPriorityCounts(t *testing.T) {
 	tasks := []*board.Row{

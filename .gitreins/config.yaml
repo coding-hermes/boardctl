@@ -3,6 +3,10 @@ guards:
   lint: false
   tests: false
   test_mode: full
+  # BT-070: 180s default kills go_tests under fleet load (16-core box at
+  # loadavg ~30; the same guard passed at 180s on a quiet host 09-28/30).
+  # Full-mode suite measures 100-205s standalone — 900s gives 4x headroom.
+  test_timeout: 900
   go:
     build: true
     lint: true

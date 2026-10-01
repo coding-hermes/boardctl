@@ -722,7 +722,7 @@ func cmdUpdate(dir string, args []string) error {
 	// DF-BOARDCTL-13: priority + SG-126 run evidence, mirroring create's
 	// flags (create line ~598/603). Omitted = the field is untouched; junk
 	// priority is rejected by the same write-time gate create uses.
-	priority := fs.String("priority", "", "priority (P0-P3; bare 0-3 and case variants are normalized; omitted = leave untouched)")
+	priority := fs.String("priority", "", "priority (P0-P5; bare 0-5 and case variants are normalized; omitted = leave untouched)")
 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence on the existing row's detail (SG-126)")
 	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
 	// to their canonical forms (read-alias fix path). Takes no value, so it

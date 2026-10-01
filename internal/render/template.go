@@ -809,7 +809,7 @@ function countsFromRaw(bd, fixtures){
   });
   return {status: sc, priority: pc};
 }
-// priorityLabelOf mirrors the Go read-side rule: string form as-is (P0..P3),
+// priorityLabelOf mirrors the Go read-side rule: string form as-is (P0..P5),
 // JSON numbers as decimal strings; missing/null/wrong-typed are excluded.
 function priorityLabelOf(r){
   var v = r ? r.priority : undefined;

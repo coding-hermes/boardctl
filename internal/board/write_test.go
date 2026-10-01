@@ -3,6 +3,7 @@ package board
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -101,7 +102,7 @@ func TestUpdateCIRejectsOutOfVocab(t *testing.T) {
 	}
 }
 
-// BT-007: create --priority 1 is NORMALIZED to P1 (fleet boards use P0-P3;
+// BT-007: create --priority 1 is NORMALIZED to P1 (fleet boards use P0-P5;
 // bare digits must not fork the stats grouping).
 func TestCreatePriorityNormalizesBareDigits(t *testing.T) {
 	b := newTestBoard(t)
@@ -121,13 +122,37 @@ func TestCreatePriorityNormalizesBareDigits(t *testing.T) {
 	}
 }
 
-// BT-007: a priority outside {P0,P1,P2,P3} (after normalization) is rejected.
+// BT-070: P4/P5 are in-vocabulary on create — canonical form is stored
+// verbatim, bare digits and case variants normalize onto them, exactly like
+// P0..P3.
+func TestCreateAcceptsP4AndP5(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"P4", "P4"},
+		{"P5", "P5"},
+		{"4", "P4"},
+		{"5", "P5"},
+		{"p4", "P4"},
+		{" p5 ", "P5"},
+	}
+	for i, c := range cases {
+		b := newTestBoard(t)
+		id := fmt.Sprintf("NEW-P45-%d", i)
+		if _, err := b.Create(TaskRowSpec{ID: id, Title: "n", Priority: c.in}); err != nil {
+			t.Fatalf("create --priority %q rejected: %v", c.in, err)
+		}
+		if row := lastTaskRaw(t, b); row["priority"] != c.want {
+			t.Fatalf("priority %q: stored %v, want %q", c.in, row["priority"], c.want)
+		}
+	}
+}
+
+// BT-007: a priority outside {P0,P1,P2,P3,P4,P5} (after normalization) is rejected.
 func TestCreatePriorityRejectsGarbage(t *testing.T) {
 	b := newTestBoard(t)
 	before := boardLineCount(t, b.tasksPath)
 	if _, err := b.Create(TaskRowSpec{ID: "NEW-1", Title: "n1", Priority: "banana"}); err == nil {
 		t.Fatal("create --priority banana accepted")
-	} else if !strings.Contains(err.Error(), "P0,P1,P2,P3") {
+	} else if !strings.Contains(err.Error(), "P0,P1,P2,P3,P4,P5") {
 		t.Fatalf("error should name the priority vocabulary, got: %v", err)
 	}
 	if n := boardLineCount(t, b.tasksPath); n != before {

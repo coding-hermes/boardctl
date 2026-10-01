@@ -381,7 +381,7 @@ boardctl -C ~/myproject sweep-status --decide --apply  # write decided values + 
 
 Fleet rows are titled by hand — `[P1] real title` — and later re-priorities
 leave the token stale. `validate` warns when a row's title carries a
-`P0`–`P3` token that disagrees with the row's `priority` field (warn
+`P0`–`P5` token that disagrees with the row's `priority` field (warn
 severity, exit 0; the priority FIELD wins for what the row means). The
 warning names the row, the conflicting token, and both repair paths:
 
@@ -397,8 +397,10 @@ The same BT-060 change adds `--title` to `update` (create always had it), so
 the title fix no longer requires hand-editing tasks.jsonl: `boardctl update
 <id> --title "New title"` rewrites the row in place, appends the
 `task_updated` event, and leaves every other row byte-identical. Titles with
-no Pn token never produce a finding, and out-of-vocabulary tokens (`P4`)
-belong to the priority-vocabulary check, not this one.
+no Pn token never produce a finding, and out-of-vocabulary tokens (`P9`)
+belong to the priority-vocabulary check, not this one. (BT-070 extended the
+in-vocabulary span to P0..P5, so `[P4]` title tokens are drift-checked
+again.)
 
 ## Task id format
 

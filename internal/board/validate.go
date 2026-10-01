@@ -165,10 +165,10 @@ func (b *Board) validateTasks(rep *Report) {
 			}
 		}
 		// BT-048: the priority column has a canonical on-disk vocabulary
-		// {P0,P1,P2,P3} (the write path normalizes bare digits and case
+		// {P0,P1,P2,P3,P4,P5} (the write path normalizes bare digits and case
 		// variants, rejecting the rest, since BT-007), but hand-edited or
 		// legacy rows carry other spellings (28 live rows measured
-		// 2026-09-22: bare digits, P4, lowercase p2, prose). Unlike the
+		// 2026-09-22: bare digits, P9, lowercase p2, prose). Unlike the
 		// guard/ci checks above, membership is tested on the RAW stored
 		// value with NO case/digit tolerance: those spellings are exactly
 		// the drift class this warning exists to catch. Empty/absent
@@ -177,10 +177,10 @@ func (b *Board) validateTasks(rep *Report) {
 		p := row.String("priority")
 		if p != "" && !PriorityVocabulary[p] {
 			if canon := NormalizePriority(p); PriorityVocabulary[canon] {
-				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3} — canonical form is %q (writes normalize bare 0-3 and case variants; hand-edit the row or rewrite via boardctl update)",
+				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3,P4,P5} — canonical form is %q (writes normalize bare 0-5 and case variants; hand-edit the row or rewrite via boardctl update)",
 					idx+1, id, p, canon)
 			} else {
-				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3} (writes reject this value; hand-edit the row or rewrite via boardctl update)",
+				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3,P4,P5} (writes reject this value; hand-edit the row or rewrite via boardctl update)",
 					idx+1, id, p)
 			}
 		}
@@ -189,10 +189,10 @@ func (b *Board) validateTasks(rep *Report) {
 		// by hand and then re-priorities the row, so the token goes stale.
 		// The priority FIELD wins for what the row means (BT-048: it is the
 		// machine-read value); the warning only points at the stale token.
-		// Rules: exactly one P0-P3 token is searched (the same regex used in
-		// the warning text); out-of-vocabulary spellings (P4, P9) are NOT
+		// Rules: exactly one P0-P5 token is searched (the same regex used in
+		// the warning text); out-of-vocabulary spellings (P9) are NOT
 		// this class — the BT-048 priority check already owns the row's
-		// priority drift, and guessing what P4 "should" be would invent a
+		// priority drift, and guessing what P9 "should" be would invent a
 		// decision. Multiple tokens each get their own warning (a title like
 		// "[P2] fix P1 regression" carries two independent tells). No token,
 		// no finding; exit stays 0 (warn severity, like every cross-check).
@@ -383,13 +383,13 @@ func decodeJSONString(raw []byte) (string, bool) {
 	return s, true
 }
 
-// titlePriorityToken matches a P0-P3 token standing ALONE in a title: the
+// titlePriorityToken matches a P0-P5 token standing ALONE in a title: the
 // letter P (any case — the drift class includes hand-typed "[p1]") preceded
 // by the start of the string or a non-alphanumeric character, followed by a
-// single digit 0-3, followed by the end of the string or a non-alphanumeric
+// single digit 0-5, followed by the end of the string or a non-alphanumeric
 // character. "P1" inside "P10" or "API2" does not match (the digit and the
 // leading letter are part of a larger token); "[P1]" and "P1:" and "p1 " do.
-var titlePriorityToken = regexp.MustCompile(`(^|[^A-Za-z0-9])([Pp][0-3])([^A-Za-z0-9]|$)`)
+var titlePriorityToken = regexp.MustCompile(`(^|[^A-Za-z0-9])([Pp][0-5])([^A-Za-z0-9]|$)`)
 
 // TitlePriorityTokens returns the priority tokens a title carries, in
 // order of appearance (BT-060's title-priority cross-check). Multiple

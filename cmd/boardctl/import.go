@@ -526,7 +526,7 @@ func rowGoStringSlice(row *board.Row, key string) []string {
 // buildImportTaskLine serializes one export task row for the target:
 // verbatim field values and key order in the target's detected style, with
 // three write-vocabulary adjustments mirroring `boardctl create` — status
-// normalized ("completed" -> "complete"), priority normalized (P0-P3), and
+// normalized ("completed" -> "complete"), priority normalized (P0-P5), and
 // the boardctl-web-export provenance appended to reasoning (original
 // reasoning preserved verbatim).
 func buildImportTaskLine(row *board.Row, style board.Style, newID string) ([]byte, error) {
@@ -548,7 +548,7 @@ func buildImportTaskLine(row *board.Row, style board.Style, newID string) ([]byt
 	if c.Get("priority") != nil {
 		p := board.NormalizePriority(c.String("priority"))
 		if !board.PriorityVocabulary[p] {
-			return nil, fmt.Errorf("export task %q: priority %q not in vocabulary {P0,P1,P2,P3} — import aborted", c.String("id"), c.String("priority"))
+			return nil, fmt.Errorf("export task %q: priority %q not in vocabulary {P0,P1,P2,P3,P4,P5} — import aborted", c.String("id"), c.String("priority"))
 		}
 		if err := c.SetGoValue("priority", p, style); err != nil {
 			return nil, err
