@@ -1,0 +1,688 @@
+commit bf462634e18c1702f90733c0db932515f336cea4
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Wed Sep 30 23:58:04 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Wed Sep 30 23:58:04 2026 -0500
+
+    feat: extend priority vocabulary to P0..P5 (BT-070)
+    
+    PriorityVocabulary gains P4/P5; NormalizePriority maps bare 4/5 and
+    case/whitespace variants onto them; the write-time gate (create, update,
+    import) accepts P0..P5 and its error texts name the new set; validate's
+    BT-048 warning text reads {P0,P1,P2,P3,P4,P5}; titlePriorityToken matches
+    single digits 0-5, so [P4]/[P5] title tokens are drift-checked again;
+    update's --priority help text says P0-P5.
+    
+    Tests: create/update accept P4/P5 (+ bare 4/5, case variants); NormalizePriority
+    table covers P0..P5 with junk pass-through; validate stays silent on P4/P5
+    rows and warns naming the new set; token table gains [P4]/[P5] rows;
+    BT-060's P4 row flips from silent to drift-warning (P4 is in-vocabulary);
+    render pins P0..P5 ordering (P4/P5 after P3, lexical byte order — no rank
+    table exists in the render path). Junk examples moved P4->P9 across tests.
+    
+    RED-proven: reverting the vocabulary map, the 4/5 normalize cases, the
+    regex digit class, or the warning set-text each turns the new tests red;
+    restored byte-identical after each probe.
+    
+    Addresses BT-070.
+---
+ .gitreins/config.yaml                       |  4 ++
+ README.md                                   |  8 ++--
+ cmd/boardctl/import.go                      |  4 +-
+ cmd/boardctl/main.go                        |  2 +-
+ docs/specs/board-analytics-report.md        |  2 +-
+ internal/board/bt060_title_priority_test.go | 28 ++++++++++----
+ internal/board/df_boardctl_13_test.go       | 10 +++--
+ internal/board/read.go                      | 14 +++++--
+ internal/board/validate.go                  | 20 +++++-----
+ internal/board/validate_priority_test.go    | 54 ++++++++++++++++++++++++---
+ internal/board/write.go                     | 10 ++---
+ internal/board/write_test.go                | 31 ++++++++++++++--
+ internal/render/derive_test.go              | 57 +++++++++++++++++++++++++++++
+ internal/render/load.go                     |  4 +-
+ internal/render/template.go                 |  2 +-
+ skills/boardctl-usage/SKILL.md              |  2 +-
+ 16 files changed, 202 insertions(+), 50 deletions(-)
+
+diff --git a/.gitreins/config.yaml b/.gitreins/config.yaml
+index 5834910..98bcefa 100644
+--- a/.gitreins/config.yaml
++++ b/.gitreins/config.yaml
+@@ -3,6 +3,10 @@ guards:
+   lint: false
+   tests: false
+   test_mode: full
++  # BT-070: 180s default kills go_tests under fleet load (16-core box at
++  # loadavg ~30; the same guard passed at 180s on a quiet host 09-28/30).
++  # Full-mode suite measures 100-205s standalone — 900s gives 4x headroom.
++  test_timeout: 900
+   go:
+     build: true
+     lint: true
+diff --git a/README.md b/README.md
+index 3ff9316..8565c66 100644
+--- a/README.md
++++ b/README.md
+@@ -381,7 +381,7 @@ boardctl -C ~/myproject sweep-status --decide --apply  # write decided values +
+ 
+ Fleet rows are titled by hand — `[P1] real title` — and later re-priorities
+ leave the token stale. `validate` warns when a row's title carries a
+-`P0`–`P3` token that disagrees with the row's `priority` field (warn
++`P0`–`P5` token that disagrees with the row's `priority` field (warn
+ severity, exit 0; the priority FIELD wins for what the row means). The
+ warning names the row, the conflicting token, and both repair paths:
+ 
+@@ -397,8 +397,10 @@ The same BT-060 change adds `--title` to `update` (create always had it), so
+ the title fix no longer requires hand-editing tasks.jsonl: `boardctl update
+ <id> --title "New title"` rewrites the row in place, appends the
+ `task_updated` event, and leaves every other row byte-identical. Titles with
+-no Pn token never produce a finding, and out-of-vocabulary tokens (`P4`)
+-belong to the priority-vocabulary check, not this one.
++no Pn token never produce a finding, and out-of-vocabulary tokens (`P9`)
++belong to the priority-vocabulary check, not this one. (BT-070 extended the
++in-vocabulary span to P0..P5, so `[P4]` title tokens are drift-checked
++again.)
+ 
+ ## Task id format
+ 
+diff --git a/cmd/boardctl/import.go b/cmd/boardctl/import.go
+index 55aa5f6..c87a01e 100644
+--- a/cmd/boardctl/import.go
++++ b/cmd/boardctl/import.go
+@@ -526,7 +526,7 @@ func rowGoStringSlice(row *board.Row, key string) []string {
+ // buildImportTaskLine serializes one export task row for the target:
+ // verbatim field values and key order in the target's detected style, with
+ // three write-vocabulary adjustments mirroring `boardctl create` — status
+-// normalized ("completed" -> "complete"), priority normalized (P0-P3), and
++// normalized ("completed" -> "complete"), priority normalized (P0-P5), and
+ // the boardctl-web-export provenance appended to reasoning (original
+ // reasoning preserved verbatim).
+ func buildImportTaskLine(row *board.Row, style board.Style, newID string) ([]byte, error) {
+@@ -548,7 +548,7 @@ func buildImportTaskLine(row *board.Row, style board.Style, newID string) ([]byt
+ 	if c.Get("priority") != nil {
+ 		p := board.NormalizePriority(c.String("priority"))
+ 		if !board.PriorityVocabulary[p] {
+-			return nil, fmt.Errorf("export task %q: priority %q not in vocabulary {P0,P1,P2,P3} — import aborted", c.String("id"), c.String("priority"))
++			return nil, fmt.Errorf("export task %q: priority %q not in vocabulary {P0,P1,P2,P3,P4,P5} — import aborted", c.String("id"), c.String("priority"))
+ 		}
+ 		if err := c.SetGoValue("priority", p, style); err != nil {
+ 			return nil, err
+diff --git a/cmd/boardctl/main.go b/cmd/boardctl/main.go
+index 9b9c89b..aab67da 100644
+--- a/cmd/boardctl/main.go
++++ b/cmd/boardctl/main.go
+@@ -722,7 +722,7 @@ func cmdUpdate(dir string, args []string) error {
+ 	// DF-BOARDCTL-13: priority + SG-126 run evidence, mirroring create's
+ 	// flags (create line ~598/603). Omitted = the field is untouched; junk
+ 	// priority is rejected by the same write-time gate create uses.
+-	priority := fs.String("priority", "", "priority (P0-P3; bare 0-3 and case variants are normalized; omitted = leave untouched)")
++	priority := fs.String("priority", "", "priority (P0-P5; bare 0-5 and case variants are normalized; omitted = leave untouched)")
+ 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence on the existing row's detail (SG-126)")
+ 	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
+ 	// to their canonical forms (read-alias fix path). Takes no value, so it
+diff --git a/docs/specs/board-analytics-report.md b/docs/specs/board-analytics-report.md
+index 7a1b2b8..4ee1378 100644
+--- a/docs/specs/board-analytics-report.md
++++ b/docs/specs/board-analytics-report.md
+@@ -108,7 +108,7 @@ Types/normalization (read-side only; the report never writes task files):
+ |---|---|---|
+ | `id` | string | required for a row to be a task; rows without `id` are skipped + parse warning |
+ | `status` | string | `NormalizeStatus`: `"completed"` → `"complete"`; unknown values pass through as their own bucket; empty/missing → bucket `"(none)"` (matches `ComputeStats`) |
+-| `priority` | string OR JSON number | string form as-is (`P0..P3`), numeric form rendered as decimal string `"1".."3"` (matches `priorityLabel`); missing → excluded from priority counts |
++| `priority` | string OR JSON number | string form as-is (`P0..P5`), numeric form rendered as decimal string `"1".."5"` (matches `priorityLabel`); missing → excluded from priority counts |
+ | `created_at`, `updated_at`, `completed_at`, `blocked_since`, `dispatched_at` | timestamp strings | parsed per 2.5 |
+ | `attempts`, `complexity`, `lines_added`, `lines_removed`, `exit_code` | JSON number | int; missing/null → shown as `—` |
+ | `guard_result` | string | upper-cased display; PASS / FAIL / SKIP expected, anything else shown verbatim |
+diff --git a/internal/board/bt060_title_priority_test.go b/internal/board/bt060_title_priority_test.go
+index ae35df4..f6206cf 100644
+--- a/internal/board/bt060_title_priority_test.go
++++ b/internal/board/bt060_title_priority_test.go
+@@ -19,8 +19,9 @@ import (
+ //   - NO Pn token in the title → silent (no new warning class)
+ //   - token AGREEING with the field → silent
+ //   - multiple tokens each warn independently
+-//   - out-of-vocabulary tokens (P4/P9) are NOT this class (the BT-048
+-//     priority check owns the row's own priority drift)
++//   - out-of-vocabulary tokens (P9) are NOT this class (the BT-048
++//     priority check owns the row's own priority drift); since BT-070 the
++//     P0..P5 span is in-vocabulary, so a [P4] title token IS drift-checkable
+ //
+ // seedBT060Board writes one row per case; each task id encodes its case so
+ // findWarn can address it.
+@@ -33,7 +34,7 @@ func seedBT060Board(t *testing.T) *Board {
+ 			`{"id":"BT060-NOTOKEN","title":"plain title, no token","status":"pending","priority":"P1"}` + "\n" +
+ 			`{"id":"BT060-BARE","title":"P3 spike","status":"pending","priority":"P0"}` + "\n" +
+ 			`{"id":"BT060-LOWER","title":"fix [p1] thing","status":"pending","priority":"P2"}` + "\n" +
+-			`{"id":"BT060-P4","title":"[P4] out of vocab","status":"pending","priority":"P2"}` + "\n" +
++			`{"id":"BT060-P4","title":"[P4] paperwork lane","status":"pending","priority":"P2"}` + "\n" +
+ 			`{"id":"BT060-EMBED","title":"unstick API2 and P10 backlog","status":"pending","priority":"P1"}` + "\n" +
+ 			`{"id":"BT060-TWO","title":"[P0] a (P3) b","status":"pending","priority":"P2"}` + "\n" +
+ 			`{"id":"BT060-NOPRIO","title":"[P1] orphan token","status":"pending"}` + "\n",
+@@ -91,20 +92,29 @@ func TestBT060TitlePriorityMismatchWarns(t *testing.T) {
+ }
+ 
+ // TestBT060TitlePrioritySilentCases: agreeing tokens, token-free titles,
+-// embedded lookalikes (API2, P10), and out-of-vocabulary tokens (P4) stay
+-// silent — the class must not grow false positives that train operators to
+-// ignore it.
++// and embedded lookalikes (API2, P10) stay silent — the class must not grow
++// false positives that train operators to ignore it. BT-060 originally
++// excluded [P4] titles as out-of-vocabulary; BT-070 moved P4 into the
++// vocabulary, so the BT060-P4 row now warns as ordinary drift (covered by
++// the mismatch test's id list below).
+ func TestBT060TitlePrioritySilentCases(t *testing.T) {
+ 	b := seedBT060Board(t)
+ 	rep, err := b.Validate()
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+-	for _, id := range []string{"BT060-AGREE", "BT060-NOTOKEN", "BT060-EMBED", "BT060-P4"} {
++	for _, id := range []string{"BT060-AGREE", "BT060-NOTOKEN", "BT060-EMBED"} {
+ 		if got := findWarn(rep, id); got != "" {
+ 			t.Errorf("%s must not warn, got: %s", id, got)
+ 		}
+ 	}
++	// BT-070: [P4] is an in-vocabulary token again — a disagreeing one
++	// warns exactly like [P1]/[P2]/[P3] drift.
++	if got := findWarn(rep, "BT060-P4"); got == "" {
++		t.Errorf("BT060-P4: [P4] token vs P2 field is in-vocabulary drift since BT-070, must warn; findings: %+v", rep.Findings)
++	} else if !strings.Contains(got, `"P4"`) {
++		t.Errorf("BT060-P4 warning must name the [P4] token, got: %s", got)
++	}
+ }
+ 
+ // TestBT060MultipleTokensWarnIndependently: "[P0] a (P3) b" against priority
+@@ -158,7 +168,9 @@ func TestTitlePriorityTokensTable(t *testing.T) {
+ 		{"end token P3:", []string{"P3"}},
+ 		{"[P1] a (P2) b", []string{"P1", "P2"}},
+ 		{"P10 is bigger than P3", []string{"P3"}}, // P10 must not yield a bare P1
+-		{"API2 and P4", nil},                      // embedded letter, out-of-vocab digit
++		{"API2 and P9", nil},                      // embedded letter, out-of-vocab digit
++		{"[P4] paperwork", []string{"P4"}},        // BT-070: single digit 4 matches
++		{"[P5] cleanup", []string{"P5"}},          // BT-070: single digit 5 matches
+ 		{"no tokens here", nil},
+ 		{"", nil},
+ 		{"xP1y", nil}, // letters hugging the token make it part of a word
+diff --git a/internal/board/df_boardctl_13_test.go b/internal/board/df_boardctl_13_test.go
+index 1298cf7..a2188f8 100644
+--- a/internal/board/df_boardctl_13_test.go
++++ b/internal/board/df_boardctl_13_test.go
+@@ -147,13 +147,17 @@ func TestUpdatePriorityRewritesRowBytePreserving(t *testing.T) {
+ 
+ // TestUpdatePriorityNormalizesLikeCreate: the write-time gate is create's
+ // BT-007 gate verbatim — bare digits and case/whitespace variants map onto
+-// the canonical P0-P3 set so stats never splits groups.
++// the canonical P0-P5 set so stats never splits groups.
+ func TestUpdatePriorityNormalizesLikeCreate(t *testing.T) {
+ 	cases := []struct{ in, want string }{
+ 		{"1", "P1"},
+ 		{"p3", "P3"},
+ 		{" P0 ", "P0"},
+ 		{"P2", "P2"},
++		{"4", "P4"},
++		{"5", "P5"},
++		{"p4", "P4"},
++		{" P5 ", "P5"},
+ 	}
+ 	for _, c := range cases {
+ 		t.Run(c.in, func(t *testing.T) {
+@@ -172,7 +176,7 @@ func TestUpdatePriorityNormalizesLikeCreate(t *testing.T) {
+ // TestUpdateRejectsJunkPriority: out-of-vocabulary spellings fail the whole
+ // update with create's error text style — and the file is untouched.
+ func TestUpdateRejectsJunkPriority(t *testing.T) {
+-	for _, junk := range []string{"PX", "P4", "p9", "high"} {
++	for _, junk := range []string{"PX", "P9", "p8", "high"} {
+ 		t.Run(junk, func(t *testing.T) {
+ 			b := seedDF13Board(t)
+ 			before, err := os.ReadFile(b.TasksPath())
+@@ -184,7 +188,7 @@ func TestUpdateRejectsJunkPriority(t *testing.T) {
+ 			if err == nil {
+ 				t.Fatalf("junk priority %q accepted", junk)
+ 			}
+-			if !strings.Contains(err.Error(), "not in vocabulary {P0,P1,P2,P3}") {
++			if !strings.Contains(err.Error(), "not in vocabulary {P0,P1,P2,P3,P4,P5}") {
+ 				t.Fatalf("error does not name the vocabulary gate: %v", err)
+ 			}
+ 			after, err := os.ReadFile(b.TasksPath())
+diff --git a/internal/board/read.go b/internal/board/read.go
+index 7f5f2f6..8b5deb1 100644
+--- a/internal/board/read.go
++++ b/internal/board/read.go
+@@ -88,12 +88,14 @@ var CIResultVocabulary = map[string]bool{
+ }
+ 
+ // PriorityVocabulary is the canonical priority set used by every live fleet
+-// board (P0 through P3).
++// board (P0 through P5).
+ var PriorityVocabulary = map[string]bool{
+ 	"P0": true,
+ 	"P1": true,
+ 	"P2": true,
+ 	"P3": true,
++	"P4": true,
++	"P5": true,
+ }
+ 
+ // EventTypeVocabulary is the canonical event_type set enforced by
+@@ -130,8 +132,8 @@ func NormalizeResultValue(v string) string {
+ }
+ 
+ // NormalizePriority maps accepted priority spellings onto the canonical
+-// P0-P3 vocabulary: bare digits ("0".."3") and case/whitespace variants
+-// (" p2 ") normalize to P0..P3. Anything else passes through unchanged for
++// P0-P5 vocabulary: bare digits ("0".."5") and case/whitespace variants
++// (" p2 ") normalize to P0..P5. Anything else passes through unchanged for
+ // the caller to reject.
+ func NormalizePriority(p string) string {
+ 	p = strings.ToUpper(strings.TrimSpace(p))
+@@ -144,6 +146,10 @@ func NormalizePriority(p string) string {
+ 		return "P2"
+ 	case "3":
+ 		return "P3"
++	case "4":
++		return "P4"
++	case "5":
++		return "P5"
+ 	}
+ 	return p
+ }
+@@ -378,7 +384,7 @@ func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
+ }
+ 
+ // priorityLabel renders a row's priority as its display string: strings as-is
+-// (P0..P3), JSON numbers as their decimal form ("1".."3"). Boards mix both.
++// (P0..P5), JSON numbers as their decimal form ("1".."5"). Boards mix both.
+ func priorityLabel(r *Row) (string, bool) {
+ 	raw := r.Get("priority")
+ 	if raw == nil || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+diff --git a/internal/board/validate.go b/internal/board/validate.go
+index b8c6236..513b655 100644
+--- a/internal/board/validate.go
++++ b/internal/board/validate.go
+@@ -165,10 +165,10 @@ func (b *Board) validateTasks(rep *Report) {
+ 			}
+ 		}
+ 		// BT-048: the priority column has a canonical on-disk vocabulary
+-		// {P0,P1,P2,P3} (the write path normalizes bare digits and case
++		// {P0,P1,P2,P3,P4,P5} (the write path normalizes bare digits and case
+ 		// variants, rejecting the rest, since BT-007), but hand-edited or
+ 		// legacy rows carry other spellings (28 live rows measured
+-		// 2026-09-22: bare digits, P4, lowercase p2, prose). Unlike the
++		// 2026-09-22: bare digits, P9, lowercase p2, prose). Unlike the
+ 		// guard/ci checks above, membership is tested on the RAW stored
+ 		// value with NO case/digit tolerance: those spellings are exactly
+ 		// the drift class this warning exists to catch. Empty/absent
+@@ -177,10 +177,10 @@ func (b *Board) validateTasks(rep *Report) {
+ 		p := row.String("priority")
+ 		if p != "" && !PriorityVocabulary[p] {
+ 			if canon := NormalizePriority(p); PriorityVocabulary[canon] {
+-				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3} — canonical form is %q (writes normalize bare 0-3 and case variants; hand-edit the row or rewrite via boardctl update)",
++				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3,P4,P5} — canonical form is %q (writes normalize bare 0-5 and case variants; hand-edit the row or rewrite via boardctl update)",
+ 					idx+1, id, p, canon)
+ 			} else {
+-				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3} (writes reject this value; hand-edit the row or rewrite via boardctl update)",
++				rep.Add("warn", "tasks.jsonl line %d (task %s): priority %q is not in vocabulary {P0,P1,P2,P3,P4,P5} (writes reject this value; hand-edit the row or rewrite via boardctl update)",
+ 					idx+1, id, p)
+ 			}
+ 		}
+@@ -189,10 +189,10 @@ func (b *Board) validateTasks(rep *Report) {
+ 		// by hand and then re-priorities the row, so the token goes stale.
+ 		// The priority FIELD wins for what the row means (BT-048: it is the
+ 		// machine-read value); the warning only points at the stale token.
+-		// Rules: exactly one P0-P3 token is searched (the same regex used in
+-		// the warning text); out-of-vocabulary spellings (P4, P9) are NOT
++		// Rules: exactly one P0-P5 token is searched (the same regex used in
++		// the warning text); out-of-vocabulary spellings (P9) are NOT
+ 		// this class — the BT-048 priority check already owns the row's
+-		// priority drift, and guessing what P4 "should" be would invent a
++		// priority drift, and guessing what P9 "should" be would invent a
+ 		// decision. Multiple tokens each get their own warning (a title like
+ 		// "[P2] fix P1 regression" carries two independent tells). No token,
+ 		// no finding; exit stays 0 (warn severity, like every cross-check).
+@@ -383,13 +383,13 @@ func decodeJSONString(raw []byte) (string, bool) {
+ 	return s, true
+ }
+ 
+-// titlePriorityToken matches a P0-P3 token standing ALONE in a title: the
++// titlePriorityToken matches a P0-P5 token standing ALONE in a title: the
+ // letter P (any case — the drift class includes hand-typed "[p1]") preceded
+ // by the start of the string or a non-alphanumeric character, followed by a
+-// single digit 0-3, followed by the end of the string or a non-alphanumeric
++// single digit 0-5, followed by the end of the string or a non-alphanumeric
+ // character. "P1" inside "P10" or "API2" does not match (the digit and the
+ // leading letter are part of a larger token); "[P1]" and "P1:" and "p1 " do.
+-var titlePriorityToken = regexp.MustCompile(`(^|[^A-Za-z0-9])([Pp][0-3])([^A-Za-z0-9]|$)`)
++var titlePriorityToken = regexp.MustCompile(`(^|[^A-Za-z0-9])([Pp][0-5])([^A-Za-z0-9]|$)`)
+ 
+ // TitlePriorityTokens returns the priority tokens a title carries, in
+ // order of appearance (BT-060's title-priority cross-check). Multiple
+diff --git a/internal/board/validate_priority_test.go b/internal/board/validate_priority_test.go
+index 6aa7561..87b46ad 100644
+--- a/internal/board/validate_priority_test.go
++++ b/internal/board/validate_priority_test.go
+@@ -1,6 +1,7 @@
+ package board
+ 
+ import (
++	"fmt"
+ 	"strings"
+ 	"testing"
+ )
+@@ -38,7 +39,7 @@ func countPriorityWarns(rep *Report) int {
+ }
+ 
+ // BT-048: priority values already on boards must be spelled in the canonical
+-// {P0,P1,P2,P3} vocabulary. The check is on the RAW stored value — bare
++// {P0,P1,P2,P3,P4,P5} vocabulary. The check is on the RAW stored value — bare
+ // digits ("3") and case variants ("p2") warn even though the write path
+ // normalizes them (BT-007) — because the flag exists to stop the
+ // off-vocabulary class regrowing on disk (28 live rows measured 2026-09-22).
+@@ -48,7 +49,7 @@ func TestValidateWarnsOnOffVocabularyPriority(t *testing.T) {
+ 		canonical string // "" = no canonical form exists; warning names the vocabulary
+ 	}{
+ 		{"3", "P3"},
+-		{"P4", ""},
++		{"P9", ""},
+ 		{"p2", "P2"},
+ 		{"urgent", ""},
+ 	}
+@@ -71,7 +72,7 @@ func TestValidateWarnsOnOffVocabularyPriority(t *testing.T) {
+ 		if !strings.Contains(msg, "PRIO-A") {
+ 			t.Fatalf("priority %q: warning does not name the row id; msg: %s", c.raw, msg)
+ 		}
+-		if !strings.Contains(msg, "{P0,P1,P2,P3}") {
++		if !strings.Contains(msg, "{P0,P1,P2,P3,P4,P5}") {
+ 			t.Fatalf("priority %q: warning does not name the canonical vocabulary; msg: %s", c.raw, msg)
+ 		}
+ 		if c.canonical != "" && !strings.Contains(msg, `"`+c.canonical+`"`) {
+@@ -81,9 +82,9 @@ func TestValidateWarnsOnOffVocabularyPriority(t *testing.T) {
+ }
+ 
+ // BT-048: canonical priorities stay silent — the flag exists only for
+-// out-of-vocabulary values.
++// out-of-vocabulary values. BT-070: the canonical set is P0..P5.
+ func TestValidateCanonicalPrioritiesSilent(t *testing.T) {
+-	b := seedPriorityBoard(t, "P0", "P1", "P2", "P3")
++	b := seedPriorityBoard(t, "P0", "P1", "P2", "P3", "P4", "P5")
+ 	rep, err := b.Validate()
+ 	if err != nil {
+ 		t.Fatal(err)
+@@ -99,7 +100,7 @@ func TestValidateCanonicalPrioritiesSilent(t *testing.T) {
+ // BT-048: a board carrying ONLY priority warnings validates OK — warnings do
+ // not block (the CLI exits non-zero on HasErrors, which stays false here).
+ func TestValidatePriorityWarningsKeepBoardOK(t *testing.T) {
+-	b := seedPriorityBoard(t, "3", "P4", "p2", "urgent")
++	b := seedPriorityBoard(t, "3", "P9", "p2", "urgent")
+ 	rep, err := b.Validate()
+ 	if err != nil {
+ 		t.Fatal(err)
+@@ -139,3 +140,44 @@ func TestValidateMissingPriorityUntouched(t *testing.T) {
+ 		t.Fatalf("missing priority must not produce a priority warning: %+v", rep.Findings)
+ 	}
+ }
++
++// BT-070: NormalizePriority maps the full P0..P5 span — bare digits 0-5 and
++// case/whitespace variants normalize onto the canonical set; junk passes
++// through unchanged for the write gate to reject.
++func TestNormalizePriorityFullVocabulary(t *testing.T) {
++	cases := []struct {
++		in   string
++		want string
++	}{
++		{"0", "P0"},
++		{"1", "P1"},
++		{"2", "P2"},
++		{"3", "P3"},
++		{"4", "P4"},
++		{"5", "P5"},
++		{"P4", "P4"},
++		{"P5", "P5"},
++		{"p4", "P4"},
++		{" p5 ", "P5"},
++		{"banana", "BANANA"}, // junk passes through untouched (upper-cased)
++		{"P9", "P9"},         // out-of-vocab passes through untouched
++		{"", ""},
++	}
++	for _, c := range cases {
++		if got := NormalizePriority(c.in); got != c.want {
++			t.Errorf("NormalizePriority(%q) = %q, want %q", c.in, got, c.want)
++		}
++	}
++	// every canonical spelling is in-vocabulary, P0..P5
++	for i := 0; i <= 5; i++ {
++		p := fmt.Sprintf("P%d", i)
++		if !PriorityVocabulary[p] {
++			t.Errorf("PriorityVocabulary missing %q — the canonical set must cover P0..P5", p)
++		}
++	}
++	for _, junk := range []string{"P6", "P7", "P8", "P9"} {
++		if PriorityVocabulary[junk] {
++			t.Errorf("PriorityVocabulary must not contain %q", junk)
++		}
++	}
++}
+diff --git a/internal/board/write.go b/internal/board/write.go
+index 9b630ee..b46a119 100644
+--- a/internal/board/write.go
++++ b/internal/board/write.go
+@@ -280,13 +280,13 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
+ 	}
+ 	// BT-007: priority is normalized-or-rejected at write time — bare
+ 	// digits ("1") and case variants ("p2") map onto the canonical
+-	// P0-P3 set every fleet board uses, so stats never splits groups.
++	// P0-P5 set every fleet board uses, so stats never splits groups.
+ 	priority := NormalizePriority(spec.Priority)
+ 	if priority == "" {
+ 		priority = "P2"
+ 	}
+ 	if !PriorityVocabulary[priority] {
+-		return "", fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3} (bare 0-3 are normalized; use e.g. --priority P1)", spec.Priority)
++		return "", fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3,P4,P5} (bare 0-5 are normalized; use e.g. --priority P1)", spec.Priority)
+ 	}
+ 	spec.Priority = priority
+ 
+@@ -420,7 +420,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
+ 	}
+ 	set := func(key string, v any) error { return row.SetGoValue(key, v, style) }
+ 
+-	// spec.Priority is already normalized (P0-P3, default P2) and validated
++	// spec.Priority is already normalized (P0-P5, default P2) and validated
+ 	// above; complexity defaults to 3.
+ 	complexity := int64(3)
+ 	if spec.Complexity != nil {
+@@ -875,14 +875,14 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
+ 	}
+ 	// DF-BOARDCTL-13: priority goes through the SAME write-time gate as
+ 	// create (BT-007) — bare digits ("1") and case variants ("p2") map onto
+-	// the canonical P0-P3 set, anything else fails the whole update with
++	// the canonical P0-P5 set, anything else fails the whole update with
+ 	// create's error text and NOTHING is written. The value is stored
+ 	// canonical, so the row's priority field keeps speaking BT-048's
+ 	// on-disk vocabulary no matter which command wrote it.
+ 	if spec.Priority != nil {
+ 		p := NormalizePriority(*spec.Priority)
+ 		if !PriorityVocabulary[p] {
+-			return nil, fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3} (bare 0-3 are normalized; use e.g. --priority P1)", *spec.Priority)
++			return nil, fmt.Errorf("priority %q not in vocabulary {P0,P1,P2,P3,P4,P5} (bare 0-5 are normalized; use e.g. --priority P1)", *spec.Priority)
+ 		}
+ 		if err := set("priority", p); err != nil {
+ 			return nil, err
+diff --git a/internal/board/write_test.go b/internal/board/write_test.go
+index 88e8466..8010629 100644
+--- a/internal/board/write_test.go
++++ b/internal/board/write_test.go
+@@ -3,6 +3,7 @@ package board
+ import (
+ 	"encoding/json"
+ 	"errors"
++	"fmt"
+ 	"os"
+ 	"regexp"
+ 	"strings"
+@@ -101,7 +102,7 @@ func TestUpdateCIRejectsOutOfVocab(t *testing.T) {
+ 	}
+ }
+ 
+-// BT-007: create --priority 1 is NORMALIZED to P1 (fleet boards use P0-P3;
++// BT-007: create --priority 1 is NORMALIZED to P1 (fleet boards use P0-P5;
+ // bare digits must not fork the stats grouping).
+ func TestCreatePriorityNormalizesBareDigits(t *testing.T) {
+ 	b := newTestBoard(t)
+@@ -121,13 +122,37 @@ func TestCreatePriorityNormalizesBareDigits(t *testing.T) {
+ 	}
+ }
+ 
+-// BT-007: a priority outside {P0,P1,P2,P3} (after normalization) is rejected.
++// BT-070: P4/P5 are in-vocabulary on create — canonical form is stored
++// verbatim, bare digits and case variants normalize onto them, exactly like
++// P0..P3.
++func TestCreateAcceptsP4AndP5(t *testing.T) {
++	cases := []struct{ in, want string }{
++		{"P4", "P4"},
++		{"P5", "P5"},
++		{"4", "P4"},
++		{"5", "P5"},
++		{"p4", "P4"},
++		{" p5 ", "P5"},
++	}
++	for i, c := range cases {
++		b := newTestBoard(t)
++		id := fmt.Sprintf("NEW-P45-%d", i)
++		if _, err := b.Create(TaskRowSpec{ID: id, Title: "n", Priority: c.in}); err != nil {
++			t.Fatalf("create --priority %q rejected: %v", c.in, err)
++		}
++		if row := lastTaskRaw(t, b); row["priority"] != c.want {
++			t.Fatalf("priority %q: stored %v, want %q", c.in, row["priority"], c.want)
++		}
++	}
++}
++
++// BT-007: a priority outside {P0,P1,P2,P3,P4,P5} (after normalization) is rejected.
+ func TestCreatePriorityRejectsGarbage(t *testing.T) {
+ 	b := newTestBoard(t)
+ 	before := boardLineCount(t, b.tasksPath)
+ 	if _, err := b.Create(TaskRowSpec{ID: "NEW-1", Title: "n1", Priority: "banana"}); err == nil {
+ 		t.Fatal("create --priority banana accepted")
+-	} else if !strings.Contains(err.Error(), "P0,P1,P2,P3") {
++	} else if !strings.Contains(err.Error(), "P0,P1,P2,P3,P4,P5") {
+ 		t.Fatalf("error should name the priority vocabulary, got: %v", err)
+ 	}
+ 	if n := boardLineCount(t, b.tasksPath); n != before {
+diff --git a/internal/render/derive_test.go b/internal/render/derive_test.go
+index 3dffb3a..51f6759 100644
+--- a/internal/render/derive_test.go
++++ b/internal/render/derive_test.go
+@@ -3,8 +3,10 @@ package render
+ import (
+ 	"encoding/base64"
+ 	"encoding/json"
++	"fmt"
+ 	"math"
+ 	"reflect"
++	"sort"
+ 	"strconv"
+ 	"strings"
+ 	"testing"
+@@ -438,6 +440,61 @@ func TestModelShare(t *testing.T) {
+ 
+ // ---------- 3.9 status/priority counts ----------
+ 
++// TestPriorityCountOrderingCoversP0toP5 pins BT-070's render-ordering
++// contract: priority buckets carry every canonical label P0..P5 and the
++// payload surfaces them in ascending priority order. There is no priority
++// rank table anywhere in the render path — ordering rides the lexical byte
++// order of the bucket keys (Go JSON marshals map keys sorted; the counts
++// panel's JS sorts equal-count keys by name ascending), and that lexical
++// order IS total across P0..P5 ("P4"/"P5" sort after "P3" as single-digit
++// labels). Pinning the full sorted key set here means a future rank map or
++// a key shape that breaks P0..P5 monotonicity (e.g. two-digit labels) fails
++// this test before it silently reorders the composition panel.
++func TestPriorityCountOrderingCoversP0toP5(t *testing.T) {
++	tasks := []*board.Row{}
++	for i := 0; i <= 5; i++ {
++		p := fmt.Sprintf("P%d", i)
++		tasks = append(tasks, mustRow(t, `{"id":"ORD-`+p+`","status":"pending","priority":"`+p+`","created_at":"2026-09-01 00:00:00"}`))
++	}
++	tasks = append(tasks, mustRow(t, `{"id":"ORD-NUM","status":"pending","priority":5,"created_at":"2026-09-01 00:00:00"}`))                     // numeric label is its own bucket
++	tasks = append(tasks, mustRow(t, `{"id":"ORD-FIX","status":"pending","priority":"P5","perpetual":true,"created_at":"2026-09-01 00:00:00"}`)) // fixture, excluded
++	d := mkBoard(tasks, nil)
++	der := derive(d)
++	if len(der.PriorityCount) != 7 {
++		t.Fatalf("priority counts = %v, want 7 buckets (P0..P5 + numeric \"5\")", der.PriorityCount)
++	}
++	for i := 0; i <= 5; i++ {
++		p := fmt.Sprintf("P%d", i)
++		if der.PriorityCount[p] != 1 {
++			t.Fatalf("priority counts = %v, want %s=1", der.PriorityCount, p)
++		}
++	}
++	// the wire order: Go JSON marshals map keys ascending, so the rendered
++	// composition panel receives the buckets in byte order — digits ("5")
++	// before the P-labels, P0,P1,P2,P3,P4,P5 in priority order. The
++	// BT-070-relevant property is P4/P5 after P3; the digit-bucket position
++	// is pre-existing behavior shared with numeric priority "2" on live
++	// boards.
++	keys := make([]string, 0, len(der.PriorityCount))
++	for k := range der.PriorityCount {
++		keys = append(keys, k)
++	}
++	sort.Strings(keys)
++	want := []string{"5", "P0", "P1", "P2", "P3", "P4", "P5"}
++	for i := range want {
++		if keys[i] != want[i] {
++			t.Fatalf("sorted priority keys = %v, want %v — the panel's P0..P5 ordering broke", keys, want)
++		}
++	}
++	// byte-order monotonicity is the property the sort relies on: every Pn
++	// label sorts before P(n+1), and P4/P5 after P3, with no rank table.
++	for i := 0; i < 5; i++ {
++		if !(fmt.Sprintf("P%d", i) < fmt.Sprintf("P%d", i+1)) {
++			t.Fatalf("lexical order broken: P%d must sort before P%d", i, i+1)
++		}
++	}
++}
++
+ func TestStatusPriorityCounts(t *testing.T) {
+ 	tasks := []*board.Row{
+ 		mustRow(t, taskLine("A", "2026-09-01 00:00:00", "2026-09-02 00:00:00", "complete")),
+diff --git a/internal/render/load.go b/internal/render/load.go
+index a9685f5..1200867 100644
+--- a/internal/render/load.go
++++ b/internal/render/load.go
+@@ -477,8 +477,8 @@ func strictBase64(s string) ([]byte, bool) {
+ 	return nil, false
+ }
+ 
+-// priorityLabel mirrors board.priorityLabel: string form as-is (P0..P3),
+-// JSON numbers as decimal strings ("1".."3"); missing/null/wrong-typed are
++// priorityLabel mirrors board.priorityLabel: string form as-is (P0..P5),
++// JSON numbers as decimal strings ("1".."5"); missing/null/wrong-typed are
+ // excluded. String and numeric forms are DISTINCT buckets (live boards mix).
+ func priorityLabel(row *board.Row) (string, bool) {
+ 	raw := row.Get("priority")
+diff --git a/internal/render/template.go b/internal/render/template.go
+index af5b49c..5a63743 100644
+--- a/internal/render/template.go
++++ b/internal/render/template.go
+@@ -809,7 +809,7 @@ function countsFromRaw(bd, fixtures){
+   });
+   return {status: sc, priority: pc};
+ }
+-// priorityLabelOf mirrors the Go read-side rule: string form as-is (P0..P3),
++// priorityLabelOf mirrors the Go read-side rule: string form as-is (P0..P5),
+ // JSON numbers as decimal strings; missing/null/wrong-typed are excluded.
+ function priorityLabelOf(r){
+   var v = r ? r.priority : undefined;
+diff --git a/skills/boardctl-usage/SKILL.md b/skills/boardctl-usage/SKILL.md
+index 37c2e71..a9cdd90 100644
+--- a/skills/boardctl-usage/SKILL.md
++++ b/skills/boardctl-usage/SKILL.md
+@@ -164,7 +164,7 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
+ - `--guard`: `{PASS,FAIL,SKIP}`; `--ci`: `{GREEN,RED,SKIP}` — junk values
+   rejected at write (BT-007 closed the old accept-anything hole; trust
+   these fields on boards written by recent binaries).
+-- `--priority`: `P0..P3` — bare `0`–`3` are normalized to `P0`–`P3`
++- `--priority`: `P0..P5` — bare `0`–`5` are normalized to `P0`–`P5`
+   automatically; `P9`-style out-of-vocab values are rejected.
+ - `--depends-on`: every referenced id must already exist as a task, or the
+   create/update aborts (create the dependency task first).

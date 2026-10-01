@@ -1,0 +1,12 @@
+commit 5f95947d6169ff572adbe9433378b05f9207e788
+Merge: 1475e81 b52a4c8
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Tue Sep 29 05:35:39 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Tue Sep 29 05:35:39 2026 -0500
+
+    merge: REVIEW-BOARDCTL-009 serve upload path guard (wave recovery)
+
+ cmd/boardctl/serve.go      |   8 ++++
+ cmd/boardctl/serve_test.go | 112 +++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 120 insertions(+)

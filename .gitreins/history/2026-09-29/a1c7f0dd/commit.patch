@@ -1,0 +1,13 @@
+commit beeabbcdedde31166ae1c4a9ecb860d4ca178747
+Merge: 36cec9b d4ccbf0
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Tue Sep 29 06:03:31 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Tue Sep 29 06:03:31 2026 -0500
+
+    merge: REVIEW-BOARDCTL-008 event --tick write notice + --no-tick-write
+
+ cmd/boardctl/main.go                               |  17 +-
+ .../review_boardctl_008_event_tick_write_test.go   | 302 +++++++++++++++++++++
+ internal/board/write.go                            |  52 +++-
+ 3 files changed, 365 insertions(+), 6 deletions(-)

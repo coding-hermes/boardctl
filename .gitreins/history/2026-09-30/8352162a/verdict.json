@@ -1,0 +1,93 @@
+{
+  "task_id": "SWEEP-STATUS-DECISIONS",
+  "task_title": "boardctl: explicit-decision sweep mode \u2014 decide+fix off-vocab result columns and duplicate/parked statuses fleet-wide",
+  "task_criteria": [
+    "1) sweep-status (and a new --decide mode) accepts machine-checkable decisions: result columns (guard_result/ci_result) whose value CONTAINS a canonical token (e.g. 'PASS 5/5', 'PENDING', 'pipeline SUCCESS') normalize to PASS/FAIL/GREEN/RED/SKIP by prefix/keyword rule; 2) status 'duplicate' rows with a distinct-id earlier twin are closed via the dedupe-board --by-id machinery (status=complete, superseded_by=<kept id>, summary preserved); 3) unknown/ambiguous values remain refuse-to-guess; 4) regression tests cover each rule incl. a REFUSED ambiguous case; 5) full gate battery green (build/vet/test/fmt-check/version-check)"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "8f0f630ce384e3742b770715474eb9950ca68197",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.876s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n7:24AM INF scanned ~2269416 bytes (2.27 MB) in 1.44s\n7:24AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 161 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260930T121617.239629Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.876s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.839s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.297s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t6.677s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260930T121617.239629Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 1) sweep-status (and a new --decide mode) accepts machine-checkable decisions: result columns (guard_result/ci_result) whose value CONTAINS a canonical token (e.g. 'PASS 5/5', 'PENDING', 'pipeline SUCCESS') normalize to PASS/FAIL/GREEN/RED/SKIP by prefix/keyword rule; 2) status 'duplicate' rows with a distinct-id earlier twin are closed via the dedupe-board --by-id machinery (status=complete, superseded_by=<kept id>, summary preserved); 3) unknown/ambiguous values remain refuse-to-guess; 4) regression tests cover each rule incl. a REFUSED ambiguous case; 5) full gate battery green (build/vet/test/fmt-check/version-check): (1) internal/board/sweepdecide.go:78 DecideResultValue implements prefix/keyword rules: first-token PASS|OK->PASS, FAIL|ERROR->FAIL, GREEN->GREEN, RED->RED; anywhere standalone SKIP or literal N/A->SKIP; standalone SUCCESS->GREEN(ci)/PASS(guard). Wired via cmd/boardctl/main.go --decide flag -> b.StatusSweepDecide(apply,decide) (sweep.go:132). TestDecideResultValueTable pins 'PASS 5/5'->PASS, 'pipeline 1166 SUCCESS all 6 jobs (lint GREEN first time)'->GREEN, 'N/A (...)'->SKIP. (2) sweep.go:305-315 routes duplicate-with-twin rows through b.CloseIDDupeLine (iddupe.go:313), which sets status=complete, superseded_by=<kept id>, worker_summary 'superseded-by-earliest: recycled task id \u2014 kept line K', completed_at, plus one audit event quoting original title/reasoning/status verbatim; TestStatusSweepDecideApplyWrites asserts status=complete, superseded_by=DEC-DUP, summary 'kept line 4', title/reasoning preserved. (3) Ambiguity gate sweepdecide.go:82 refuses values naming both PASS and FAIL; PENDING and unmatched values fall through to explicit (sweep.go:229 rep.Explicit). (4) Tests: internal/board/sweep_decide_test.go (TestDecideResultValueTable incl. REFUSED 'PASS but really FAIL', 'first FAIL then PASS on rerun', 'PENDING', 'PASSED is not PASS', unmatched) and cmd/boardctl/review_sweep_decide_test.go (TestCmdSweepStatusDecideDryRun asserts explicit refusals for AC-PENDING and twin-less AC-LONE). Ran `go test -count=1 -v -run 'Decide|SweepStatusDecide|CloseIDDupeLine|SetResultValue|ResultDecideRuleDoc' ./internal/board/ ./cmd/boardctl/` \u2014 all 12 tests PASS, exit 0. (5) Gate battery: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 (all packages ok, incl. internal/fmtcheck, internal/versioncheck); `make fmt-check` exit 0 (ok internal/fmtcheck); `make version-check` exit 0 (ok internal/versioncheck).\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 1) sweep-status (and a new --decide mode) accepts machine-checkable decisions: result columns (guard_result/ci_result) whose value CONTAINS a canonical token (e.g. 'PASS 5/5', 'PENDING', 'pipeline SUCCESS') normalize to PASS/FAIL/GREEN/RED/SKIP by prefix/keyword rule; 2) status 'duplicate' rows with a distinct-id earlier twin are closed via the dedupe-board --by-id machinery (status=complete, superseded_by=<kept id>, summary preserved); 3) unknown/ambiguous values remain refuse-to-guess; 4) regression tests cover each rule incl. a REFUSED ambiguous case; 5) full gate battery green (build/vet/test/fmt-check/version-check): (1) internal/board/sweepdecide.go:78 DecideResultValue implements prefix/keyword rules: first-token PASS|OK->PASS, FAIL|ERROR->FAIL, GREEN->GREEN, RED->RED; anywhere standalone SKIP or literal N/A->SKIP; standalone SUCCESS->GREEN(ci)/PASS(guard). Wired via cmd/boardctl/main.go --decide flag -> b.StatusSweepDecide(apply,decide) (sweep.go:132). TestDecideResultValueTable pins 'PASS 5/5'->PASS, 'pipeline 1166 SUCCESS all 6 jobs (lint GREEN first time)'->GREEN, 'N/A (...)'->SKIP. (2) sweep.go:305-315 routes duplicate-with-twin rows through b.CloseIDDupeLine (iddupe.go:313), which sets status=complete, superseded_by=<kept id>, worker_summary 'superseded-by-earliest: recycled task id \u2014 kept line K', completed_at, plus one audit event quoting original title/reasoning/status verbatim; TestStatusSweepDecideApplyWrites asserts status=complete, superseded_by=DEC-DUP, summary 'kept line 4', title/reasoning preserved. (3) Ambiguity gate sweepdecide.go:82 refuses values naming both PASS and FAIL; PENDING and unmatched values fall through to explicit (sweep.go:229 rep.Explicit). (4) Tests: internal/board/sweep_decide_test.go (TestDecideResultValueTable incl. REFUSED 'PASS but really FAIL', 'first FAIL then PASS on rerun', 'PENDING', 'PASSED is not PASS', unmatched) and cmd/boardctl/review_sweep_decide_test.go (TestCmdSweepStatusDecideDryRun asserts explicit refusals for AC-PENDING and twin-less AC-LONE). Ran `go test -count=1 -v -run 'Decide|SweepStatusDecide|CloseIDDupeLine|SetResultValue|ResultDecideRuleDoc' ./internal/board/ ./cmd/boardctl/` \u2014 all 12 tests PASS, exit 0. (5) Gate battery: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 (all packages ok, incl. internal/fmtcheck, internal/versioncheck); `make fmt-check` exit 0 (ok internal/fmtcheck); `make version-check` exit 0 (ok internal/versioncheck).\n",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "1) sweep-status (and a new --decide mode) accepts machine-checkable decisions: result columns (guard_result/ci_result) whose value CONTAINS a canonical token (e.g. 'PASS 5/5', 'PENDING', 'pipeline SUCCESS') normalize to PASS/FAIL/GREEN/RED/SKIP by prefix/keyword rule; 2) status 'duplicate' rows with a distinct-id earlier twin are closed via the dedupe-board --by-id machinery (status=complete, superseded_by=<kept id>, summary preserved); 3) unknown/ambiguous values remain refuse-to-guess; 4) regression tests cover each rule incl. a REFUSED ambiguous case; 5) full gate battery green (build/vet/test/fmt-check/version-check)",
+                "status": "PASS",
+                "detail": "(1) internal/board/sweepdecide.go:78 DecideResultValue implements prefix/keyword rules: first-token PASS|OK->PASS, FAIL|ERROR->FAIL, GREEN->GREEN, RED->RED; anywhere standalone SKIP or literal N/A->SKIP; standalone SUCCESS->GREEN(ci)/PASS(guard). Wired via cmd/boardctl/main.go --decide flag -> b.StatusSweepDecide(apply,decide) (sweep.go:132). TestDecideResultValueTable pins 'PASS 5/5'->PASS, 'pipeline 1166 SUCCESS all 6 jobs (lint GREEN first time)'->GREEN, 'N/A (...)'->SKIP. (2) sweep.go:305-315 routes duplicate-with-twin rows through b.CloseIDDupeLine (iddupe.go:313), which sets status=complete, superseded_by=<kept id>, worker_summary 'superseded-by-earliest: recycled task id \u2014 kept line K', completed_at, plus one audit event quoting original title/reasoning/status verbatim; TestStatusSweepDecideApplyWrites asserts status=complete, superseded_by=DEC-DUP, summary 'kept line 4', title/reasoning preserved. (3) Ambiguity gate sweepdecide.go:82 refuses values naming both PASS and FAIL; PENDING and unmatched values fall through to explicit (sweep.go:229 rep.Explicit). (4) Tests: internal/board/sweep_decide_test.go (TestDecideResultValueTable incl. REFUSED 'PASS but really FAIL', 'first FAIL then PASS on rerun', 'PENDING', 'PASSED is not PASS', unmatched) and cmd/boardctl/review_sweep_decide_test.go (TestCmdSweepStatusDecideDryRun asserts explicit refusals for AC-PENDING and twin-less AC-LONE). Ran `go test -count=1 -v -run 'Decide|SweepStatusDecide|CloseIDDupeLine|SetResultValue|ResultDecideRuleDoc' ./internal/board/ ./cmd/boardctl/` \u2014 all 12 tests PASS, exit 0. (5) Gate battery: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 (all packages ok, incl. internal/fmtcheck, internal/versioncheck); `make fmt-check` exit 0 (ok internal/fmtcheck); `make version-check` exit 0 (ok internal/versioncheck)."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: SWEEP-STATUS-DECISIONS\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.876s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 1) sweep-status (and a new --decide mode) accepts machine-checkable decisions: result columns (guard_result/ci_result) whose value CONTAINS a canonical token (e.g. 'PASS 5/5', 'PENDING', 'pipeline SUCCESS') normalize to PASS/FAIL/GREEN/RED/SKIP by prefix/keyword rule; 2) status 'duplicate' rows with a distinct-id earlier twin are closed via the dedupe-board --by-id machinery (status=complete, superseded_by=<kept id>, summary preserved); 3) unknown/ambiguous values remain refuse-to-guess; 4) regression tests cover each rule incl. a REFUSED ambiguous case; 5) full gate battery green (build/vet/test/fmt-check/version-check): (1) internal/board/sweepdecide.go:78 DecideResultValue implements prefix/keyword rules: first-token PASS|OK->PASS, FAIL|ERROR->FAIL, GREEN->GREEN, RED->RED; anywhere standalone SKIP or literal N/A->SKIP; standalone SUCCESS->GREEN(ci)/PASS(guard). Wired via cmd/boardctl/main.go --decide flag -> b.StatusSweepDecide(apply,decide) (sweep.go:132). TestDecideResultValueTable pins 'PASS 5/5'->PASS, 'pipeline 1166 SUCCESS all 6 jobs (lint GREEN first time)'->GREEN, 'N/A (...)'->SKIP. (2) sweep.go:305-315 routes duplicate-with-twin rows through b.CloseIDDupeLine (iddupe.go:313), which sets status=complete, superseded_by=<kept id>, worker_summary 'superseded-by-earliest: recycled task id \u2014 kept line K', completed_at, plus one audit event quoting original title/reasoning/status verbatim; TestStatusSweepDecideApplyWrites asserts status=complete, superseded_by=DEC-DUP, summary 'kept line 4', title/reasoning preserved. (3) Ambiguity gate sweepdecide.go:82 refuses values naming both PASS and FAIL; PENDING and unmatched values fall through to explicit (sweep.go:229 rep.Explicit). (4) Tests: internal/board/sweep_decide_test.go (TestDecideResultValueTable incl. REFUSED 'PASS but really FAIL', 'first FAIL then PASS on rerun', 'PENDING', 'PASSED is not PASS', unmatched) and cmd/boardctl/review_sweep_decide_test.go (TestCmdSweepStatusDecideDryRun asserts explicit refusals for AC-PENDING and twin-less AC-LONE). Ran `go test -count=1 -v -run 'Decide|SweepStatusDecide|CloseIDDupeLine|SetResultValue|ResultDecideRuleDoc' ./internal/board/ ./cmd/boardctl/` \u2014 all 12 tests PASS, exit 0. (5) Gate battery: `go build ./...` exit 0; `go vet ./...` exit 0; `go test -count=1 ./...` exit 0 (all packages ok, incl. internal/fmtcheck, internal/versioncheck); `make fmt-check` exit 0 (ok internal/fmtcheck); `make version-check` exit 0 (ok internal/versioncheck).\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-30T12:26:02.043891",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-30T12:26:02.089776+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 68173,
+        "truncated": false,
+        "source": "git show 8f0f630ce384"
+      }
+    ],
+    "task_id": "SWEEP-STATUS-DECISIONS"
+  }
+}

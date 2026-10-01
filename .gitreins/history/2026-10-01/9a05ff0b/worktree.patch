@@ -1,0 +1,9 @@
+diff --git a/.coding-hermes/board/events.jsonl b/.coding-hermes/board/events.jsonl
+index fcb7f45..71bbe93 100644
+--- a/.coding-hermes/board/events.jsonl
++++ b/.coding-hermes/board/events.jsonl
+@@ -326,3 +326,4 @@
+ {"id": 326, "event_type": "task_created", "task_id": "BT-070", "actor": "foreman", "timestamp": "2026-10-01T00:34:05Z", "tick_number": null, "detail": "{\"id\":\"BT-070\",\"status\":\"pending\"}"}
+ {"id": 327, "event_type": "task_created", "task_id": "BT-071", "actor": "foreman", "timestamp": "2026-10-01T00:34:05Z", "tick_number": null, "detail": "{\"id\":\"BT-071\",\"status\":\"pending\"}"}
+ {"id": 328, "event_type": "task_completed", "task_id": "BT-071", "actor": "foreman", "timestamp": "2026-10-01T06:49:09Z", "tick_number": null, "detail": "{\"status\":\"complete\"}"}
++{"type":"tick","tick_id":"boardctl-2026-10-01-07-04-13","event":"task_failed","task_id":"BT-063","detail":"worker glm-5.3-flash@zai-glm ran 11min, produced zero commits/files; boardctl serve started on fixture board at :18923, openapi-cli discovered 3 ops but worker exited without implementing E2E proof; gitreins tier-1 PASS on empty work (guard on HEAD 423f4ff)"}

@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-23",
+  "task_title": "vulncheck: WARN (or fail behind override env) when a present binary's -version exits 0 but yields no parsable 'Scanner: govulncheck@' line \u2014 stubs currently pass silently. Fix in internal/vulncheck/vulncheck.go + tests.",
+  "task_criteria": [
+    "worker commit lands; build+tests green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "beeabbcdedde31166ae1c4a9ecb860d4ca178747",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.689s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n6:03AM INF scanned ~2246021 bytes (2.25 MB) in 1.5s\n6:03AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 160 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260929T104319.900133Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.689s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.709s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t1.528s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t7.292s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20260929T104319.900133Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 worker commit lands; build+tests green: Worker commit 8671d10 ('fix: vulncheck gate warns/fails on Scanner-line-less -version output. Addresses DF-BOARDCTL-23.') landed and was merged as d53a3d5; working tree clean of source changes. `go build ./...` exit_code=0. `go test -count=1 ./...` GO_TEST_EXIT=0 with all packages 'ok', including 'ok github.com/coding-hermes/boardctl/internal/vulncheck'. New DF-BOARDCTL-23 subtests pass: 'no_scanner_line_warns_and_passes_by_default', 'no_scanner_line_fails_under_StrictScannerEnv=1', 'strict_env_parsing_accepts_1/true/yes_and_warns_otherwise'. Implementation confirmed at internal/vulncheck/vulncheck.go:169-182 (CheckVersion returns *UnverifiedBinaryErr / warns), 244-257 (strictScanner env parsing), 444-445 (Check refuses under strict), 484 (warnf to stderr).\nWorker commit 8671d10 landed and merged; build and full test suite pass green, with new tests covering the warn-by-default and strict-env-fail behavior for Scanner-line-less -version output.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 worker commit lands; build+tests green: Worker commit 8671d10 ('fix: vulncheck gate warns/fails on Scanner-line-less -version output. Addresses DF-BOARDCTL-23.') landed and was merged as d53a3d5; working tree clean of source changes. `go build ./...` exit_code=0. `go test -count=1 ./...` GO_TEST_EXIT=0 with all packages 'ok', including 'ok github.com/coding-hermes/boardctl/internal/vulncheck'. New DF-BOARDCTL-23 subtests pass: 'no_scanner_line_warns_and_passes_by_default', 'no_scanner_line_fails_under_StrictScannerEnv=1', 'strict_env_parsing_accepts_1/true/yes_and_warns_otherwise'. Implementation confirmed at internal/vulncheck/vulncheck.go:169-182 (CheckVersion returns *UnverifiedBinaryErr / warns), 244-257 (strictScanner env parsing), 444-445 (Check refuses under strict), 484 (warnf to stderr).\nWorker commit 8671d10 landed and merged; build and full test suite pass green, with new tests covering the warn-by-default and strict-env-fail behavior for Scanner-line-less -version output.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "worker commit lands; build+tests green",
+                "status": "PASS",
+                "detail": "Worker commit 8671d10 ('fix: vulncheck gate warns/fails on Scanner-line-less -version output. Addresses DF-BOARDCTL-23.') landed and was merged as d53a3d5; working tree clean of source changes. `go build ./...` exit_code=0. `go test -count=1 ./...` GO_TEST_EXIT=0 with all packages 'ok', including 'ok github.com/coding-hermes/boardctl/internal/vulncheck'. New DF-BOARDCTL-23 subtests pass: 'no_scanner_line_warns_and_passes_by_default', 'no_scanner_line_fails_under_StrictScannerEnv=1', 'strict_env_parsing_accepts_1/true/yes_and_warns_otherwise'. Implementation confirmed at internal/vulncheck/vulncheck.go:169-182 (CheckVersion returns *UnverifiedBinaryErr / warns), 244-257 (strictScanner env parsing), 444-445 (Check refuses under strict), 484 (warnf to stderr)."
+              }
+            ],
+            "summary": "Worker commit 8671d10 landed and merged; build and full test suite pass green, with new tests covering the warn-by-default and strict-env-fail behavior for Scanner-line-less -version output."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-23\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.689s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 worker commit lands; build+tests green: Worker commit 8671d10 ('fix: vulncheck gate warns/fails on Scanner-line-less -version output. Addresses DF-BOARDCTL-23.') landed and was merged as d53a3d5; working tree clean of source changes. `go build ./...` exit_code=0. `go test -count=1 ./...` GO_TEST_EXIT=0 with all packages 'ok', including 'ok github.com/coding-hermes/boardctl/internal/vulncheck'. New DF-BOARDCTL-23 subtests pass: 'no_scanner_line_warns_and_passes_by_default', 'no_scanner_line_fails_under_StrictScannerEnv=1', 'strict_env_parsing_accepts_1/true/yes_and_warns_otherwise'. Implementation confirmed at internal/vulncheck/vulncheck.go:169-182 (CheckVersion returns *UnverifiedBinaryErr / warns), 244-257 (strictScanner env parsing), 444-445 (Check refuses under strict), 484 (warnf to stderr).\nWorker commit 8671d10 landed and merged; build and full test suite pass green, with new tests covering the warn-by-default and strict-env-fail behavior for Scanner-line-less -version output.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-29T11:04:48.204421",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-09-29T11:04:48.234780+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 638,
+        "truncated": false,
+        "source": "git show beeabbcdedde"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-23"
+  }
+}
