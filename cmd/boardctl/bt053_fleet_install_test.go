@@ -365,6 +365,13 @@ func TestBT053FleetNoBinarySkipsEverywhere(t *testing.T) {
 // repo's outcome into FAILED with the reason on the line, other repos still
 // complete, and the run reports the failure count.
 func TestBT053FleetFailureClassAndExit(t *testing.T) {
+	// Root bypasses file permission bits (CAP_DAC_OVERRIDE), so the
+	// chmod-0500 EACCES injection below does not fail the write and this
+	// test's premise is untestable — e.g. inside act's root containers,
+	// where the test fails for the wrong reason (QA-BOARDCTL-2).
+	if os.Geteuid() == 0 {
+		t.Skip("euid 0: permission-bit failure injection is ineffective for root — the test's premise cannot hold")
+	}
 	root := t.TempDir()
 	ok := fleetSeedRepo(t, root, "a-ok", true, "")
 	bad := fleetSeedRepo(t, root, "z-bad", true, "#!/bin/sh\nexit 0\n")
