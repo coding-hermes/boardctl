@@ -49,7 +49,7 @@ commands:
   init    [-C dir] [--project P] [--namespace NS]   bootstrap a fresh board
   list    [--status S] [--priority P] [--json] [--all] [--skip-bad-lines]
   show    <id> [--events]
-  create  --id ID --title T [--priority P2] [--complexity N] [--depends-on a,b]
+  create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
           [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
           [--session ID]...   (a re-detected finding is REFUSED with exit 2)
@@ -615,7 +615,9 @@ func cmdCreate(dir string, args []string) error {
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
-	priority := fs.String("priority", "", "priority (default P2)")
+	// BT-071: the default is lane-dependent — P2 on every non-paperwork
+	// lane, P4 on -review and P5 on -docs/-readme (see PaperworkLaneDefault).
+	priority := fs.String("priority", "", "priority (default P2; paperwork lanes -review → P4, -docs/-readme → P5)")
 	complexity := fs.String("complexity", "", "complexity (default 3)")
 	dependsOn := fs.String("depends-on", "", "comma-separated dependency ids")
 	reasoning := fs.String("reasoning", "", "reasoning note")
@@ -633,6 +635,9 @@ func cmdCreate(dir string, args []string) error {
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\n")
+		fmt.Fprintf(fs.Output(), "\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n")
+		fmt.Fprintf(fs.Output(), "          -review → P4, -docs/-readme → P5. An explicit --priority\n")
+		fmt.Fprintf(fs.Output(), "          always wins (BT-071).\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err

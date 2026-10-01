@@ -402,6 +402,46 @@ belong to the priority-vocabulary check, not this one. (BT-070 extended the
 in-vocabulary span to P0..P5, so `[P4]` title tokens are drift-checked
 again.)
 
+## Paperwork-lane priority default (BT-071)
+
+A board's **lane** is its identity: the header's `project` (else
+`namespace`, else the board dir's parent directory — the same name the
+scheduler uses for lanes). `create` keys one default on that name's lane
+class — the last hyphen-separated segment:
+
+| lane ends in | default `--priority` |
+|---|---|
+| `-review` | **P4** |
+| `-docs` / `-readme` | **P5** |
+| anything else (primary, `-qa`, `-pm`, `-sync`, …) | P2 (unchanged) |
+
+The paperwork satellites (docs, readme, review) write reports, not code —
+real work, but never more urgent than the build/QA/PM rows — so their rows
+default BELOW the operational satellites and sort to the end of every board
+view and the scheduler's pick order. The rule is a suffix rule on the lane
+class, not a per-repo or per-name list, and it matches how the scheduler
+derives lane classes.
+
+Boundaries:
+
+- An explicit `--priority` always wins — the default applies only when the
+  flag is omitted. `boardctl create --priority P2` on a `-docs` lane files
+  at P2.
+- `-pm` and `-sync` do **NOT** count as paperwork: they are operational
+  satellites (dispatch/coordination and board sync), not report-writing.
+  They keep the P2 default.
+- The default is for NEW writes only. It lives in create's priority
+  resolution — `update` never invents a priority, and existing rows are
+  never mass-rewritten by this rule.
+
+```bash
+# lane "my-project-docs" (header project) — no --priority:
+boardctl -C ~/my-project-docs create --id DOCS-7 --title "Rewrite quickstart"
+# → row lands at P5
+# lane "my-project-review" — no --priority → P4
+# lane "my-project-qa"     — no --priority → P2 (non-paperwork, unchanged)
+```
+
 ## Task id format
 
 Task ids are machine keys — downstream fleet tooling (task-router chains,

@@ -281,7 +281,16 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	// BT-007: priority is normalized-or-rejected at write time — bare
 	// digits ("1") and case variants ("p2") map onto the canonical
 	// P0-P5 set every fleet board uses, so stats never splits groups.
+	// BT-071: when the caller supplies NO priority, a paperwork lane
+	// (-review → P4, -docs/-readme → P5) defaults BELOW the operational
+	// satellites — reports never outrank fixes (see PaperworkLaneDefault);
+	// every other lane keeps the historical P2. An explicit --priority
+	// always wins, and this is a create-side default only: update never
+	// invents a priority, so existing rows are untouched.
 	priority := NormalizePriority(spec.Priority)
+	if priority == "" {
+		priority = PaperworkLaneDefault(b.LaneName())
+	}
 	if priority == "" {
 		priority = "P2"
 	}

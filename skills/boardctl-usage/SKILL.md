@@ -165,7 +165,11 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
   rejected at write (BT-007 closed the old accept-anything hole; trust
   these fields on boards written by recent binaries).
 - `--priority`: `P0..P5` — bare `0`–`5` are normalized to `P0`–`P5`
-  automatically; `P9`-style out-of-vocab values are rejected.
+  automatically; `P9`-style out-of-vocab values are rejected. CREATE-side
+  default is lane-dependent (BT-071): paperwork lanes default BELOW the
+  operational ones — `-review` → P4, `-docs`/`-readme` → P5, everything
+  else (primary, `-qa`, `-pm`, `-sync`) → P2. An explicit `--priority`
+  always wins; `update` never invents a default.
 - `--depends-on`: every referenced id must already exist as a task, or the
   create/update aborts (create the dependency task first).
 - Header counters (`--set-ticks-total`, `--set-ticks-idle`, ...): negative
