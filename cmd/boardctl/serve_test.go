@@ -385,8 +385,24 @@ func TestServeZipSlipDefense(t *testing.T) {
 // readable message and the server still serves afterwards (7.2.6).
 func TestServeOversizeCap413(t *testing.T) {
 	h := newServeServer(nil).routes()
-	big := make([]byte, maxUploadBytes+1)
-	rec := postUpload(h, map[string][]byte{"zip": big})
+	// QA-BOARDCTL-3: declare the oversize Content-Length instead of
+	// materialising a 512 MiB buffer (plus the multipart copy ≈ 1 GiB RSS).
+	// The handler refuses on r.ContentLength before reading a byte, so a
+	// small body with an honest oversized Content-Length header exercises
+	// the same branch without OOMing any memory-capped test run.
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, err := mw.CreateFormFile("zip", "zip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fw.Write([]byte("x"))
+	mw.Close()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/", &buf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.ContentLength = maxUploadBytes + 1
+	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("oversize status = %d, want 413", rec.Code)
 	}
