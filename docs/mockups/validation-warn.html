@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BT-073 mockup — validation panel, WARN state</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#161b22; --bg3:#1c2330; --line:#30363d;
+  --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff;
+  --green:#3fb950; --green-bright:#56d364;
+  --red:#f85149; --red-bright:#ff7b72;
+  --orange:#d29922; --orange-bright:#e3b341;
+  --blue:#58a6ff; --purple:#bc8cff; --cyan:#56d4dd;
+  --gray:#6e7681; --gray-bright:#9ea7b3;
+  --r-ctl:6px; --r-card:10px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;max-width:860px;margin:0 auto;padding:32px 18px}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono)}
+h1{font-size:16px;font-weight:600}
+h1 .sub{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:4px}
+h3.sec{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+  margin:22px 0 8px;font-weight:600}
+
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-card);padding:20px}
+.panel-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.pill{display:inline-block;border-radius:999px;padding:2px 12px;font-size:12px;
+  font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.pill-warn{background:#423a22;color:var(--orange-bright)}
+.pill-pass{background:#1f422a;color:var(--green-bright)}
+.pill-fail{background:#4a2c2e;color:var(--red-bright)}
+.semantics{color:var(--muted);font-size:12px}
+
+.finding{display:flex;gap:10px;align-items:baseline;padding:6px 0;
+  border-bottom:1px solid rgba(48,54,61,.5);font-size:13px}
+.finding:last-child{border-bottom:none}
+.finding .msg{font-family:var(--mono);font-size:12px}
+.lvl{flex:0 0 auto;display:inline-block;border-radius:9px;padding:0 8px;font-size:12px;font-weight:600}
+.lvl-warn{background:rgba(210,153,34,.15);border:1px solid var(--orange);color:var(--orange)}
+.lvl-error{background:rgba(248,81,73,.15);border:1px solid var(--red-bright);color:var(--red-bright)}
+
+.census{background:var(--bg3);border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:8px 12px;font-family:var(--mono);font-size:12px;margin-top:14px}
+.lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+  display:block;margin-bottom:4px;font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+.sweepline{font-size:13px;margin-top:8px}
+.sweepline code{color:var(--cyan)}
+.cli-only{color:var(--muted)}
+.exitline{margin-top:14px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:10px}
+.exitline code{color:var(--fg)}
+
+.cardrow{display:flex;gap:12px;margin:14px 0 4px}
+.card{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-card);padding:12px}
+.card .cname{font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center}
+.mut{color:var(--muted);font-size:12px;margin-top:4px}
+</style>
+</head>
+<body>
+<h1>Validation panel — WARN state (BT-073 mockup)
+  <span class="sub">R13: findings, not enforcement. PASS = 0 errors (any warnings) · WARN = warnings only · FAIL = ≥1 error. Repairs are CLI-only.</span>
+</h1>
+
+<div class="panel" aria-labelledby="vp">
+  <div class="panel-head">
+    <span class="pill pill-warn">warn</span>
+    <span style="font-size:13px">0 errors · 3 warnings</span>
+    <span class="semantics" style="margin-left:auto">snapshot-time read · computed at load (upload or -C resolve), never re-checked live</span>
+  </div>
+
+  <h3 class="sec">findings</h3>
+  <div class="finding"><span class="lvl lvl-warn">warn</span>
+    <span class="msg">tasks.jsonl:41 status "deploy" is off-vocabulary {pending,in_progress,review,blocked,complete,failed}</span></div>
+  <div class="finding"><span class="lvl lvl-warn">warn</span>
+    <span class="msg">tasks.jsonl:44 status "done" is a read alias — canonical value is "complete" (update &lt;id&gt; --normalize)</span></div>
+  <div class="finding"><span class="lvl lvl-warn">warn</span>
+    <span class="msg">tasks.jsonl:52 priority "P7" outside {P0,P1,P2,P3,P4,P5}</span></div>
+
+  <div class="census"><span class="lbl">key uniformity census (BT-056)</span>key uniformity: 5/6 rows carry only canon keys</div>
+
+  <h3 class="sec">sweep-status read census (REVIEW-BOARDCTL-001)</h3>
+  <div class="sweepline">
+    off-vocabulary statuses: <code>deploy</code> ×1 (row BT-067) ·
+    unknown statuses named with their rows, no decisions applied —
+    <span class="cli-only">decisions are CLI-only (sweep-status --apply / --decide)</span>
+  </div>
+
+  <div class="exitline">
+    exit-equivalent semantics: this panel equals a CLI run of
+    <code>boardctl validate -C &lt;board&gt;</code> answering <code>exit 0 with warnings</code> —
+    the pill shows WARN because 0 errors is not PASS-with-noise, it is the F9 exit-0 shape;
+    the findings are the operator's queue, the UI never applies them (D3).
+  </div>
+</div>
+
+<h3 class="sec">pill vocabulary reference</h3>
+<div class="cardrow">
+  <div class="card">
+    <div class="cname"><span class="pill pill-pass">pass</span></div>
+    <div class="mut">0 errors, any warnings → PASS<br>(clean snapshot; warnings may exist and are listed)</div>
+  </div>
+  <div class="card">
+    <div class="cname"><span class="pill pill-warn">warn</span></div>
+    <div class="mut">warnings only, 0 errors → WARN<br>(this board: 3 warnings, none fatal)</div>
+  </div>
+  <div class="card">
+    <div class="cname"><span class="pill pill-fail">fail</span></div>
+    <div class="mut">≥1 error → FAIL<br>(e.g. duplicate id, unparseable row)</div>
+  </div>
+</div>
+
+<p class="mut" style="margin-top:18px">
+  BT-073 mockup · fixtures are synthetic (demo-fleet/warnboard) · contrast tokens per docs/web-ui-design.md §8
+</p>
+</body>
+</html>

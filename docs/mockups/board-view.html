@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BT-073 mockup — board view (demo-fleet/alpha)</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#161b22; --bg3:#1c2330; --line:#30363d;
+  --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff;
+  --green:#3fb950; --green-bright:#56d364;
+  --red:#f85149; --red-bright:#ff7b72;
+  --orange:#d29922; --orange-bright:#e3b341;
+  --blue:#58a6ff; --purple:#bc8cff; --cyan:#56d4dd;
+  --gray:#6e7681; --gray-bright:#9ea7b3;
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:32px;
+  --r-ctl:6px; --r-card:10px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono)}
+h1,h2,h3{margin:0}
+
+/* ---------- shell header ---------- */
+header#topbar{display:flex;align-items:center;gap:var(--sp4);padding:10px 18px;
+  background:var(--bg2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.wordmark{font-weight:700;font-size:15px}
+.wordmark .suffix{color:var(--muted);font-weight:600;font-size:12px;
+  border:1px solid var(--line);border-radius:var(--r-ctl);padding:0 6px;margin-left:6px}
+.tabs{display:flex;gap:var(--sp2)}
+.tab{background:none;border:1px solid transparent;color:var(--muted);
+  padding:4px 12px;border-radius:var(--r-ctl);cursor:pointer;font-size:13px}
+.tab.active{color:var(--fg);border-color:var(--line);background:var(--bg3)}
+.tab:hover{color:var(--fg)}
+#server-meta{margin-left:auto;display:flex;gap:var(--sp4);align-items:center;
+  color:var(--muted);font-size:12px}
+#server-meta .dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--green);margin-right:5px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:8px;top:8px;background:var(--bg3);color:var(--accent);
+  padding:6px 10px;border-radius:var(--r-ctl);z-index:99}
+
+/* ---------- notices band ---------- */
+.notice{margin:var(--sp3) 18px 0;padding:10px 14px;border-radius:var(--r-card);
+  display:flex;gap:10px;align-items:flex-start;font-size:13px}
+.notice.warn{border:1px solid var(--orange);background:rgba(210,153,34,.08)}
+.notice .n-title{font-weight:600}
+.notice .n-body{color:var(--muted);margin-top:2px}
+.notice .dismiss{margin-left:auto;background:none;border:1px solid var(--line);
+  color:var(--muted);border-radius:var(--r-ctl);cursor:pointer;font-size:12px;padding:2px 8px}
+.notice .dismiss:hover{color:var(--fg);border-color:var(--muted)}
+
+/* ---------- content region ---------- */
+main{max-width:1180px;margin:0 auto;padding:var(--sp5) 18px}
+.crumb{color:var(--muted);font-size:13px;margin-bottom:var(--sp3)}
+.crumb a{color:var(--accent)}
+
+/* board header strip */
+.bhstrip{display:flex;gap:var(--sp5);flex-wrap:wrap;align-items:baseline;
+  background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:var(--sp3) var(--sp4);margin-bottom:var(--sp4)}
+.bhstrip .bt{font-size:20px;font-weight:600}
+.bhstrip .bk{color:var(--muted);font-size:12px}
+.bhstrip .bv{font-size:14px;font-weight:600;font-family:var(--mono)}
+.snapshotline{color:var(--muted);font-size:12px;margin:-6px 0 var(--sp4) 2px}
+
+/* toolbar */
+.toolbar{display:flex;gap:var(--sp2);flex-wrap:wrap;align-items:center;margin-bottom:var(--sp3)}
+.toolbar input[type=text],.toolbar select{background:var(--bg3);
+  border:1px solid var(--line);color:var(--fg);border-radius:var(--r-ctl);padding:5px 10px}
+.toolbar input[type=text]{min-width:220px}
+.toolbar .btn{background:var(--bg3);border:1px solid var(--line);color:var(--fg);
+  border-radius:var(--r-ctl);padding:5px 12px;cursor:pointer;font-size:13px}
+.toolbar .btn:hover{border-color:var(--muted)}
+.toolbar .btn[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
+.countline{margin-left:auto;color:var(--muted);font-size:12px}
+
+/* chips */
+.chip{display:inline-block;border-radius:9px;padding:0 8px;font-size:12px;
+  font-weight:600;border:1px solid var(--line);color:var(--fg);white-space:nowrap}
+.chip-complete{background:rgba(63,185,80,.15);border-color:var(--green);color:var(--green)}
+.chip-pending{color:var(--muted)}
+.chip-in_progress{background:rgba(88,166,255,.15);border-color:var(--blue);color:var(--blue)}
+.chip-review{background:rgba(188,140,255,.15);border-color:var(--purple);color:var(--purple)}
+.chip-blocked{background:rgba(210,153,34,.15);border-color:var(--orange);color:var(--orange)}
+.chip-failed{background:rgba(248,81,73,.15);border-color:var(--red-bright);color:var(--red-bright)}
+.chip-unknown{background:rgba(110,118,129,.2);border-color:var(--gray);color:var(--gray-bright)}
+.chip-fixture{background:rgba(110,118,129,.2);border-color:var(--gray);color:var(--gray-bright)}
+.pchip{display:inline-block;border-radius:9px;padding:0 8px;font-size:12px;
+  font-weight:600;border:1px solid var(--line)}
+.pchip-P0{background:rgba(255,123,114,.15);border-color:var(--red-bright);color:var(--red-bright)}
+.pchip-P1{background:rgba(210,153,34,.15);border-color:var(--orange);color:var(--orange)}
+.pchip-P2{background:rgba(88,166,255,.15);border-color:var(--blue);color:var(--blue)}
+.pchip-P3{background:rgba(188,140,255,.15);border-color:var(--purple);color:var(--purple)}
+.pchip-P4{background:rgba(86,212,221,.15);border-color:var(--cyan);color:var(--cyan)}
+.pchip-P5{background:rgba(139,148,158,.15);border-color:var(--muted);color:var(--muted)}
+.badge{display:inline-block;border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:0 7px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+
+/* row table */
+table.rows{width:100%;border-collapse:collapse;background:var(--bg2);
+  border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}
+table.rows th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);
+  background:var(--bg3);font-weight:600}
+table.rows td{padding:7px 12px;border-bottom:1px solid rgba(48,54,61,.5);font-size:13px;vertical-align:top}
+table.rows tr:last-child td{border-bottom:none}
+tr.row{cursor:pointer}
+tr.row:hover td{background:rgba(88,166,255,.05)}
+tr.row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+tr.row .rid{font-family:var(--mono);color:var(--accent)}
+tr.row .rtitle{max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dep-count{color:var(--muted);font-family:var(--mono);font-size:12px}
+.caret{display:inline-block;color:var(--muted);font-size:10px;margin-right:8px}
+
+/* expanded row detail */
+tr.expansion>td{background:var(--bg);padding:0}
+.rowdetail{padding:var(--sp4);border-left:3px solid var(--accent)}
+.rowdetail .rd-grid{display:flex;gap:var(--sp6);flex-wrap:wrap}
+.rowdetail h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);margin:var(--sp4) 0 var(--sp2);font-weight:600}
+.rowdetail h3:first-child{margin-top:0}
+.proseblock{background:var(--bg2);border:1px solid var(--line);
+  border-radius:var(--r-ctl);padding:var(--sp2) var(--sp3);font-size:13px;max-width:640px}
+.kv{display:flex;gap:var(--sp4);flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.kv b{color:var(--fg);font-weight:600;font-family:var(--mono)}
+pre.rawjson{background:var(--bg3);border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:var(--sp3);font-family:var(--mono);font-size:12px;overflow:auto;max-height:260px;margin:var(--sp2) 0 0}
+pre.rawjson .k{color:var(--purple)}
+pre.rawjson .s{color:var(--green-bright)}
+pre.rawjson .n{color:var(--cyan)}
+
+/* validation panel */
+section.panel{background:var(--bg2);border:1px solid var(--line);
+  border-radius:var(--r-card);padding:var(--sp4);margin-top:var(--sp4)}
+section.panel>h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);margin-bottom:var(--sp3)}
+.pill{display:inline-block;border-radius:999px;padding:2px 12px;font-size:12px;
+  font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-right:var(--sp2)}
+.pill-pass{background:#1f422a;color:var(--green-bright)}
+.pill-warn{background:#423a22;color:var(--orange-bright)}
+.pill-fail{background:#4a2c2e;color:var(--red-bright)}
+.finding{display:flex;gap:var(--sp2);align-items:baseline;padding:5px 0;
+  border-bottom:1px solid rgba(48,54,61,.5);font-size:13px}
+.finding:last-child{border-bottom:none}
+.finding .lvl{flex:0 0 auto}
+.finding .msg{font-family:var(--mono);font-size:12px}
+.census{background:var(--bg3);border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:var(--sp2) var(--sp3);font-family:var(--mono);font-size:12px;margin-top:var(--sp3)}
+.census .lbl,.sweepline .lbl{color:var(--muted);font-size:11px;text-transform:uppercase;
+  letter-spacing:.04em;display:block;margin-bottom:4px}
+.sweepline{font-size:13px;margin-top:var(--sp2)}
+.sweepline .cli-only{color:var(--muted)}
+
+/* analytics placeholder slots */
+.analytics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--sp3)}
+.a-slot{border:1px dashed var(--line);border-radius:var(--r-ctl);padding:var(--sp3);
+  color:var(--muted);font-size:12px;min-height:110px}
+.a-slot b{display:block;color:var(--fg);font-size:13px;margin-bottom:4px;font-weight:600}
+.spark{stroke:var(--green);fill:none;stroke-width:1.5}
+
+/* events timeline */
+ol.timeline{list-style:none;margin:0;padding:0;position:relative}
+ol.timeline::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;
+  width:2px;background:var(--line)}
+.tl-item{position:relative;padding:0 0 var(--sp3) 24px}
+.tl-item::before{content:"";position:absolute;left:1px;top:6px;width:8px;height:8px;
+  border-radius:50%;background:var(--bg3);border:2px solid var(--muted)}
+.tl-head{display:flex;gap:var(--sp2);align-items:baseline;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.tl-head .ts{font-family:var(--mono)}
+.tl-head .actor{color:var(--fg)}
+.tl-detail{margin-top:4px;font-size:13px}
+.tl-detail code{color:var(--cyan)}
+.etag{display:inline-block;border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:0 6px;font-size:11px;font-family:var(--mono);color:var(--muted)}
+
+/* footer */
+footer{max-width:1180px;margin:var(--sp6) auto 0;padding:var(--sp4) 18px var(--sp6);
+  border-top:1px solid var(--line);color:var(--muted);font-size:12px;
+  display:flex;gap:var(--sp4);flex-wrap:wrap}
+</style>
+</head>
+<body>
+<a class="skip" href="#rows">skip to board list</a>
+<header id="topbar">
+  <span class="wordmark">boardctl<span class="suffix">/ui</span></span>
+  <nav class="tabs" aria-label="views">
+    <button class="tab" aria-current="page">Boards</button>
+    <button class="tab" disabled title="compare appears with 2+ boards">Compare</button>
+  </nav>
+  <div id="server-meta">
+    <span><span class="dot" aria-hidden="true"></span>127.0.0.1:8787</span>
+    <span>2 boards loaded</span>
+    <span>snapshot 2026-10-01T22:14:07-05:00</span>
+  </div>
+</header>
+
+<div class="notice warn" role="status">
+  <div>
+    <div class="n-title">Loaded board demo-fleet/alpha with 2 parse warnings</div>
+    <div class="n-body">tasks: 1 torn line skipped · events: 1 timestamp excluded — details in the report notes</div>
+  </div>
+  <button class="dismiss" type="button">dismiss</button>
+</div>
+
+<main>
+  <div class="crumb"><a href="#">← boards overview</a> / demo-fleet/alpha</div>
+
+  <div class="bhstrip">
+    <span class="bt">demo-fleet/alpha</span>
+    <span class="badge">topology A</span>
+    <span><span class="bk">namespace</span> <span class="bv">demo-ns</span></span>
+    <span><span class="bk">ticks_total</span> <span class="bv">412</span></span>
+    <span><span class="bk">ticks_idle</span> <span class="bv">17</span></span>
+    <span><span class="bk">last_commit</span> <span class="bv">c84fc1e</span></span>
+    <span class="pill pill-fail" style="margin-left:auto">fail · 1 error · 2 warn</span>
+  </div>
+  <div class="snapshotline">snapshot loaded 2026-10-01T22:14:07-05:00 · refresh = re-upload or restart serve</div>
+
+  <div class="toolbar" role="group" aria-label="row filters">
+    <input type="text" placeholder="search id, title, summary…" aria-label="search rows">
+    <select aria-label="status filter"><option>status: all</option><option>pending</option><option>in_progress</option><option>blocked</option><option>review</option><option>complete</option><option>failed</option></select>
+    <button class="btn" aria-pressed="false">fixtures: hidden</button>
+    <button class="btn">expand all</button>
+    <button class="btn">collapse all</button>
+    <span class="countline" aria-live="polite">7 rows · 7 shown · fixtures hidden</span>
+  </div>
+
+  <table class="rows" id="rows">
+    <thead>
+      <tr><th>id</th><th>title</th><th>status</th><th>priority</th><th>depends_on</th></tr>
+    </thead>
+    <tbody>
+      <tr class="row" tabindex="0" role="button" aria-expanded="true">
+        <td class="rid"><span class="caret" aria-hidden="true">▼</span>BT-061</td>
+        <td class="rtitle">harden serve zip-slip defense + 413 cap regression battery</td>
+        <td><span class="chip chip-blocked">blocked</span></td>
+        <td><span class="pchip pchip-P0">P0</span></td>
+        <td><span class="dep-count">1</span></td>
+      </tr>
+      <tr class="expansion"><td colspan="5">
+        <div class="rowdetail">
+          <div class="rd-grid">
+            <div style="flex:1;min-width:280px">
+              <h3>reasoning</h3>
+              <div class="proseblock">zip entry sanitization was name-only; a crafted <code>../../</code> entry escaped the temp tree in the BT-021 fixture. Defense is path-anchored now; the battery pins it.</div>
+              <h3>worker_summary</h3>
+              <div class="proseblock">Fix + 6-cell battery landed in 6dc6a63; QA-BOARDCTL-3 closed on evidence.</div>
+            </div>
+            <div style="flex:1;min-width:280px">
+              <h3>verdicts</h3>
+              <div class="kv">
+                <span>guard <b>FAIL 3/5</b></span>
+                <span>ci <b>RED</b></span>
+                <span>attempts <b>2</b></span>
+                <span>exit_code <b>1</b></span>
+              </div>
+              <h3>timestamps</h3>
+              <div class="kv">
+                <span>created <b>2026-09-28 09:12:44</b></span>
+                <span>updated <b>2026-09-30 18:41:02</b></span>
+              </div>
+              <h3>links</h3>
+              <div class="kv">
+                <span>depends_on <b><a href="#b=demo-fleet-alpha&t=BT-060">BT-060</a></b></span>
+                <span>blocks <b>BT-062</b></span>
+              </div>
+              <h3>meta</h3>
+              <div class="kv"><span>fixture <span class="chip chip-fixture">fixture</span> row is excluded from analytics</span></div>
+            </div>
+          </div>
+          <h3>related events (last 8)</h3>
+          <div class="tl-item" style="padding-left:24px;position:static">
+            <div class="tl-head"><span class="ts">2026-09-30 18:41:02</span> <span class="etag">task_updated</span> <span>actor:</span><span class="actor">foreman</span> <span>task:</span><a href="#">BT-061</a></div>
+            <div class="tl-detail"><code>{"status":"blocked","reason":"guard budget kill (143) under load"}</code></div>
+          </div>
+          <h3>raw row</h3>
+          <pre class="rawjson">{
+  <span class="k">"id"</span>: <span class="s">"BT-061"</span>,
+  <span class="k">"title"</span>: <span class="s">"harden serve zip-slip defense + 413 cap regression battery"</span>,
+  <span class="k">"status"</span>: <span class="s">"blocked"</span>,
+  <span class="k">"priority"</span>: <span class="s">"P0"</span>,
+  <span class="k">"depends_on"</span>: [<span class="s">"BT-060"</span>],
+  <span class="k">"guard_result"</span>: <span class="s">"FAIL 3/5"</span>,
+  <span class="k">"ci_result"</span>: <span class="s">"RED"</span>,
+  <span class="k">"attempts"</span>: <span class="n">2</span>,
+  <span class="k">"blocked_reason"</span>: <span class="s">"guard budget kill under load"</span>
+}</pre>
+        </div>
+      </td></tr>
+
+      <tr class="row" tabindex="0" role="button" aria-expanded="false">
+        <td class="rid"><span class="caret" aria-hidden="true">▶</span>BT-062</td>
+        <td class="rtitle">serve shutdown drains sessions; temp trees die with the process</td>
+        <td><span class="chip chip-in_progress">in_progress</span></td>
+        <td><span class="pchip pchip-P1">P1</span></td>
+        <td><span class="dep-count">1</span></td>
+      </tr>
+      <tr class="row" tabindex="0" role="button" aria-expanded="false">
+        <td class="rid"><span class="caret" aria-hidden="true">▶</span>BT-063</td>
+        <td class="rtitle">/api/events/{slug} detail ladder: decoded pretty-JSON by default</td>
+        <td><span class="chip chip-review">review</span></td>
+        <td><span class="pchip pchip-P2">P2</span></td>
+        <td><span class="dep-count">0</span></td>
+      </tr>
+      <tr class="row" tabindex="0" role="button" aria-expanded="false">
+        <td class="rid"><span class="caret" aria-hidden="true">▶</span>BT-064</td>
+        <td class="rtitle">&lt;/script&gt;&lt;img src=x onerror=alert(1)&gt; inert-render probe title</td>
+        <td><span class="chip chip-pending">pending</span></td>
+        <td><span class="pchip pchip-P2">P2</span></td>
+        <td><span class="dep-count">0</span></td>
+      </tr>
+      <tr class="row" tabindex="0" role="button" aria-expanded="false">
+        <td class="rid"><span class="caret" aria-hidden="true">▶</span>BT-065</td>
+        <td class="rtitle">model share bars for the compare view (payload §3.8)</td>
+        <td><span class="chip chip-complete">complete</span></td>
+        <td><span class="pchip pchip-P3">P3</span></td>
+        <td><span class="dep-count">2</span></td>
+      </tr>
+      <tr class="row" tabindex="0" role="button" aria-expanded="false">
+        <td class="rid"><span class="caret" aria-hidden="true">▶</span>BT-066</td>
+        <td class="rtitle">tick-health stacked bars: completed / failed / audit per day</td>
+        <td><span class="chip chip-failed">failed</span></td>
+        <td><span class="pchip pchip-P4">P4</span></td>
+        <td><span class="dep-count">0</span></td>
+      </tr>
+      <tr class="row" tabindex="0" role="button" aria-expanded="false">
+        <td class="rid"><span class="caret" aria-hidden="true">▶</span>BT-067</td>
+        <td class="rtitle">paperwork lane sweep (-docs/-readme) backlog triage</td>
+        <td><span class="chip chip-unknown">deploy</span></td>
+        <td><span class="pchip pchip-P5">P5</span></td>
+        <td><span class="dep-count">—</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <section class="panel" aria-labelledby="vp-h">
+    <h2 id="vp-h">validation</h2>
+    <div>
+      <span class="pill pill-fail">fail</span>
+      <span style="font-size:13px">1 error · 2 warnings — findings are a snapshot-time read; repairs are CLI-only (validate --repair)</span>
+    </div>
+    <div style="margin-top:var(--sp3)">
+      <div class="finding"><span class="lvl"><span class="chip chip-failed">error</span></span>
+        <span class="msg">tasks.jsonl:37 duplicate task id BT-061 (last row wins)</span></div>
+      <div class="finding"><span class="lvl"><span class="chip chip-blocked">warn</span></span>
+        <span class="msg">tasks.jsonl:41 status "deploy" is off-vocabulary {pending,in_progress,review,blocked,complete,failed}</span></div>
+      <div class="finding"><span class="lvl"><span class="chip chip-blocked">warn</span></span>
+        <span class="msg">tasks.jsonl:52 priority "P7" outside {P0,P1,P2,P3,P4,P5}</span></div>
+    </div>
+    <div class="census"><span class="lbl">key uniformity census</span>key uniformity: 6/7 rows carry only canon keys</div>
+    <div class="sweepline"><span class="lbl">sweep-status read census</span>
+      off-vocabulary statuses: deploy ×1 (row BT-067) · unknown statuses named, no decisions applied — <span class="cli-only">decisions are CLI-only (sweep-status --apply/--decide)</span>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="an-h">
+    <h2 id="an-h">analytics</h2>
+    <div class="analytics-grid">
+      <div class="a-slot"><b>burndown</b>open tasks per day
+        <svg width="120" height="28" aria-hidden="true" style="margin-top:6px">
+          <polyline class="spark" points="0,4 20,8 40,12 60,10 80,18 100,22 120,24"/></svg>
+      </div>
+      <div class="a-slot"><b>burn-up</b>cumulative completions
+        <svg width="120" height="28" aria-hidden="true" style="margin-top:6px">
+          <polyline class="spark" points="0,26 20,22 40,18 60,16 80,10 100,6 120,4"/></svg>
+      </div>
+      <div class="a-slot"><b>weekly velocity</b>completions per ISO week</div>
+      <div class="a-slot"><b>cycle time</b>median / p90 + worst 5</div>
+      <div class="a-slot"><b>streaks</b>delivery / activity / any-tick</div>
+      <div class="a-slot"><b>tick health</b>completed / failed / audit per day</div>
+      <div class="a-slot"><b>work clock</b>weekday × hour heatmap</div>
+      <div class="a-slot"><b>model share</b>completed tasks per model</div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="ev-h">
+    <h2 id="ev-h">events timeline</h2>
+    <div class="toolbar" role="group" aria-label="event filters" style="margin-bottom:var(--sp3)">
+      <select aria-label="event type filter"><option>event_type: all</option><option>task_updated</option><option>task_dispatched</option><option>tick</option><option>audit</option><option>board_init</option></select>
+      <input type="text" placeholder="filter by task id…" aria-label="filter events by task id" style="width:180px">
+      <span class="countline">92 events</span>
+    </div>
+    <ol class="timeline">
+      <li class="tl-item">
+        <div class="tl-head"><span class="ts">2026-10-01 21:02:11</span> <span class="etag">task_dispatched</span> <span>actor:</span><span class="actor">foreman</span> <span>task:</span><a href="#">BT-062</a></div>
+        <div class="tl-detail"><code>{"worker":"wt/BT-062","model":"glm-5.3-flash","brief_sha":"4f2a…"}</code></div>
+      </li>
+      <li class="tl-item">
+        <div class="tl-head"><span class="ts">2026-10-01 21:44:56</span> <span class="etag">tick</span> <span>actor:</span><span class="actor">scheduler</span> <span>task:</span><span>—</span></div>
+        <div class="tl-detail">board tick 99 — DF-BOARDCTL-24 complete (verification-only; premise disproven)</div>
+      </li>
+      <li class="tl-item">
+        <div class="tl-head"><span class="ts">2026-10-01 22:01:37</span> <span class="etag">audit</span> <span>actor:</span><span class="actor">judge</span> <span>task:</span><a href="#">BT-063</a></div>
+        <div class="tl-detail"><code>{"verdict":"PASS","tier":2,"evidence":"decoded 87/92 by ladder step 2"}</code></div>
+      </li>
+    </ol>
+    <p class="muted" style="color:var(--muted);font-size:12px;margin:var(--sp3) 0 0">showing last 3 of 92 · <a href="#">show all</a></p>
+  </section>
+</main>
+
+<footer>
+  <span>boardctl v0.4.1</span>
+  <span>loopback-only · read-only snapshot · nothing is written to your board files</span>
+  <span><a href="/">upload a board →</a></span>
+  <span style="margin-left:auto"><a href="#">docs/web-ui-design.md</a></span>
+</footer>
+</body>
+</html>

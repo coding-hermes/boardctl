@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BT-073 mockup — row detail panel (drawer variant)</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#161b22; --bg3:#1c2330; --line:#30363d;
+  --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff;
+  --green:#3fb950; --green-bright:#56d364;
+  --red:#f85149; --red-bright:#ff7b72;
+  --orange:#d29922; --orange-bright:#e3b341;
+  --blue:#58a6ff; --purple:#bc8cff; --cyan:#56d4dd;
+  --gray:#6e7681; --gray-bright:#9ea7b3;
+  --r-ctl:6px; --r-card:10px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono)}
+h1,h2,h3{margin:0}
+
+/* dimmed board behind the drawer (context only) */
+.backdrop{position:fixed;inset:0;background:rgba(1,4,9,.6)}
+.backnote{position:fixed;left:16px;top:14px;color:var(--muted);font-size:12px}
+
+/* the drawer itself */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,92vw);
+  background:var(--bg2);border-left:1px solid var(--line);overflow:auto;
+  padding:var(--sp5) 24px 32px}
+.drawer-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.drawer-head h1{font-size:16px;font-weight:600;line-height:1.35}
+.drawer-head .close{margin-left:auto;background:var(--bg3);border:1px solid var(--line);
+  color:var(--muted);border-radius:var(--r-ctl);cursor:pointer;font-size:12px;padding:4px 10px}
+.drawer-head .close:hover{color:var(--fg);border-color:var(--muted)}
+.chiprow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.rid{font-family:var(--mono);color:var(--accent);font-size:13px}
+
+h3.sec{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+  margin:20px 0 6px;font-weight:600}
+.proseblock{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:8px 12px;font-size:13px;margin-bottom:6px}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.kv b{color:var(--fg);font-weight:600;font-family:var(--mono);font-size:12px}
+pre.rawjson{background:var(--bg3);border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:12px;font-family:var(--mono);font-size:12px;overflow:auto;max-height:300px;margin:6px 0 0}
+pre.rawjson .k{color:var(--purple)}
+pre.rawjson .s{color:var(--green-bright)}
+pre.rawjson .n{color:var(--cyan)}
+pre.rawjson .b{color:var(--orange-bright)}
+
+/* chips */
+.chip{display:inline-block;border-radius:9px;padding:0 8px;font-size:12px;
+  font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.chip-review{background:rgba(188,140,255,.15);border-color:var(--purple);color:var(--purple)}
+.chip-fixture{background:rgba(110,118,129,.2);border-color:var(--gray);color:var(--gray-bright)}
+.pchip{display:inline-block;border-radius:9px;padding:0 8px;font-size:12px;font-weight:600;border:1px solid var(--line)}
+.pchip-P1{background:rgba(210,153,34,.15);border-color:var(--orange);color:var(--orange)}
+.vchip{display:inline-block;border:1px solid var(--red-bright);color:var(--red-bright);
+  border-radius:9px;padding:0 8px;font-size:12px;font-weight:600}
+.cchip{display:inline-block;border:1px solid var(--gray);color:var(--gray-bright);
+  border-radius:9px;padding:0 8px;font-size:12px;font-weight:600}
+
+/* related events */
+ol.timeline{list-style:none;margin:0;padding:0}
+.tl-item{border-left:2px solid var(--line);padding:0 0 12px 14px;margin-left:4px}
+.tl-head{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.tl-head .ts{font-family:var(--mono)}
+.tl-head .actor{color:var(--fg)}
+.tl-detail{margin-top:4px;font-size:13px}
+.tl-detail code{color:var(--cyan);word-break:break-word}
+.etag{display:inline-block;border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:0 6px;font-size:11px;font-family:var(--mono);color:var(--muted)}
+
+.muted{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="backdrop" aria-hidden="true"></div>
+<div class="backnote">BT-073 mockup — RowDetail drawer variant over a dimmed board page. Inline expansion (board-view.html) shares this component.</div>
+
+<aside class="drawer" role="dialog" aria-label="task detail BT-063" aria-modal="true">
+  <div class="drawer-head">
+    <div>
+      <div class="chiprow">
+        <span class="chip chip-review">review</span>
+        <span class="pchip pchip-P1">P1</span>
+        <span class="chip chip-fixture">fixture</span>
+      </div>
+      <h1>harden serve zip-slip defense + 413 cap regression battery</h1>
+      <div class="rid">BT-061 · demo-fleet/alpha · <a href="#b=demo-fleet-alpha&t=BT-061">open in board</a></div>
+    </div>
+    <button class="close" type="button">esc · close</button>
+  </div>
+
+  <h3 class="sec">reasoning</h3>
+  <div class="proseblock">zip entry sanitization was name-only; a crafted ../../ entry escaped the temp tree in the BT-021 fixture. Defense is path-anchored now; the battery pins it.</div>
+
+  <h3 class="sec">worker_summary</h3>
+  <div class="proseblock">Fix + 6-cell battery landed in 6dc6a63; QA-BOARDCTL-3 closed on evidence.</div>
+
+  <h3 class="sec">foreman_note</h3>
+  <div class="proseblock">Re-dispatch cost one attempt; guard budget was the constraint, not the code. (This block is OMITTED ENTIRELY when absent — shown here because present.)</div>
+
+  <h3 class="sec">verdicts &amp; meta</h3>
+  <div class="kv">
+    <span>guard <b><span class="vchip">FAIL 3/5</span></b></span>
+    <span>ci <b><span class="vchip">RED</span></b></span>
+    <span>attempts <b>2</b></span>
+    <span>exit_code <b>1</b></span>
+    <span>complexity <b>—</b></span>
+    <span>lines <b>+212 −38</b></span>
+  </div>
+  <div class="kv" style="margin-top:6px">
+    <span>files_changed <span class="cchip">serve.go</span> <span class="cchip">serve_test.go</span> <span class="cchip">fixtures/zip-slip/**</span></span>
+  </div>
+
+  <h3 class="sec">timestamps</h3>
+  <div class="kv">
+    <span>created <b>2026-09-28 09:12:44</b></span>
+    <span>dispatched <b>2026-09-28 09:20:01</b></span>
+    <span>updated <b>2026-09-30 18:41:02</b></span>
+  </div>
+  <div class="kv" style="margin-top:6px">
+    <span>blocked_reason <b>guard budget kill under load</b></span>
+    <span>blocked_since <b>2026-09-30 18:41:02</b></span>
+  </div>
+
+  <h3 class="sec">links</h3>
+  <div class="kv">
+    <span>depends_on <b><a href="#b=demo-fleet-alpha&t=BT-060">BT-060</a></b></span>
+    <span>blocks <b>BT-062</b> <span class="muted">(unknown ids render as plain text)</span></span>
+  </div>
+
+  <h3 class="sec">related events (last 8 of 11)</h3>
+  <ol class="timeline">
+    <li class="tl-item">
+      <div class="tl-head"><span class="ts">2026-09-30 18:41:02</span> <span class="etag">task_updated</span> <span>actor:</span><span class="actor">foreman</span></div>
+      <div class="tl-detail"><code>{"status":"blocked","reason":"guard budget kill (143) under load"}</code></div>
+    </li>
+    <li class="tl-item">
+      <div class="tl-head"><span class="ts">2026-09-28 09:20:01</span> <span class="etag">worker_dispatched</span> <span>actor:</span><span class="actor">scheduler</span></div>
+      <div class="tl-detail">base64-wrapped detail decoded by ladder step 3: <code>{"worker":"wt/BT-061","provider":"ollama-cloud"}</code></div>
+    </li>
+    <li class="tl-item">
+      <div class="tl-head"><span class="ts">2026-09-28 09:12:44</span> <span class="etag">task_created</span> <span>actor:</span><span class="actor">foreman</span></div>
+      <div class="tl-detail">raw string detail (ladder fell through, kept verbatim): &lt;script&gt;alert('hostile')&lt;/script&gt; renders inert as text</div>
+    </li>
+  </ol>
+  <p class="muted" style="margin:8px 0 0"><a href="#events">show all 11 in the timeline</a></p>
+
+  <h3 class="sec">raw row</h3>
+  <pre class="rawjson">{
+  <span class="k">"id"</span>: <span class="s">"BT-061"</span>,
+  <span class="k">"title"</span>: <span class="s">"harden serve zip-slip defense + 413 cap regression battery"</span>,
+  <span class="k">"status"</span>: <span class="s">"blocked"</span>,
+  <span class="k">"priority"</span>: <span class="s">"P0"</span>,
+  <span class="k">"depends_on"</span>: [<span class="s">"BT-060"</span>],
+  <span class="k">"guard_result"</span>: <span class="s">"FAIL 3/5"</span>,
+  <span class="k">"ci_result"</span>: <span class="s">"RED"</span>,
+  <span class="k">"attempts"</span>: <span class="n">2</span>,
+  <span class="k">"exit_code"</span>: <span class="n">1</span>,
+  <span class="k">"lines_added"</span>: <span class="n">212</span>,
+  <span class="k">"lines_removed"</span>: <span class="n">38</span>,
+  <span class="k">"files_changed"</span>: [<span class="s">"serve.go"</span>, <span class="s">"serve_test.go"</span>],
+  <span class="k">"blocked_reason"</span>: <span class="s">"guard budget kill under load"</span>,
+  <span class="k">"blocked_since"</span>: <span class="s">"2026-09-30 18:41:02"</span>,
+  <span class="k">"perpetual"</span>: <span class="b">true</span>
+}</pre>
+  <p class="muted" style="margin:8px 0 0">verbatim payload bytes — what <code>boardctl show</code> prints, the panel shows.</p>
+</aside>
+</body>
+</html>
