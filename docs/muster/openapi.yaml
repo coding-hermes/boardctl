@@ -102,6 +102,42 @@ paths:
             text/plain:
               schema:
                 type: string
+  '/api/board/{slug}':
+    get:
+      operationId: getBoardDetail
+      summary: one board's full read model (rows, header, derived analytics, validate findings, loaded_at) from its load-time snapshot
+      tags: [boards]
+      description: |
+        Answers with one board's full read model (R7): header, task rows,
+        events, fixture ids, parse warnings, the derived analytics block
+        (the same values render.BuildBoards produces for the snapshot),
+        the validate findings (level + verbatim message with line
+        numbers), the key-uniformity census line, the sweep-status READ
+        census, and loaded_at (R9). Identity key: the report slug. The
+        snapshot was computed once at load time (the -C resolve or an
+        upload): files changing on disk afterwards never change this
+        answer until a new upload or a serve restart. Unknown slug:
+        404 with a JSON body (R8).
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          description: the board's report slug (the slugified report name)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: the board's snapshot read model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardDetail'
+        '404':
+          description: unknown slug (JSON body naming the requested slug)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   '/api/boards':
     get:
       operationId: listLoadedBoards
@@ -127,6 +163,60 @@ paths:
           description: board payload could not be built (plain-text error body)
           content:
             text/plain:
+              schema:
+                type: string
+  '/api/events/{slug}':
+    get:
+      operationId: getBoardEvents
+      summary: one board's event rows with the detail ladder already applied, from its load-time snapshot
+      tags: [boards]
+      description: |
+        Answers with one board's event rows (R7), each carrying the
+        analytics 2.4 detail ladder ALREADY APPLIED (R6: the decoding is
+        Go's job): detail is an object/array when stored as one or
+        wrapped as a JSON string or strict base64-wrapped JSON, and the
+        raw string only on ladder fall-through (kept inert downstream).
+        Served from the same load-time snapshot as GET
+        /api/board/{slug}. Unknown slug: 404 with a JSON body (R8).
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          description: the board's report slug (the slugified report name)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: the board's event rows with decoded details
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiEvent'
+        '404':
+          description: unknown slug (JSON body naming the requested slug)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  '/ui':
+    get:
+      operationId: getWebUI
+      summary: the self-contained web UI (board viewer over the loaded snapshots; read-only)
+      tags: [uploader]
+      description: |
+        Serves the BT-075 web UI: one self-contained HTML document (inline
+        CSS+JS, no external assets, R17) with the initial snapshot island
+        embedded (R18) so the overview renders even when the /api routes
+        fail. Read-only: the UI holds zero write surfaces (D3/R20); the
+        uploader stays at `/` and the UI only links to it (R2). The UI is
+        provide-dont-force: nothing schedules, hooks or requires it (D6).
+      responses:
+        '200':
+          description: the web UI page (self-contained HTML with the embedded snapshot island)
+          content:
+            text/html:
               schema:
                 type: string
 components:
@@ -176,3 +266,117 @@ components:
           type: integer
           description: open task count
           format: int64
+        validate_pill:
+          type: string
+          description: BT-075 additive — snapshot-time validate verdict PASS/WARN/FAIL (R2 keeps every pre-existing key load-bearing)
+        loaded_at:
+          type: string
+          description: BT-075 additive — RFC3339 time the board's snapshot was loaded (R9)
+    BoardDetail:
+      type: object
+      description: one board's full read model of GET /api/board/{slug} (BT-075 R7) — values are exactly what render.BuildBoards produces for the snapshot
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        topology:
+          type: string
+        header:
+          type: object
+          nullable: true
+          description: the raw board header row (null when the board has none)
+        tasks:
+          type: array
+          description: raw task rows, verbatim as the report payload embeds them
+          items:
+            type: object
+        events:
+          type: array
+          description: raw event rows, verbatim as the report payload embeds them
+          items:
+            type: object
+        fixture_ids:
+          type: array
+          items:
+            type: string
+        parse_warnings:
+          type: object
+          description: per-file parse-warning counts plus the first notes (analytics 2.7)
+        derived:
+          type: object
+          description: the board-report/v1 derived analytics block (burndown, burnup, velocity, cycle, streaks, tick_health, work_clock, model_share, status/priority counts)
+        validate:
+          type: object
+          description: the snapshot-time validate result per R13 — pill + findings + census + sweep READ census
+          properties:
+            pill:
+              type: string
+              description: PASS (0 errors, any warnings), WARN (warnings only), FAIL (>=1 error)
+            errors:
+              type: integer
+            warnings:
+              type: integer
+            findings:
+              type: array
+              items:
+                type: object
+                properties:
+                  level:
+                    type: string
+                    description: error | warn
+                  message:
+                    type: string
+                    description: verbatim validate message with line numbers (F9)
+            census:
+              type: string
+              description: the key-uniformity census line, verbatim (F9/BT-056)
+            sweep_census:
+              type: object
+              description: REVIEW-BOARDCTL-001 read census — no decisions are ever applied
+              properties:
+                rows:
+                  type: integer
+                off_vocabulary:
+                  type: integer
+                fixable_by_normalize:
+                  type: integer
+                need_explicit_decision:
+                  type: integer
+                unknown_rows:
+                  type: array
+                  items:
+                    type: string
+                  description: ids of rows carrying unknown statuses, named (never guessed at)
+                decisions_note:
+                  type: string
+        loaded_at:
+          type: string
+          description: RFC3339 time this snapshot was loaded (R9)
+    ApiEvent:
+      type: object
+      description: one event row of GET /api/events/{slug} with the detail ladder already applied
+      properties:
+        id:
+          description: event id as stored (number or string)
+        timestamp:
+          type: string
+        event_type:
+          type: string
+        task_id:
+          nullable: true
+          description: top-level task linkage (null for board-level events)
+        actor:
+          type: string
+        detail:
+          nullable: true
+          description: the DECODED detail (object/array; raw string only on ladder fall-through)
+        tick_number:
+          nullable: true
+    ApiError:
+      type: object
+      description: the R8 JSON 404 body of the read-only endpoints
+      properties:
+        error:
+          type: string
+          description: names the requested slug

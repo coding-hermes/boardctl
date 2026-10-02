@@ -105,6 +105,9 @@ func cmdServe(dir string, args []string) error {
 	}
 
 	srv := newServeServer(cBoards)
+	// BT-075 R13: the -C board's validation findings and sweep census are
+	// computed once, at startup, and ride the read model from there.
+	srv.seedSnapshots(cBoards)
 	httpSrv := &http.Server{
 		Addr:              listenAddr,
 		Handler:           srv.routes(),
@@ -174,10 +177,18 @@ type serveServer struct {
 	cBoards  []*board.Board
 	mu       chan struct{} // 1-slot semaphore: lock() sends, unlock() receives
 	sessions []*uploadSession
+	// snapshots is the BT-075 read-model cache, keyed by board identity
+	// (serveBoardIdentity: slug + topology). Each entry is computed once
+	// per load (the -C resolve or an upload registration) and frozen: the
+	// /ui, /api/board/{slug} and /api/events/{slug} answers come from here
+	// so files changing on disk after load never change what they show
+	// until a new upload or a restart (R9). cmdServe's zero value (nil map)
+	// is handled lazily by snapshotFor.
+	snapshots map[string]*boardSnapshot
 }
 
 func newServeServer(cBoards []*board.Board) *serveServer {
-	return &serveServer{cBoards: cBoards, mu: make(chan struct{}, 1)}
+	return &serveServer{cBoards: cBoards, mu: make(chan struct{}, 1), snapshots: map[string]*boardSnapshot{}}
 }
 
 func (s *serveServer) lock()   { s.mu <- struct{}{} }
@@ -375,11 +386,19 @@ func (s *serveServer) registerSession(sess *uploadSession) {
 }
 
 // routes wires the serve HTTP surface (shared by cmdServe and tests).
+// The route set is CLOSED (BT-075 R1): the three BT-021 routes plus
+// exactly three BT-075 routes — GET /ui, GET /api/board/{slug},
+// GET /api/events/{slug}. Any other path 404s via mux routing, and the
+// parity gates (internal/speccheck, internal/describe) fail if this
+// wiring and docs/muster/openapi.yaml drift apart.
 func (s *serveServer) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", s.handleIndex)
 	mux.HandleFunc("POST /", s.handleUpload)
 	mux.HandleFunc("GET /api/boards", s.handleAPIBoards)
+	mux.HandleFunc("GET /ui", s.handleUI)
+	mux.HandleFunc("GET /api/board/{slug}", s.handleAPIBoard)
+	mux.HandleFunc("GET /api/events/{slug}", s.handleAPIEvents)
 	return mux
 }
 
@@ -560,6 +579,10 @@ func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		sess.identities = append(sess.identities, serveBoardIdentity(b))
 	}
 	s.registerSession(sess)
+	// BT-075 R13: the newly loaded boards' snapshots (payload + validate +
+	// sweep census) are computed once, at registration — never re-checked
+	// live afterwards (R9).
+	s.seedSnapshots(boards)
 
 	all := mergeByIdentity(append(append([]*board.Board{}, s.cBoards...), boards...))
 	payload, err := render.BuildBoards(all, render.Options{Now: time.Now(), Zone: time.Local})
@@ -746,7 +769,10 @@ func isBoardDir(dir string) bool {
 	return err == nil && !st.IsDir()
 }
 
-// apiBoard is one entry of GET /api/boards.
+// apiBoard is one entry of GET /api/boards. The first six keys are the
+// BT-021 shape — every existing key stays load-bearing (R2); validate_pill
+// and loaded_at are the BT-075 ADDITIVE fields (R2/R7 may gain, never lose
+// or repurpose).
 type apiBoard struct {
 	Name     string `json:"name"`
 	Slug     string `json:"slug"`
@@ -754,6 +780,11 @@ type apiBoard struct {
 	Total    int    `json:"task_total"`
 	Done     int    `json:"done"`
 	Open     int    `json:"open"`
+	// ValidatePill is the snapshot-time boardctl-validate verdict: PASS
+	// (0 errors, any warnings), WARN (warnings only), FAIL (>=1 error).
+	ValidatePill string `json:"validate_pill,omitempty"`
+	// LoadedAt is the RFC3339 time this board's snapshot was loaded (R9).
+	LoadedAt string `json:"loaded_at,omitempty"`
 }
 
 // handleAPIBoards answers with the currently loaded boards: name, slug,
@@ -768,15 +799,24 @@ func (s *serveServer) handleAPIBoards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := make([]apiBoard, 0, len(payload.Boards))
-	for _, b := range payload.Boards {
-		out = append(out, apiBoard{
+	for i, b := range payload.Boards {
+		entry := apiBoard{
 			Name:     b.Name,
 			Slug:     b.Slug,
 			Topology: b.Topology,
 			Total:    b.Derived.TotalNonFix,
 			Done:     b.Derived.CompleteCount,
 			Open:     b.Derived.OpenCount,
-		})
+		}
+		// BT-075 additive fields (R2): the snapshot-time validate pill and
+		// loaded_at ride along when the snapshot cache has the board.
+		if i < len(boards) {
+			if snap := s.snapshotFor(boards[i]); snap != nil {
+				entry.ValidatePill = uiValidateFromSnapshot(snap).Pill
+				entry.LoadedAt = snap.loadedAt.Format(time.RFC3339)
+			}
+		}
+		out = append(out, entry)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	jsonWrite(w, out)

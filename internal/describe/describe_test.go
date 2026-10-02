@@ -64,13 +64,14 @@ func TestDeriveCLI_AnchorLostFails(t *testing.T) {
 }
 
 // TestDeriveHTTP_RealServe pins the HTTP route derivation against the
-// repo's live serve.go: order and curation.
+// repo's live serve.go: order and curation. BT-075 extended the closed
+// route set with exactly three read-only UI routes (R1).
 func TestDeriveHTTP_RealServe(t *testing.T) {
 	routes, err := DeriveHTTP(filepath.Join("..", "..", "cmd", "boardctl", "serve.go"))
 	if err != nil {
 		t.Fatalf("derive from the real serve.go: %v", err)
 	}
-	wantKeys := []string{"GET /", "POST /", "GET /api/boards"}
+	wantKeys := []string{"GET /", "POST /", "GET /api/boards", "GET /ui", "GET /api/board/{slug}", "GET /api/events/{slug}"}
 	if len(routes) != len(wantKeys) {
 		t.Fatalf("derived %d routes, want %d", len(routes), len(wantKeys))
 	}
@@ -84,6 +85,9 @@ func TestDeriveHTTP_RealServe(t *testing.T) {
 	}
 	if routes[0].OperationID != "getUploaderForm" || routes[1].OperationID != "uploadBoardReport" || routes[2].OperationID != "listLoadedBoards" {
 		t.Fatalf("operationId curation drifted: %v", routes)
+	}
+	if routes[3].OperationID != "getWebUI" || routes[4].OperationID != "getBoardDetail" || routes[5].OperationID != "getBoardEvents" {
+		t.Fatalf("BT-075 operationId curation drifted: %v", routes)
 	}
 }
 

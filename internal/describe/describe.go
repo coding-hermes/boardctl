@@ -87,6 +87,8 @@ var cliSummaries = map[string]string{
 // method+path of the serve surface. A derived route without an entry has an
 // empty OperationID — gendocs refuses to emit the contract and speccheck
 // fails until the route is curated here (fail-loud, never silently dropped).
+// BT-075 added the three read-only UI routes; their summaries state the
+// snapshot semantics (R9) and the closed read model (R7).
 var httpOperations = map[string]HTTPRoute{
 	"GET /": {
 		OperationID: "getUploaderForm",
@@ -99,6 +101,18 @@ var httpOperations = map[string]HTTPRoute{
 	"GET /api/boards": {
 		OperationID: "listLoadedBoards",
 		Summary:     "list the boards currently loaded by the running serve instance",
+	},
+	"GET /ui": {
+		OperationID: "getWebUI",
+		Summary:     "the self-contained web UI (board viewer over the loaded snapshots; read-only)",
+	},
+	"GET /api/board/{slug}": {
+		OperationID: "getBoardDetail",
+		Summary:     "one board's full read model (rows, header, derived analytics, validate findings, loaded_at) from its load-time snapshot",
+	},
+	"GET /api/events/{slug}": {
+		OperationID: "getBoardEvents",
+		Summary:     "one board's event rows with the detail ladder already applied, from its load-time snapshot",
 	},
 }
 
