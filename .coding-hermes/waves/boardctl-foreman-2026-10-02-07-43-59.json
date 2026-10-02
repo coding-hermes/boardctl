@@ -1,0 +1,21 @@
+{
+  "tick_id": "boardctl-foreman-2026-10-02-07-43-59",
+  "created_at": "2026-10-02T07:50:00-05:00",
+  "wave_budget": 9,
+  "workers": [
+    {
+      "task_id": "BT-073",
+      "worktree": "/home/kara/worktrees/boardctl-BT-073",
+      "branch": "wt/BT-073",
+      "brief": "/tmp/brief-BT-073.md",
+      "log": "/tmp/w-BT-073.log"
+    },
+    {
+      "task_id": "DF-BOARDCTL-25",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-25",
+      "branch": "wt/DF-BOARDCTL-25",
+      "brief": "/tmp/brief-DF-BOARDCTL-25.md",
+      "log": "/tmp/w-DF-BOARDCTL-25.log"
+    }
+  ]
+}

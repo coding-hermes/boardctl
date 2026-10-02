@@ -1,0 +1,16 @@
+commit 42c7ef581ef7030c5a0c6c7aea52bdcae48e2895
+Merge: e6dc28b e720f10
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 2 03:55:42 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 2 03:55:42 2026 -0500
+
+    merge: BT-073 — web UI visual system + component design + mockups
+
+ docs/mockups/board-view.html      | 413 +++++++++++++++++++++++++++
+ docs/mockups/empty-error.html     | 154 +++++++++++
+ docs/mockups/events-timeline.html | 156 +++++++++++
+ docs/mockups/row-detail.html      | 177 ++++++++++++
+ docs/mockups/validation-warn.html | 119 ++++++++
+ docs/web-ui-design.md             | 568 ++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 1587 insertions(+)

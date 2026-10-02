@@ -1,0 +1,101 @@
+{
+  "task_id": "DF-BOARDCTL-25",
+  "task_title": "doctor distinguishes topology B header from corrupt tasks.jsonl line 1",
+  "task_criteria": [
+    "doctor reports salvageable topology B line-1 header differently from genuinely corrupt line-1 data; tests RED-proven on both board shapes"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "42c7ef581ef7030c5a0c6c7aea52bdcae48e2895",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t160.618s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n4:06AM INF scanned ~2473033 bytes (2.47 MB) in 450ms\n4:06AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 176 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T035647.908311Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t160.618s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T035647.908311Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 doctor reports salvageable topology B line-1 header differently from genuinely corrupt line-1 data; tests RED-proven on both board shapes: internal/board/doctor.go: doctorTopologyBLineOne (called at line 39, defined ~line 192) emits three distinct outcomes: topology B + valid header row on line 1 -> warn 'legacy topology B: tasks.jsonl line 1 is the board header ... not corruption; the board is fully writable' (zero errors); topology B + unparseable line 1 -> error containing df25TopologyBHeaderCorruptionMsg='corruption of the topology-B header line' plus the 'fix: boardctl validate --repair ...' salvage hint; topology A/headerless -> silent. Test TestDF25DoctorDistinguishesTopologyBFromCorruptLineOne (cmd/boardctl/df_boardctl_25_test.go, added in f9dc8a4) drives the real CLI over both board shapes, asserting exit codes, output lines, and zero board-file writes via sha256 snapshots. GREEN: `go test -count=1 -run TestDF25DoctorDistinguishesTopologyBFromCorruptLineOne ./cmd/boardctl/` => 'ok github.com/coding-hermes/boardctl/cmd/boardctl 1.687s' (rerun 3.968s). RED-PROVEN live: reverting internal/board/doctor.go to pre-fix commit c0170f6 while keeping the new test produced '--- FAIL: .../valid_line-1_header... df_boardctl_25_test.go:124: doctor did not report the legacy topology-B header as a distinct, healthy layout' and '--- FAIL: .../corrupt_line_1... df_boardctl_25_test.go:154: doctor did not name corrupt line 1 as topology-B header corruption' \u2014 exactly the claimed RED messages; restoring the fix (git diff clean) returned PASS. go build ./... exit 0, go vet clean, LSP diagnostics empty.\ndoctor now distinguishes a salvageable topology-B line-1 header (warn, exit 0) from genuinely corrupt line-1 data (error + validate --repair hint, exit 1), and the acceptance test is RED-proven on both board shapes and GREEN post-fix.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 doctor reports salvageable topology B line-1 header differently from genuinely corrupt line-1 data; tests RED-proven on both board shapes: internal/board/doctor.go: doctorTopologyBLineOne (called at line 39, defined ~line 192) emits three distinct outcomes: topology B + valid header row on line 1 -> warn 'legacy topology B: tasks.jsonl line 1 is the board header ... not corruption; the board is fully writable' (zero errors); topology B + unparseable line 1 -> error containing df25TopologyBHeaderCorruptionMsg='corruption of the topology-B header line' plus the 'fix: boardctl validate --repair ...' salvage hint; topology A/headerless -> silent. Test TestDF25DoctorDistinguishesTopologyBFromCorruptLineOne (cmd/boardctl/df_boardctl_25_test.go, added in f9dc8a4) drives the real CLI over both board shapes, asserting exit codes, output lines, and zero board-file writes via sha256 snapshots. GREEN: `go test -count=1 -run TestDF25DoctorDistinguishesTopologyBFromCorruptLineOne ./cmd/boardctl/` => 'ok github.com/coding-hermes/boardctl/cmd/boardctl 1.687s' (rerun 3.968s). RED-PROVEN live: reverting internal/board/doctor.go to pre-fix commit c0170f6 while keeping the new test produced '--- FAIL: .../valid_line-1_header... df_boardctl_25_test.go:124: doctor did not report the legacy topology-B header as a distinct, healthy layout' and '--- FAIL: .../corrupt_line_1... df_boardctl_25_test.go:154: doctor did not name corrupt line 1 as topology-B header corruption' \u2014 exactly the claimed RED messages; restoring the fix (git diff clean) returned PASS. go build ./... exit 0, go vet clean, LSP diagnostics empty.\ndoctor now distinguishes a salvageable topology-B line-1 header (warn, exit 0) from genuinely corrupt line-1 data (error + validate --repair hint, exit 1), and the acceptance test is RED-proven on both board shapes and GREEN post-fix.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "doctor reports salvageable topology B line-1 header differently from genuinely corrupt line-1 data; tests RED-proven on both board shapes",
+                "status": "PASS",
+                "detail": "internal/board/doctor.go: doctorTopologyBLineOne (called at line 39, defined ~line 192) emits three distinct outcomes: topology B + valid header row on line 1 -> warn 'legacy topology B: tasks.jsonl line 1 is the board header ... not corruption; the board is fully writable' (zero errors); topology B + unparseable line 1 -> error containing df25TopologyBHeaderCorruptionMsg='corruption of the topology-B header line' plus the 'fix: boardctl validate --repair ...' salvage hint; topology A/headerless -> silent. Test TestDF25DoctorDistinguishesTopologyBFromCorruptLineOne (cmd/boardctl/df_boardctl_25_test.go, added in f9dc8a4) drives the real CLI over both board shapes, asserting exit codes, output lines, and zero board-file writes via sha256 snapshots. GREEN: `go test -count=1 -run TestDF25DoctorDistinguishesTopologyBFromCorruptLineOne ./cmd/boardctl/` => 'ok github.com/coding-hermes/boardctl/cmd/boardctl 1.687s' (rerun 3.968s). RED-PROVEN live: reverting internal/board/doctor.go to pre-fix commit c0170f6 while keeping the new test produced '--- FAIL: .../valid_line-1_header... df_boardctl_25_test.go:124: doctor did not report the legacy topology-B header as a distinct, healthy layout' and '--- FAIL: .../corrupt_line_1... df_boardctl_25_test.go:154: doctor did not name corrupt line 1 as topology-B header corruption' \u2014 exactly the claimed RED messages; restoring the fix (git diff clean) returned PASS. go build ./... exit 0, go vet clean, LSP diagnostics empty."
+              }
+            ],
+            "summary": "doctor now distinguishes a salvageable topology-B line-1 header (warn, exit 0) from genuinely corrupt line-1 data (error + validate --repair hint, exit 1), and the acceptance test is RED-proven on both board shapes and GREEN post-fix."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-25\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t160.618s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 doctor reports salvageable topology B line-1 header differently from genuinely corrupt line-1 data; tests RED-proven on both board shapes: internal/board/doctor.go: doctorTopologyBLineOne (called at line 39, defined ~line 192) emits three distinct outcomes: topology B + valid header row on line 1 -> warn 'legacy topology B: tasks.jsonl line 1 is the board header ... not corruption; the board is fully writable' (zero errors); topology B + unparseable line 1 -> error containing df25TopologyBHeaderCorruptionMsg='corruption of the topology-B header line' plus the 'fix: boardctl validate --repair ...' salvage hint; topology A/headerless -> silent. Test TestDF25DoctorDistinguishesTopologyBFromCorruptLineOne (cmd/boardctl/df_boardctl_25_test.go, added in f9dc8a4) drives the real CLI over both board shapes, asserting exit codes, output lines, and zero board-file writes via sha256 snapshots. GREEN: `go test -count=1 -run TestDF25DoctorDistinguishesTopologyBFromCorruptLineOne ./cmd/boardctl/` => 'ok github.com/coding-hermes/boardctl/cmd/boardctl 1.687s' (rerun 3.968s). RED-PROVEN live: reverting internal/board/doctor.go to pre-fix commit c0170f6 while keeping the new test produced '--- FAIL: .../valid_line-1_header... df_boardctl_25_test.go:124: doctor did not report the legacy topology-B header as a distinct, healthy layout' and '--- FAIL: .../corrupt_line_1... df_boardctl_25_test.go:154: doctor did not name corrupt line 1 as topology-B header corruption' \u2014 exactly the claimed RED messages; restoring the fix (git diff clean) returned PASS. go build ./... exit 0, go vet clean, LSP diagnostics empty.\ndoctor now distinguishes a salvageable topology-B line-1 header (warn, exit 0) from genuinely corrupt line-1 data (error + validate --repair hint, exit 1), and the acceptance test is RED-proven on both board shapes and GREEN post-fix.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-02T09:20:53.251850",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-02T09:20:53.269952+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 773,
+        "truncated": false,
+        "source": "git show 42c7ef581ef7"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 33848,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-25"
+  }
+}
