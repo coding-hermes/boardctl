@@ -1,0 +1,22 @@
+commit 95cbd3d796a7e31969d376ccf4540faa350473e1
+Merge: 1a3c50c 13b04cb
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 2 16:04:18 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 2 16:04:18 2026 -0500
+
+    merge: BT-075 — boardctl web UI (serve /ui + read-only API)
+
+ README.md                            |   31 +
+ cmd/boardctl/bt072_liveboard_test.go |  118 +++
+ cmd/boardctl/bt072_webui_test.go     | 1248 +++++++++++++++++++++++++++++
+ cmd/boardctl/serve.go                |   50 +-
+ cmd/boardctl/ui.go                   |  469 +++++++++++
+ cmd/boardctl/ui_page.go              | 1430 ++++++++++++++++++++++++++++++++++
+ docs/muster/openapi.yaml             |  204 +++++
+ internal/describe/describe.go        |   14 +
+ internal/describe/describe_test.go   |    8 +-
+ internal/describe/openapi.go         |  209 ++++-
+ internal/speccheck/kin_parse_test.go |    6 +-
+ skills/boardctl-usage/SKILL.md       |   20 +-
+ 12 files changed, 3796 insertions(+), 11 deletions(-)

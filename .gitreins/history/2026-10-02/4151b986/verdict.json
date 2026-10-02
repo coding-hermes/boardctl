@@ -1,0 +1,101 @@
+{
+  "task_id": "BT-075",
+  "task_title": "IMPLEMENT: boardctl web UI \u2014 build the UI end to end",
+  "task_criteria": [
+    "go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "95cbd3d796a7e31969d376ccf4540faa350473e1",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.830s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n4:07PM INF scanned ~2668081 bytes (2.67 MB) in 553ms\n4:07PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 181 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T170239.805640Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.830s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t8.568s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.033s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.128s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.018s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t5.875s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T170239.805640Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push: go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit).\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push: go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit).\n",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push",
+                "status": "PASS",
+                "detail": "go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit)."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-075\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.830s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push: go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit).\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-02T21:08:31.937644",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-02T21:08:31.957306+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1075,
+        "truncated": false,
+        "source": "git show 95cbd3d796a7"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 21366,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-075"
+  }
+}

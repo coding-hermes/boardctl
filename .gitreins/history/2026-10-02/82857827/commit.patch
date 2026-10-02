@@ -1,0 +1,11 @@
+commit 2c6c641445026b1578d4657b9e74fa4ea572d388
+Merge: d23660b 501fcb5
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 2 11:55:39 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 2 11:55:39 2026 -0500
+
+    merge: BT-074 — web UI flows, states and interaction model
+
+ docs/web-ui-ux.md | 571 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 571 insertions(+)

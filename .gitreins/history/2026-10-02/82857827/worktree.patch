@@ -1,0 +1,447 @@
+diff --git a/.gitreins/logs/guard-20260929T021546.703303Z.log b/.gitreins/logs/guard-20260929T021546.703303Z.log
+deleted file mode 100644
+index b5e081e..0000000
+--- a/.gitreins/logs/guard-20260929T021546.703303Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-29T02:15:46Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20260929T024205.000064Z.log b/.gitreins/logs/guard-20260929T024205.000064Z.log
+deleted file mode 100644
+index ab3728a..0000000
+--- a/.gitreins/logs/guard-20260929T024205.000064Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-29T02:42:05Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20260929T024310.519069Z.log b/.gitreins/logs/guard-20260929T024310.519069Z.log
+deleted file mode 100644
+index d4ba7b6..0000000
+--- a/.gitreins/logs/guard-20260929T024310.519069Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-29T02:43:10Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20260929T103514.657726Z.log b/.gitreins/logs/guard-20260929T103514.657726Z.log
+deleted file mode 100644
+index 6fe0c58..0000000
+--- a/.gitreins/logs/guard-20260929T103514.657726Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-29T10:35:14Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20260929T104314.797929Z.log b/.gitreins/logs/guard-20260929T104314.797929Z.log
+deleted file mode 100644
+index d00aee1..0000000
+--- a/.gitreins/logs/guard-20260929T104314.797929Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-29T10:43:14Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20260929T104319.900133Z.log b/.gitreins/logs/guard-20260929T104319.900133Z.log
+deleted file mode 100644
+index 24640be..0000000
+--- a/.gitreins/logs/guard-20260929T104319.900133Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-29T10:43:19Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20260929T110953.502069Z.log b/.gitreins/logs/guard-20260929T110953.502069Z.log
+deleted file mode 100644
+index ab396da..0000000
+--- a/.gitreins/logs/guard-20260929T110953.502069Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-29T11:09:53Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20260929T112740.522069Z.log b/.gitreins/logs/guard-20260929T112740.522069Z.log
+deleted file mode 100644
+index aba2b19..0000000
+--- a/.gitreins/logs/guard-20260929T112740.522069Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-29T11:27:40Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20260929T174848.132103Z.log b/.gitreins/logs/guard-20260929T174848.132103Z.log
+deleted file mode 100644
+index 5562323..0000000
+--- a/.gitreins/logs/guard-20260929T174848.132103Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-29T17:48:48Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20260930T121617.239629Z.log b/.gitreins/logs/guard-20260930T121617.239629Z.log
+deleted file mode 100644
+index d9a0d43..0000000
+--- a/.gitreins/logs/guard-20260930T121617.239629Z.log
++++ /dev/null
+@@ -1,41 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-30T12:16:17Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go vet: clean
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	1.532s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.016s
+-?   	github.com/coding-hermes/boardctl/cmd/gendocs	[no test files]
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.983s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.007s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.329s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.971s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.
+diff --git a/.gitreins/logs/guard-20260930T185530.620552Z.log b/.gitreins/logs/guard-20260930T185530.620552Z.log
+deleted file mode 100644
+index b69ac7b..0000000
+--- a/.gitreins/logs/guard-20260930T185530.620552Z.log
++++ /dev/null
+@@ -1,34 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-09-30T18:55:30Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
