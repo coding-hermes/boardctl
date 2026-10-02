@@ -24,12 +24,19 @@ import (
 //     (^[A-Z][A-Z0-9]+(-[A-Z0-9]+)+$) are itemized WARNINGS with line
 //     numbers — legacy junk ids surface but never fail doctor (validate
 //     stays silent; the write paths enforce the format on new ids)
+//   - DF-BOARDCTL-25: on topology B the board header is line 1 of
+//     tasks.jsonl, so doctor states the legacy layout explicitly when that
+//     line is a valid header (a warn — the board is healthy) and reports a
+//     corrupt line 1 as salvageable header corruption (an error naming the
+//     `boardctl validate --repair` salvage path) instead of letting a bare
+//     parse error read exactly like the healthy legacy board
 func (b *Board) Doctor() (*Report, error) {
 	rep, err := b.Validate()
 	if err != nil {
 		return nil, err
 	}
 	b.doctorGitTrackedSet(rep)
+	b.doctorTopologyBLineOne(rep)
 	b.doctorHeaderVsEvents(rep)
 	b.doctorFixtureOrphans(rep)
 	b.doctorTaskIDFormat(rep)
@@ -154,6 +161,64 @@ func (b *Board) doctorHeaderVsEvents(rep *Report) {
 	if idle > total {
 		rep.Add("warn", "header ticks_idle exceeds ticks_total — counters inconsistent")
 	}
+}
+
+// df25TopologyBHeaderCorruptionMsg is the error text doctor emits when line 1
+// of tasks.jsonl on a board WITHOUT board.jsonl cannot be parsed: the
+// topology-B header line is where the board header lives, so this is
+// corruption of real board state — but the remaining task rows are salvageable
+// (`boardctl validate --repair` re-reads tolerantly into tasks.rewritten.jsonl
+// for manual review), which a bare parse error never told the operator.
+const df25TopologyBHeaderCorruptionMsg = "corruption of the topology-B header line"
+
+// doctorTopologyBLineOne makes the topology-B header line EXPLICIT in the
+// report (DF-BOARDCTL-25): a topology-B board and a corrupt tasks.jsonl line
+// 1 resolve to the same topology and used to produce indistinguishable doctor
+// output — the healthy legacy board stayed silent about its header line while
+// the corrupt one printed only bare parse errors, with nothing telling an
+// operator which situation they were in or that the corrupt one is
+// salvageable.
+//
+//   - topology B + line 1 IS a valid header row  -> a distinct warn stating
+//     the legacy layout is expected and writable, zero errors (the board is
+//     healthy; the header cross-checks already ran against it)
+//   - topology B + line 1 unparseable            -> an ERROR naming the line
+//     as topology-B header corruption with the `boardctl validate --repair`
+//     salvage hint — corruption that is recoverable, never silently passed
+//   - topology A / headerless boards             -> nothing: the header lives
+//     in board.jsonl (or nowhere), so line 1 carries no header meaning
+//
+// The check is read-only: it parses the line in memory and never writes.
+func (b *Board) doctorTopologyBLineOne(rep *Report) {
+	if b.IsTopologyA() || !b.HasHeader() {
+		return // topology A: header is board.jsonl; headerless: no header row at all
+	}
+	line, ok := firstNonBlankLine(b.tasksPath)
+	if !ok {
+		// Unreadable, empty, or all-blank file: validate already itemized
+		// the read failure or the empty-board shape — nothing to classify.
+		return
+	}
+	row, perr := ParseRow(line)
+	if perr == nil {
+		if !rowIsHeaderShape(row) {
+			return // impossible under the current Resolve headerless rule; stay silent rather than mislabel a task row
+		}
+		rep.Add("warn",
+			"legacy topology B: tasks.jsonl line 1 is the board header (metadata without a task id) — this is the expected legacy layout, not corruption; the board is fully writable")
+		return
+	}
+	// Line 1 does not parse: the topology-B header row itself is destroyed.
+	// Quote a short snippet of the offending line (%q escapes binary junk)
+	// so the finding is self-contained; "line 1" means the header slot —
+	// the first non-blank line, the same convention HeaderRow uses.
+	snippet := string(line)
+	if len(snippet) > 120 {
+		snippet = snippet[:120] + "…"
+	}
+	rep.Add("error",
+		"tasks.jsonl line 1: %v — %s (the board header lives on line 1 of tasks.jsonl when there is no board.jsonl, so the header is destroyed even though the remaining task rows may be fine; offending line: %q)\nfix: boardctl validate --repair re-reads the board tolerantly and writes the salvageable rows to tasks.rewritten.jsonl for manual review",
+		perr, df25TopologyBHeaderCorruptionMsg, snippet)
 }
 
 // doctorFixtureOrphans flags fixture ids (fixtures.jsonl) that have no task
