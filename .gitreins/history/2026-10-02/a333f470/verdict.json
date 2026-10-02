@@ -1,0 +1,93 @@
+{
+  "task_id": "BT-072",
+  "task_title": "SPEC: new web UI for boardctl \u2014 scope + specification",
+  "task_criteria": [
+    "docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "c84fc1ee3c08fa8b0cc0438a032afea674cae869",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t152.870s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n10:49PM INF scanned ~2369423 bytes (2.37 MB) in 396ms\n10:49PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 168 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T023213.750022Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t152.870s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T023213.750022Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately: docs/web-ui-spec.md is committed/tracked (git ls-files confirms; commit ded9f67, merged c84fc1e). (1) Every requirement testable: 20 requirements R1-R20, each with an 'Acceptance:' line naming a TestBT072* test (grep: 20 Acceptance lines, 21 unique test names incl. R7's extra TestBT072APIXSSInert); \u00a77 test index lists all. (2) D1 = EXTEND serve with 4 named reasons + rejected alternatives (lines 82-100). (3) D2 = FLEET with named reasons (lines 102-108). (4) D3 = READ-ONLY with named reason (lines 110-116). (5) D4 = loopback-only, no auth/TLS/cookies with named reasons (lines 118-124). (6) \u00a78 NON-GOALS NG1-NG12 explicit (lines 407-436). (7) No requirement rests on an undecided item: \u00a79 open questions (LAN/Tailscale, live refresh) are explicitly excluded by NG2/NG3; grep for TBD/TODO/undecided returns only the \u00a79 heading. (8) Serve surface cited accurately: F1 matches cmd/boardctl/serve.go:380-382 (exactly GET /, POST /, GET /api/boards); R2's field list (name, slug, topology, task_total, done, open) matches apiBoard struct at serve.go:751-757. (9) DF-BOARDCTL-2 dedupe accurate: F6/R10 match serveBoardIdentity (serve.go:193-201, slug+topology), mergeByIdentity (serve.go:301-317, later replaces earlier), registerSession superseded-session deletion with temp trees (serve.go:338-372); F2 -C prepend matches serve.go:564. F4 loopback refusal (serve.go:93 loopbackHost, errUsage exit 2) and F5 -C preload (serve.go:98-107) + temp cleanup (serve.go:391) also verified. Doc-only deliverable \u2014 no test suite applies to the spec file itself.\ndocs/web-ui-spec.md is committed and satisfies all sub-criteria: R1-R20 each name an acceptance test, all six decisions (D1-D6) are made with named reasons, NON-GOALS NG1-NG12 are explicit, no requirement rests on an undecided item, and its cited serve surface and DF-BOARDCTL-2 dedupe behavior match the actual code.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately: docs/web-ui-spec.md is committed/tracked (git ls-files confirms; commit ded9f67, merged c84fc1e). (1) Every requirement testable: 20 requirements R1-R20, each with an 'Acceptance:' line naming a TestBT072* test (grep: 20 Acceptance lines, 21 unique test names incl. R7's extra TestBT072APIXSSInert); \u00a77 test index lists all. (2) D1 = EXTEND serve with 4 named reasons + rejected alternatives (lines 82-100). (3) D2 = FLEET with named reasons (lines 102-108). (4) D3 = READ-ONLY with named reason (lines 110-116). (5) D4 = loopback-only, no auth/TLS/cookies with named reasons (lines 118-124). (6) \u00a78 NON-GOALS NG1-NG12 explicit (lines 407-436). (7) No requirement rests on an undecided item: \u00a79 open questions (LAN/Tailscale, live refresh) are explicitly excluded by NG2/NG3; grep for TBD/TODO/undecided returns only the \u00a79 heading. (8) Serve surface cited accurately: F1 matches cmd/boardctl/serve.go:380-382 (exactly GET /, POST /, GET /api/boards); R2's field list (name, slug, topology, task_total, done, open) matches apiBoard struct at serve.go:751-757. (9) DF-BOARDCTL-2 dedupe accurate: F6/R10 match serveBoardIdentity (serve.go:193-201, slug+topology), mergeByIdentity (serve.go:301-317, later replaces earlier), registerSession superseded-session deletion with temp trees (serve.go:338-372); F2 -C prepend matches serve.go:564. F4 loopback refusal (serve.go:93 loopbackHost, errUsage exit 2) and F5 -C preload (serve.go:98-107) + temp cleanup (serve.go:391) also verified. Doc-only deliverable \u2014 no test suite applies to the spec file itself.\ndocs/web-ui-spec.md is committed and satisfies all sub-criteria: R1-R20 each name an acceptance test, all six decisions (D1-D6) are made with named reasons, NON-GOALS NG1-NG12 are explicit, no requirement rests on an undecided item, and its cited serve surface and DF-BOARDCTL-2 dedupe behavior match the actual code.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately",
+                "status": "PASS",
+                "detail": "docs/web-ui-spec.md is committed/tracked (git ls-files confirms; commit ded9f67, merged c84fc1e). (1) Every requirement testable: 20 requirements R1-R20, each with an 'Acceptance:' line naming a TestBT072* test (grep: 20 Acceptance lines, 21 unique test names incl. R7's extra TestBT072APIXSSInert); \u00a77 test index lists all. (2) D1 = EXTEND serve with 4 named reasons + rejected alternatives (lines 82-100). (3) D2 = FLEET with named reasons (lines 102-108). (4) D3 = READ-ONLY with named reason (lines 110-116). (5) D4 = loopback-only, no auth/TLS/cookies with named reasons (lines 118-124). (6) \u00a78 NON-GOALS NG1-NG12 explicit (lines 407-436). (7) No requirement rests on an undecided item: \u00a79 open questions (LAN/Tailscale, live refresh) are explicitly excluded by NG2/NG3; grep for TBD/TODO/undecided returns only the \u00a79 heading. (8) Serve surface cited accurately: F1 matches cmd/boardctl/serve.go:380-382 (exactly GET /, POST /, GET /api/boards); R2's field list (name, slug, topology, task_total, done, open) matches apiBoard struct at serve.go:751-757. (9) DF-BOARDCTL-2 dedupe accurate: F6/R10 match serveBoardIdentity (serve.go:193-201, slug+topology), mergeByIdentity (serve.go:301-317, later replaces earlier), registerSession superseded-session deletion with temp trees (serve.go:338-372); F2 -C prepend matches serve.go:564. F4 loopback refusal (serve.go:93 loopbackHost, errUsage exit 2) and F5 -C preload (serve.go:98-107) + temp cleanup (serve.go:391) also verified. Doc-only deliverable \u2014 no test suite applies to the spec file itself."
+              }
+            ],
+            "summary": "docs/web-ui-spec.md is committed and satisfies all sub-criteria: R1-R20 each name an acceptance test, all six decisions (D1-D6) are made with named reasons, NON-GOALS NG1-NG12 are explicit, no requirement rests on an undecided item, and its cited serve surface and DF-BOARDCTL-2 dedupe behavior match the actual code."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-072\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t152.870s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately: docs/web-ui-spec.md is committed/tracked (git ls-files confirms; commit ded9f67, merged c84fc1e). (1) Every requirement testable: 20 requirements R1-R20, each with an 'Acceptance:' line naming a TestBT072* test (grep: 20 Acceptance lines, 21 unique test names incl. R7's extra TestBT072APIXSSInert); \u00a77 test index lists all. (2) D1 = EXTEND serve with 4 named reasons + rejected alternatives (lines 82-100). (3) D2 = FLEET with named reasons (lines 102-108). (4) D3 = READ-ONLY with named reason (lines 110-116). (5) D4 = loopback-only, no auth/TLS/cookies with named reasons (lines 118-124). (6) \u00a78 NON-GOALS NG1-NG12 explicit (lines 407-436). (7) No requirement rests on an undecided item: \u00a79 open questions (LAN/Tailscale, live refresh) are explicitly excluded by NG2/NG3; grep for TBD/TODO/undecided returns only the \u00a79 heading. (8) Serve surface cited accurately: F1 matches cmd/boardctl/serve.go:380-382 (exactly GET /, POST /, GET /api/boards); R2's field list (name, slug, topology, task_total, done, open) matches apiBoard struct at serve.go:751-757. (9) DF-BOARDCTL-2 dedupe accurate: F6/R10 match serveBoardIdentity (serve.go:193-201, slug+topology), mergeByIdentity (serve.go:301-317, later replaces earlier), registerSession superseded-session deletion with temp trees (serve.go:338-372); F2 -C prepend matches serve.go:564. F4 loopback refusal (serve.go:93 loopbackHost, errUsage exit 2) and F5 -C preload (serve.go:98-107) + temp cleanup (serve.go:391) also verified. Doc-only deliverable \u2014 no test suite applies to the spec file itself.\ndocs/web-ui-spec.md is committed and satisfies all sub-criteria: R1-R20 each name an acceptance test, all six decisions (D1-D6) are made with named reasons, NON-GOALS NG1-NG12 are explicit, no requirement rests on an undecided item, and its cited serve surface and DF-BOARDCTL-2 dedupe behavior match the actual code.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-02T03:52:57.888563",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-02T03:52:57.901316+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 527,
+        "truncated": false,
+        "source": "git show c84fc1ee3c08"
+      }
+    ],
+    "task_id": "BT-072"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "task_id": "QA-BOARDCTL-3",
+  "task_title": "OOM repro under 3G cap (INFO)",
+  "task_criteria": [],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "6dc6a63edefe8952680257dc82ad03fb509139ec",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t26.612s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n9:30PM INF scanned ~2339202 bytes (2.34 MB) in 423ms\n9:30PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 167 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T022949.173307Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t26.612s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T022949.173307Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n\nTask QA-BOARDCTL-3 defines zero criteria (criteria: []); the commit's changes are verified sound \u2014 go build/vet clean, full suite green (11 packages ok, exit 0), and TestServeOversizeCap413 passes under a 3 GiB ulimit -v cap.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n\nTask QA-BOARDCTL-3 defines zero criteria (criteria: []); the commit's changes are verified sound \u2014 go build/vet clean, full suite green (11 packages ok, exit 0), and TestServeOversizeCap413 passes under a 3 GiB ulimit -v cap.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [],
+            "summary": "Task QA-BOARDCTL-3 defines zero criteria (criteria: []); the commit's changes are verified sound \u2014 go build/vet clean, full suite green (11 packages ok, exit 0), and TestServeOversizeCap413 passes under a 3 GiB ulimit -v cap."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-3\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t26.612s\n\nStage tier2: PASS\n  COMPLETE\n\nTask QA-BOARDCTL-3 defines zero criteria (criteria: []); the commit's changes are verified sound \u2014 go build/vet clean, full suite green (11 packages ok, exit 0), and TestServeOversizeCap413 passes under a 3 GiB ulimit -v cap.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-02T02:31:37.459681",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-02T02:31:37.475043+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 4616,
+        "truncated": false,
+        "source": "git show 6dc6a63edefe"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 13000,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-3"
+  }
+}

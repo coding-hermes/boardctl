@@ -1,0 +1,95 @@
+{
+  "task_id": "QA-BOARDCTL-2",
+  "task_title": "act CI test-step failure vs native pass",
+  "task_criteria": [
+    "Reproduce the act Test-step failure, prove root cause (env vs defect), land a fix or env adjustment, native suite stays green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "4de24609fc76f92dc53e0ff7a2e089a78b0fd89d",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t67.051s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n8:54AM INF scanned ~2324488 bytes (2.32 MB) in 393ms\n8:54AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 166 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261001T135433.944342Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t67.051s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t1.909s\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t111.130s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.024s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.121s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t48.089s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.032s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.017s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.008s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.325s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.689s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261001T135433.944342Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n\n(auto-parsed from non-JSON response \u2014 JSON parse failed: Expecting property name enclosed in double quotes: line 6 column 60 (char 688)) The exact CI Test step command `go test -short -count=1 ./...` exits **0** with all 12 packages `ok`. All evidence is complete.\n\nSummary of verification:\n- **Reproduced** the act Test-step failure on a fresh clone at the pre-fix commit: `--- FAIL: TestBT053FleetFailureClassAndExit ... a run with a F",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n\n(auto-parsed from non-JSON response \u2014 JSON parse failed: Expecting property name enclosed in double quotes: line 6 column 60 (char 688)) The exact CI Test step command `go test -short -count=1 ./...` exits **0** with all 12 packages `ok`. All evidence is complete.\n\nSummary of verification:\n- **Reproduced** the act Test-step failure on a fresh clone at the pre-fix commit: `--- FAIL: TestBT053FleetFailureClassAndExit ... a run with a F",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [],
+            "summary": "(auto-parsed from non-JSON response \u2014 JSON parse failed: Expecting property name enclosed in double quotes: line 6 column 60 (char 688)) The exact CI Test step command `go test -short -count=1 ./...` exits **0** with all 12 packages `ok`. All evidence is complete.\n\nSummary of verification:\n- **Reproduced** the act Test-step failure on a fresh clone at the pre-fix commit: `--- FAIL: TestBT053FleetFailureClassAndExit ... a run with a F"
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-2\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t67.051s\n\nStage tier2: PASS\n  COMPLETE\n\n(auto-parsed from non-JSON response \u2014 JSON parse failed: Expecting property name enclosed in double quotes: line 6 column 60 (char 688)) The exact CI Test step command `go test -short -count=1 ./...` exits **0** with all 12 packages `ok`. All evidence is complete.\n\nSummary of verification:\n- **Reproduced** the act Test-step failure on a fresh clone at the pre-fix commit: `--- FAIL: TestBT053FleetFailureClassAndExit ... a run with a F\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-01T14:04:38.656377",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-01T14:04:38.675617+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 262176,
+        "truncated": true,
+        "source": "git show 4de24609fc76"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 8125,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-2"
+  }
+}

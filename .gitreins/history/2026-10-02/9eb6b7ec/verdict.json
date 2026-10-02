@@ -1,0 +1,93 @@
+{
+  "task_id": "BT-072",
+  "task_title": "SPEC: new web UI for boardctl \u2014 scope + specification",
+  "task_criteria": [
+    "docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "7f36a13c9b54fb24c7567f988980c3ab3b70c9bc",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t137.215s",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n10:43PM INF scanned ~2344749 bytes (2.34 MB) in 374ms\n10:43PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 167 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T023213.750022Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t137.215s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t241.254s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T023213.750022Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately: docs/web-ui-spec.md is NOT committed to the delivered tree. `git cat-file -e HEAD:docs/web-ui-spec.md` -> 'fatal: path does not exist in HEAD'; `ls docs/web-ui-spec.md` -> No such file or directory. The file exists only in commit ded9f67 on branch wt/BT-072 (and origin/wt/BT-072), which is NOT an ancestor of HEAD 7f36a13 (`git merge-base --is-ancestor wt/BT-072 HEAD` -> NOT MERGED; HEAD is main). The criterion's first requirement \u2014 'docs/web-ui-spec.md committed' \u2014 is therefore unmet. (Content on the branch is otherwise strong: D1 EXTEND serve with 4 named reasons, D2 fleet, D3 read-only, D4 loopback/no-auth, NG1-NG12 non-goals, Section 7 index mapping R1-R20 to named TestBT072* tests, and F1/F6 accurately cite serve.go:378-382 routes() and mergeByIdentity/serveBoardIdentity at serve.go:186-200/300-330 \u2014 but none of it is committed to the delivered branch.)\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately: docs/web-ui-spec.md is NOT committed to the delivered tree. `git cat-file -e HEAD:docs/web-ui-spec.md` -> 'fatal: path does not exist in HEAD'; `ls docs/web-ui-spec.md` -> No such file or directory. The file exists only in commit ded9f67 on branch wt/BT-072 (and origin/wt/BT-072), which is NOT an ancestor of HEAD 7f36a13 (`git merge-base --is-ancestor wt/BT-072 HEAD` -> NOT MERGED; HEAD is main). The criterion's first requirement \u2014 'docs/web-ui-spec.md committed' \u2014 is therefore unmet. (Content on the branch is otherwise strong: D1 EXTEND serve with 4 named reasons, D2 fleet, D3 read-only, D4 loopback/no-auth, NG1-NG12 non-goals, Section 7 index mapping R1-R20 to named TestBT072* tests, and F1/F6 accurately cite serve.go:378-382 routes() and mergeByIdentity/serveBoardIdentity at serve.go:186-200/300-330 \u2014 but none of it is committed to the delivered branch.)\n",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately",
+                "status": "FAIL",
+                "detail": "docs/web-ui-spec.md is NOT committed to the delivered tree. `git cat-file -e HEAD:docs/web-ui-spec.md` -> 'fatal: path does not exist in HEAD'; `ls docs/web-ui-spec.md` -> No such file or directory. The file exists only in commit ded9f67 on branch wt/BT-072 (and origin/wt/BT-072), which is NOT an ancestor of HEAD 7f36a13 (`git merge-base --is-ancestor wt/BT-072 HEAD` -> NOT MERGED; HEAD is main). The criterion's first requirement \u2014 'docs/web-ui-spec.md committed' \u2014 is therefore unmet. (Content on the branch is otherwise strong: D1 EXTEND serve with 4 named reasons, D2 fleet, D3 read-only, D4 loopback/no-auth, NG1-NG12 non-goals, Section 7 index mapping R1-R20 to named TestBT072* tests, and F1/F6 accurately cite serve.go:378-382 routes() and mergeByIdentity/serveBoardIdentity at serve.go:186-200/300-330 \u2014 but none of it is committed to the delivered branch.)"
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-072\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t137.215s\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 docs/web-ui-spec.md committed; every requirement testable with a named acceptance test; reuse-vs-new-vs-serve decided with a named reason; single-board vs fleet decided; read-only vs write posture decided; auth/bind posture decided; explicit NON-GOALS section; no requirement rests on an undecided item; spec cites the existing serve surface (GET /, POST /, GET /api/boards) and DF-BOARDCTL-2 dedupe behavior accurately: docs/web-ui-spec.md is NOT committed to the delivered tree. `git cat-file -e HEAD:docs/web-ui-spec.md` -> 'fatal: path does not exist in HEAD'; `ls docs/web-ui-spec.md` -> No such file or directory. The file exists only in commit ded9f67 on branch wt/BT-072 (and origin/wt/BT-072), which is NOT an ancestor of HEAD 7f36a13 (`git merge-base --is-ancestor wt/BT-072 HEAD` -> NOT MERGED; HEAD is main). The criterion's first requirement \u2014 'docs/web-ui-spec.md committed' \u2014 is therefore unmet. (Content on the branch is otherwise strong: D1 EXTEND serve with 4 named reasons, D2 fleet, D3 read-only, D4 loopback/no-auth, NG1-NG12 non-goals, Section 7 index mapping R1-R20 to named TestBT072* tests, and F1/F6 accurately cite serve.go:378-382 routes() and mergeByIdentity/serveBoardIdentity at serve.go:186-200/300-330 \u2014 but none of it is committed to the delivered branch.)\n\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-02T03:48:39.751779",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-02T03:48:39.771899+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 262176,
+        "truncated": true,
+        "source": "git show 7f36a13c9b54"
+      }
+    ],
+    "task_id": "BT-072"
+  }
+}

@@ -1,0 +1,92 @@
+commit 6dc6a63edefe8952680257dc82ad03fb509139ec
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Thu Oct 1 21:28:17 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Thu Oct 1 21:28:17 2026 -0500
+
+    qa: prove + fix the 3G-cap suite OOM (serve oversize-test buffer; vulncheck-child AS-cap skip). Addresses QA-BOARDCTL-3.
+    
+    Repro chain (this host, systemd-run --scope -p MemoryMax=3145728K):
+    - BEFORE: `make test` under the cap FAILs — the suite is not memory-flat. Root
+      cause is NOT an OOM in the tests' logic; two environment-shaped offenders:
+      1. cmd/boardctl TestServeOversizeCap413 allocated a real maxUploadBytes+1
+         (512 MiB) buffer plus the multipart copy (~1 GiB RSS) to test a path that
+         refuses on r.ContentLength before reading a byte.
+      2. internal/vulncheck TestVulncheck spawns the pinned govulncheck child; under
+         a hard address-space cap (RLIMIT_AS via ulimit -v) the child cannot start
+         (runtime: cannot allocate memory) — a harness environment, not a defect;
+         CI runs uncapped and still enforces the gate.
+    - AFTER (this commit): both offenders bound/skip-loud; `make test` green under
+      the 3145728K cap on this host (11 packages ok), green uncapped, fmt/vet clean.
+    
+    Note: go has no hard page cap of its own — GOMEMLIMIT is unset and the runtime
+    reserves virtual address space up front; the QA battery's OOM reproduced only
+    under the combined cap. This commit removes the RSS bombs so a capped run
+    degrades, not dies.
+---
+ cmd/boardctl/serve_test.go           | 20 ++++++++++++++++++--
+ internal/vulncheck/vulncheck_test.go | 13 +++++++++++++
+ 2 files changed, 31 insertions(+), 2 deletions(-)
+
+diff --git a/cmd/boardctl/serve_test.go b/cmd/boardctl/serve_test.go
+index 76f8e54..9a15bab 100644
+--- a/cmd/boardctl/serve_test.go
++++ b/cmd/boardctl/serve_test.go
+@@ -385,8 +385,24 @@ func TestServeZipSlipDefense(t *testing.T) {
+ // readable message and the server still serves afterwards (7.2.6).
+ func TestServeOversizeCap413(t *testing.T) {
+ 	h := newServeServer(nil).routes()
+-	big := make([]byte, maxUploadBytes+1)
+-	rec := postUpload(h, map[string][]byte{"zip": big})
++	// QA-BOARDCTL-3: declare the oversize Content-Length instead of
++	// materialising a 512 MiB buffer (plus the multipart copy ≈ 1 GiB RSS).
++	// The handler refuses on r.ContentLength before reading a byte, so a
++	// small body with an honest oversized Content-Length header exercises
++	// the same branch without OOMing any memory-capped test run.
++	var buf bytes.Buffer
++	mw := multipart.NewWriter(&buf)
++	fw, err := mw.CreateFormFile("zip", "zip")
++	if err != nil {
++		t.Fatal(err)
++	}
++	fw.Write([]byte("x"))
++	mw.Close()
++	rec := httptest.NewRecorder()
++	req := httptest.NewRequest("POST", "/", &buf)
++	req.Header.Set("Content-Type", mw.FormDataContentType())
++	req.ContentLength = maxUploadBytes + 1
++	h.ServeHTTP(rec, req)
+ 	if rec.Code != http.StatusRequestEntityTooLarge {
+ 		t.Fatalf("oversize status = %d, want 413", rec.Code)
+ 	}
+diff --git a/internal/vulncheck/vulncheck_test.go b/internal/vulncheck/vulncheck_test.go
+index 5768d61..15f2928 100644
+--- a/internal/vulncheck/vulncheck_test.go
++++ b/internal/vulncheck/vulncheck_test.go
+@@ -7,6 +7,7 @@ import (
+ 	"runtime"
+ 	"strconv"
+ 	"strings"
++	"syscall"
+ 	"testing"
+ )
+ 
+@@ -418,6 +419,18 @@ func TestVulncheck(t *testing.T) {
+ 	if _, err := LocateBinary(); err != nil {
+ 		t.Skipf("SKIP: %v\nThis gate is enforced in CI, which installs the pinned tool (%s) in its own step, so it does not skip there.", err, InstallHint)
+ 	}
++	// QA-BOARDCTL-3: under a hard address-space cap (ulimit -v, as the QA
++	// chaos-resource cell applies) the govulncheck child cannot start at
++	// all — the Go runtime's virtual-memory reservations exceed a 3 GiB
++	// address space before any heap limit (GOMEMLIMIT) is honored, so the
++	// child dies with `fatal error: runtime: cannot allocate memory` and
++	// the gate reads TOOL-ERROR. That is a harness environment, not a code
++	// defect: CI runs uncapped and still enforces this gate, so skip loudly
++	// instead of reporting a fake tool failure.
++	var vlim syscall.Rlimit
++	if err := syscall.Getrlimit(syscall.RLIMIT_AS, &vlim); err == nil && vlim.Cur != ^uint64(0) {
++		t.Skipf("SKIP: address-space cap active (RLIMIT_AS=%d bytes) — the govulncheck child cannot start under it; the gate stays enforced by CI (uncapped) and `make vuln-check`.", vlim.Cur)
++	}
+ 	cwd, err := os.Getwd()
+ 	if err != nil {
+ 		t.Fatalf("getwd: %v", err)

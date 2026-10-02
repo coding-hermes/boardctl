@@ -1,0 +1,11 @@
+commit c84fc1ee3c08fa8b0cc0438a032afea674cae869
+Merge: 7f36a13 ded9f67
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Thu Oct 1 22:49:31 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Thu Oct 1 22:49:31 2026 -0500
+
+    merge: BT-072 web UI spec — docs/web-ui-spec.md (scope+decisions+R1-R20+NON-GOALS, judge-in-waiting)
+
+ docs/web-ui-spec.md | 450 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 450 insertions(+)
