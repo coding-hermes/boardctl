@@ -163,7 +163,38 @@ boardctl serve --addr 127.0.0.1:9000 # any loopback host/port; a non-loopback
                                      # refused with exit 2 — serve has no auth
                                      # and must never leave the machine
 boardctl serve -C ~/myproject        # the -C board is included in every report
+boardctl serve                       # …then open http://127.0.0.1:8787/ui —
+                                     # the read-only web UI (BT-075): boards,
+                                     # rows, validation, analytics, events
 ```
+
+#### The web UI (BT-075)
+
+`serve` also hosts a read-only web UI at `/ui` (BT-075): one self-contained
+page — inline CSS/JS, no external assets, no auth (the same loopback posture
+as the uploader) — that lists every loaded board and lets you browse rows,
+validation findings, analytics and the event timeline without running CLI
+verbs. Everything it shows is a SNAPSHOT: the `-C` board as resolved at
+startup, or an upload as extracted. Files changing on disk afterwards never
+change what the UI shows until a new upload or a restart ("refresh =
+re-upload or restart serve"). The UI is read-only: zero write surfaces, no
+repair/apply/decide buttons — those stay CLI-only — and it is
+provide-dont-force: nothing schedules, hooks, or requires it.
+
+Read-only API of the same snapshots:
+
+| endpoint | answers |
+|---|---|
+| `GET /ui` | the web UI document with the initial snapshot embedded (renders even if the API fails) |
+| `GET /api/boards` | the loaded boards: name, slug, topology, task_total, done, open (+ additive `validate_pill`, `loaded_at`) |
+| `GET /api/board/{slug}` | one board's full read model: rows, header, derived analytics, validate findings, census, sweep census, loaded_at |
+| `GET /api/events/{slug}` | one board's event rows with the detail ladder already applied |
+
+An unknown slug answers 404 with a JSON body. The complete route set of
+`serve` is exactly `GET /`, `POST /`, `GET /api/boards`, `GET /ui`,
+`GET /api/board/{slug}`, `GET /api/events/{slug}` — anything else 404s.
+The generated OpenAPI contract (docs/muster/openapi.yaml) describes all six
+operations; `go run ./cmd/gendocs` regenerates it after any serve change.
 
 The `-C` board, when it resolves, is PREPENDED to every report the server
 renders — reports are always `-C` board first, then uploaded boards, so a

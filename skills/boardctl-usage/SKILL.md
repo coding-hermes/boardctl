@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.11.0
-date: 2026-09-29
+version: 1.12.0
+date: 2026-10-02
 category: software-development
 ---
 
@@ -403,6 +403,22 @@ boardctl -C R import r.json --renumber              # same-id-DIFFERENT-content 
                                                     # fleet-style id instead of skipped
                                                     # (preview with --dry-run --renumber)
 ```
+
+BT-075 added a read-only web UI inside `serve` (added 2026-10-02):
+
+- `GET /ui` — one self-contained page listing every loaded board: rows,
+  validation findings (pill + verbatim census), analytics, event timeline.
+  Everything shown is a SNAPSHOT (loaded at `-C` resolve or upload); file
+  edits after load do not show until a re-upload or restart. Zero write
+  surfaces — repairs stay CLI (`update --normalize`, `sweep-status --apply`).
+- `GET /api/boards` — loaded boards (+ additive `validate_pill`,
+  `loaded_at`); `GET /api/board/{slug}` — one board's full read model;
+  `GET /api/events/{slug}` — event rows with the detail ladder already
+  applied (JSON-string and base64-wrapped details arrive DECODED). Unknown
+  slug: JSON 404. The route set is exactly `GET /`, `POST /`,
+  `GET /api/boards`, `GET /ui`, `GET /api/board/{slug}`,
+  `GET /api/events/{slug}`; docs/muster/openapi.yaml describes all six
+  operations (regenerate with `go run ./cmd/gendocs` after serve changes).
 
 Rules that are real (verified):
 

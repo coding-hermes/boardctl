@@ -62,11 +62,15 @@ func TestSpeccheck_ParsesWithKinOpenAPI(t *testing.T) {
 	}
 
 	// Every operation carries an operationId (muster names CLI verbs /
-	// MCP tools from them), and the count matches the wired surface.
+	// MCP tools from them), and the count matches the wired surface
+	// (BT-075: the three read-only UI routes joined the contract).
 	want := map[string]bool{
 		"getUploaderForm":   false,
 		"uploadBoardReport": false,
 		"listLoadedBoards":  false,
+		"getWebUI":          false,
+		"getBoardDetail":    false,
+		"getBoardEvents":    false,
 	}
 	n := 0
 	for path, pathItem := range doc.Paths.Map() {
