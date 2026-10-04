@@ -805,6 +805,19 @@ CI installs that same pinned version in its own step, so the check runs (and
 never skips) on every push and PR. `GOVULNCHECK=/path/to/binary` overrides the
 PATH lookup.
 
+The version pin has a banner-less blind spot: when the resolved binary exists
+and its `-version` exits 0 but prints no parsable `Scanner: govulncheck@...`
+line (a stub, a reimplementation, or a corrupted install), the default
+behavior is a stderr warning and the scan proceeds — the exit-code contract
+still decides. To turn that warn-and-proceed into a hard gate refusal, set
+`VULNCHECK_STRICT_SCANNER=1` (or `true`/`yes`, case-insensitive). Accepted
+values: `1`/`true`/`yes` enable strict mode; `0`/`false`/`no`/`off`/unset
+keep the warn-and-proceed default. Malformed values (anything else) print a
+stderr warning naming the unrecognized value and stay permissive — they do
+not silently disable the safety opt-in. Set it in CI environment or local
+shell before running `make vuln-check` to fail the gate on unverified
+binaries instead of warning.
+
 ### Deployment freshness gate (BT-057)
 
 `make build` and `make release` stamp the build commit into every binary via

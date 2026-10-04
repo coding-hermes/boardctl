@@ -215,6 +215,7 @@ make version-check                       # README release-pin agreement
 VERSION_TAG=vX.Y.Z make version-check    # ... plus CURRENCY vs the tag being cut
 make spec-check     # docs/muster/openapi.yaml == serve wiring (BT-062)
 make vuln-check     # govulncheck exit contract: 0 clean / 3 findings / else TOOL-ERROR
+                      # VULNCHECK_STRICT_SCANNER=1 turns banner-less -version into a hard fail
 go test ./internal/workflowcheck         # Makefile PLATFORMS == CI platforms, order counts
 make build          # stamps main.buildCommit -> freshness gate at CLI runtime
 ```
