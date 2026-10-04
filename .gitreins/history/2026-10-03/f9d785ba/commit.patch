@@ -1,0 +1,1350 @@
+commit 6175eb784a7f0beac7c13faef786883ce587c2c1
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 2 16:09:25 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 2 16:09:25 2026 -0500
+
+    board: tick 102 — BT-075 complete (web UI implementation, judge PASS)
+    
+    ch:trace row=BT-075 spec=docs/web-ui-spec.md#section-7 wave=none:serial-tick test=cmd/boardctl/bt072_webui_test.go::TestBT072UIRouteServed doc=docs/web-ui-ux.md prompt=/tmp/bt075-brief.txt evidence=.gitreins/history/2026-10-02/4151b986/verdict.json witness=live:http+GET /ui 200 590KB + /api/board/boardctl (130 tasks/342 events) verdict=.gitreins/history/2026-10-02/4151b986 commit=13b04cb296f2a20f2123110ac31aeeded09182e9
+    
+    Implementation commit 13b04cb, merged 95cbd3d, pushed to origin/main
+    (origin/main..HEAD=0). Gates: build/vet/gofmt/full test suite EXIT:0 on
+    both worktree and merged tree; 21 TestBT072* acceptance tests PASS;
+    foreman live E2E probe verified. Judge Tier1+Tier2 PASS (verdict dir
+    4151b986); prior staged judge dir 82857827 is tick-101 wave-recovery
+    evidence left untracked at tick start.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ .coding-hermes/board/board.jsonl                   |   2 +-
+ .coding-hermes/board/events.jsonl                  |   3 +
+ .coding-hermes/board/tasks.jsonl                   |   2 +-
+ .gitreins/history/2026-10-02/4151b986/commit.patch |  22 +
+ .gitreins/history/2026-10-02/4151b986/summary.md   |  30 ++
+ .gitreins/history/2026-10-02/4151b986/verdict.json | 101 +++++
+ .../history/2026-10-02/4151b986/worktree.patch     | 496 +++++++++++++++++++++
+ .gitreins/history/2026-10-02/82857827/commit.patch |  11 +
+ .gitreins/history/2026-10-02/82857827/summary.md   |  30 ++
+ .gitreins/history/2026-10-02/82857827/verdict.json | 101 +++++
+ .../history/2026-10-02/82857827/worktree.patch     | 447 +++++++++++++++++++
+ 11 files changed, 1243 insertions(+), 2 deletions(-)
+
+diff --git a/.coding-hermes/board/board.jsonl b/.coding-hermes/board/board.jsonl
+index b38a864..83b2bc2 100644
+--- a/.coding-hermes/board/board.jsonl
++++ b/.coding-hermes/board/board.jsonl
+@@ -1 +1 @@
+-{"project": "boardctl", "namespace": "coding-hermes", "version": 1, "ticks_total": 100, "ticks_idle": 0, "cooldown_s": 21600, "last_commit": "42c7ef5", "last_tick": "2026-10-02 04:21:23", "updated_at": "2026-10-02 09:21:23"}
++{"project": "boardctl", "namespace": "coding-hermes", "version": 1, "ticks_total": 102, "ticks_idle": 0, "cooldown_s": 21600, "last_commit": "13b04cb296f2a20f2123110ac31aeeded09182e9", "last_tick": "2026-10-02 16:09:03", "updated_at": "2026-10-02 21:09:07"}
+diff --git a/.coding-hermes/board/events.jsonl b/.coding-hermes/board/events.jsonl
+index 55686f1..ec2e545 100644
+--- a/.coding-hermes/board/events.jsonl
++++ b/.coding-hermes/board/events.jsonl
+@@ -339,3 +339,6 @@
+ {"id":338,"timestamp":"2026-10-02 09:01:03","event_type":"task_completed","task_id":"BT-073","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+ {"id":339,"timestamp":"2026-10-02 09:01:03","event_type":"task_completed","task_id":"DF-BOARDCTL-25","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+ {"id":340,"timestamp":"2026-10-02 04:21:23","event_type":"audit","task_id":null,"actor":"foreman","detail":{"tick":"boardctl-foreman-2026-10-02-07-43-59","kind":"WORK wave tick (2 workers, budget 9)","wave_tasks_completed":["BT-073","DF-BOARDCTL-25"],"judges":"2/2 PASS (verdict dirs .gitreins/history/2026-10-02/: c45edb70 BT-073, 513d6f3d DF-BOARDCTL-25)","commits":"e720f10 (BT-073 design+mockups), f9dc8a4 (DF-25 doctor fix), merges e6dc28b/42c7ef5, pushed 0-behind","note":"BT-073: docs/web-ui-design.md + 5 self-contained mockups. DF-BOARDCTL-25: doctor distinguishes topology-B line-1 header from corrupt line 1, RED-proven tests."},"tick_number":100}
++{"id":341,"timestamp":"2026-10-02 17:02:09","event_type":"task_completed","task_id":"BT-074","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
++{"id":342,"timestamp":"2026-10-02 21:08:52","event_type":"task_completed","task_id":"BT-075","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
++{"id":343,"timestamp":"2026-10-02 16:09:03","event_type":"audit","task_id":null,"actor":"foreman","detail":"{\"id\": \"EVT-PLACEHOLDER\", \"event_type\": \"tick_audit\", \"tick_number\": 102, \"task_id\": \"BT-075\", \"actor\": \"foreman\", \"detail\": \"BT-075 complete: boardctl web UI (serve /ui + read-only API). Worker glm-5.3-flash@zai-glm in wt/BT-075, commit 13b04cb, merged 95cbd3d, pushed. Judge Tier1+Tier2 PASS (verdict dir .gitreins/history/2026-10-02/4151b986). Gates: build/vet/gofmt/full tests EXIT:0 on merged tree; 21 TestBT072* PASS; live E2E probe verified /ui + /api routes.\"}","tick_number":102}
+diff --git a/.coding-hermes/board/tasks.jsonl b/.coding-hermes/board/tasks.jsonl
+index 1733466..2ba0610 100644
+--- a/.coding-hermes/board/tasks.jsonl
++++ b/.coding-hermes/board/tasks.jsonl
+@@ -125,6 +125,6 @@
+ {"id": "BT-072", "type": null, "priority": "P2", "status": "complete", "title": "SPEC: new web UI for boardctl — scope + specification", "detail": {"fingerprint": "ce358aa510c5196d942e6a0a99a0aba730b56257d7a24d28fccea7a5243613a1"}, "created_by": null, "created_at": "2026-10-01 22:58:02", "updated_at": "2026-10-02 03:56:07", "reasoning": "Define WHAT the boardctl web UI is before anything is built. Purpose: give humans (operator/Bane) a browser view of the fleet boards boardctl already understands, without hand-running CLI verbs. Decisions the spec MUST settle: (1) single-board vs fleet/multi-board; (2) read-only vs write posture (view+lint, or also edit rows?); (3) the reuse boundary with the EXISTING serve surface (uploader form, GET /api/boards listLoadedBoards, serveBoardIdentity, DF-BOARDCTL-2 dedupe) vs a new boardctl ui verb; (4) auth/bind posture (local-only vs operator token vs LAN/Tailscale); (5) which boardctl capabilities get a UI (validate status, row table, events timeline, sweep-status, render, dedupe); (6) how it honors the provide-dont-force doctrine (a tool the agent CHOOSES, nothing enforced). DELIVERABLE: docs/web-ui-spec.md — numbered, each requirement testable, plus explicit NON-GOALS. ACCEPTANCE: spec committed; reuse-vs-new decided with a named reason; single-vs-fleet decided; read-vs-write decided; every requirement names its acceptance test; no requirement rests on an undecided item.", "complexity": 2, "worker_status": "complete", "commit_hash": "ded9f67", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "docs/web-ui-spec.md (450 lines, commit ded9f67, merged c84fc1e, pushed 0-behind). Worker glm-5.3-flash@zai-glm in worktree boardctl-BT-072. Spec: D1 EXTEND serve (4 named reasons), D2 fleet, D3 read-only, D4 loopback/no-auth, D5/D6 capability inventory + provide-dont-force testable; 10 ground-truth facts grep-verified against serve.go; R1-R20 each with named acceptance test; NG1-NG12 NON-GOALS. Foreman AC sweep + guard PASS. Tier-2 judge PASS.", "foreman_note": "Judge verdict: .gitreins/history/2026-10-02/a333f470/verdict.json (printed id ad92dbeb; first run 9eb6b7ec FAILed on the delivered-tree conjunct pre-merge — merge+push then re-judge per tick-88 ordering, PASS on identical tree). Worktree reapplied. Event ids may shift with gitreins rows.", "completed_at": "2026-10-02 03:56:07", "worktree": "/home/kara/worktrees/boardctl-BT-072", "branch": "wt/BT-072", "sessions": ["20261001_220840_7899d3"]}
+ {"id": "BT-073", "type": null, "priority": "P3", "status": "complete", "title": "DESIGN: boardctl web UI — visual system + component design", "detail": {"fingerprint": "4e86ab207ac9d80d5cf32ca7647dec259d32a52863303b4f8bfc9a7abab7364f"}, "created_by": null, "created_at": "2026-10-01 22:58:02", "updated_at": "2026-10-02 09:21:16", "reasoning": "Visual + component design for the boardctl web UI, derived from docs/web-ui-spec.md (BT-072). Produce: the layout system (shell/nav/content); the board view (table/grid of rows with id/status/priority/title/depends_on); the row detail panel; validation-state surfacing (the validate error/warn classes using the P0..P5 vocabulary landed in BT-070); the events timeline; and empty/loading/error/offline states. Include a named component inventory and design tokens (spacing/type/color), plus static mockup artifacts (self-contained HTML/CSS). ACCEPTANCE: design covers every spec requirement (map req -> component); components named and reusable; accessibility baseline stated (contrast, keyboard reachability, focus order); mockups render standalone in a browser; no spec requirement left without a visual answer.", "complexity": 3, "depends_on": ["BT-072"], "worker_status": "complete", "commit_hash": "e720f10", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "docs/web-ui-design.md (568 lines: layout system, board view, row detail, validation-state surfacing, events timeline, empty/loading/error/offline states, component inventory, design tokens, req->component map incl R1-R20, a11y baseline with measured contrast ratios) + 5 self-contained HTML/CSS mockups in docs/mockups/. Worker glm-5.3-flash@zai-glm in worktree boardctl-BT-073, commit e720f10, merged 42c7ef5, pushed 0-behind.", "foreman_note": "Foreman AC sweep: all 5 mockups self-contained (no external refs), design doc carries req->component map + contrast table. Worktree reap pending.\n\nJudge PASS: .gitreins/history/2026-10-02/c45edb70/verdict.json (printed id c5cb8b32 — NOT the disk dir; resolved by grep). Foreman AC sweep: all 5 mockups self-contained, req->component map + contrast table present. Worktree reap pending.", "completed_at": "2026-10-02 04:01:03", "worktree": "/home/kara/worktrees/boardctl-BT-073", "branch": "wt/BT-073"}
+ {"id": "BT-074", "type": null, "priority": "P3", "status": "complete", "title": "UX: boardctl web UI — flows, states and interaction model", "detail": {"fingerprint": "2a197a82e474c76bea8a115a50fe90a070ba4c27cb304c2ffa50265ced435c40"}, "created_by": null, "created_at": "2026-10-01 22:58:02", "updated_at": "2026-10-02 17:02:09", "reasoning": "User flows, states and interaction model for the boardctl web UI, from the spec (BT-072) + design (BT-073). Specify end to end: first-run/empty board; browse a board; filter/search/sort rows; open a row (depends_on graph, events, validation); the write/edit path IF the spec licenses one (with confirmations + rollback); error/recovery; and the keyboard model. Include the flow map plus screen-by-screen states and the edge cases: empty board, very large board (1000+ rows), a board with a validate ERROR, an unreachable/offline daemon, a stale render. ACCEPTANCE: every spec requirement maps to a flow; every screen has its states (empty/loading/error/success); no dead-end (every screen has a way back); write confirmations specified if writes are in scope.", "complexity": 2, "depends_on": ["BT-073"], "commit_hash": "2c6c641", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "Web UI UX doc delivered: docs/web-ui-ux.md (571 lines, commit 501fcb5, merged 2c6c641). R1-R20 traceability table, screens S0-S6 each with empty/loading/error/success states, dead-end audit + hash grammar, writes out of scope by citation (D3/R20), edge cases E1-E9. Worker glm-5.3-flash@zai-glm in wt/BT-074; gates: build/vet/gofmt/full tests green on branch tip AND merged tree; gitreins Tier1+Tier2 judge PASS (verdict f1158b50); CI green on push."}
+-{"id": "BT-075", "type": null, "priority": "P2", "status": "pending", "title": "IMPLEMENT: boardctl web UI — build the UI end to end", "detail": {"fingerprint": "97c432d970d0360a93f09204f4c1e1c9b7525ef37da7496c9cfc78c446e21d4b"}, "created_by": null, "created_at": "2026-10-01 22:58:02", "updated_at": "2026-10-01 22:58:02", "reasoning": "Final implementation: build the new boardctl web UI per docs/web-ui-spec.md + docs/web-ui-design.md + docs/web-ui-ux.md. Extend the existing serve path (or add boardctl ui, per the BT-072 decision) to serve the app; reuse the existing validator, render, events and /api/boards surface exactly where the spec says so. Ship the assets; wire the new verb/flags into the docs. ACCEPTANCE: go build/vet/test green; gofmt clean; the UI renders a REAL board (real rows + events + validation, from a fixture AND a live boardctl board); handler + acceptance tests land; README flag-parity + endpoints-parity gates stay green (the gates QA-CHS-180/181 exercised on the scheduler); stdlib-only unless the spec licenses a dependency; CI green on the push.", "complexity": 5, "depends_on": ["BT-074"]}
++{"id": "BT-075", "type": null, "priority": "P2", "status": "complete", "title": "IMPLEMENT: boardctl web UI — build the UI end to end", "detail": {"fingerprint": "97c432d970d0360a93f09204f4c1e1c9b7525ef37da7496c9cfc78c446e21d4b"}, "created_by": null, "created_at": "2026-10-01 22:58:02", "updated_at": "2026-10-02 21:08:52", "reasoning": "Final implementation: build the new boardctl web UI per docs/web-ui-spec.md + docs/web-ui-design.md + docs/web-ui-ux.md. Extend the existing serve path (or add boardctl ui, per the BT-072 decision) to serve the app; reuse the existing validator, render, events and /api/boards surface exactly where the spec says so. Ship the assets; wire the new verb/flags into the docs. ACCEPTANCE: go build/vet/test green; gofmt clean; the UI renders a REAL board (real rows + events + validation, from a fixture AND a live boardctl board); handler + acceptance tests land; README flag-parity + endpoints-parity gates stay green (the gates QA-CHS-180/181 exercised on the scheduler); stdlib-only unless the spec licenses a dependency; CI green on the push.", "complexity": 5, "depends_on": ["BT-074"], "worker_status": "complete", "commit_hash": "13b04cb296f2a20f2123110ac31aeeded09182e9", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "Web UI shipped per D1: serve extended with GET /ui (self-contained HTML, island via EscapeJSONIsland, R18) + read-only GET /api/board/{slug} and GET /api/events/{slug} (R7/R8); route set closed at 6 (R1); /api/boards additive-only (R2); snapshots cached per load (R9); 21 TestBT072* tests (20 spec + live-board) PASS; full suite EXIT:0 x2 (worktree + merged tree); README + usage skill v1.12.0 + openapi.yaml + describe curation updated, parity gates green; stdlib-only. Worker glm-5.3-flash@zai-glm in wt/BT-075, commit 13b04cb, merged 95cbd3d, pushed (origin/main..HEAD=0), judge Tier1+Tier2 PASS (.gitreins/history/2026-10-02/4151b986).", "foreman_note": "Verdict dir: .gitreins/history/2026-10-02/4151b986/verdict.json (passed=true). Live E2E by foreman: /ui 200 590KB text/html; /api/board/boardctl -> 130 tasks/342 events/validate block/derived analytics; 404 JSON on missing slug; /ui/nested 404. RELEASE-2026-10-01-01 (v0.1.11 cut) remains BLOCKED pending user go-ahead.", "completed_at": "2026-10-02 16:08:52", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-075", "branch": "wt/BT-075", "sessions": ["20261002_142458_a18827"]}
+ {"id": "DF-BOARDCTL-24", "title": "P2 · board.jsonl header not pushed to origin - local dogfood findings live only on box", "priority": "P2", "status": "complete", "reasoning": "during dogfood run 19 (DF-BOARDCTL-24 verification) I found that .coding-hermes/board.jsonl (the header file) exists locally but git log shows no commit touching it in the last 3 pushed commits - origin main may be missing the header entirely, meaning a fresh clone wouldnt have a header for the board. Filed so foreman confirms origin tree has board.jsonl.", "capability_tags": ["git", "boardctl"], "worker_status": "complete", "guard_result": "SKIP", "ci_result": "GREEN", "worker_summary": "Verified-only close: origin/main DOES track .coding-hermes/board/board.jsonl (blob 47a07c94, landed f388b72) and it is byte-identical to the local copy (cmp exit 0) — the row's premise (header missing at origin, fresh clone would lack a header) is FALSE. Evidence: git ls-tree origin/main .coding-hermes/board/ + cmp vs git show origin/main:. Tick 98 commit bea5f9a announced this closure but only swept .gitreins/history files — the row flip never landed; this commit completes it. CI green 3/3 recent runs.", "foreman_note": "Premise disproven with ls-tree + byte-compare against origin/main; header present since tick 97 (f388b72). No code change, no gitreins lifecycle needed (verification-only closure).", "completed_at": "2026-10-02 00:30:08"}
+ {"id": "DF-BOARDCTL-25", "title": "P3 · validate tracks topological warnings but doctor does not distinguish topology B from corrupt header", "priority": "P3", "status": "complete", "reasoning": "testing boardctl validate --repair against a damaged board found that doctor reports a topology B board (line 1 of tasks.jsonl is a header row) identically to a corrupt tasks.jsonl line 1 (mojibake header) - both get [error] but only one is salvageable. Filed so doctor distinguishes legacy-topology from corruption.", "capability_tags": ["boardctl", "doctor"], "worker_status": "complete", "commit_hash": "f9dc8a4", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "doctor now reports a valid topology-B line-1 header as legacy layout (salvageable, zero errors) vs corrupt line 1 as corruption with a salvage hint. TestCmdDF25DoctorDistinguishesTopologyBFromCorruptLineOne covers both shapes via real CLI bootstrap + hash-snapshot zero-write proof. Worker glm-5.3-flash@zai-glm, commit f9dc8a4, merged e6dc28b, pushed 0-behind.", "foreman_note": "Foreman verified: go test -run DF25 -v PASS on both subcases post-merge; full short suite green on merged tree. Worktree reap pending.\n\nJudge PASS: .gitreins/history/2026-10-02/513d6f3d/verdict.json (printed id 2bb3efbb — NOT the disk dir; resolved by grep). RED-proven both shapes post-merge. Worktree reap pending.", "completed_at": "2026-10-02 04:01:03", "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-25", "branch": "wt/DF-BOARDCTL-25"}
+diff --git a/.gitreins/history/2026-10-02/4151b986/commit.patch b/.gitreins/history/2026-10-02/4151b986/commit.patch
+new file mode 100644
+index 0000000..72e2edd
+--- /dev/null
++++ b/.gitreins/history/2026-10-02/4151b986/commit.patch
+@@ -0,0 +1,22 @@
++commit 95cbd3d796a7e31969d376ccf4540faa350473e1
++Merge: 1a3c50c 13b04cb
++Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
++AuthorDate: Fri Oct 2 16:04:18 2026 -0500
++Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
++CommitDate: Fri Oct 2 16:04:18 2026 -0500
++
++    merge: BT-075 — boardctl web UI (serve /ui + read-only API)
++
++ README.md                            |   31 +
++ cmd/boardctl/bt072_liveboard_test.go |  118 +++
++ cmd/boardctl/bt072_webui_test.go     | 1248 +++++++++++++++++++++++++++++
++ cmd/boardctl/serve.go                |   50 +-
++ cmd/boardctl/ui.go                   |  469 +++++++++++
++ cmd/boardctl/ui_page.go              | 1430 ++++++++++++++++++++++++++++++++++
++ docs/muster/openapi.yaml             |  204 +++++
++ internal/describe/describe.go        |   14 +
++ internal/describe/describe_test.go   |    8 +-
++ internal/describe/openapi.go         |  209 ++++-
++ internal/speccheck/kin_parse_test.go |    6 +-
++ skills/boardctl-usage/SKILL.md       |   20 +-
++ 12 files changed, 3796 insertions(+), 11 deletions(-)
+diff --git a/.gitreins/history/2026-10-02/4151b986/summary.md b/.gitreins/history/2026-10-02/4151b986/summary.md
+new file mode 100644
+index 0000000..13fc6f4
+--- /dev/null
++++ b/.gitreins/history/2026-10-02/4151b986/summary.md
+@@ -0,0 +1,30 @@
++# Verdict: BT-075
++
++**Task:** IMPLEMENT: boardctl web UI — build the UI end to end
++**Evaluated:** 2026-10-02T21:08:31.937644
++**Result:** ✓ PASS
++
++## Pipeline Stages
++
++- ✓ **tier1**
++  -   ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
++  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	7.830s
++- ✓ **tier2**
++  - COMPLETE
++  ✓ go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push: go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit).
++
++
++## Summary
++
++Judge Result: BT-075
++
++Stage tier1: PASS
++    ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
++  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	7.830s
++
++Stage tier2: PASS
++  COMPLETE
++  ✓ go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push: go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit).
++
++
++Overall: PASS ✓
+diff --git a/.gitreins/history/2026-10-02/4151b986/verdict.json b/.gitreins/history/2026-10-02/4151b986/verdict.json
+new file mode 100644
+index 0000000..094ce28
+--- /dev/null
++++ b/.gitreins/history/2026-10-02/4151b986/verdict.json
+@@ -0,0 +1,101 @@
++{
++  "task_id": "BT-075",
++  "task_title": "IMPLEMENT: boardctl web UI \u2014 build the UI end to end",
++  "task_criteria": [
++    "go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push"
++  ],
++  "passed": true,
++  "worktree": "/home/kara/coding-hermes-boardctl",
++  "branch": "main",
++  "commit": "95cbd3d796a7e31969d376ccf4540faa350473e1",
++  "items": [],
++  "stages": {
++    "tier1": {
++      "id": "tier1",
++      "passed": true,
++      "any_failed": false,
++      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.830s",
++      "steps": [
++        {
++          "id": "secrets",
++          "type": "script",
++          "passed": true,
++          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n4:07PM INF scanned ~2668081 bytes (2.67 MB) in 553ms\n4:07PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 181 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
++          "error": "",
++          "data": {
++            "exit_code": 0,
++            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T170239.805640Z.log",
++            "secrets_scanners": [
++              "gitleaks",
++              "builtin"
++            ]
++          }
++        },
++        {
++          "id": "tests",
++          "type": "script",
++          "passed": true,
++          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.830s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t8.568s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.033s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.128s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.018s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t5.875s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
++          "error": "",
++          "data": {
++            "exit_code": 0,
++            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T170239.805640Z.log"
++          }
++        }
++      ],
++      "coverage": "secrets+tests"
++    },
++    "tier2": {
++      "id": "tier2",
++      "passed": true,
++      "any_failed": false,
++      "summary": "COMPLETE\n  \u2713 go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push: go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit).\n",
++      "steps": [
++        {
++          "id": "tier2",
++          "type": "ai_eval",
++          "passed": true,
++          "output": "COMPLETE\n  \u2713 go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push: go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit).\n",
++          "error": "",
++          "data": {
++            "verdict": "COMPLETE",
++            "items": [
++              {
++                "criterion": "go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push",
++                "status": "PASS",
++                "detail": "go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit)."
++              }
++            ],
++            "summary": ""
++          }
++        }
++      ]
++    }
++  },
++  "summary": "Judge Result: BT-075\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.830s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 go build/vet/test green; gofmt clean; GET /ui serves self-contained HTML; read-only /api/board/{slug} + /api/events/{slug} JSON endpoints; closed route set; 20 TestBT072* acceptance tests from spec section 7 pass; UI renders a real board from fixture and live data; README flag/endpoints parity gates stay green; stdlib-only; CI green on push: go build ./... exit 0; go vet ./... exit 0; gofmt -l . empty (exit 0); go test -count=1 ./... all packages ok; go test -short -count=1 ./... (CI-equivalent) all ok. GET /ui: ui.go:158-172 serves text/html self-contained doc (ui_page.go inline CSS/JS, zero external assets). Read-only JSON endpoints: ui.go:327 handleAPIBoard + ui.go:369 handleAPIEvents, both Content-Type application/json, unknown slug -> JSON 404 (jsonNotFound). Closed route set: serve.go:394-402 registers exactly 6 routes (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}); TestBT072UIRouteServed and TestBT072APISurfaceClosedSet assert the exact set and 404 for anything else. 20 spec-section-7 acceptance tests (R1-R20, docs/web-ui-spec.md:380-402) all PASS: `go test -count=1 ./cmd/boardctl/... -run TestBT072 -v` -> 21 funcs, all --- PASS, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.531s. UI renders real board: bt072_liveboard_test.go TestBT072LiveBoardRenders PASS (repo's own .coding-hermes/board) plus fixture-based tests (bt072_webui_test.go). README parity gates green: internal/speccheck TestRepoParity PASS (serve.go routes vs docs/muster/openapi.yaml, which documents all 6 ops), internal/describe TestDeriveHTTP_RealServe PASS, internal/versioncheck PASS; README.md:173-197 documents /ui + all endpoints. stdlib-only: ui.go imports only stdlib + internal/board + internal/render; go.mod/go.sum unchanged (no new deps). CI green on push: gh run list shows CI (37064905301) and Multi-Arch (37064906495) both completed/success for headSha 95cbd3d (the BT-075 merge commit).\n\n\nOverall: PASS \u2713",
++  "evaluated_at": "2026-10-02T21:08:31.937644",
++  "supersedes": null,
++  "superseded_by": null,
++  "evidence": {
++    "collected_at": "2026-10-02T21:08:31.957306+00:00",
++    "items": [
++      {
++        "name": "patch",
++        "label": "Landed commit patch",
++        "file": "commit.patch",
++        "bytes": 1075,
++        "truncated": false,
++        "source": "git show 95cbd3d796a7"
++      },
++      {
++        "name": "worktree",
++        "label": "Working-tree diff (graded)",
++        "file": "worktree.patch",
++        "bytes": 21366,
++        "truncated": false,
++        "source": "git diff HEAD (working tree)"
++      }
++    ],
++    "task_id": "BT-075"
++  }
++}
+\ No newline at end of file
+diff --git a/.gitreins/history/2026-10-02/4151b986/worktree.patch b/.gitreins/history/2026-10-02/4151b986/worktree.patch
+new file mode 100644
+index 0000000..4f78a6f
+--- /dev/null
++++ b/.gitreins/history/2026-10-02/4151b986/worktree.patch
+@@ -0,0 +1,496 @@
++diff --git a/.coding-hermes/board/events.jsonl b/.coding-hermes/board/events.jsonl
++index 55686f1..33db569 100644
++--- a/.coding-hermes/board/events.jsonl
+++++ b/.coding-hermes/board/events.jsonl
++@@ -339,3 +339,4 @@
++ {"id":338,"timestamp":"2026-10-02 09:01:03","event_type":"task_completed","task_id":"BT-073","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
++ {"id":339,"timestamp":"2026-10-02 09:01:03","event_type":"task_completed","task_id":"DF-BOARDCTL-25","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
++ {"id":340,"timestamp":"2026-10-02 04:21:23","event_type":"audit","task_id":null,"actor":"foreman","detail":{"tick":"boardctl-foreman-2026-10-02-07-43-59","kind":"WORK wave tick (2 workers, budget 9)","wave_tasks_completed":["BT-073","DF-BOARDCTL-25"],"judges":"2/2 PASS (verdict dirs .gitreins/history/2026-10-02/: c45edb70 BT-073, 513d6f3d DF-BOARDCTL-25)","commits":"e720f10 (BT-073 design+mockups), f9dc8a4 (DF-25 doctor fix), merges e6dc28b/42c7ef5, pushed 0-behind","note":"BT-073: docs/web-ui-design.md + 5 self-contained mockups. DF-BOARDCTL-25: doctor distinguishes topology-B line-1 header from corrupt line 1, RED-proven tests."},"tick_number":100}
+++{"id":341,"timestamp":"2026-10-02 17:02:09","event_type":"task_completed","task_id":"BT-074","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
++diff --git a/.gitreins/logs/guard-20260929T021546.703303Z.log b/.gitreins/logs/guard-20260929T021546.703303Z.log
++deleted file mode 100644
++index b5e081e..0000000
++--- a/.gitreins/logs/guard-20260929T021546.703303Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T02:15:46Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T024205.000064Z.log b/.gitreins/logs/guard-20260929T024205.000064Z.log
++deleted file mode 100644
++index ab3728a..0000000
++--- a/.gitreins/logs/guard-20260929T024205.000064Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T02:42:05Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T024310.519069Z.log b/.gitreins/logs/guard-20260929T024310.519069Z.log
++deleted file mode 100644
++index d4ba7b6..0000000
++--- a/.gitreins/logs/guard-20260929T024310.519069Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T02:43:10Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T103514.657726Z.log b/.gitreins/logs/guard-20260929T103514.657726Z.log
++deleted file mode 100644
++index 6fe0c58..0000000
++--- a/.gitreins/logs/guard-20260929T103514.657726Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T10:35:14Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T104314.797929Z.log b/.gitreins/logs/guard-20260929T104314.797929Z.log
++deleted file mode 100644
++index d00aee1..0000000
++--- a/.gitreins/logs/guard-20260929T104314.797929Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T10:43:14Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T104319.900133Z.log b/.gitreins/logs/guard-20260929T104319.900133Z.log
++deleted file mode 100644
++index 24640be..0000000
++--- a/.gitreins/logs/guard-20260929T104319.900133Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T10:43:19Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T110953.502069Z.log b/.gitreins/logs/guard-20260929T110953.502069Z.log
++deleted file mode 100644
++index ab396da..0000000
++--- a/.gitreins/logs/guard-20260929T110953.502069Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T11:09:53Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T112740.522069Z.log b/.gitreins/logs/guard-20260929T112740.522069Z.log
++deleted file mode 100644
++index aba2b19..0000000
++--- a/.gitreins/logs/guard-20260929T112740.522069Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T11:27:40Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T174848.132103Z.log b/.gitreins/logs/guard-20260929T174848.132103Z.log
++deleted file mode 100644
++index 5562323..0000000
++--- a/.gitreins/logs/guard-20260929T174848.132103Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T17:48:48Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260930T121617.239629Z.log b/.gitreins/logs/guard-20260930T121617.239629Z.log
++deleted file mode 100644
++index d9a0d43..0000000
++--- a/.gitreins/logs/guard-20260930T121617.239629Z.log
+++++ /dev/null
++@@ -1,41 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-30T12:16:17Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go build: ok
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go vet: clean
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	1.532s
++-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.016s
++-?   	github.com/coding-hermes/boardctl/cmd/gendocs	[no test files]
++-ok  	github.com/coding-hermes/boardctl/internal/board	0.983s
++-ok  	github.com/coding-hermes/boardctl/internal/describe	0.007s
++-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.329s
++-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.971s
++-ok  	github.com/coding-hermes/boardctl/internal/render	0.
++diff --git a/.gitreins/logs/guard-20260930T185530.620552Z.log b/.gitreins/logs/guard-20260930T185530.620552Z.log
++deleted file mode 100644
++index b69ac7b..0000000
++--- a/.gitreins/logs/guard-20260930T185530.620552Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-30T18:55:30Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260930T195148.005672Z.log b/.gitreins/logs/guard-20260930T195148.005672Z.log
++deleted file mode 100644
++index 4d079f7..0000000
++--- a/.gitreins/logs/guard-20260930T195148.005672Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-30T19:51:48Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
+diff --git a/.gitreins/history/2026-10-02/82857827/commit.patch b/.gitreins/history/2026-10-02/82857827/commit.patch
+new file mode 100644
+index 0000000..8056009
+--- /dev/null
++++ b/.gitreins/history/2026-10-02/82857827/commit.patch
+@@ -0,0 +1,11 @@
++commit 2c6c641445026b1578d4657b9e74fa4ea572d388
++Merge: d23660b 501fcb5
++Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
++AuthorDate: Fri Oct 2 11:55:39 2026 -0500
++Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
++CommitDate: Fri Oct 2 11:55:39 2026 -0500
++
++    merge: BT-074 — web UI flows, states and interaction model
++
++ docs/web-ui-ux.md | 571 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ 1 file changed, 571 insertions(+)
+diff --git a/.gitreins/history/2026-10-02/82857827/summary.md b/.gitreins/history/2026-10-02/82857827/summary.md
+new file mode 100644
+index 0000000..7783f1f
+--- /dev/null
++++ b/.gitreins/history/2026-10-02/82857827/summary.md
+@@ -0,0 +1,30 @@
++# Verdict: BT-074
++
++**Task:** UX: boardctl web UI — flows, states and interaction model
++**Evaluated:** 2026-10-02T17:01:44.384373
++**Result:** ✓ PASS
++
++## Pipeline Stages
++
++- ✓ **tier1**
++  -   ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
++  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	35.123s
++- ✓ **tier2**
++  - COMPLETE
++  ✓ Every spec requirement maps to a flow; every screen has empty/loading/error/success states; no dead-ends; write confirmations specified if writes in scope; doc lands as docs/web-ui-ux.md: docs/web-ui-ux.md (571 lines, commit 2c6c641). (1) Requirement mapping: §7 traceability table (lines 524-543) maps all R1-R20 to flows/screens/sections; spec docs/web-ui-spec.md defines R1-R20 (lines 155-350) and its §6 capability table (lines 363-377) is cited by the doc's D5 note (line 547) with every YES row assigned a screen. (2) Per-screen states: S0 (189-205), S1 (207-225), S2 (227-243), S3 (245-266), S4 (268-286), S5 (288-303), S6 (305-311) each carry a state table with success/success(degraded)/empty/loading/error rows, with structural-impossibility justifications where a state cannot occur (e.g. S2 loading 'structurally none — expansion MUST work from the embedded payload without refetching (R12)'). (3) No dead-ends: §2 dead-end audit (lines 133-141), per-screen 'Exits' lines, F10 error-recovery flow (line 134), and §6 edge cases E1-E9 (lines 449-520) each naming states and exits. (4) Write confirmations: §3 (lines 143-176) explicitly states writes are out of scope by citation (D3/R20/NG1/NG4/NG5/NG7) — 'this document specifies no write confirmations because there is no write to confirm' — and documents the two out-of-surface state-changing actions (upload, restart) with their consequences. (5) Doc lands at docs/web-ui-ux.md: confirmed. No test suite applies: docs-only change (git show --stat HEAD = 1 file, 571 insertions); grep for the doc name across *.go returns nothing; .gitreins/config.yaml guards.tests=false.
++docs/web-ui-ux.md fully satisfies the criterion: all R1-R20 map to flows/screens, every screen S0-S6 has empty/loading/error/success states, dead-ends are audited, writes are explicitly out of scope by citation, and the doc lands at the required path.
++
++## Summary
++
++Judge Result: BT-074
++
++Stage tier1: PASS
++    ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
++  ✓ tests: ok  	github.com/coding-hermes/boardctl/cmd/boardctl	35.123s
++
++Stage tier2: PASS
++  COMPLETE
++  ✓ Every spec requirement maps to a flow; every screen has empty/loading/error/success states; no dead-ends; write confirmations specified if writes in scope; doc lands as docs/web-ui-ux.md: docs/web-ui-ux.md (571 lines, commit 2c6c641). (1) Requirement mapping: §7 traceability table (lines 524-543) maps all R1-R20 to flows/screens/sections; spec docs/web-ui-spec.md defines R1-R20 (lines 155-350) and its §6 capability table (lines 363-377) is cited by the doc's D5 note (line 547) with every YES row assigned a screen. (2) Per-screen states: S0 (189-205), S1 (207-225), S2 (227-243), S3 (245-266), S4 (268-286), S5 (288-303), S6 (305-311) each carry a state table with success/success(degraded)/empty/loading/error rows, with structural-impossibility justifications where a state cannot occur (e.g. S2 loading 'structurally none — expansion MUST work from the embedded payload without refetching (R12)'). (3) No dead-ends: §2 dead-end audit (lines 133-141), per-screen 'Exits' lines, F10 error-recovery flow (line 134), and §6 edge cases E1-E9 (lines 449-520) each naming states and exits. (4) Write confirmations: §3 (lines 143-176) explicitly states writes are out of scope by citation (D3/R20/NG1/NG4/NG5/NG7) — 'this document specifies no write confirmations because there is no write to confirm' — and documents the two out-of-surface state-changing actions (upload, restart) with their consequences. (5) Doc lands at docs/web-ui-ux.md: confirmed. No test suite applies: docs-only change (git show --stat HEAD = 1 file, 571 insertions); grep for the doc name across *.go returns nothing; .gitreins/config.yaml guards.tests=false.
++docs/web-ui-ux.md fully satisfies the criterion: all R1-R20 map to flows/screens, every screen S0-S6 has empty/loading/error/success states, dead-ends are audited, writes are explicitly out of scope by citation, and the doc lands at the required path.
++
++Overall: PASS ✓
+diff --git a/.gitreins/history/2026-10-02/82857827/verdict.json b/.gitreins/history/2026-10-02/82857827/verdict.json
+new file mode 100644
+index 0000000..e4908e7
+--- /dev/null
++++ b/.gitreins/history/2026-10-02/82857827/verdict.json
+@@ -0,0 +1,101 @@
++{
++  "task_id": "BT-074",
++  "task_title": "UX: boardctl web UI \u2014 flows, states and interaction model",
++  "task_criteria": [
++    "Every spec requirement maps to a flow; every screen has empty/loading/error/success states; no dead-ends; write confirmations specified if writes in scope; doc lands as docs/web-ui-ux.md"
++  ],
++  "passed": true,
++  "worktree": "/home/kara/coding-hermes-boardctl",
++  "branch": "main",
++  "commit": "2c6c641445026b1578d4657b9e74fa4ea572d388",
++  "items": [],
++  "stages": {
++    "tier1": {
++      "id": "tier1",
++      "passed": true,
++      "any_failed": false,
++      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t35.123s",
++      "steps": [
++        {
++          "id": "secrets",
++          "type": "script",
++          "passed": true,
++          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\n12:00PM INF scanned ~2508558 bytes (2.51 MB) in 1.17s\n12:00PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 177 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
++          "error": "",
++          "data": {
++            "exit_code": 0,
++            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T165939.240602Z.log",
++            "secrets_scanners": [
++              "gitleaks",
++              "builtin"
++            ]
++          }
++        },
++        {
++          "id": "tests",
++          "type": "script",
++          "passed": true,
++          "output": "ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t35.123s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t52.441s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t25.633s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t4.546s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
++          "error": "",
++          "data": {
++            "exit_code": 0,
++            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261002T165939.240602Z.log"
++          }
++        }
++      ],
++      "coverage": "secrets+tests"
++    },
++    "tier2": {
++      "id": "tier2",
++      "passed": true,
++      "any_failed": false,
++      "summary": "COMPLETE\n  \u2713 Every spec requirement maps to a flow; every screen has empty/loading/error/success states; no dead-ends; write confirmations specified if writes in scope; doc lands as docs/web-ui-ux.md: docs/web-ui-ux.md (571 lines, commit 2c6c641). (1) Requirement mapping: \u00a77 traceability table (lines 524-543) maps all R1-R20 to flows/screens/sections; spec docs/web-ui-spec.md defines R1-R20 (lines 155-350) and its \u00a76 capability table (lines 363-377) is cited by the doc's D5 note (line 547) with every YES row assigned a screen. (2) Per-screen states: S0 (189-205), S1 (207-225), S2 (227-243), S3 (245-266), S4 (268-286), S5 (288-303), S6 (305-311) each carry a state table with success/success(degraded)/empty/loading/error rows, with structural-impossibility justifications where a state cannot occur (e.g. S2 loading 'structurally none \u2014 expansion MUST work from the embedded payload without refetching (R12)'). (3) No dead-ends: \u00a72 dead-end audit (lines 133-141), per-screen 'Exits' lines, F10 error-recovery flow (line 134), and \u00a76 edge cases E1-E9 (lines 449-520) each naming states and exits. (4) Write confirmations: \u00a73 (lines 143-176) explicitly states writes are out of scope by citation (D3/R20/NG1/NG4/NG5/NG7) \u2014 'this document specifies no write confirmations because there is no write to confirm' \u2014 and documents the two out-of-surface state-changing actions (upload, restart) with their consequences. (5) Doc lands at docs/web-ui-ux.md: confirmed. No test suite applies: docs-only change (git show --stat HEAD = 1 file, 571 insertions); grep for the doc name across *.go returns nothing; .gitreins/config.yaml guards.tests=false.\ndocs/web-ui-ux.md fully satisfies the criterion: all R1-R20 map to flows/screens, every screen S0-S6 has empty/loading/error/success states, dead-ends are audited, writes are explicitly out of scope by citation, and the doc lands at the required path.",
++      "steps": [
++        {
++          "id": "tier2",
++          "type": "ai_eval",
++          "passed": true,
++          "output": "COMPLETE\n  \u2713 Every spec requirement maps to a flow; every screen has empty/loading/error/success states; no dead-ends; write confirmations specified if writes in scope; doc lands as docs/web-ui-ux.md: docs/web-ui-ux.md (571 lines, commit 2c6c641). (1) Requirement mapping: \u00a77 traceability table (lines 524-543) maps all R1-R20 to flows/screens/sections; spec docs/web-ui-spec.md defines R1-R20 (lines 155-350) and its \u00a76 capability table (lines 363-377) is cited by the doc's D5 note (line 547) with every YES row assigned a screen. (2) Per-screen states: S0 (189-205), S1 (207-225), S2 (227-243), S3 (245-266), S4 (268-286), S5 (288-303), S6 (305-311) each carry a state table with success/success(degraded)/empty/loading/error rows, with structural-impossibility justifications where a state cannot occur (e.g. S2 loading 'structurally none \u2014 expansion MUST work from the embedded payload without refetching (R12)'). (3) No dead-ends: \u00a72 dead-end audit (lines 133-141), per-screen 'Exits' lines, F10 error-recovery flow (line 134), and \u00a76 edge cases E1-E9 (lines 449-520) each naming states and exits. (4) Write confirmations: \u00a73 (lines 143-176) explicitly states writes are out of scope by citation (D3/R20/NG1/NG4/NG5/NG7) \u2014 'this document specifies no write confirmations because there is no write to confirm' \u2014 and documents the two out-of-surface state-changing actions (upload, restart) with their consequences. (5) Doc lands at docs/web-ui-ux.md: confirmed. No test suite applies: docs-only change (git show --stat HEAD = 1 file, 571 insertions); grep for the doc name across *.go returns nothing; .gitreins/config.yaml guards.tests=false.\ndocs/web-ui-ux.md fully satisfies the criterion: all R1-R20 map to flows/screens, every screen S0-S6 has empty/loading/error/success states, dead-ends are audited, writes are explicitly out of scope by citation, and the doc lands at the required path.",
++          "error": "",
++          "data": {
++            "verdict": "COMPLETE",
++            "items": [
++              {
++                "criterion": "Every spec requirement maps to a flow; every screen has empty/loading/error/success states; no dead-ends; write confirmations specified if writes in scope; doc lands as docs/web-ui-ux.md",
++                "status": "PASS",
++                "detail": "docs/web-ui-ux.md (571 lines, commit 2c6c641). (1) Requirement mapping: \u00a77 traceability table (lines 524-543) maps all R1-R20 to flows/screens/sections; spec docs/web-ui-spec.md defines R1-R20 (lines 155-350) and its \u00a76 capability table (lines 363-377) is cited by the doc's D5 note (line 547) with every YES row assigned a screen. (2) Per-screen states: S0 (189-205), S1 (207-225), S2 (227-243), S3 (245-266), S4 (268-286), S5 (288-303), S6 (305-311) each carry a state table with success/success(degraded)/empty/loading/error rows, with structural-impossibility justifications where a state cannot occur (e.g. S2 loading 'structurally none \u2014 expansion MUST work from the embedded payload without refetching (R12)'). (3) No dead-ends: \u00a72 dead-end audit (lines 133-141), per-screen 'Exits' lines, F10 error-recovery flow (line 134), and \u00a76 edge cases E1-E9 (lines 449-520) each naming states and exits. (4) Write confirmations: \u00a73 (lines 143-176) explicitly states writes are out of scope by citation (D3/R20/NG1/NG4/NG5/NG7) \u2014 'this document specifies no write confirmations because there is no write to confirm' \u2014 and documents the two out-of-surface state-changing actions (upload, restart) with their consequences. (5) Doc lands at docs/web-ui-ux.md: confirmed. No test suite applies: docs-only change (git show --stat HEAD = 1 file, 571 insertions); grep for the doc name across *.go returns nothing; .gitreins/config.yaml guards.tests=false."
++              }
++            ],
++            "summary": "docs/web-ui-ux.md fully satisfies the criterion: all R1-R20 map to flows/screens, every screen S0-S6 has empty/loading/error/success states, dead-ends are audited, writes are explicitly out of scope by citation, and the doc lands at the required path."
++          }
++        }
++      ]
++    }
++  },
++  "summary": "Judge Result: BT-074\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: ok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t35.123s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Every spec requirement maps to a flow; every screen has empty/loading/error/success states; no dead-ends; write confirmations specified if writes in scope; doc lands as docs/web-ui-ux.md: docs/web-ui-ux.md (571 lines, commit 2c6c641). (1) Requirement mapping: \u00a77 traceability table (lines 524-543) maps all R1-R20 to flows/screens/sections; spec docs/web-ui-spec.md defines R1-R20 (lines 155-350) and its \u00a76 capability table (lines 363-377) is cited by the doc's D5 note (line 547) with every YES row assigned a screen. (2) Per-screen states: S0 (189-205), S1 (207-225), S2 (227-243), S3 (245-266), S4 (268-286), S5 (288-303), S6 (305-311) each carry a state table with success/success(degraded)/empty/loading/error rows, with structural-impossibility justifications where a state cannot occur (e.g. S2 loading 'structurally none \u2014 expansion MUST work from the embedded payload without refetching (R12)'). (3) No dead-ends: \u00a72 dead-end audit (lines 133-141), per-screen 'Exits' lines, F10 error-recovery flow (line 134), and \u00a76 edge cases E1-E9 (lines 449-520) each naming states and exits. (4) Write confirmations: \u00a73 (lines 143-176) explicitly states writes are out of scope by citation (D3/R20/NG1/NG4/NG5/NG7) \u2014 'this document specifies no write confirmations because there is no write to confirm' \u2014 and documents the two out-of-surface state-changing actions (upload, restart) with their consequences. (5) Doc lands at docs/web-ui-ux.md: confirmed. No test suite applies: docs-only change (git show --stat HEAD = 1 file, 571 insertions); grep for the doc name across *.go returns nothing; .gitreins/config.yaml guards.tests=false.\ndocs/web-ui-ux.md fully satisfies the criterion: all R1-R20 map to flows/screens, every screen S0-S6 has empty/loading/error/success states, dead-ends are audited, writes are explicitly out of scope by citation, and the doc lands at the required path.\n\nOverall: PASS \u2713",
++  "evaluated_at": "2026-10-02T17:01:44.384373",
++  "supersedes": null,
++  "superseded_by": null,
++  "evidence": {
++    "collected_at": "2026-10-02T17:01:44.399241+00:00",
++    "items": [
++      {
++        "name": "patch",
++        "label": "Landed commit patch",
++        "file": "commit.patch",
++        "bytes": 485,
++        "truncated": false,
++        "source": "git show 2c6c64144502"
++      },
++      {
++        "name": "worktree",
++        "label": "Working-tree diff (graded)",
++        "file": "worktree.patch",
++        "bytes": 18353,
++        "truncated": false,
++        "source": "git diff HEAD (working tree)"
++      }
++    ],
++    "task_id": "BT-074"
++  }
++}
+\ No newline at end of file
+diff --git a/.gitreins/history/2026-10-02/82857827/worktree.patch b/.gitreins/history/2026-10-02/82857827/worktree.patch
+new file mode 100644
+index 0000000..9cc6bc7
+--- /dev/null
++++ b/.gitreins/history/2026-10-02/82857827/worktree.patch
+@@ -0,0 +1,447 @@
++diff --git a/.gitreins/logs/guard-20260929T021546.703303Z.log b/.gitreins/logs/guard-20260929T021546.703303Z.log
++deleted file mode 100644
++index b5e081e..0000000
++--- a/.gitreins/logs/guard-20260929T021546.703303Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T02:15:46Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T024205.000064Z.log b/.gitreins/logs/guard-20260929T024205.000064Z.log
++deleted file mode 100644
++index ab3728a..0000000
++--- a/.gitreins/logs/guard-20260929T024205.000064Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T02:42:05Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T024310.519069Z.log b/.gitreins/logs/guard-20260929T024310.519069Z.log
++deleted file mode 100644
++index d4ba7b6..0000000
++--- a/.gitreins/logs/guard-20260929T024310.519069Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T02:43:10Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T103514.657726Z.log b/.gitreins/logs/guard-20260929T103514.657726Z.log
++deleted file mode 100644
++index 6fe0c58..0000000
++--- a/.gitreins/logs/guard-20260929T103514.657726Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T10:35:14Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T104314.797929Z.log b/.gitreins/logs/guard-20260929T104314.797929Z.log
++deleted file mode 100644
++index d00aee1..0000000
++--- a/.gitreins/logs/guard-20260929T104314.797929Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T10:43:14Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T104319.900133Z.log b/.gitreins/logs/guard-20260929T104319.900133Z.log
++deleted file mode 100644
++index 24640be..0000000
++--- a/.gitreins/logs/guard-20260929T104319.900133Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T10:43:19Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T110953.502069Z.log b/.gitreins/logs/guard-20260929T110953.502069Z.log
++deleted file mode 100644
++index ab396da..0000000
++--- a/.gitreins/logs/guard-20260929T110953.502069Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T11:09:53Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T112740.522069Z.log b/.gitreins/logs/guard-20260929T112740.522069Z.log
++deleted file mode 100644
++index aba2b19..0000000
++--- a/.gitreins/logs/guard-20260929T112740.522069Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T11:27:40Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260929T174848.132103Z.log b/.gitreins/logs/guard-20260929T174848.132103Z.log
++deleted file mode 100644
++index 5562323..0000000
++--- a/.gitreins/logs/guard-20260929T174848.132103Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-29T17:48:48Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20260930T121617.239629Z.log b/.gitreins/logs/guard-20260930T121617.239629Z.log
++deleted file mode 100644
++index d9a0d43..0000000
++--- a/.gitreins/logs/guard-20260930T121617.239629Z.log
+++++ /dev/null
++@@ -1,41 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-30T12:16:17Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go build: ok
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go vet: clean
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	1.532s
++-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.016s
++-?   	github.com/coding-hermes/boardctl/cmd/gendocs	[no test files]
++-ok  	github.com/coding-hermes/boardctl/internal/board	0.983s
++-ok  	github.com/coding-hermes/boardctl/internal/describe	0.007s
++-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.329s
++-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.971s
++-ok  	github.com/coding-hermes/boardctl/internal/render	0.
++diff --git a/.gitreins/logs/guard-20260930T185530.620552Z.log b/.gitreins/logs/guard-20260930T185530.620552Z.log
++deleted file mode 100644
++index b69ac7b..0000000
++--- a/.gitreins/logs/guard-20260930T185530.620552Z.log
+++++ /dev/null
++@@ -1,34 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-09-30T18:55:30Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged

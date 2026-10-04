@@ -1,0 +1,101 @@
+{
+  "task_id": "DOC-22",
+  "task_title": "Document VULNCHECK_STRICT_SCANNER env var",
+  "task_criteria": [
+    "README.md and skills/boardctl-usage/SKILL.md document VULNCHECK_STRICT_SCANNER=1 env var that turns banner-less -version output into a hard gate failure instead of warn-and-proceed"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "3ca9a52aeb17c88308fa6f74b3d19dc8137adae8",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n12:32AM INF scanned ~2691347 bytes (2.69 MB) in 1.27s\n12:32AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 181 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261004T052932.355464Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.725s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\n?   \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t[no test files]\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.226s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261004T052932.355464Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README.md and skills/boardctl-usage/SKILL.md document VULNCHECK_STRICT_SCANNER=1 env var that turns banner-less -version output into a hard gate failure instead of warn-and-proceed: README.md:808-820 documents the banner-less blind spot and that setting VULNCHECK_STRICT_SCANNER=1 (or true/yes, case-insensitive) turns warn-and-proceed into a hard gate refusal, including accepted values (1/true/yes enable; 0/false/no/off/unset keep default) and malformed-value behavior (warn + stay permissive). skills/boardctl-usage/SKILL.md:218 documents 'VULNCHECK_STRICT_SCANNER=1 turns banner-less -version into a hard fail'. Docs match implementation: internal/vulncheck/vulncheck.go:75 defines StrictScannerEnv=\"VULNCHECK_STRICT_SCANNER\"; :250 strictScanner() accepts 1/true/yes and warns otherwise; :179/:445 refuse the gate under strict mode. Verified by running `go test -count=1 ./internal/vulncheck` -> exit 0, 'ok github.com/coding-hermes/boardctl/internal/vulncheck 5.742s'; subtests 'no_scanner_line_fails_under_StrictScannerEnv=1' and 'strict_env_parsing_accepts_1/true/yes_and_warns_otherwise' PASS.\nBoth README.md and skills/boardctl-usage/SKILL.md document VULNCHECK_STRICT_SCANNER=1 accurately matching the implementation, with passing tests confirming the hard-fail vs warn-and-proceed behavior.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README.md and skills/boardctl-usage/SKILL.md document VULNCHECK_STRICT_SCANNER=1 env var that turns banner-less -version output into a hard gate failure instead of warn-and-proceed: README.md:808-820 documents the banner-less blind spot and that setting VULNCHECK_STRICT_SCANNER=1 (or true/yes, case-insensitive) turns warn-and-proceed into a hard gate refusal, including accepted values (1/true/yes enable; 0/false/no/off/unset keep default) and malformed-value behavior (warn + stay permissive). skills/boardctl-usage/SKILL.md:218 documents 'VULNCHECK_STRICT_SCANNER=1 turns banner-less -version into a hard fail'. Docs match implementation: internal/vulncheck/vulncheck.go:75 defines StrictScannerEnv=\"VULNCHECK_STRICT_SCANNER\"; :250 strictScanner() accepts 1/true/yes and warns otherwise; :179/:445 refuse the gate under strict mode. Verified by running `go test -count=1 ./internal/vulncheck` -> exit 0, 'ok github.com/coding-hermes/boardctl/internal/vulncheck 5.742s'; subtests 'no_scanner_line_fails_under_StrictScannerEnv=1' and 'strict_env_parsing_accepts_1/true/yes_and_warns_otherwise' PASS.\nBoth README.md and skills/boardctl-usage/SKILL.md document VULNCHECK_STRICT_SCANNER=1 accurately matching the implementation, with passing tests confirming the hard-fail vs warn-and-proceed behavior.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README.md and skills/boardctl-usage/SKILL.md document VULNCHECK_STRICT_SCANNER=1 env var that turns banner-less -version output into a hard gate failure instead of warn-and-proceed",
+                "status": "PASS",
+                "detail": "README.md:808-820 documents the banner-less blind spot and that setting VULNCHECK_STRICT_SCANNER=1 (or true/yes, case-insensitive) turns warn-and-proceed into a hard gate refusal, including accepted values (1/true/yes enable; 0/false/no/off/unset keep default) and malformed-value behavior (warn + stay permissive). skills/boardctl-usage/SKILL.md:218 documents 'VULNCHECK_STRICT_SCANNER=1 turns banner-less -version into a hard fail'. Docs match implementation: internal/vulncheck/vulncheck.go:75 defines StrictScannerEnv=\"VULNCHECK_STRICT_SCANNER\"; :250 strictScanner() accepts 1/true/yes and warns otherwise; :179/:445 refuse the gate under strict mode. Verified by running `go test -count=1 ./internal/vulncheck` -> exit 0, 'ok github.com/coding-hermes/boardctl/internal/vulncheck 5.742s'; subtests 'no_scanner_line_fails_under_StrictScannerEnv=1' and 'strict_env_parsing_accepts_1/true/yes_and_warns_otherwise' PASS."
+              }
+            ],
+            "summary": "Both README.md and skills/boardctl-usage/SKILL.md document VULNCHECK_STRICT_SCANNER=1 accurately matching the implementation, with passing tests confirming the hard-fail vs warn-and-proceed behavior."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-22\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README.md and skills/boardctl-usage/SKILL.md document VULNCHECK_STRICT_SCANNER=1 env var that turns banner-less -version output into a hard gate failure instead of warn-and-proceed: README.md:808-820 documents the banner-less blind spot and that setting VULNCHECK_STRICT_SCANNER=1 (or true/yes, case-insensitive) turns warn-and-proceed into a hard gate refusal, including accepted values (1/true/yes enable; 0/false/no/off/unset keep default) and malformed-value behavior (warn + stay permissive). skills/boardctl-usage/SKILL.md:218 documents 'VULNCHECK_STRICT_SCANNER=1 turns banner-less -version into a hard fail'. Docs match implementation: internal/vulncheck/vulncheck.go:75 defines StrictScannerEnv=\"VULNCHECK_STRICT_SCANNER\"; :250 strictScanner() accepts 1/true/yes and warns otherwise; :179/:445 refuse the gate under strict mode. Verified by running `go test -count=1 ./internal/vulncheck` -> exit 0, 'ok github.com/coding-hermes/boardctl/internal/vulncheck 5.742s'; subtests 'no_scanner_line_fails_under_StrictScannerEnv=1' and 'strict_env_parsing_accepts_1/true/yes_and_warns_otherwise' PASS.\nBoth README.md and skills/boardctl-usage/SKILL.md document VULNCHECK_STRICT_SCANNER=1 accurately matching the implementation, with passing tests confirming the hard-fail vs warn-and-proceed behavior.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-04T05:33:42.266580",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-04T05:33:42.320497+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 159208,
+        "truncated": false,
+        "source": "git show 3ca9a52aeb17"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 23837,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DOC-22"
+  }
+}
