@@ -264,6 +264,49 @@ boardctl -C ~/myproject validate                    # RESULT: OK
 
 Full metric semantics: [`docs/specs/board-analytics-report.md`](docs/specs/board-analytics-report.md).
 
+## Board-lint pre-commit hook (BT-054)
+
+`boardctl install` arms a git pre-commit hook that rejects a commit whose board
+no longer validates — duplicate ids, dangling `depends_on` refs, spec-invalid
+rows. It is the fleet's guard against the DF-BOARDCTL-9 class (one bad line
+making a whole board unreadable) reaching origin.
+
+```bash
+# preview the hook block it will write (no files touched)
+boardctl -C ~/myproject install --dry-run
+
+# arm it: writes a managed block into .git/hooks/pre-commit
+boardctl -C ~/myproject install
+
+# retarget or re-balance
+boardctl -C ~/myproject install --hook-path ~/myproject/.git/hooks/pre-commit
+boardctl -C ~/myproject install --timeout 10        # default 30s, min 1
+```
+
+Operator notes:
+
+- **Chaining.** Re-install MERGES into an existing pre-commit hook (e.g. a
+  GitReins guard already there) — both exit statuses are honored; a failing
+  either one blocks the commit. The managed block is delimited by
+  `>>> boardctl board-lint managed block ... >>>` / `<<<` markers and is
+  replaced wholesale on re-install, so upgrading boardctl and re-running
+  `install` refreshes the lint logic in place.
+- **Skip, never wedge.** The hook caps `validate` at `--timeout` seconds via
+  `timeout(1)`. A slow, missing or wedged boardctl SKIPS the lint (commit
+  proceeds); it must never block commits on tooling failure. It also skips on
+  repos with no board (`.coding-hermes/board` absent).
+- **What it gates on.** `boardctl validate -C <repo> --fail-on dangling-dep`.
+  Duplicate ids or dangling refs exit 1 and the commit is refused with the
+  validator's output shown; ordinary `[warn]` lines do not block.
+- **Rollout fallout (BT-069).** Arming this on a repo whose board already
+  carries spec-invalid rows makes every commit fail until the board is
+  repaired. Before installing on an existing repo, run
+  `boardctl -C <repo> validate` and clear any `[error]` findings first
+  (`sweep-status --dry-run` for vocabulary cleanup).
+- **Verify an install.** `grep -l board-lint <repo>/.git/hooks/pre-commit` —
+  the managed block must be present. `install --dry-run` prints the block an
+  existing install should match.
+
 ## Start a board
 
 A fresh project has no board yet. `init` bootstraps one — it writes the four
