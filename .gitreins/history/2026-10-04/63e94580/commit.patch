@@ -1,0 +1,48 @@
+commit 430198fa4a77b234c3b246f8bf49510da1eac4d4
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Oct 4 00:30:00 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Oct 4 00:30:00 2026 -0500
+
+    docs: document VULNCHECK_STRICT_SCANNER env var (DOC-22)
+---
+ README.md                      | 13 +++++++++++++
+ skills/boardctl-usage/SKILL.md |  1 +
+ 2 files changed, 14 insertions(+)
+
+diff --git a/README.md b/README.md
+index dc2e0f2..1dea016 100644
+--- a/README.md
++++ b/README.md
+@@ -805,6 +805,19 @@ CI installs that same pinned version in its own step, so the check runs (and
+ never skips) on every push and PR. `GOVULNCHECK=/path/to/binary` overrides the
+ PATH lookup.
+ 
++The version pin has a banner-less blind spot: when the resolved binary exists
++and its `-version` exits 0 but prints no parsable `Scanner: govulncheck@...`
++line (a stub, a reimplementation, or a corrupted install), the default
++behavior is a stderr warning and the scan proceeds — the exit-code contract
++still decides. To turn that warn-and-proceed into a hard gate refusal, set
++`VULNCHECK_STRICT_SCANNER=1` (or `true`/`yes`, case-insensitive). Accepted
++values: `1`/`true`/`yes` enable strict mode; `0`/`false`/`no`/`off`/unset
++keep the warn-and-proceed default. Malformed values (anything else) print a
++stderr warning naming the unrecognized value and stay permissive — they do
++not silently disable the safety opt-in. Set it in CI environment or local
++shell before running `make vuln-check` to fail the gate on unverified
++binaries instead of warning.
++
+ ### Deployment freshness gate (BT-057)
+ 
+ `make build` and `make release` stamp the build commit into every binary via
+diff --git a/skills/boardctl-usage/SKILL.md b/skills/boardctl-usage/SKILL.md
+index 9c3df6e..8ae22cf 100644
+--- a/skills/boardctl-usage/SKILL.md
++++ b/skills/boardctl-usage/SKILL.md
+@@ -215,6 +215,7 @@ make version-check                       # README release-pin agreement
+ VERSION_TAG=vX.Y.Z make version-check    # ... plus CURRENCY vs the tag being cut
+ make spec-check     # docs/muster/openapi.yaml == serve wiring (BT-062)
+ make vuln-check     # govulncheck exit contract: 0 clean / 3 findings / else TOOL-ERROR
++                      # VULNCHECK_STRICT_SCANNER=1 turns banner-less -version into a hard fail
+ go test ./internal/workflowcheck         # Makefile PLATFORMS == CI platforms, order counts
+ make build          # stamps main.buildCommit -> freshness gate at CLI runtime
+ ```
