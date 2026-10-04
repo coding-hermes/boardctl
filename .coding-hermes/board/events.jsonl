@@ -353,3 +353,7 @@
 {"id":352,"timestamp":"2026-10-03 15:39:22","event_type":"task_updated","task_id":"BT-070","actor":"foreman","detail":"{\"title\":\"P2 — boardctl update --note REPLACES foreman_note (silent loss) and a concurrent writer clobbers it; accepted flags are missing from help\"}","tick_number":null}
 {"id":353,"timestamp":"2026-10-03 15:39:23","event_type":"task_updated","task_id":"BT-071","actor":"foreman","detail":"{\"title\":\"P3 — boardctl list output truncated when board has >100 rows\"}","tick_number":null}
 {"id":354,"timestamp":"2026-10-03 15:39:25","event_type":"task_completed","task_id":"README-004","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":355,"timestamp":"2026-10-03 18:44:02","event_type":"task_created","task_id":"DOC-20","actor":"foreman","detail":"{\"id\":\"DOC-20\",\"status\":\"pending\"}","tick_number":null}
+{"id":356,"timestamp":"2026-10-03 18:44:02","event_type":"task_created","task_id":"DOC-21","actor":"foreman","detail":"{\"id\":\"DOC-21\",\"status\":\"pending\"}","tick_number":null}
+{"id":357,"timestamp":"2026-10-03 18:44:03","event_type":"task_created","task_id":"DOC-22","actor":"foreman","detail":"{\"id\":\"DOC-22\",\"status\":\"pending\"}","tick_number":null}
+{"id":358,"timestamp":"2026-10-04 05:23:12","event_type":"task_completed","task_id":"DOC-21","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
