@@ -106,7 +106,17 @@ boardctl -C R create --id FEAT-2 --title "T" \
     --session <hermes-session-id> --session <second-session-id>
 boardctl -C R update FEAT-2 --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
     --session <hermes-session-id>
-boardctl -C R event --type audit --tick 42 --detail-text "..."   # or --detail @file
+boardctl -C R event --type audit --tick 42 --detail-text "..."   # or --detail @file;
+                                            # --tick N ALSO bumps the header
+                                            # ticks_total to max(old,N) (stderr
+                                            # notice; legacy topology-B boards:
+                                            # line 1 of tasks.jsonl)
+boardctl -C R event --type audit --tick 43 --no-tick-write       # event appends,
+                                            # header NOT rewritten -> counter
+                                            # can go stale and doctor FAILS
+                                            # ("ticks_total < max events
+                                            # tick_number"); escape hatch for
+                                            # boards/tools that own the header
 boardctl -C R header --set-ticks-total 42 --set-last-commit <sha>
 boardctl init --project myproject          # bootstrap a fresh board: writes
                                            # tasks/events/board/fixtures.jsonl
@@ -189,6 +199,10 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
 - `event --type`: must be one of the enumerated event types (`audit`,
   `tick`, `task_created`, `task_completed`, `task_updated`, `idle`,
   `dogfood`, `e2e_verified`, ... — the error message lists them all).
+- `event --tick N` / `--no-tick-write`: by default the tick also rewrites
+  the header `ticks_total` to `max(old, N)`; `--no-tick-write` skips that
+  rewrite, so the counter can go stale and `doctor` fails its drift check
+  until `header --set-ticks-total` catches up.
 
 ## Gates are real code (run 17)
 

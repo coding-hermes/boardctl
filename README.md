@@ -107,8 +107,18 @@ boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
 # (read-alias fix path; no-op + "already canonical" when nothing is dirty)
 boardctl -C ~/myproject update FEAT-1 --normalize
 
-# append a raw audit event
+# append a raw audit event. --tick N ALSO rewrites the board header's
+# ticks_total counter to max(old, N) — board.jsonl line 1 (topology A), or
+# line 1 of tasks.jsonl on legacy topology-B boards — and prints a stderr
+# notice naming the file and the old -> new value.
 boardctl -C ~/myproject event --type audit --tick 42 --detail-text 'tick 42 summary'
+# --no-tick-write appends the event row but skips that header rewrite:
+boardctl -C ~/myproject event --type audit --tick 43 --detail-text 'manual tick' \
+    --no-tick-write
+# header ticks_total is NOT rewritten, so the counter can lag the event trail
+# and the next `boardctl doctor` drift check FAILS ("ticks_total < max events
+# tick_number"). The default header bump is the safer choice; --no-tick-write
+# is an escape hatch for boards/tools that manage the header themselves.
 
 # read/patch the board.jsonl header
 boardctl -C ~/myproject header --json
@@ -351,6 +361,23 @@ the required flag and lists the allowed `event_type` values — and writes
 nothing to the append-only `events.jsonl`. (Earlier builds silently appended
 an `audit` event in that case.) An explicit `--type` outside the vocabulary
 is refused the same way by the write path.
+
+`event --tick N` also rewrites the board header's `ticks_total` counter to
+`max(old, N)` — `board.jsonl` line 1 on a topology-A board, line 1 of
+`tasks.jsonl` on a legacy topology-B board — and prints a notice to stderr
+naming the file and the old -> new value for each actual rewrite. A lower
+`--tick` never rewinds the counter (verified against a scratch board: after
+`--tick 3`, a following `--tick 2` leaves `ticks_total` at 3).
+
+`--no-tick-write` appends the event row (`tick_number` still carried) but
+skips that header rewrite entirely: the board file stays byte-identical and
+no notice is printed. The opt-out is per-invocation — the next default
+`event --tick` bumps the header again — but while the header lags the event
+trail, `doctor`'s drift check FAILS (`header ticks_total 0 < max events
+tick_number N — header counter stale or an event tick never completed`,
+with the fix hint `boardctl header --set-ticks-total=N`). The default header
+bump is the safer choice; `--no-tick-write` is an escape hatch for boards
+and tools that manage the header themselves.
 
 ## Status vocabulary and read aliases (BT-025)
 
