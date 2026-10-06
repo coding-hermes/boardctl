@@ -136,6 +136,56 @@ boardctl -C ~/myproject import export.json --dry-run --renumber   # preview
 boardctl -C ~/myproject import export.json --renumber             # apply
 ```
 
+### Umbrella repos — a unified view over linked child boards (BT-078)
+
+Multi-service products often use an umbrella repo whose real work picture
+spans several project boards. `boardctl umbrella` is a **read-only** unified
+view over this repo's own board plus every child board registered under the
+symlink registry `.coding-hermes/links/`.
+
+The registry convention: one symlink per child repo, **named after the child
+repo**, aimed at the child's `.coding-hermes` directory:
+
+```bash
+mkdir -p ~/myproduct/.coding-hermes/links
+ln -s ~/services/auth/.coding-hermes   ~/myproduct/.coding-hermes/links/auth
+ln -s ~/services/billing/.coding-hermes ~/myproduct/.coding-hermes/links/billing
+
+# census (default): one line per board with per-repo task counts
+boardctl -C ~/myproduct umbrella
+
+# unified task list with the REPO column; ids are repo-qualified (<repo>/<id>)
+boardctl -C ~/myproduct umbrella --list
+
+# per-repo stats + grand totals
+boardctl -C ~/myproduct umbrella --stats
+
+# per-board validate reports + cross-board depends_on resolution
+boardctl -C ~/myproduct umbrella --validate
+
+# machine-readable census (boards, findings, totals)
+boardctl -C ~/myproduct umbrella --json
+```
+
+Provenance and identity: every result names the repo each task came from,
+and task identity across the view is `<repo>/<id>` (`QualifiedTaskID`) —
+the same id in two child boards stays two distinct tasks, never merged.
+
+Cross-board relations resolve only when unambiguous: a `depends_on` id that
+exists locally resolves repo-locally (a warning notes when the id also
+exists elsewhere), an id that exists in exactly one other repo resolves
+cross-repo, and an id that exists in several boards is reported **AMBIGUOUS**
+with its candidate repos — never silently bound to a guessed task.
+
+Safety: the aggregation is structurally read-only (it reuses the same read
+paths as `list`/`stats`/`validate`; no write verb exists on the umbrella
+surface). Link targets are canonicalized and must be directories hosting a
+real board inside a git repo; broken links, symlink loops, over-deep chains,
+non-board targets and targets outside any determinable repo are reported as
+findings (exit 1) — never followed or repaired. Two links to the same target
+dedupe to one board with a warning. Writes stay single-repo: aim `-C` at the
+one owning repo. `--strict` additionally fails on warning-level findings.
+
 ### Headerless boards
 
 A board can hold just `tasks.jsonl` + `events.jsonl` with no `board.jsonl` and
