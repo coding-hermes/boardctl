@@ -34,7 +34,7 @@ import (
 var bt041Subcommands = []string{
 	"init", "list", "show", "create", "update", "event", "header",
 	"validate", "sweep-status", "doctor", "version", "stats", "render",
-	"import", "serve", "install",
+	"import", "serve", "install", "umbrella",
 }
 
 // TestBT041HelpExitCodeZeroPerSubcommand: `<sub> --help` (and `-h`) exits 0

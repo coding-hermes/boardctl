@@ -166,29 +166,7 @@ func Resolve(target string) (*Board, error) {
 		tasks := filepath.Join(c, "tasks.jsonl")
 		events := filepath.Join(c, "events.jsonl")
 		if fileExists(tasks) && fileExists(events) {
-			b := &Board{
-				Dir:          c,
-				tasksPath:    tasks,
-				eventsPath:   events,
-				fixturesPath: filepath.Join(c, "fixtures.jsonl"),
-			}
-			header := filepath.Join(c, "board.jsonl")
-			if fileExists(header) {
-				b.Topology = "A"
-				b.headerPath = header
-			} else {
-				// BT-037: topology B means "the header is line 1 of
-				// tasks.jsonl" — but only when that line is header-SHAPED.
-				// A board with no board.jsonl whose line 1 is an ordinary
-				// task row is HEADERLESS: classifying it as writable
-				// topology B is exactly what let `header --set-*` rewrite a
-				// task row. Reads keep working (task enumeration skips line
-				// 1 only when it IS header-shaped), header operations
-				// refuse.
-				b.Topology = "B"
-				b.headerless = !boardHasLineOneHeader(tasks)
-			}
-			return b, nil
+			return boardFromDir(c), nil
 		}
 		// BT-026: a candidate with exactly one of the pair is a partial /
 		// legacy board, not "nothing here". The FIRST partial candidate
@@ -207,6 +185,30 @@ func Resolve(target string) (*Board, error) {
 	}
 	return nil, fmt.Errorf("%w: %s (looked for tasks.jsonl+events.jsonl in %s)",
 		ErrBoardNotFound, target, strings.Join(cands, ", "))
+}
+
+// boardFromDir constructs a Board for a KNOWN board dir (the
+// tasks.jsonl+events.jsonl pair was already seen). It is the single
+// construction path for every read: Resolve and the BT-078 umbrella
+// discovery both call it, so the two read surfaces cannot drift. Topology
+// and header classification follow BT-037 (a board with no board.jsonl whose
+// line 1 is an ordinary task row is HEADERLESS, not writable topology B).
+func boardFromDir(dir string) *Board {
+	b := &Board{
+		Dir:          dir,
+		tasksPath:    filepath.Join(dir, "tasks.jsonl"),
+		eventsPath:   filepath.Join(dir, "events.jsonl"),
+		fixturesPath: filepath.Join(dir, "fixtures.jsonl"),
+	}
+	header := filepath.Join(dir, "board.jsonl")
+	if fileExists(header) {
+		b.Topology = "A"
+		b.headerPath = header
+	} else {
+		b.Topology = "B"
+		b.headerless = !boardHasLineOneHeader(b.tasksPath)
+	}
+	return b
 }
 
 func fileExists(p string) bool {

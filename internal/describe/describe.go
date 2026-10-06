@@ -81,6 +81,7 @@ var cliSummaries = map[string]string{
 	"import":       "import a board export.json",
 	"serve":        "run the loopback uploader/report HTTP server",
 	"install":      "install the board-lint pre-commit hook",
+	"umbrella":     "read-only unified view over an umbrella repo's linked child boards",
 }
 
 // httpOperations carries the curated OpenAPI operationId + summary per

@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.12.0
-date: 2026-10-02
+version: 1.13.0
+date: 2026-10-06
 category: software-development
 ---
 
@@ -46,6 +46,7 @@ blind spot.
   README contract (BT-006 fixed the old exit-1 behavior). Script on:
   `0` = proceed, `1` = your input was rejected, `2` = wrong invocation or
   no board at the given path.
+- `umbrella` (BT-078): read-only cross-repo view — see Proven commands.
 
 ## The `-C` flag (read this first)
 
@@ -65,6 +66,24 @@ boardctl -C ~/does-not-exist list          # exit 2, board-not-found
 ## Proven commands
 
 ```bash
+# umbrella repos (BT-078): READ-ONLY unified view over this repo + every
+# child board symlinked under .coding-hermes/links/ (one symlink per child
+# repo, NAMED after the repo, aimed at <child>/.coding-hermes). Tasks keep
+# repo provenance; identity across the view is <repo>/<id> so colliding ids
+# stay distinct. Cross-board depends_on refs resolve only when unambiguous —
+# AMBIGUOUS is reported with its candidate repos, never guessed. Broken /
+# looping / out-of-repo links are findings (exit 1), never followed.
+# NEVER writes through child symlinks: writes stay single-repo via -C.
+mkdir -p ~/myproduct/.coding-hermes/links
+ln -s ~/services/auth/.coding-hermes    ~/myproduct/.coding-hermes/links/auth
+ln -s ~/services/billing/.coding-hermes ~/myproduct/.coding-hermes/links/billing
+boardctl -C ~/myproduct umbrella            # census: one line per board + task counts
+boardctl -C ~/myproduct umbrella --list     # unified task table (REPO column)
+boardctl -C ~/myproduct umbrella --stats    # per-repo stats + grand totals
+boardctl -C ~/myproduct umbrella --validate # per-board validate + dep resolution
+boardctl -C ~/myproduct umbrella --json     # machine-readable census
+boardctl -C ~/myproduct umbrella --strict   # warnings also fail (exit 1)
+
 # read
 boardctl -C R stats [--json] [--all]       # counts by status/priority
 boardctl -C R list [--status pending] [--priority P1] [--json] [--all]

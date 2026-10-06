@@ -96,6 +96,15 @@ commands:
           same evidence behind a WARN-ONLY banner and allows it (a
           re-install flips the mode in place; --fleet carries the mode
           into every hook it writes)
+  umbrella [--list|--stats|--validate] [--json] [--strict] [-C dir]
+          read-only unified view over this repo and every child board
+          symlinked under .coding-hermes/links/ (one symlink per child
+          repo, named after the repo, aimed at <child>/.coding-hermes).
+          Tasks keep repo provenance; ids are repo-qualified (<repo>/<id>),
+          colliding ids stay distinct, and cross-board depends_on refs
+          resolve only when unambiguous (AMBIGUOUS is reported, never
+          guessed). Broken/looping/out-of-repo links are findings (exit 1),
+          never followed. NEVER writes — writes stay single-repo via -C
 
 --skip-bad-lines (list/show/stats/validate/render): read the board tolerantly,
 keeping every line that parses; unparseable lines are reported on stderr as a
@@ -188,6 +197,8 @@ func run(args []string) int {
 		err = cmdServe(boardDir, rest)
 	case "install":
 		err = cmdInstall(boardDir, rest)
+	case "umbrella":
+		err = cmdUmbrella(boardDir, rest)
 	case "help", "-h", "--help":
 		fmt.Fprint(os.Stdout, usageText)
 		return 0
