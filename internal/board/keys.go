@@ -101,6 +101,22 @@ var sanctionedExtras = []string{
 	"judge",
 	"worker",
 	"evidence",
+	// SCHED-GAP-1572 census (2026-10-07, crier board 550 rows; each concept
+	// written by more than one family):
+	//   - repo: the GitHub "owner/name" slug a CI/integration row targets
+	//     (46 rows across CI/INT/E2E/RELEASE/CR families on crier alone —
+	//     rows filed against more than one repo need the slug on the row).
+	//   - tick: the foreman tick NUMBER that closed the row (5 rows: 3
+	//     string "425", 2 numeric 423/424). distinct from completed_tick
+	//     (canon already) only in spelling; sanctioned as the measured
+	//     family spelling, not aliased — renaming would rewrite history
+	//     the fleet quotes in events.
+	//   - ch:trace: the traceability trailer row
+	//     (row=... spec=... evidence=... witness=... commit=...) carried
+	//     by 17 boards fleet-wide; the fleet's provenance convention.
+	"repo",
+	"tick",
+	"ch:trace",
 }
 
 // SanctionedTaskRowKeys is the full allowed set: the create schema plus the

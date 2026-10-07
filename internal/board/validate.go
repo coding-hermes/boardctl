@@ -147,22 +147,30 @@ func (b *Board) validateTasks(rep *Report) {
 		// vocabulary — a single value sits in exactly one column, so the
 		// BT-007 union string made a guard-vocab value in ci_result ("PASS")
 		// read as if it were rejected everywhere.
-		for _, c := range []struct {
-			key   string
-			vocab map[string]bool
-			str   string
-		}{
-			{"guard_result", GuardResultVocabulary, "{PASS,FAIL,SKIP}"},
-			{"ci_result", CIResultVocabulary, "{GREEN,RED,SKIP}"},
-		} {
-			v := row.String(c.key)
-			if v == "" {
-				continue // absent, null, or never-run
+		// SCHED-GAP-1572: the result columns accept a PLAIN vocabulary
+		// string ({PASS,FAIL,SKIP} / {GREEN,RED,SKIP}, case-tolerant on
+		// read — BT-007/BT-049 semantics, unchanged) OR the structured
+		// form {"status":"pass|fail|skip|pending","details":"<prose>"}
+		// that legacy free-form values migrate into. Anything else warns
+		// with a schema-specific diagnosis. The old code read the value
+		// through Row.String, which returns "" for any non-string JSON
+		// value — an object silently SKIPPED the check — so the check now
+		// reads the raw bytes and classifies the actual stored shape.
+		for _, key := range []string{"guard_result", "ci_result"} {
+			raw := row.Get(key)
+			diag := ClassifyResultValue(key, raw)
+			if diag == "absent" || diag == "ok" {
+				continue // never-run, canonical string, or valid structured form
 			}
-			if !c.vocab[NormalizeResultValue(v)] {
-				rep.Add("warn", "tasks.jsonl line %d (task %s): %s %q is free-form — not in the %s vocabulary %s (writes now enforce this; hand-edit the row or rewrite via boardctl update)",
-					idx+1, id, c.key, v, c.key, c.str)
+			if diag == "free-form string" {
+				// Legacy prose: BT-049's per-field message, with the
+				// structured form named as the second valid shape.
+				rep.Add("warn", "tasks.jsonl line %d (task %s): %s %q is free-form — not in the %s vocabulary %s (valid: that vocabulary or the structured form {\"status\":\"pass|fail|skip|pending\",\"details\":\"<prose>\"}; writes now enforce this; hand-edit the row or rewrite via boardctl update)",
+					idx+1, id, key, decodeJSONStringOrEmpty(raw), key, ResultFieldVocabString[key])
+				continue
 			}
+			rep.Add("warn", "tasks.jsonl line %d (task %s): %s fails the result-value schema: %s — valid forms: a plain {PASS,FAIL,SKIP}/{GREEN,RED,SKIP} string or {\"status\":\"pass|fail|skip|pending\",\"details\":\"<prose>\"}",
+				idx+1, id, key, diag)
 		}
 		// BT-048: the priority column has a canonical on-disk vocabulary
 		// {P0,P1,P2,P3,P4,P5} (the write path normalizes bare digits and case

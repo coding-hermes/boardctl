@@ -29,15 +29,18 @@ import (
 )
 
 // seedBT059DriftedBoard writes a topology-A board whose single task row is a
-// LEGACY row carrying keys create never asked for: repo (per-project tooling,
-// the field GAP-145 showed newly created rows must not carry) and reviewer
-// (an unwritten phase key). If create inherits its schema from this row
-// verbatim, every new row is born carrying both — the BT-059 defect.
+// LEGACY row carrying keys create never asks for: budget and reviewer
+// (neither is in the canon — budget was the drift exemplar from the start;
+// the original GAP-145 field, repo, was later sanctioned fleet-wide by
+// SCHED-GAP-1572's census, which is exactly the "deliberate key belongs in
+// the canon" path this file's header describes). If create inherits its
+// schema from this row verbatim, every new row is born carrying both — the
+// BT-059 defect.
 func seedBT059DriftedBoard(t *testing.T) *Board {
 	t.Helper()
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl":  `{"id":"LEG-1","title":"legacy drift row","status":"pending","priority":"P2","repo":null,"reviewer":"alex"}` + "\n",
+		"tasks.jsonl":  `{"id":"LEG-1","title":"legacy drift row","status":"pending","priority":"P2","budget":null,"reviewer":"alex"}` + "\n",
 		"events.jsonl": `{ "id": 1, "timestamp": "2026-09-24 00:00:00.000000", "event_type": "audit", "task_id": null, "actor": "foreman", "detail": null, "tick_number": 1 }` + "\n",
 		"board.jsonl":  `{ "project": "bt059", "namespace": "bt059", "version": 1, "ticks_total": 0, "ticks_idle": 0, "last_commit": null }` + "\n",
 	})
@@ -50,7 +53,7 @@ func seedBT059DriftedBoard(t *testing.T) *Board {
 
 // bt059DriftKeys are the keys the legacy row carries beyond the core four —
 // none of them may ever reach a new row.
-var bt059DriftKeys = []string{"repo", "reviewer"}
+var bt059DriftKeys = []string{"budget", "reviewer"}
 
 // bt059SparseCreateSchema is the canonical shape a create inherits from a
 // sparse 4-key mirror row: the row's own four keys, then the core keys the
@@ -114,7 +117,7 @@ func TestCreateOnDriftedBoardWritesCanonicalSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
-	wantLegacy := `{"id":"LEG-1","title":"legacy drift row","status":"pending","priority":"P2","repo":null,"reviewer":"alex"}`
+	wantLegacy := `{"id":"LEG-1","title":"legacy drift row","status":"pending","priority":"P2","budget":null,"reviewer":"alex"}`
 	if lines[0] != wantLegacy {
 		t.Fatalf("legacy row was rewritten by create:\n got %s\nwant %s", lines[0], wantLegacy)
 	}
@@ -197,12 +200,12 @@ func TestCensusStillReportsLegacyRowOnDriftedBoard(t *testing.T) {
 		}
 	}
 	found := findWarn(rep, "LEG-1")
-	if found == "" || !strings.Contains(found, "repo") {
+	if found == "" || !strings.Contains(found, "budget") {
 		t.Fatalf("census warning for LEG-1 lost the drift key name, got %q", found)
 	}
 	// the summary the fleet quotes still names the offending keys
-	if !strings.Contains(rep.Keys.Summary(), "repo(1)") {
-		t.Fatalf("summary must still name repo(1): %q", rep.Keys.Summary())
+	if !strings.Contains(rep.Keys.Summary(), "budget(1)") {
+		t.Fatalf("summary must still name budget(1): %q", rep.Keys.Summary())
 	}
 }
 

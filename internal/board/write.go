@@ -1306,12 +1306,18 @@ func (b *Board) appendEventLocked(spec EventSpec) (int64, error) {
 		return 0, err
 	}
 	var maxID int64
+	// SCHED-GAP-1572: style/timestamp template come from the last row that
+	// carries a NUMERIC id — the schema every appended row must hold. A
+	// legacy tail row (missing or non-numeric id) must not become the
+	// template, or the new row inherits the legacy shape.
 	var last *Row
 	for _, r := range rows {
-		if id, ok := r.Int("id"); ok && id > maxID {
-			maxID = id
+		if id, ok := r.Int("id"); ok {
+			if id > maxID {
+				maxID = id
+			}
+			last = r
 		}
-		last = r
 	}
 	nextID := maxID + 1
 
