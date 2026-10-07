@@ -1,0 +1,1 @@
+{"wave_id":"boardctl-foreman-2026-10-06-23-07-45","budget":9,"workers":1,"tasks":[{"id":"BT-078","worktree":"wt/BT-078","branch":"wt/BT-078","priority":"P1"}],"note":"single-task tick; BT-077 independent but held for next tick (one row per tick rule)"}
