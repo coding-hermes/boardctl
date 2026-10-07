@@ -748,6 +748,33 @@ No other command needed changing: `validate`, `doctor`, `stats`, `render`,
 `import` copies exported rows verbatim, so the three fields round-trip with the
 row.
 
+### The deferred flag (BT-076)
+
+A task row may carry a first-class boolean `deferred` field, distinct from
+`blocked` and `complete`: deferral is "the owner parked this on purpose", not
+"something is wrong" (blocked) and not "this is done" (complete). Write it with
+`boardctl create --deferred` (bare flag, writes `deferred: true`) or
+`boardctl update <id> --deferred true|false` (any `strconv.ParseBool` spelling
+is accepted; a non-boolean value is a usage error with nothing written). The
+same nil-untouched discipline as the worktree fields applies: an omitted flag
+never creates or changes the key — a row without `deferred` is not deferred.
+
+Deferred rows stay **searchable and retained**: `list`, `show`, `render`, and
+`import` return and round-trip them like any other row. What changes is
+reporting — `stats` counts them in a **separate `deferred` line** (and a
+`deferred` key in `--json`) and **excludes them from the actionable/pending
+tally** (`actionable: N`), so a board whose only open row is deferred does not
+read as having pending work. Deferred rows still count in `total` and keep
+their status in the by-status tally (a deferred `pending` row is still counted
+under `pending` there). `validate` warns (never fails) on a hand-edited
+non-boolean `deferred` value, which reads as not deferred.
+
+```bash
+boardctl -C ~/myproject create --id FEAT-3 --title "Maybe later" --deferred
+boardctl -C ~/myproject update FEAT-3 --deferred false   # un-defer
+boardctl -C ~/myproject stats    # total, actionable, deferred: separate lines
+```
+
 ## Board topology
 
 ```

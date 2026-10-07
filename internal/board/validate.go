@@ -241,6 +241,23 @@ func (b *Board) validateTasks(rep *Report) {
 		for _, dep := range rowStringSlice(row, "depends_on") {
 			depends[dep] = append(depends[dep], depRef{line: idx + 1, id: id})
 		}
+		// BT-076: the deferred flag is boolean on every row boardctl
+		// writes (create --deferred / update --deferred). Hand-edited or
+		// legacy rows may carry another shape; like the priority and
+		// depends_on checks above this is an itemized WARNING, not a
+		// failure — the row's meaning is unaffected (RowIsDeferred reads
+		// any non-true value as NOT deferred), so flagging (not failing)
+		// keeps live boards at exit 0 while the drift stays visible.
+		// Absent stays silent: rows without the key are not deferred by
+		// definition.
+		if raw := row.Get("deferred"); raw != nil {
+			trimmed := bytes.TrimSpace(raw)
+			if !bytes.Equal(trimmed, []byte("true")) && !bytes.Equal(trimmed, []byte("false")) &&
+				!bytes.Equal(trimmed, []byte("null")) {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): deferred is not a boolean (%s) — treated as not deferred (writes store true/false; hand-edit the row or rewrite via boardctl update)",
+					idx+1, id, jsonKindName(raw))
+			}
+		}
 		// BT-056: the row's KEY SET must stay inside the declared canon
 		// (keys.go). Until this check existed, "the row parsed" was the only
 		// shape test, so the fleet drifted to ~230 distinct keys — one-key

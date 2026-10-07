@@ -404,11 +404,15 @@ type RepoStats struct {
 
 // UmbrellaStats aggregates per-repo stats plus a grand total.
 type UmbrellaStats struct {
-	Root     string         `json:"root"`
-	Repos    []RepoStats    `json:"repos"`
-	Total    int            `json:"total"`
-	Status   map[string]int `json:"status"`
-	Priority map[string]int `json:"priority"`
+	Root  string      `json:"root"`
+	Repos []RepoStats `json:"repos"`
+	Total int         `json:"total"`
+	// BT-076: the grand-total twin of Stats.Deferred — the sum of the
+	// per-repo counts, excluded from the actionable reading the same way.
+	Deferred   int            `json:"deferred"`
+	Actionable int            `json:"actionable"`
+	Status     map[string]int `json:"status"`
+	Priority   map[string]int `json:"priority"`
 }
 
 // Stats computes per-repo status/priority tallies (the same ComputeStats the
@@ -422,6 +426,8 @@ func (u *Umbrella) Stats(f TaskFilter) (*UmbrellaStats, error) {
 		}
 		us.Repos = append(us.Repos, RepoStats{Repo: qb.Repo, BoardDir: qb.BoardDir, Stats: st})
 		us.Total += st.Total
+		us.Deferred += st.Deferred
+		us.Actionable += st.Actionable
 		for k, v := range st.Status {
 			us.Status[k] += v
 		}

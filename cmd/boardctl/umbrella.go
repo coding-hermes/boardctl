@@ -184,6 +184,8 @@ func umbrellaStats(um *board.Umbrella, strict bool) error {
 	}
 	_, _ = fmt.Fprintln(os.Stdout, "umbrella total:")
 	_, _ = fmt.Fprintf(os.Stdout, "  total tasks: %d\n", us.Total)
+	_, _ = fmt.Fprintf(os.Stdout, "  actionable: %d\n", us.Actionable)
+	_, _ = fmt.Fprintf(os.Stdout, "  deferred: %d\n", us.Deferred)
 	_, _ = fmt.Fprintln(os.Stdout, "  by status:")
 	for _, k := range board.SortedKeys(us.Status) {
 		_, _ = fmt.Fprintf(os.Stdout, "    %-12s %d\n", k, us.Status[k])

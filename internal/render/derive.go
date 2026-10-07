@@ -144,8 +144,14 @@ type Derived struct {
 	PriorityCount map[string]int `json:"priority_counts"`
 	OpenCount     int            `json:"open_count"`
 	CompleteCount int            `json:"complete_count"`
-	TotalNonFix   int            `json:"total_nonfixture"`
-	LastActivity  string         `json:"last_activity_day"`
+	// BT-076: deferred rows stay in OpenCount's search surface but must not
+	// inflate the actionable numbers — OpenCount here is the actionable
+	// open tally the completion % and burndown headline read, so deferred
+	// rows are counted separately in DeferredCount and EXCLUDED from
+	// OpenCount. Their status_counts entries keep their status.
+	DeferredCount int    `json:"deferred_count"`
+	TotalNonFix   int    `json:"total_nonfixture"`
+	LastActivity  string `json:"last_activity_day"`
 }
 
 // BoardPayload is one board's entry in the report payload (6.2). Tasks and
@@ -218,10 +224,15 @@ func derive(d *boardData) Derived {
 
 	// 3.9 status/priority counts: fixture rows EXCLUDED (stats defaults).
 	for _, t := range tasks {
+		// BT-076: deferred rows keep their status/priority tallies but do
+		// not count as open actionable work.
 		der.StatusCounts[t.status]++
 		if t.status == "complete" {
 			der.CompleteCount++
-		} else {
+		}
+		if board.RowIsDeferred(t.row) {
+			der.DeferredCount++
+		} else if t.status != "complete" {
 			der.OpenCount++
 		}
 		if t.priority != nil {

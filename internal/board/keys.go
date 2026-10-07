@@ -117,6 +117,13 @@ var sanctionedExtras = []string{
 	"repo",
 	"tick",
 	"ch:trace",
+	// BT-076: the owner-deferral flag. Written by `create --deferred` and
+	// `update --deferred true|false`; a deferred row stays searchable and
+	// returnable in every result set but must not inflate the pending /
+	// actionable tallies (stats counts it separately). Sanctioned here —
+	// not aliased onto blocked/complete — because deferral is its own
+	// lifecycle state the status vocabulary has no member for.
+	"deferred",
 }
 
 // SanctionedTaskRowKeys is the full allowed set: the create schema plus the

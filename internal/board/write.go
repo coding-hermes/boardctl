@@ -204,6 +204,14 @@ type TaskRowSpec struct {
 	Branch   *string
 	Sessions *[]string
 
+	// BT-076: owner-deferral flag, same nil-untouched discipline as the
+	// fields above. nil (flag omitted) writes NO deferred key at all — a
+	// row without the key is not deferred by definition. A non-nil
+	// pointer is authoritative and IS written, including false (an
+	// explicit --deferred false un-defers a row by writing
+	// deferred:false; it never deletes the key).
+	Deferred *bool
+
 	// BT-022: prevalidated raw row for the import path. When Raw is set,
 	// Create still performs every check below (id format, duplicate id,
 	// status/priority vocabulary, depends_on existence) but appends these
@@ -414,6 +422,15 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 			if !IsSanctionedTaskKey(k) {
 				continue
 			}
+			// BT-076: the deferred flag is NEVER neutral-mirrored — a null
+			// placeholder would create the key on rows the flag was omitted
+			// for, and "rows without the key are not deferred" is the
+			// contract. When the caller names the flag it is appended via the
+			// user-keys path below; when they omit it the new row carries no
+			// deferred key at all, no matter what the mirrored row held.
+			if k == "deferred" && spec.Deferred == nil {
+				continue
+			}
 			row.Keys = append(row.Keys, k)
 			row.Vals[k] = neutral(k)
 		}
@@ -463,6 +480,9 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.Sessions != nil {
 		overrides["sessions"] = *spec.Sessions
 	}
+	if spec.Deferred != nil {
+		overrides["deferred"] = *spec.Deferred
+	}
 	overrides["created_at"] = nowStr
 	overrides["updated_at"] = nowStr
 	for k, v := range overrides {
@@ -473,7 +493,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 	}
 	// Keys the user asked for but the mirrored schema lacks: append at end.
-	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions"} {
+	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred"} {
 		if v, ok := overrides[k]; ok && !row.Has(k) {
 			if err := set(k, v); err != nil {
 				return "", err
@@ -675,6 +695,12 @@ type UpdateSpec struct {
 	Worktree *string
 	Branch   *string
 	Sessions *[]string
+	// BT-076: owner-deferral flag, same nil-untouched discipline. nil
+	// leaves the key alone (never creating it, never clearing a value
+	// already on the row); a non-nil pointer sets it — including false,
+	// which is how a deferred row is un-deferred (the key is written as
+	// false, never deleted).
+	Deferred *bool
 	// DF-BOARDCTL-13: priority + SG-126 run evidence, same nil-untouched
 	// discipline. Priority rides create's BT-007 write-time gate verbatim
 	// (normalize bare digits/case variants, reject the rest) — BT-060 left
@@ -882,6 +908,14 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
+	// BT-076: --deferred writes the boolean verbatim. Unlike the string
+	// flags the CLI resolves omission to nil itself (an empty flag value
+	// is a parse error), so nil here really means "flag absent".
+	if spec.Deferred != nil {
+		if err := set("deferred", *spec.Deferred); err != nil {
+			return nil, err
+		}
+	}
 	// DF-BOARDCTL-13: priority goes through the SAME write-time gate as
 	// create (BT-007) — bare digits ("1") and case variants ("p2") map onto
 	// the canonical P0-P5 set, anything else fails the whole update with
@@ -922,7 +956,7 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		}
 	}
 	if len(changed) == 0 && !spec.Normalize {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id) or --normalize")
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))

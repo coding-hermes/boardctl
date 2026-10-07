@@ -52,12 +52,12 @@ commands:
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
           [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
-          [--session ID]...   (a re-detected finding is REFUSED with exit 2)
+          [--session ID]... [--deferred]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
           [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
           [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
-          [--evidence-run-id RUN] [--normalize] [--force]
+          [--evidence-run-id RUN] [--deferred true|false] [--normalize] [--force]
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N] [--no-tick-write]
@@ -641,11 +641,15 @@ func cmdCreate(dir string, args []string) error {
 	branch := fs.String("branch", "", "git branch of --worktree, e.g. wt/cht-031")
 	var sessions stringListFlag
 	fs.Var(&sessions, "session", "Hermes session id that worked this task (repeatable: --session A --session B records the ordered array)")
+	// BT-076: bool flag — a deferred row stays searchable but is excluded
+	// from the actionable/pending tally (stats). Takes no value, so it must
+	// NOT join the reorderArgs valueFlags list (same as --force).
+	deferred := fs.Bool("deferred", false, "file the task as deferred (stays searchable; excluded from actionable counts)")
 	force := fs.Bool("force", false, "write the id even if it violates the fleet id format (also files a duplicate finding as a variant)")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--deferred] [--force] [flags] [-C dir]\n")
 		fmt.Fprintf(fs.Output(), "\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n")
 		fmt.Fprintf(fs.Output(), "          -review → P4, -docs/-readme → P5. An explicit --priority\n")
 		fmt.Fprintf(fs.Output(), "          always wins (BT-071).\n")
@@ -690,6 +694,9 @@ func cmdCreate(dir string, args []string) error {
 		list := []string(sessions)
 		spec.Sessions = &list
 	}
+	if *deferred {
+		spec.Deferred = deferred
+	}
 	if *complexity != "" {
 		n, err := parseIntFlag("--complexity", *complexity)
 		if err != nil {
@@ -709,7 +716,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session", "priority", "evidence-run-id"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -740,6 +747,12 @@ func cmdUpdate(dir string, args []string) error {
 	// priority is rejected by the same write-time gate create uses.
 	priority := fs.String("priority", "", "priority (P0-P5; bare 0-5 and case variants are normalized; omitted = leave untouched)")
 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence on the existing row's detail (SG-126)")
+	// BT-076: value flag taking true|false (strconv.ParseBool spellings),
+	// NOT a bare bool — un-deferring needs the explicit false, which a bare
+	// bool flag cannot express. Omitted = the row's deferred key is
+	// untouched. Takes a value, so it MUST join the reorderArgs valueFlags
+	// list.
+	deferred := fs.String("deferred", "", "deferred true|false (a deferred row stays searchable but is excluded from actionable counts; omitted = leave untouched)")
 	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
 	// to their canonical forms (read-alias fix path). Takes no value, so it
 	// must NOT join the reorderArgs valueFlags list.
@@ -750,7 +763,7 @@ func cmdUpdate(dir string, args []string) error {
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
-		fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--worktree PATH] [--branch NAME]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--worktree PATH] [--branch NAME]\n")
 		fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
@@ -774,7 +787,7 @@ func cmdUpdate(dir string, args []string) error {
 	// --normalize alone satisfies the change-flag gate and needs no --force
 	// beyond the fleet-id escape hatch.
 	if *normalize {
-		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session", "priority", "evidence-run-id"} {
+		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id"} {
 			if fs.Lookup(f).Value.String() != "" {
 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
 			}
@@ -821,6 +834,17 @@ func cmdUpdate(dir string, args []string) error {
 	}
 	if *evidenceRunID != "" {
 		spec.EvidenceRunID = *evidenceRunID
+	}
+	// BT-076: --deferred true|false via strconv.ParseBool — the contract's
+	// parse rule. Any non-boolean spelling ("yes", "1" is accepted by
+	// ParseBool and fine; "maybe") fails the update as a usage error with
+	// NOTHING written. An omitted flag stays nil (the key is untouched).
+	if *deferred != "" {
+		dv, err := strconv.ParseBool(*deferred)
+		if err != nil {
+			return fmt.Errorf("--deferred: %q is not a boolean (valid: true, false; strconv.ParseBool spellings accepted: 1, t, T, TRUE, 0, f, F, FALSE)", *deferred)
+		}
+		spec.Deferred = &dv
 	}
 	if *worktree != "" {
 		spec.Worktree = worktree

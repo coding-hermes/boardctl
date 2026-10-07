@@ -350,10 +350,19 @@ type Stats struct {
 	Total    int            `json:"total"`
 	Status   map[string]int `json:"status"`
 	Priority map[string]int `json:"priority"`
+	// BT-076: deferred rows are counted SEPARATELY and are excluded from
+	// Actionable: a deferred row remains searchable and keeps its status
+	// tally (Status keeps counting it), but it must not read as pending
+	// work a foreman should pick up. Actionable = non-deferred rows whose
+	// status resolves to pending.
+	Deferred   int `json:"deferred"`
+	Actionable int `json:"actionable"`
 }
 
 // ComputeStats tallies counts by status and by priority (string form; numeric
-// priorities like 1/2/3 appear as "1"/"2"/"3", distinct from "P1").
+// priorities like 1/2/3 appear as "1"/"2"/"3", distinct from "P1"). BT-076:
+// deferred rows keep their status/priority tallies but ride the separate
+// Deferred count and are excluded from Actionable.
 // DF-BOARDCTL-9: in SkipBad mode the underlying reads are tolerant; bad lines
 // ride the skipped-line evidence instead of aborting the tally.
 func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
@@ -371,6 +380,11 @@ func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
 			continue
 		}
 		st.Total++
+		if RowIsDeferred(r) {
+			st.Deferred++
+		} else if NormalizeStatus(r.String("status")) == "pending" {
+			st.Actionable++
+		}
 		status := NormalizeStatus(r.String("status"))
 		if status == "" {
 			status = "(none)"
@@ -381,6 +395,20 @@ func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
 		}
 	}
 	return st, nil
+}
+
+// RowIsDeferred reports whether a task row carries the BT-076 deferred flag
+// as a truthy boolean. Mirrors priorityLabel's style: the raw bytes are read
+// directly; null/absent/false (and any non-boolean value, which validate
+// warns about) read as NOT deferred. The bare literals true/True are the
+// only accepted shapes.
+func RowIsDeferred(r *Row) bool {
+	raw := r.Get("deferred")
+	if raw == nil {
+		return false
+	}
+	return bytes.Equal(bytes.TrimSpace(raw), []byte("true")) ||
+		bytes.Equal(bytes.TrimSpace(raw), []byte("True"))
 }
 
 // priorityLabel renders a row's priority as its display string: strings as-is
@@ -422,6 +450,8 @@ func SortedKeys[V any](m map[string]V) []string {
 func (s *Stats) RenderText() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("total tasks: %d\n", s.Total))
+	_, _ = fmt.Fprintf(&sb, "actionable: %d\n", s.Actionable)
+	_, _ = fmt.Fprintf(&sb, "deferred: %d\n", s.Deferred)
 	sb.WriteString("by status:\n")
 	for _, k := range SortedKeys(s.Status) {
 		sb.WriteString(fmt.Sprintf("  %-12s %d\n", k, s.Status[k]))
