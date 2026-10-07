@@ -124,6 +124,16 @@ var sanctionedExtras = []string{
 	// not aliased onto blocked/complete — because deferral is its own
 	// lifecycle state the status vocabulary has no member for.
 	"deferred",
+	// BT-077: plural work-artifact associations — the multi-value twins of
+	// the singular worktree/branch fields. pull_requests holds validated
+	// association objects ({number}, {url}, or both — GitHub PR identity,
+	// normalized from a bare number or a PR URL); branches and worktrees
+	// hold plain non-empty strings. All three are arrays, additive
+	// (update merges, never overwrites), and independent of the singular
+	// fields, which stay on every row that carries them.
+	"pull_requests",
+	"branches",
+	"worktrees",
 }
 
 // SanctionedTaskRowKeys is the full allowed set: the create schema plus the

@@ -212,6 +212,21 @@ type TaskRowSpec struct {
 	// deferred:false; it never deletes the key).
 	Deferred *bool
 
+	// BT-077: plural work-artifact associations — the raw CLI string for
+	// ONE element of ONE dimension (nil = flag absent, nothing written;
+	// the singular worktree/branch fields and sessions above are never
+	// touched by these). The value is validated at the create call site
+	// via ValidateAssociationValue before Create runs, so a malformed
+	// element (a non-GitHub PR URL, "bad id!", an empty branch) aborts
+	// the whole create with nothing written. A dimension may be named
+	// several times (--pull-request 21 --pull-request 22): every flag
+	// occurrence appends one element to that dimension's array in CLI
+	// order. AssocDim names the dimension; AssocValues carries ONE OR
+	// MORE raw CLI strings (one per repeated flag occurrence) that are
+	// each validated and merged onto the row in CLI order.
+	AssocDim    string
+	AssocValues []string
+
 	// BT-022: prevalidated raw row for the import path. When Raw is set,
 	// Create still performs every check below (id format, duplicate id,
 	// status/priority vocabulary, depends_on existence) but appends these
@@ -480,6 +495,20 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.Sessions != nil {
 		overrides["sessions"] = *spec.Sessions
 	}
+	// BT-077: the create-path association element. The CLI validated the
+	// value and named its dimension; the canonical element merges onto the
+	// fresh row as an appended key (Create builds a fresh row, so there is
+	// nothing to preserve, but the same merge machinery runs for
+	// uniformity with update).
+	for _, av := range spec.AssocValues {
+		elem, verr := ValidateAssociationValue(spec.AssocDim, av)
+		if verr != nil {
+			return "", verr
+		}
+		if _, aerr := MergeAssociation(row, spec.AssocDim, elem, style); aerr != nil {
+			return "", aerr
+		}
+	}
 	if spec.Deferred != nil {
 		overrides["deferred"] = *spec.Deferred
 	}
@@ -701,6 +730,16 @@ type UpdateSpec struct {
 	// which is how a deferred row is un-deferred (the key is written as
 	// false, never deleted).
 	Deferred *bool
+	// BT-077: the update-path association elements, same nil-untouched
+	// discipline. AssocDim names the dimension (pull_requests, branches,
+	// worktrees); AssocValues carries ONE OR MORE raw CLI strings (one
+	// per repeated flag occurrence). Empty = flag absent, every dimension
+	// untouched. Each value is validated and MERGED into its dimension in
+	// order: existing elements and all other keys survive (never a
+	// sibling overwrite), an already-present element is an idempotent
+	// no-op reporting no change.
+	AssocDim    string
+	AssocValues []string
 	// DF-BOARDCTL-13: priority + SG-126 run evidence, same nil-untouched
 	// discipline. Priority rides create's BT-007 write-time gate verbatim
 	// (normalize bare digits/case variants, reject the rest) — BT-060 left
@@ -916,6 +955,32 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
+	// BT-077: --pull-request/--branch-assoc/--worktree-assoc MERGE one
+	// element into its dimension. Every other key on the row — including
+	// the other association dimensions and the other elements of this one —
+	// is preserved byte-verbatim (MergeAssociation only rewrites this
+	// dimension's array); an already-present element is a no-op that
+	// reports no change, so a repeated flag value stays idempotent. The
+	// malformed value (a non-GitHub PR URL, "bad id!", an empty branch)
+	// fails the whole update with NOTHING written — the error names the
+	// dimension and the offending value.
+	anyAdded := false
+	for _, av := range spec.AssocValues {
+		elem, verr := ValidateAssociationValue(spec.AssocDim, av)
+		if verr != nil {
+			return nil, verr
+		}
+		added, aerr := MergeAssociation(target, spec.AssocDim, elem, style)
+		if aerr != nil {
+			return nil, aerr
+		}
+		if added {
+			anyAdded = true
+		}
+	}
+	if anyAdded {
+		changed = append(changed, spec.AssocDim)
+	}
 	// DF-BOARDCTL-13: priority goes through the SAME write-time gate as
 	// create (BT-007) — bare digits ("1") and case variants ("p2") map onto
 	// the canonical P0-P5 set, anything else fails the whole update with
@@ -955,8 +1020,8 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
-	if len(changed) == 0 && !spec.Normalize {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred) or --normalize")
+	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 {
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))

@@ -52,11 +52,15 @@ commands:
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
           [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
-          [--session ID]... [--deferred]   (a re-detected finding is REFUSED with exit 2)
+          [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
           [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
           [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
+          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]...
+          (repeatable; each merges one element into its pull_requests/
+          branches/worktrees dimension — existing elements, the other
+          dimensions, and the singular worktree/branch fields survive)
           [--evidence-run-id RUN] [--deferred true|false] [--normalize] [--force]
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
@@ -622,7 +626,7 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "evidence-run-id", "worktree", "branch", "session"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "evidence-run-id", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
@@ -641,6 +645,18 @@ func cmdCreate(dir string, args []string) error {
 	branch := fs.String("branch", "", "git branch of --worktree, e.g. wt/cht-031")
 	var sessions stringListFlag
 	fs.Var(&sessions, "session", "Hermes session id that worked this task (repeatable: --session A --session B records the ordered array)")
+	// BT-077: the plural association dimensions, create-side. Each
+	// repeatable flag appends ONE element to ONE dimension (merge
+	// semantics — create builds a fresh row, so this is plain append);
+	// the singular worktree/branch above are untouched. Values are
+	// validated here before the board is opened: a malformed element
+	// (a non-GitHub PR URL, "bad id!", an empty branch) is a usage
+	// failure with nothing written. Takes values, so all three join the
+	// reorderArgs valueFlags list.
+	var prFlags, brFlags, wtFlags stringListFlag
+	fs.Var(&prFlags, "pull-request", "associate a GitHub PR (repeatable; bare number 123 or PR URL https://github.com/owner/repo/pull/123; appends to pull_requests)")
+	fs.Var(&brFlags, "assoc-branch", "associate a git branch (repeatable; appends to branches)")
+	fs.Var(&wtFlags, "assoc-worktree", "associate a git worktree path (repeatable; appends to worktrees)")
 	// BT-076: bool flag — a deferred row stays searchable but is excluded
 	// from the actionable/pending tally (stats). Takes no value, so it must
 	// NOT join the reorderArgs valueFlags list (same as --force).
@@ -649,7 +665,7 @@ func cmdCreate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--deferred] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--force] [flags] [-C dir]\n")
 		fmt.Fprintf(fs.Output(), "\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n")
 		fmt.Fprintf(fs.Output(), "          -review → P4, -docs/-readme → P5. An explicit --priority\n")
 		fmt.Fprintf(fs.Output(), "          always wins (BT-071).\n")
@@ -694,6 +710,49 @@ func cmdCreate(dir string, args []string) error {
 		list := []string(sessions)
 		spec.Sessions = &list
 	}
+	if len(prFlags) > 0 || len(brFlags) > 0 || len(wtFlags) > 0 {
+		// BT-077 create-side association flags. Create builds a fresh
+		// row, so each dimension appends once; a single create carries
+		// ONE dimension's elements (the merge machinery takes one
+		// dimension per call) — the CLI validates every element up
+		// front and rejects a mixed-dimension create with a named
+		// error instead of silently dropping flags.
+		dims := 0
+		for _, n := range []int{len(prFlags), len(brFlags), len(wtFlags)} {
+			if n > 0 {
+				dims++
+			}
+		}
+		if dims > 1 {
+			return fmt.Errorf("create: --pull-request/--assoc-branch/--assoc-worktree apply one dimension per invocation — run a second create or update for the next dimension")
+		}
+		switch {
+		case len(prFlags) > 0:
+			for _, v := range prFlags {
+				if _, err := board.ValidateAssociationValue(board.PullRequestsKey, v); err != nil {
+					return err
+				}
+			}
+			spec.AssocDim = board.PullRequestsKey
+			spec.AssocValues = []string(prFlags)
+		case len(brFlags) > 0:
+			for _, v := range brFlags {
+				if _, err := board.ValidateAssociationValue(board.BranchesKey, v); err != nil {
+					return err
+				}
+			}
+			spec.AssocDim = board.BranchesKey
+			spec.AssocValues = []string(brFlags)
+		default:
+			for _, v := range wtFlags {
+				if _, err := board.ValidateAssociationValue(board.WorktreesKey, v); err != nil {
+					return err
+				}
+			}
+			spec.AssocDim = board.WorktreesKey
+			spec.AssocValues = []string(wtFlags)
+		}
+	}
 	if *deferred {
 		spec.Deferred = deferred
 	}
@@ -716,7 +775,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id", "pull-request", "assoc-branch", "assoc-worktree"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -753,6 +812,17 @@ func cmdUpdate(dir string, args []string) error {
 	// untouched. Takes a value, so it MUST join the reorderArgs valueFlags
 	// list.
 	deferred := fs.String("deferred", "", "deferred true|false (a deferred row stays searchable but is excluded from actionable counts; omitted = leave untouched)")
+	// BT-077: the plural association dimensions. Each repeatable flag
+	// appends ONE element to ONE dimension — merge semantics, never a
+	// sibling overwrite: existing PRs/branches/worktrees (and the singular
+	// worktree/branch fields and sessions) all survive. A value that
+	// fails validation (a non-GitHub PR URL, "bad id!", an empty branch)
+	// fails the update with NOTHING written. Takes values, so all three
+	// join the reorderArgs valueFlags list.
+	var prFlags, brFlags, wtFlags stringListFlag
+	fs.Var(&prFlags, "pull-request", "associate a GitHub PR (repeatable; bare number 123 or PR URL https://github.com/owner/repo/pull/123; MERGES into pull_requests, never overwrites)")
+	fs.Var(&brFlags, "assoc-branch", "associate a git branch (repeatable; MERGES into branches, never overwrites)")
+	fs.Var(&wtFlags, "assoc-worktree", "associate a git worktree path (repeatable; MERGES into worktrees, never overwrites)")
 	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
 	// to their canonical forms (read-alias fix path). Takes no value, so it
 	// must NOT join the reorderArgs valueFlags list.
@@ -764,7 +834,8 @@ func cmdUpdate(dir string, args []string) error {
 		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--worktree PATH] [--branch NAME]\n")
-		fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... (repeatable; each MERGES one element into its dimension — pull_requests/branches/worktrees — never overwriting existing elements or the other dimensions)\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -855,6 +926,54 @@ func cmdUpdate(dir string, args []string) error {
 	if len(sessions) > 0 {
 		list := []string(sessions)
 		spec.Sessions = &list
+	}
+	// BT-077: the association dimensions go through one shared merge arm —
+	// the FIRST dimension with a flag occurrence wins the spec slot, so
+	// mixed dimensions are applied one update per dimension (a single
+	// update cannot name two dimensions at once; the CLI documents that
+	// explicitly rather than silently dropping). Every value is validated
+	// HERE, before the board is even opened, so a malformed element is a
+	// pure usage failure with nothing written.
+	assocSet := func(dim string, vals stringListFlag) error {
+		for _, v := range vals {
+			if _, err := board.ValidateAssociationValue(dim, v); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	switch {
+	case len(prFlags) > 0 && (len(brFlags) > 0 || len(wtFlags) > 0):
+		return fmt.Errorf("update: --pull-request/--assoc-branch/--assoc-worktree apply one dimension per invocation — run a second update for the next dimension")
+	case len(brFlags) > 0 && len(wtFlags) > 0:
+		return fmt.Errorf("update: --pull-request/--assoc-branch/--assoc-worktree apply one dimension per invocation — run a second update for the next dimension")
+	}
+	if len(prFlags) > 0 {
+		if err := assocSet(board.PullRequestsKey, prFlags); err != nil {
+			return err
+		}
+		spec.AssocDim = board.PullRequestsKey
+		spec.AssocValues = []string(prFlags)
+	}
+	if len(brFlags) > 0 {
+		if err := assocSet(board.BranchesKey, brFlags); err != nil {
+			return err
+		}
+		if spec.AssocDim != "" {
+			return fmt.Errorf("update: only one association dimension per invocation (--pull-request/--assoc-branch/--assoc-worktree)")
+		}
+		spec.AssocDim = board.BranchesKey
+		spec.AssocValues = []string(brFlags)
+	}
+	if len(wtFlags) > 0 {
+		if err := assocSet(board.WorktreesKey, wtFlags); err != nil {
+			return err
+		}
+		if spec.AssocDim != "" {
+			return fmt.Errorf("update: only one association dimension per invocation (--pull-request/--assoc-branch/--assoc-worktree)")
+		}
+		spec.AssocDim = board.WorktreesKey
+		spec.AssocValues = []string(wtFlags)
 	}
 	changed, err := b.UpdateTask(fs.Arg(0), spec)
 	if err != nil {

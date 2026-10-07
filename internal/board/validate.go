@@ -258,6 +258,33 @@ func (b *Board) validateTasks(rep *Report) {
 					idx+1, id, jsonKindName(raw))
 			}
 		}
+		// BT-077: the plural association dimensions. The write paths
+		// (create/update) validate every element before anything lands,
+		// so a malformed element on a row is hand-edited or legacy drift
+		// — an itemized WARNING per offending element, not a failure,
+		// for the same reason the deferred/depends_on/priority checks
+		// above warn: live boards must stay exit-0 while the drift is
+		// visible and repairable. The row reads malformed elements as
+		// "not present in that dimension" (AssociationElems skips them);
+		// a NON-ARRAY dimension value warns it was treated as no
+		// associations. Canonical rows (all elements validate, correct
+		// array shape) stay silent.
+		for _, dim := range AssociationKeys {
+			raw := row.Get(dim)
+			if raw == nil {
+				continue
+			}
+			if kind := jsonKindName(raw); kind != "array" {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): %s is not an array (%s) — treated as no associations (writes store an array of validated elements)",
+					idx+1, id, dim, kind)
+				continue
+			}
+			if _, ok := AssociationElems(row, dim); !ok {
+				bad := AssociationBadIndex(row, dim)
+				rep.Add("warn", "tasks.jsonl line %d (task %s): %s element [%d] fails the association schema — pull_requests elements must be a GitHub PR URL or a bare PR number (normalized to {\"number\"[,\"url\"]}); branches/worktrees elements must be non-empty strings; the malformed element is treated as absent (hand-edit the row or rewrite via boardctl update)",
+					idx+1, id, dim, bad)
+			}
+		}
 		// BT-056: the row's KEY SET must stay inside the declared canon
 		// (keys.go). Until this check existed, "the row parsed" was the only
 		// shape test, so the fleet drifted to ~230 distinct keys — one-key
