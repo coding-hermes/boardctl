@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.13.0
+version: 1.14.0
 date: 2026-10-06
 category: software-development
 ---
@@ -525,3 +525,24 @@ fails the workflow.
 (259–1163 rows; 43.0ms ± 1.8 validate on the 1163-row hermes-dagger board).
 Render of a 53-task board: 13.6ms ± 0.8. Full 53-board fleet sweep: ~624ms.
 Boards are tiny; there is no need to batch or cache.
+
+### Run-20 lessons (2026-10-09, BT-076/077/UI surface)
+
+- `create --deferred` / `update --deferred true|false` are HEAD-only until the next
+  release; the README quickstart's Current-release pin (v0.1.10) rejects both flags.
+  On any checkout, verify flag availability against `boardctl <cmd> --help`, not the
+  README.
+- Plural association flags (`--pull-request`, `--assoc-branch`, `--assoc-worktree`)
+  merge ONE dimension per invocation; combining dimensions in a single update is a
+  usage error. Repeatable: each flag instance appends/merges one element; duplicate
+  elements are kept once; singular worktree/branch and other dimensions survive.
+- `update --deferred false` stores an explicit `"deferred":false` key (does not
+  remove it); stats/read semantics are identical to key-absence.
+- Hand-edited non-boolean `deferred` values validate as WARN (treated as not
+  deferred) — the report parser flags unparseable created_at/timestamps the same
+  way; validate does NOT warn on unparseable created_at (gap filed DF-BOARDCTL-27).
+- `serve` takes `--addr 127.0.0.1:PORT`, not `--port`. Verify the port you curl is
+  actually boardctl's (`ss -ltnp`) — shared dev hosts carry foreign listeners.
+- `serve /ui` is the fastest integrity cross-check for a board: upload the folder or
+  zip, read the parse-warning notes panel, and compare TASKS/OPEN/COMPLETE against
+  an independent `jq` census before trusting any report number.

@@ -521,3 +521,22 @@ evidence.**
   `$HOME` on the agent.
 - The dogfood log is append-only by convention — a wholesale rewrite of the
   file clobbers 8 prior runs; restore from `git show HEAD:` and re-append.
+
+## Run-20 addendum (2026-10-09) — why the deferred/association features are the right shape, and where the seams are
+
+BT-076 (deferred) and BT-077 (plural associations) both follow the nil-untouched
+discipline the board engine already uses for worktree fields: an omitted flag never
+creates or changes the key. That is what makes byte-stable diffs possible when
+sibling lanes write the same board — a writer that does not know about `deferred`
+cannot clobber it. The seams found by real use:
+
+1. The README teaches HEAD behavior while the release pin serves v0.1.10 — the doc
+   surface and the artifact surface moved at different speeds. The fix is a release,
+   not a doc rewrite (DF-BOARDCTL-26).
+2. Two integrity surfaces (validate, report parser) disagree on what counts as
+   corrupt: the report parser flags unparseable/empty created_at and excludes those
+   rows from time metrics; validate says OK. The repo's own board is the proof —
+   two rows written 09-23 with `2026-09-09-22T...` timestamps sat through 16 days
+   of green validates (DF-BOARDCTL-27).
+3. The zip upload path in the browser now has a full live proof (run 20, CDP file
+   input + real submit) — DF-BOARDCTL-6's "unverifiable" premise is closed.
