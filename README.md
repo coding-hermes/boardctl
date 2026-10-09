@@ -789,6 +789,42 @@ boardctl -C ~/myproject update FEAT-3 --deferred false   # un-defer
 boardctl -C ~/myproject stats    # total, actionable, deferred: separate lines
 ```
 
+### Association fields (BT-077)
+
+Task rows can carry three plural association arrays: `pull_requests`,
+`branches`, and `worktrees`. Write them with three repeatable flags on
+`create` and `update` alike — `--pull-request PR` (a bare PR number
+`123` or a GitHub PR URL `https://github.com/owner/repo/pull/123`),
+`--assoc-branch B` (a branch name) and `--assoc-worktree PATH` (a
+worktree path, stored verbatim; must be non-empty).
+
+- **One dimension per invocation.** A single invocation fills at most
+  ONE of the three dimensions. Mixing flags from two dimensions is a
+  usage error with nothing written: `--pull-request/--assoc-branch/--assoc-worktree
+  apply one dimension per invocation — run a second update for the next
+  dimension`. Repeat the SAME flag to add several elements in one go.
+- **Merge, never overwrite.** On `update` each element MERGES into its
+  dimension's array: elements already on the row survive (a repeated
+  element already present is an idempotent no-op reporting no change),
+  the other two dimensions survive untouched, and the singular
+  `worktree`/`branch` fields are never touched. `create` appends the
+  same way onto the fresh row.
+- **Malformed values fail with nothing written.** A non-GitHub PR URL,
+  a non-positive PR number, or an empty branch/worktree value fails the
+  whole update — the error names the dimension and the offending value,
+  and the row is unchanged.
+- **PR normalization.** A bare number stores `{"number": N}`; a URL
+  stores `{"number": N, "url": "..."}`. Branch and worktree elements
+  are stored as plain strings.
+
+```bash
+# one dimension per invocation — a second update for the next dimension
+boardctl -C ~/myproject update FEAT-3 --pull-request 42 --pull-request 43
+boardctl -C ~/myproject update FEAT-3 --assoc-branch wt/fix-a --assoc-branch wt/fix-b
+boardctl -C ~/myproject update FEAT-3 --assoc-worktree ~/worktrees/fix-a
+boardctl -C ~/myproject show FEAT-3   # pull_requests / branches / worktrees arrays on the row
+```
+
 ## Board topology
 
 ```
