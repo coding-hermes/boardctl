@@ -42,8 +42,8 @@ func seedBT077Board(t *testing.T) *Board {
 	t.Helper()
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id": "AS-1", "title": "plain pending", "status": "pending", "priority": "P2"}` + "\n" +
-			`{"id": "AS-LEG", "title": "legacy singular", "status": "pending", "priority": "P3", "worktree": "/home/me/wt-1", "branch": "wt/as-1", "sessions": ["s1", "s2"]}` + "\n",
+		"tasks.jsonl": `{"id": "AS-1", "title": "plain pending", "status": "pending", "priority": "P2","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id": "AS-LEG", "title": "legacy singular", "status": "pending", "priority": "P3", "worktree": "/home/me/wt-1", "branch": "wt/as-1", "sessions": ["s1", "s2"],"created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id": 1, "timestamp": "2026-10-07 00:00:00", "event_type": "audit", "task_id": null, "actor": "foreman", "detail": null, "tick_number": 1}` + "\n",
 		"board.jsonl":  `{"project": "bt077", "namespace": "bt077", "version": 1, "ticks_total": 1, "ticks_idle": 0, "last_commit": "abc1234"}` + "\n",
 	})
@@ -490,10 +490,10 @@ func TestLegacySingularRowSurvivesEverywhere(t *testing.T) {
 func TestValidateWarnsOnMalformedStoredElements(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id": "AS-OK", "title": "canonical", "status": "pending", "priority": "P2", "pull_requests": [{"number": 21}], "branches": ["feat/a"]}` + "\n" +
-			`{"id": "AS-BADPR", "title": "hand-edited", "status": "pending", "priority": "P2", "pull_requests": [{"number": 21}, "not-an-object"]}` + "\n" +
-			`{"id": "AS-BADSTR", "title": "empty branch", "status": "pending", "priority": "P2", "branches": [""]}` + "\n" +
-			`{"id": "AS-BADSHAPE", "title": "not an array", "status": "pending", "priority": "P2", "worktrees": "/tmp/w1"}` + "\n",
+		"tasks.jsonl": `{"id": "AS-OK", "title": "canonical", "status": "pending", "priority": "P2", "pull_requests": [{"number": 21}], "branches": ["feat/a"],"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id": "AS-BADPR", "title": "hand-edited", "status": "pending", "priority": "P2", "pull_requests": [{"number": 21}, "not-an-object"],"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id": "AS-BADSTR", "title": "empty branch", "status": "pending", "priority": "P2", "branches": [""],"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id": "AS-BADSHAPE", "title": "not an array", "status": "pending", "priority": "P2", "worktrees": "/tmp/w1","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id": 1, "timestamp": "2026-10-07 00:00:00", "event_type": "audit", "task_id": null, "actor": "foreman", "detail": null, "tick_number": 1}` + "\n",
 		"board.jsonl":  `{"project": "bt077", "namespace": "bt077", "version": 1, "ticks_total": 1, "ticks_idle": 0, "last_commit": "abc1234"}` + "\n",
 	})

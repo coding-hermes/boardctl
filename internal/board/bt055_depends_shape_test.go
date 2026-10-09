@@ -21,15 +21,15 @@ func seedBT055Board(t *testing.T) *Board {
 	t.Helper()
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id":"BT055-ARRAY","title":"canonical empty array","status":"pending","priority":"P2","depends_on":[]}` + "\n" +
-			`{"id":"BT055-ABSENT","title":"key never written","status":"pending","priority":"P2"}` + "\n" +
-			`{"id":"BT055-EMPTYSTR","title":"stringified empty array (the BT-035 shape)","status":"pending","priority":"P2","depends_on":"[]"}` + "\n" +
-			`{"id":"BT055-REF","title":"bare id in a string (BT-019 does not exist on this board)","status":"pending","priority":"P2","depends_on":"BT-019"}` + "\n" +
-			`{"id":"BT055-STRARR","title":"stringified real array","status":"pending","priority":"P2","depends_on":"[\"BT-019\"]"}` + "\n" +
-			`{"id":"BT055-NUM","title":"number where an array belongs","status":"pending","priority":"P2","depends_on":7}` + "\n" +
-			`{"id":"BT055-NULL","title":"explicit null","status":"pending","priority":"P2","depends_on":null}` + "\n" +
-			`{"id":"BT055-OBJ","title":"object where an array belongs","status":"pending","priority":"P2","depends_on":{"0":"BT-019"}}}` + "\n" +
-			`{"id":"BT055-BOOL","title":"boolean where an array belongs","status":"pending","priority":"P2","depends_on":true}` + "\n",
+		"tasks.jsonl": `{"id":"BT055-ARRAY","title":"canonical empty array","status":"pending","priority":"P2","depends_on":[],"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT055-ABSENT","title":"key never written","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT055-EMPTYSTR","title":"stringified empty array (the BT-035 shape)","status":"pending","priority":"P2","depends_on":"[]","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT055-REF","title":"bare id in a string (BT-019 does not exist on this board)","status":"pending","priority":"P2","depends_on":"BT-019","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT055-STRARR","title":"stringified real array","status":"pending","priority":"P2","depends_on":"[\"BT-019\"]","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT055-NUM","title":"number where an array belongs","status":"pending","priority":"P2","depends_on":7,"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT055-NULL","title":"explicit null","status":"pending","priority":"P2","depends_on":null,"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT055-OBJ","title":"object where an array belongs","status":"pending","priority":"P2","depends_on":{"0":"BT-019"},"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT055-BOOL","title":"boolean where an array belongs","status":"pending","priority":"P2","depends_on":true,"created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})

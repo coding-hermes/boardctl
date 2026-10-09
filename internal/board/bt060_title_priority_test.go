@@ -29,15 +29,15 @@ func seedBT060Board(t *testing.T) *Board {
 	t.Helper()
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id":"BT060-MISMATCH","title":"[P1] real title","status":"pending","priority":"P2"}` + "\n" +
-			`{"id":"BT060-AGREE","title":"[P2] aligned","status":"pending","priority":"P2"}` + "\n" +
-			`{"id":"BT060-NOTOKEN","title":"plain title, no token","status":"pending","priority":"P1"}` + "\n" +
-			`{"id":"BT060-BARE","title":"P3 spike","status":"pending","priority":"P0"}` + "\n" +
-			`{"id":"BT060-LOWER","title":"fix [p1] thing","status":"pending","priority":"P2"}` + "\n" +
-			`{"id":"BT060-P4","title":"[P4] paperwork lane","status":"pending","priority":"P2"}` + "\n" +
-			`{"id":"BT060-EMBED","title":"unstick API2 and P10 backlog","status":"pending","priority":"P1"}` + "\n" +
-			`{"id":"BT060-TWO","title":"[P0] a (P3) b","status":"pending","priority":"P2"}` + "\n" +
-			`{"id":"BT060-NOPRIO","title":"[P1] orphan token","status":"pending"}` + "\n",
+		"tasks.jsonl": `{"id":"BT060-MISMATCH","title":"[P1] real title","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT060-AGREE","title":"[P2] aligned","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT060-NOTOKEN","title":"plain title, no token","status":"pending","priority":"P1","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT060-BARE","title":"P3 spike","status":"pending","priority":"P0","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT060-LOWER","title":"fix [p1] thing","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT060-P4","title":"[P4] paperwork lane","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT060-EMBED","title":"unstick API2 and P10 backlog","status":"pending","priority":"P1","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT060-TWO","title":"[P0] a (P3) b","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT060-NOPRIO","title":"[P1] orphan token","status":"pending","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-25 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})

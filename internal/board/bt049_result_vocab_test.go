@@ -17,12 +17,12 @@ func seedBT049Board(t *testing.T) *Board {
 	t.Helper()
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id":"BT049-CIPASS","title":"guard value in ci field","status":"pending","priority":"P2","ci_result":"PASS"}` + "\n" +
-			`{"id":"BT049-GREEN","title":"ci value in guard field","status":"pending","priority":"P2","guard_result":"GREEN"}` + "\n" +
-			`{"id":"BT049-PROSE","title":"free-form prose","status":"pending","priority":"P2","ci_result":"prose nonsense"}` + "\n" +
-			`{"id":"BT049-LOWER","title":"case-tolerant guard","status":"pending","priority":"P2","guard_result":"pass"}` + "\n" +
-			`{"id":"BT049-CIGREEN","title":"canonical ci","status":"pending","priority":"P2","ci_result":"GREEN"}` + "\n" +
-			`{"id":"BT049-ABSENT","title":"results never run","status":"pending","priority":"P2"}` + "\n",
+		"tasks.jsonl": `{"id":"BT049-CIPASS","title":"guard value in ci field","status":"pending","priority":"P2","ci_result":"PASS","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT049-GREEN","title":"ci value in guard field","status":"pending","priority":"P2","guard_result":"GREEN","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT049-PROSE","title":"free-form prose","status":"pending","priority":"P2","ci_result":"prose nonsense","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT049-LOWER","title":"case-tolerant guard","status":"pending","priority":"P2","guard_result":"pass","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT049-CIGREEN","title":"canonical ci","status":"pending","priority":"P2","ci_result":"GREEN","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"BT049-ABSENT","title":"results never run","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})

@@ -22,8 +22,8 @@ func seedJunkBoard(t *testing.T) *Board {
 	t.Helper()
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id":"JUNK-1","title":"junk guard","status":"pending","priority":"P2","guard_result":"MAYBE","ci_result":"BANANA","depends_on":["GHOST-9"]}` + "\n" +
-			`{"id":"OK-1","title":"clean","status":"pending","priority":"P2","guard_result":"PASS","ci_result":"GREEN","depends_on":["JUNK-1"]}` + "\n",
+		"tasks.jsonl": `{"id":"JUNK-1","title":"junk guard","status":"pending","priority":"P2","guard_result":"MAYBE","ci_result":"BANANA","depends_on":["GHOST-9"],"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"OK-1","title":"clean","status":"pending","priority":"P2","guard_result":"PASS","ci_result":"GREEN","depends_on":["JUNK-1"],"created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})
@@ -85,7 +85,7 @@ func TestValidateWarnsOnDanglingDependsOn(t *testing.T) {
 func TestValidateErrorsOnNegativeHeaderCounters(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl":  `{"id":"T-1","title":"t","status":"pending","priority":"P2"}` + "\n",
+		"tasks.jsonl":  `{"id":"T-1","title":"t","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":-5,"ticks_idle":0,"last_commit":null}` + "\n",
 	})
@@ -116,7 +116,7 @@ func TestValidateErrorsOnNegativeHeaderCounters(t *testing.T) {
 func TestValidateToleratesLowercaseResults(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl":  `{"id":"T-1","title":"t","status":"pending","priority":"P2","guard_result":"pass","ci_result":"skip"}` + "\n",
+		"tasks.jsonl":  `{"id":"T-1","title":"t","status":"pending","priority":"P2","guard_result":"pass","ci_result":"skip","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})
@@ -156,7 +156,7 @@ func TestValidateTopologyBChecksHeaderCounters(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
 		"tasks.jsonl": `{"project":"legacy","namespace":"legacy","version":1,"ticks_total":-5,"ticks_idle":0}` + "\n" +
-			`{"id":"T-1","title":"t","status":"pending","priority":"P2"}` + "\n",
+			`{"id":"T-1","title":"t","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 	})
 	b, err := Resolve(dir)
@@ -191,7 +191,7 @@ func TestValidateTopologyBClean(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
 		"tasks.jsonl": `{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"cooldown_s":21600,"last_commit":null}` + "\n" +
-			`{"id":"T-1","title":"t","status":"pending","priority":"P2"}` + "\n",
+			`{"id":"T-1","title":"t","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 	})
 	b, err := Resolve(dir)
