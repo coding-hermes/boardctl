@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-28",
+  "task_title": "README documents BT-077 association fields",
+  "task_criteria": [
+    "README subsection covers flags, one-dimension rule, merge semantics; version-check passes"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "54b3724394c0c811b3ed820072d69e1663f61960",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:21PM INF scanned ~3046343 bytes (3.05 MB) in 533ms\n6:21PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 208 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T222432.117447Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.512s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.104s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.015s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T222432.117447Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README subsection covers flags, one-dimension rule, merge semantics; version-check passes: README.md:796-830 adds '### Association fields (BT-077)' covering all three required elements: (1) flags \u2014 README:800-803 documents --pull-request PR (bare number or GitHub URL), --assoc-branch B, --assoc-worktree PATH, matching cmd/boardctl/main.go:823-825; (2) one-dimension rule \u2014 README:805-809 states mixing flags from two dimensions is a usage error with nothing written, quoting the exact error text found at cmd/boardctl/main.go:727,947,949 ('apply one dimension per invocation \u2014 run a second update for the next dimension'); (3) merge semantics \u2014 README:810-815 documents MERGE-never-overwrite, idempotent duplicates, sibling dimensions and singular worktree/branch preserved, matching MergeAssociation in internal/board/associations.go:322-355. Version-check passes: `go test -count=1 -run TestVersioncheck ./internal/versioncheck` => 'ok github.com/coding-hermes/boardctl/internal/versioncheck 0.004s', exit_code 0. Full changed-package suite `go test -count=1 ./cmd/boardctl/... ./internal/board/... ./internal/versioncheck/...` => all 'ok', exit_code 0.\nREADME subsection documents BT-077 flags, one-dimension rule, and merge semantics consistent with the implementation, and the version-check gate passes.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README subsection covers flags, one-dimension rule, merge semantics; version-check passes: README.md:796-830 adds '### Association fields (BT-077)' covering all three required elements: (1) flags \u2014 README:800-803 documents --pull-request PR (bare number or GitHub URL), --assoc-branch B, --assoc-worktree PATH, matching cmd/boardctl/main.go:823-825; (2) one-dimension rule \u2014 README:805-809 states mixing flags from two dimensions is a usage error with nothing written, quoting the exact error text found at cmd/boardctl/main.go:727,947,949 ('apply one dimension per invocation \u2014 run a second update for the next dimension'); (3) merge semantics \u2014 README:810-815 documents MERGE-never-overwrite, idempotent duplicates, sibling dimensions and singular worktree/branch preserved, matching MergeAssociation in internal/board/associations.go:322-355. Version-check passes: `go test -count=1 -run TestVersioncheck ./internal/versioncheck` => 'ok github.com/coding-hermes/boardctl/internal/versioncheck 0.004s', exit_code 0. Full changed-package suite `go test -count=1 ./cmd/boardctl/... ./internal/board/... ./internal/versioncheck/...` => all 'ok', exit_code 0.\nREADME subsection documents BT-077 flags, one-dimension rule, and merge semantics consistent with the implementation, and the version-check gate passes.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README subsection covers flags, one-dimension rule, merge semantics; version-check passes",
+                "status": "PASS",
+                "detail": "README.md:796-830 adds '### Association fields (BT-077)' covering all three required elements: (1) flags \u2014 README:800-803 documents --pull-request PR (bare number or GitHub URL), --assoc-branch B, --assoc-worktree PATH, matching cmd/boardctl/main.go:823-825; (2) one-dimension rule \u2014 README:805-809 states mixing flags from two dimensions is a usage error with nothing written, quoting the exact error text found at cmd/boardctl/main.go:727,947,949 ('apply one dimension per invocation \u2014 run a second update for the next dimension'); (3) merge semantics \u2014 README:810-815 documents MERGE-never-overwrite, idempotent duplicates, sibling dimensions and singular worktree/branch preserved, matching MergeAssociation in internal/board/associations.go:322-355. Version-check passes: `go test -count=1 -run TestVersioncheck ./internal/versioncheck` => 'ok github.com/coding-hermes/boardctl/internal/versioncheck 0.004s', exit_code 0. Full changed-package suite `go test -count=1 ./cmd/boardctl/... ./internal/board/... ./internal/versioncheck/...` => all 'ok', exit_code 0."
+              }
+            ],
+            "summary": "README subsection documents BT-077 flags, one-dimension rule, and merge semantics consistent with the implementation, and the version-check gate passes."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-28\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README subsection covers flags, one-dimension rule, merge semantics; version-check passes: README.md:796-830 adds '### Association fields (BT-077)' covering all three required elements: (1) flags \u2014 README:800-803 documents --pull-request PR (bare number or GitHub URL), --assoc-branch B, --assoc-worktree PATH, matching cmd/boardctl/main.go:823-825; (2) one-dimension rule \u2014 README:805-809 states mixing flags from two dimensions is a usage error with nothing written, quoting the exact error text found at cmd/boardctl/main.go:727,947,949 ('apply one dimension per invocation \u2014 run a second update for the next dimension'); (3) merge semantics \u2014 README:810-815 documents MERGE-never-overwrite, idempotent duplicates, sibling dimensions and singular worktree/branch preserved, matching MergeAssociation in internal/board/associations.go:322-355. Version-check passes: `go test -count=1 -run TestVersioncheck ./internal/versioncheck` => 'ok github.com/coding-hermes/boardctl/internal/versioncheck 0.004s', exit_code 0. Full changed-package suite `go test -count=1 ./cmd/boardctl/... ./internal/board/... ./internal/versioncheck/...` => all 'ok', exit_code 0.\nREADME subsection documents BT-077 flags, one-dimension rule, and merge semantics consistent with the implementation, and the version-check gate passes.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-09T23:21:42.346012",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-09T23:21:42.359698+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1372,
+        "truncated": false,
+        "source": "git show 54b3724394c0"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-28"
+  }
+}

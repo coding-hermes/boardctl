@@ -1,0 +1,24 @@
+commit 54b3724394c0c811b3ed820072d69e1663f61960
+Merge: ea6ba7e ab241c5
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 9 18:08:21 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 9 18:08:21 2026 -0500
+
+    merge: DF-BOARDCTL-27 — feat: validate warns on unparseable/empty created_at-completed_at (DF-BOARDCTL-27). Addresses DF-BOARDCTL-27.
+
+ cmd/boardctl/df_boardctl_27_test.go            | 145 ++++++++++++++++++
+ internal/board/bt023_idformat_test.go          |   8 +-
+ internal/board/bt049_result_vocab_test.go      |  12 +-
+ internal/board/bt055_depends_shape_test.go     |  18 +--
+ internal/board/bt059_create_schema_test.go     |  22 ++-
+ internal/board/bt060_title_priority_test.go    |  18 +--
+ internal/board/bt077_associations_test.go      |  12 +-
+ internal/board/keys_test.go                    |  22 +--
+ internal/board/sched1572_result_schema_test.go |  26 ++--
+ internal/board/timestamps.go                   | 138 +++++++++++++++++
+ internal/board/timestamps_test.go              | 204 +++++++++++++++++++++++++
+ internal/board/validate.go                     |  13 ++
+ internal/board/validate_test.go                |  12 +-
+ internal/render/df_boardctl_27_test.go         | 136 +++++++++++++++++
+ 14 files changed, 718 insertions(+), 68 deletions(-)

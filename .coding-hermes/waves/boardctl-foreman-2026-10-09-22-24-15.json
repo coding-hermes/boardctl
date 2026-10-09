@@ -1,0 +1,11 @@
+{
+  "scheduler_tick_id": "boardctl-foreman-2026-10-09-22-24-15",
+  "wave_budget": 7,
+  "workers": [
+    {"task": "DF-BOARDCTL-26", "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-26", "branch": "wt/DF-BOARDCTL-26"},
+    {"task": "DF-BOARDCTL-27", "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-27", "branch": "wt/DF-BOARDCTL-27"},
+    {"task": "DF-BOARDCTL-28", "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-28", "branch": "wt/DF-BOARDCTL-28"},
+    {"task": "DF-BOARDCTL-29", "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-29", "branch": "wt/DF-BOARDCTL-29"},
+    {"task": "DF-BOARDCTL-30", "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-30", "branch": "wt/DF-BOARDCTL-30"}
+  ]
+}

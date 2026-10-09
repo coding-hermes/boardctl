@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-27",
+  "task_title": "validate warns on unparseable created_at",
+  "task_criteria": [
+    "validate warns (exit 0) on unparseable/empty created_at using report-parser rules; repo board copy yields exactly 4 warnings; suite green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "54b3724394c0c811b3ed820072d69e1663f61960",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:20PM INF scanned ~3046343 bytes (3.05 MB) in 534ms\n6:20PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 208 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T222432.117447Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.347s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.103s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.015s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T222432.117447Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 validate warns (exit 0) on unparseable/empty created_at using report-parser rules; repo board copy yields exactly 4 warnings; suite green: internal/board/timestamps.go (new) mirrors the report parser: timestampLayouts is byte-identical to internal/render/load.go stampLayouts (16 layouts, verified), ValidTimestamp mirrors parseStamp (TrimSpace-empty-fails), and TimestampFieldFindings mirrors buildTaskRec's exclusion rules (created_at always; completed_at only on non-complete rows; updated_at/dispatched_at/blocked_since when present+broken). internal/board/validate.go:298-303 emits rep.Add(\"warn\", ...) per finding, so severity is warn and exit stays 0. Live CLI on the repo board: `/tmp/boardctl -C .coding-hermes/board validate` \u2192 exit 0, RESULT: OK (18 warning(s)), and `grep -c \"time-based metrics\"` = 4 (RELEASE-2026-09-23-04, RELEASE-2026-09-23-05, DF-BOARDCTL-24, DF-BOARDCTL-25). Parity confirmed by an ad-hoc render test on the repo board: report tsExcl=7 (4 task rows + 3 event rows) and board.TimestampFieldFindings flags exactly the same 4 task rows. Suite green: `go test -count=1 ./...` \u2192 all packages ok (cmd/boardctl 2.490s, internal/board 0.461s, internal/render 0.033s, etc.); all 8 DF-27 tests PASS (TestDFBoardctl27ValidateWarnsOnBadTimestamps, TestDFBoardctl27CleanBoardValidatesQuiet, TestDFBoardctl27GrammarParityWithParseStamp, TestDFBoardctl27ExclusionVerdictParity, TestDFBoardctl27WarnsOnUnparseableCreatedAndCompleted, TestDFBoardctl27CleanBoardZeroTimestampWarns, TestDFBoardctl27CompletedAtFollowsReportFallback, TestDFBoardctl27ValidTimestampGrammar). go vet and gofmt clean.\nvalidate now warns (exit 0) on unparseable/empty created_at using grammar and exclusion rules identical to the report parser, the repo board yields exactly 4 such warnings, and the full test suite is green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 validate warns (exit 0) on unparseable/empty created_at using report-parser rules; repo board copy yields exactly 4 warnings; suite green: internal/board/timestamps.go (new) mirrors the report parser: timestampLayouts is byte-identical to internal/render/load.go stampLayouts (16 layouts, verified), ValidTimestamp mirrors parseStamp (TrimSpace-empty-fails), and TimestampFieldFindings mirrors buildTaskRec's exclusion rules (created_at always; completed_at only on non-complete rows; updated_at/dispatched_at/blocked_since when present+broken). internal/board/validate.go:298-303 emits rep.Add(\"warn\", ...) per finding, so severity is warn and exit stays 0. Live CLI on the repo board: `/tmp/boardctl -C .coding-hermes/board validate` \u2192 exit 0, RESULT: OK (18 warning(s)), and `grep -c \"time-based metrics\"` = 4 (RELEASE-2026-09-23-04, RELEASE-2026-09-23-05, DF-BOARDCTL-24, DF-BOARDCTL-25). Parity confirmed by an ad-hoc render test on the repo board: report tsExcl=7 (4 task rows + 3 event rows) and board.TimestampFieldFindings flags exactly the same 4 task rows. Suite green: `go test -count=1 ./...` \u2192 all packages ok (cmd/boardctl 2.490s, internal/board 0.461s, internal/render 0.033s, etc.); all 8 DF-27 tests PASS (TestDFBoardctl27ValidateWarnsOnBadTimestamps, TestDFBoardctl27CleanBoardValidatesQuiet, TestDFBoardctl27GrammarParityWithParseStamp, TestDFBoardctl27ExclusionVerdictParity, TestDFBoardctl27WarnsOnUnparseableCreatedAndCompleted, TestDFBoardctl27CleanBoardZeroTimestampWarns, TestDFBoardctl27CompletedAtFollowsReportFallback, TestDFBoardctl27ValidTimestampGrammar). go vet and gofmt clean.\nvalidate now warns (exit 0) on unparseable/empty created_at using grammar and exclusion rules identical to the report parser, the repo board yields exactly 4 such warnings, and the full test suite is green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "validate warns (exit 0) on unparseable/empty created_at using report-parser rules; repo board copy yields exactly 4 warnings; suite green",
+                "status": "PASS",
+                "detail": "internal/board/timestamps.go (new) mirrors the report parser: timestampLayouts is byte-identical to internal/render/load.go stampLayouts (16 layouts, verified), ValidTimestamp mirrors parseStamp (TrimSpace-empty-fails), and TimestampFieldFindings mirrors buildTaskRec's exclusion rules (created_at always; completed_at only on non-complete rows; updated_at/dispatched_at/blocked_since when present+broken). internal/board/validate.go:298-303 emits rep.Add(\"warn\", ...) per finding, so severity is warn and exit stays 0. Live CLI on the repo board: `/tmp/boardctl -C .coding-hermes/board validate` \u2192 exit 0, RESULT: OK (18 warning(s)), and `grep -c \"time-based metrics\"` = 4 (RELEASE-2026-09-23-04, RELEASE-2026-09-23-05, DF-BOARDCTL-24, DF-BOARDCTL-25). Parity confirmed by an ad-hoc render test on the repo board: report tsExcl=7 (4 task rows + 3 event rows) and board.TimestampFieldFindings flags exactly the same 4 task rows. Suite green: `go test -count=1 ./...` \u2192 all packages ok (cmd/boardctl 2.490s, internal/board 0.461s, internal/render 0.033s, etc.); all 8 DF-27 tests PASS (TestDFBoardctl27ValidateWarnsOnBadTimestamps, TestDFBoardctl27CleanBoardValidatesQuiet, TestDFBoardctl27GrammarParityWithParseStamp, TestDFBoardctl27ExclusionVerdictParity, TestDFBoardctl27WarnsOnUnparseableCreatedAndCompleted, TestDFBoardctl27CleanBoardZeroTimestampWarns, TestDFBoardctl27CompletedAtFollowsReportFallback, TestDFBoardctl27ValidTimestampGrammar). go vet and gofmt clean."
+              }
+            ],
+            "summary": "validate now warns (exit 0) on unparseable/empty created_at using grammar and exclusion rules identical to the report parser, the repo board yields exactly 4 such warnings, and the full test suite is green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-27\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 validate warns (exit 0) on unparseable/empty created_at using report-parser rules; repo board copy yields exactly 4 warnings; suite green: internal/board/timestamps.go (new) mirrors the report parser: timestampLayouts is byte-identical to internal/render/load.go stampLayouts (16 layouts, verified), ValidTimestamp mirrors parseStamp (TrimSpace-empty-fails), and TimestampFieldFindings mirrors buildTaskRec's exclusion rules (created_at always; completed_at only on non-complete rows; updated_at/dispatched_at/blocked_since when present+broken). internal/board/validate.go:298-303 emits rep.Add(\"warn\", ...) per finding, so severity is warn and exit stays 0. Live CLI on the repo board: `/tmp/boardctl -C .coding-hermes/board validate` \u2192 exit 0, RESULT: OK (18 warning(s)), and `grep -c \"time-based metrics\"` = 4 (RELEASE-2026-09-23-04, RELEASE-2026-09-23-05, DF-BOARDCTL-24, DF-BOARDCTL-25). Parity confirmed by an ad-hoc render test on the repo board: report tsExcl=7 (4 task rows + 3 event rows) and board.TimestampFieldFindings flags exactly the same 4 task rows. Suite green: `go test -count=1 ./...` \u2192 all packages ok (cmd/boardctl 2.490s, internal/board 0.461s, internal/render 0.033s, etc.); all 8 DF-27 tests PASS (TestDFBoardctl27ValidateWarnsOnBadTimestamps, TestDFBoardctl27CleanBoardValidatesQuiet, TestDFBoardctl27GrammarParityWithParseStamp, TestDFBoardctl27ExclusionVerdictParity, TestDFBoardctl27WarnsOnUnparseableCreatedAndCompleted, TestDFBoardctl27CleanBoardZeroTimestampWarns, TestDFBoardctl27CompletedAtFollowsReportFallback, TestDFBoardctl27ValidTimestampGrammar). go vet and gofmt clean.\nvalidate now warns (exit 0) on unparseable/empty created_at using grammar and exclusion rules identical to the report parser, the repo board yields exactly 4 such warnings, and the full test suite is green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-09T23:21:09.731141",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-09T23:21:09.747357+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1372,
+        "truncated": false,
+        "source": "git show 54b3724394c0"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-27"
+  }
+}

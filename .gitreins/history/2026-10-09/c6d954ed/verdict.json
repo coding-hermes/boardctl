@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-29",
+  "task_title": "deferred:false removes key",
+  "task_criteria": [
+    "update --deferred false removes the deferred key; row becomes equivalent to never-deferred; e2e verified"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "54b3724394c0c811b3ed820072d69e1663f61960",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:21PM INF scanned ~3046343 bytes (3.05 MB) in 489ms\n6:21PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 208 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T222432.117447Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.383s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.105s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.017s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T222432.117447Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 update --deferred false removes the deferred key; row becomes equivalent to never-deferred; e2e verified: internal/board/write.go updateTaskLocked: `if *spec.Deferred { set(\"deferred\", true) } else if target.Has(\"deferred\") { target.DeleteKey(\"deferred\"); changed = append(changed, \"deferred\") }` \u2014 false removes the key; new Row.DeleteKey in internal/board/jsonstyle.go:111-129 deletes from Vals and splices Keys preserving order; no-change gate exempts spec.Deferred != nil for idempotent no-op. Fresh tests: `go test -count=1 -v -run 'TestUpdateDeferredFalseRemovesKey|TestUpdateDeferredFalseMatchesNeverDeferred|TestDFBoardctl29UndeferRemovesKeyBinary' ./internal/board/... ./cmd/boardctl/...` \u2192 all PASS (e2e binary test PASS 0.31s, not skipped); full `go test -count=1 ./...` \u2192 all packages ok, exit 0; `go vet` exit 0; LSP diagnostics 0. Independent real-binary e2e: create --deferred then update --deferred false \u2192 row line has 0 'deferred' tokens, and its key set is exactly equal to a never-deferred sibling's key set (equivalent to never-deferred); update --deferred false on a never-deferred row is an idempotent no-op (exit 0, no key created). README.md deferred section documents the removal + no-op.\nupdate --deferred false now deletes the deferred key (Row.DeleteKey), making the row key-set-identical to a never-deferred row, verified by passing unit + real-binary e2e tests and independent manual e2e.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 update --deferred false removes the deferred key; row becomes equivalent to never-deferred; e2e verified: internal/board/write.go updateTaskLocked: `if *spec.Deferred { set(\"deferred\", true) } else if target.Has(\"deferred\") { target.DeleteKey(\"deferred\"); changed = append(changed, \"deferred\") }` \u2014 false removes the key; new Row.DeleteKey in internal/board/jsonstyle.go:111-129 deletes from Vals and splices Keys preserving order; no-change gate exempts spec.Deferred != nil for idempotent no-op. Fresh tests: `go test -count=1 -v -run 'TestUpdateDeferredFalseRemovesKey|TestUpdateDeferredFalseMatchesNeverDeferred|TestDFBoardctl29UndeferRemovesKeyBinary' ./internal/board/... ./cmd/boardctl/...` \u2192 all PASS (e2e binary test PASS 0.31s, not skipped); full `go test -count=1 ./...` \u2192 all packages ok, exit 0; `go vet` exit 0; LSP diagnostics 0. Independent real-binary e2e: create --deferred then update --deferred false \u2192 row line has 0 'deferred' tokens, and its key set is exactly equal to a never-deferred sibling's key set (equivalent to never-deferred); update --deferred false on a never-deferred row is an idempotent no-op (exit 0, no key created). README.md deferred section documents the removal + no-op.\nupdate --deferred false now deletes the deferred key (Row.DeleteKey), making the row key-set-identical to a never-deferred row, verified by passing unit + real-binary e2e tests and independent manual e2e.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "update --deferred false removes the deferred key; row becomes equivalent to never-deferred; e2e verified",
+                "status": "PASS",
+                "detail": "internal/board/write.go updateTaskLocked: `if *spec.Deferred { set(\"deferred\", true) } else if target.Has(\"deferred\") { target.DeleteKey(\"deferred\"); changed = append(changed, \"deferred\") }` \u2014 false removes the key; new Row.DeleteKey in internal/board/jsonstyle.go:111-129 deletes from Vals and splices Keys preserving order; no-change gate exempts spec.Deferred != nil for idempotent no-op. Fresh tests: `go test -count=1 -v -run 'TestUpdateDeferredFalseRemovesKey|TestUpdateDeferredFalseMatchesNeverDeferred|TestDFBoardctl29UndeferRemovesKeyBinary' ./internal/board/... ./cmd/boardctl/...` \u2192 all PASS (e2e binary test PASS 0.31s, not skipped); full `go test -count=1 ./...` \u2192 all packages ok, exit 0; `go vet` exit 0; LSP diagnostics 0. Independent real-binary e2e: create --deferred then update --deferred false \u2192 row line has 0 'deferred' tokens, and its key set is exactly equal to a never-deferred sibling's key set (equivalent to never-deferred); update --deferred false on a never-deferred row is an idempotent no-op (exit 0, no key created). README.md deferred section documents the removal + no-op."
+              }
+            ],
+            "summary": "update --deferred false now deletes the deferred key (Row.DeleteKey), making the row key-set-identical to a never-deferred row, verified by passing unit + real-binary e2e tests and independent manual e2e."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-29\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 update --deferred false removes the deferred key; row becomes equivalent to never-deferred; e2e verified: internal/board/write.go updateTaskLocked: `if *spec.Deferred { set(\"deferred\", true) } else if target.Has(\"deferred\") { target.DeleteKey(\"deferred\"); changed = append(changed, \"deferred\") }` \u2014 false removes the key; new Row.DeleteKey in internal/board/jsonstyle.go:111-129 deletes from Vals and splices Keys preserving order; no-change gate exempts spec.Deferred != nil for idempotent no-op. Fresh tests: `go test -count=1 -v -run 'TestUpdateDeferredFalseRemovesKey|TestUpdateDeferredFalseMatchesNeverDeferred|TestDFBoardctl29UndeferRemovesKeyBinary' ./internal/board/... ./cmd/boardctl/...` \u2192 all PASS (e2e binary test PASS 0.31s, not skipped); full `go test -count=1 ./...` \u2192 all packages ok, exit 0; `go vet` exit 0; LSP diagnostics 0. Independent real-binary e2e: create --deferred then update --deferred false \u2192 row line has 0 'deferred' tokens, and its key set is exactly equal to a never-deferred sibling's key set (equivalent to never-deferred); update --deferred false on a never-deferred row is an idempotent no-op (exit 0, no key created). README.md deferred section documents the removal + no-op.\nupdate --deferred false now deletes the deferred key (Row.DeleteKey), making the row key-set-identical to a never-deferred row, verified by passing unit + real-binary e2e tests and independent manual e2e.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-09T23:22:17.569474",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-09T23:22:17.582304+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1372,
+        "truncated": false,
+        "source": "git show 54b3724394c0"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-29"
+  }
+}

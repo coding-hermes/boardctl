@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-30",
+  "task_title": "favicon 404 eliminated on /ui",
+  "task_criteria": [
+    "icon link present on /ui so browsers stop probing /favicon.ico; test covers it"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "54b3724394c0c811b3ed820072d69e1663f61960",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:22PM INF scanned ~3046343 bytes (3.05 MB) in 491ms\n6:22PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 208 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T222432.117447Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.358s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.095s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.015s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T222432.117447Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 icon link present on /ui so browsers stop probing /favicon.ico; test covers it: cmd/boardctl/ui_page.go:29 adds `<link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml;base64,...\">` inside the /ui page <head> (const uiPage); the base64 payload decodes to a valid `<svg ...></svg>` document (verified with base64 -d). cmd/boardctl/serve.go:434 carries the same inline icon link for the GET / uploader page. Test coverage: cmd/boardctl/df_boardctl_30_favicon_test.go \u2014 TestDF30UIIconLink asserts the /ui head has exactly one <link rel=\"icon\">, that it is an inline data:image/svg+xml link, and that the payload decodes to well-formed SVG; TestDF30UploaderIconLink covers GET /. bt072_webui_test.go:1082-1099 was updated so the R17 no-external-asset check permits only the inline data: icon. Evidence: `go test -count=1 -v -run TestDF30 ./cmd/boardctl/` => PASS TestDF30UIIconLink, PASS TestDF30UploaderIconLink, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s (exit 0); full suite `go test -count=1 ./...` => all packages ok (exit 0).\nThe /ui (and GET /) page heads now carry exactly one inline data: SVG icon link, and dedicated tests plus the updated R17 head check verify it, with the full Go suite passing.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 icon link present on /ui so browsers stop probing /favicon.ico; test covers it: cmd/boardctl/ui_page.go:29 adds `<link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml;base64,...\">` inside the /ui page <head> (const uiPage); the base64 payload decodes to a valid `<svg ...></svg>` document (verified with base64 -d). cmd/boardctl/serve.go:434 carries the same inline icon link for the GET / uploader page. Test coverage: cmd/boardctl/df_boardctl_30_favicon_test.go \u2014 TestDF30UIIconLink asserts the /ui head has exactly one <link rel=\"icon\">, that it is an inline data:image/svg+xml link, and that the payload decodes to well-formed SVG; TestDF30UploaderIconLink covers GET /. bt072_webui_test.go:1082-1099 was updated so the R17 no-external-asset check permits only the inline data: icon. Evidence: `go test -count=1 -v -run TestDF30 ./cmd/boardctl/` => PASS TestDF30UIIconLink, PASS TestDF30UploaderIconLink, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s (exit 0); full suite `go test -count=1 ./...` => all packages ok (exit 0).\nThe /ui (and GET /) page heads now carry exactly one inline data: SVG icon link, and dedicated tests plus the updated R17 head check verify it, with the full Go suite passing.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "icon link present on /ui so browsers stop probing /favicon.ico; test covers it",
+                "status": "PASS",
+                "detail": "cmd/boardctl/ui_page.go:29 adds `<link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml;base64,...\">` inside the /ui page <head> (const uiPage); the base64 payload decodes to a valid `<svg ...></svg>` document (verified with base64 -d). cmd/boardctl/serve.go:434 carries the same inline icon link for the GET / uploader page. Test coverage: cmd/boardctl/df_boardctl_30_favicon_test.go \u2014 TestDF30UIIconLink asserts the /ui head has exactly one <link rel=\"icon\">, that it is an inline data:image/svg+xml link, and that the payload decodes to well-formed SVG; TestDF30UploaderIconLink covers GET /. bt072_webui_test.go:1082-1099 was updated so the R17 no-external-asset check permits only the inline data: icon. Evidence: `go test -count=1 -v -run TestDF30 ./cmd/boardctl/` => PASS TestDF30UIIconLink, PASS TestDF30UploaderIconLink, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s (exit 0); full suite `go test -count=1 ./...` => all packages ok (exit 0)."
+              }
+            ],
+            "summary": "The /ui (and GET /) page heads now carry exactly one inline data: SVG icon link, and dedicated tests plus the updated R17 head check verify it, with the full Go suite passing."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-30\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 icon link present on /ui so browsers stop probing /favicon.ico; test covers it: cmd/boardctl/ui_page.go:29 adds `<link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml;base64,...\">` inside the /ui page <head> (const uiPage); the base64 payload decodes to a valid `<svg ...></svg>` document (verified with base64 -d). cmd/boardctl/serve.go:434 carries the same inline icon link for the GET / uploader page. Test coverage: cmd/boardctl/df_boardctl_30_favicon_test.go \u2014 TestDF30UIIconLink asserts the /ui head has exactly one <link rel=\"icon\">, that it is an inline data:image/svg+xml link, and that the payload decodes to well-formed SVG; TestDF30UploaderIconLink covers GET /. bt072_webui_test.go:1082-1099 was updated so the R17 no-external-asset check permits only the inline data: icon. Evidence: `go test -count=1 -v -run TestDF30 ./cmd/boardctl/` => PASS TestDF30UIIconLink, PASS TestDF30UploaderIconLink, ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s (exit 0); full suite `go test -count=1 ./...` => all packages ok (exit 0).\nThe /ui (and GET /) page heads now carry exactly one inline data: SVG icon link, and dedicated tests plus the updated R17 head check verify it, with the full Go suite passing.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-09T23:22:41.323035",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-09T23:22:41.337845+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1372,
+        "truncated": false,
+        "source": "git show 54b3724394c0"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-30"
+  }
+}
