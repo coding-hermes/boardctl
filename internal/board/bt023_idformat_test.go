@@ -131,7 +131,7 @@ func TestCreateRejectsSingleSegmentID(t *testing.T) {
 // without --force (nothing written) and succeeds with --force — the escape
 // hatch keeps legacy junk rows updatable. A conforming id needs no flag.
 func TestUpdateJunkIDRequiresForce(t *testing.T) {
-	junkRow := `{"id":"bad id!","title":"legacy junk","status":"pending","priority":"P2"}` + "\n"
+	junkRow := `{"id":"bad id!","title":"legacy junk","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n"
 	dir := t.TempDir()
 	files := map[string]string{
 		"tasks.jsonl":  junkRow,
@@ -187,8 +187,8 @@ func TestUpdateJunkIDRequiresForce(t *testing.T) {
 // (HasErrors() == false), and a clean-id board produces no id-format
 // findings.
 func TestDoctorWarnsOnJunkIDWithoutFailing(t *testing.T) {
-	junk := `{"id":"bad id!","title":"legacy junk","status":"pending","priority":"P2"}` + "\n"
-	clean := `{"id":"WORK-1","title":"Work","status":"pending","priority":"P1"}` + "\n"
+	junk := `{"id":"bad id!","title":"legacy junk","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n"
+	clean := `{"id":"WORK-1","title":"Work","status":"pending","priority":"P1","created_at":"2026-09-01 00:00:00"}` + "\n"
 	b := newGitTestBoard(t, map[string]string{
 		"tasks.jsonl":  junk + clean,
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
@@ -248,7 +248,7 @@ func TestDoctorWarnsOnJunkIDWithoutFailing(t *testing.T) {
 // BT-023: validate stays SILENT on legacy junk ids — the board task forbids
 // making validate fail on existing rows; doctor carries the warning.
 func TestValidateSilentOnJunkID(t *testing.T) {
-	junk := `{"id":"bad id!","title":"legacy junk","status":"pending","priority":"P2"}` + "\n"
+	junk := `{"id":"bad id!","title":"legacy junk","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n"
 	b := newGitTestBoard(t, map[string]string{
 		"tasks.jsonl":  junk,
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",

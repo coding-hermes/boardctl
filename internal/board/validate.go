@@ -285,6 +285,19 @@ func (b *Board) validateTasks(rep *Report) {
 					idx+1, id, dim, bad)
 			}
 		}
+		// DF-BOARDCTL-27: the report parser (internal/render load.go buildTaskRec)
+		// excludes rows from time-based metrics when created_at/completed_at (and
+		// the other task timestamp fields) are absent, null, non-string, empty,
+		// or unparseable under its grammar — the repo's own board carried a
+		// double-dash created_at dialect and rows with no created_at that validate
+		// passed silently while the report flagged them. TimestampFieldFindings
+		// applies the SAME grammar AND the same exclusion rules here (one
+		// warning per field that excludes the row) so the integrity surfaces
+		// agree; exit stays 0 (warn, like every cross-check).
+		for _, tf := range TimestampFieldFindings(row) {
+			rep.Add("warn", "tasks.jsonl line %d (task %s): %s %s — the report parser excludes this row from time-based metrics; %s",
+				idx+1, id, tf.Field, tf.Detail, TimestampFieldFixHint(id, tf.Field))
+		}
 		// BT-056: the row's KEY SET must stay inside the declared canon
 		// (keys.go). Until this check existed, "the row parsed" was the only
 		// shape test, so the fleet drifted to ~230 distinct keys — one-key

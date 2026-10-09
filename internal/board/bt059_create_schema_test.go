@@ -40,7 +40,7 @@ func seedBT059DriftedBoard(t *testing.T) *Board {
 	t.Helper()
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl":  `{"id":"LEG-1","title":"legacy drift row","status":"pending","priority":"P2","budget":null,"reviewer":"alex"}` + "\n",
+		"tasks.jsonl":  `{"id":"LEG-1","title":"legacy drift row","status":"pending","priority":"P2","budget":null,"reviewer":"alex","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{ "id": 1, "timestamp": "2026-09-24 00:00:00.000000", "event_type": "audit", "task_id": null, "actor": "foreman", "detail": null, "tick_number": 1 }` + "\n",
 		"board.jsonl":  `{ "project": "bt059", "namespace": "bt059", "version": 1, "ticks_total": 0, "ticks_idle": 0, "last_commit": null }` + "\n",
 	})
@@ -63,6 +63,17 @@ var bt059DriftKeys = []string{"budget", "reviewer"}
 var bt059SparseCreateSchema = []string{
 	"id", "title", "status", "priority",
 	"complexity", "created_at", "updated_at",
+	"detail",
+}
+
+// bt059DriftedCreateSchema is the same set with the mirror row's own
+// created_at in its stored position (5th): the drifted board's legacy row
+// now carries a real created_at (DF-BOARDCTL-27 fixture stamping), and
+// create inherits key ORDER from the mirror row. The key SET is identical
+// to bt059SparseCreateSchema — only the mirror's stored order differs.
+var bt059DriftedCreateSchema = []string{
+	"id", "title", "status", "priority",
+	"created_at", "complexity", "updated_at",
 	"detail",
 }
 
@@ -92,8 +103,11 @@ func TestCreateOnDriftedBoardWritesCanonicalSchema(t *testing.T) {
 		}
 	}
 	// (b) the shape is exactly the clean canonical one — same key list a
-	// clean sparse board produces, in the same order.
-	if strings.Join(fresh.Keys, ",") != strings.Join(bt059SparseCreateSchema, ",") {
+	// clean sparse board produces, in the same order. The mirror row's own
+	// created_at (now stamped on the fixture) rides position 5, before the
+	// guarantee-added complexity (DF-BOARDCTL-27: key order follows the
+	// mirror row by design; the SET is unchanged).
+	if strings.Join(fresh.Keys, ",") != strings.Join(bt059DriftedCreateSchema, ",") {
 		t.Fatalf("new row key list is not the canonical sparse create schema:\n got %v\nwant %v", fresh.Keys, bt059SparseCreateSchema)
 	}
 	// (c) the whole row passes the canon check — create wrote the canonical
@@ -117,7 +131,7 @@ func TestCreateOnDriftedBoardWritesCanonicalSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
-	wantLegacy := `{"id":"LEG-1","title":"legacy drift row","status":"pending","priority":"P2","budget":null,"reviewer":"alex"}`
+	wantLegacy := `{"id":"LEG-1","title":"legacy drift row","status":"pending","priority":"P2","budget":null,"reviewer":"alex","created_at":"2026-09-01 00:00:00"}`
 	if lines[0] != wantLegacy {
 		t.Fatalf("legacy row was rewritten by create:\n got %s\nwant %s", lines[0], wantLegacy)
 	}

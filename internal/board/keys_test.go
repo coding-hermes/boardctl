@@ -51,8 +51,8 @@ func TestIsSanctionedTaskKey(t *testing.T) {
 func TestValidateCleanBoardReportsZeroDrift(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id":"OK-1","title":"clean","status":"pending","priority":"P2","detail":"d","capture_note":"n"}` + "\n" +
-			`{"id":"OK-2","title":"clean too","status":"complete","priority":"P3"}` + "\n",
+		"tasks.jsonl": `{"id":"OK-1","title":"clean","status":"pending","priority":"P2","detail":"d","capture_note":"n","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"OK-2","title":"clean too","status":"complete","priority":"P3","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})
@@ -81,8 +81,8 @@ func TestValidateCleanBoardReportsZeroDrift(t *testing.T) {
 func TestValidateReportsKeyDrift(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id":"ALIAS-1","title":"one-key dialect","status":"pending","priority":"P2","why":"prose"}` + "\n" +
-			`{"id":"WEIRD-1","title":"unfixable","status":"pending","priority":"P2","mystery_field":"x"}` + "\n",
+		"tasks.jsonl": `{"id":"ALIAS-1","title":"one-key dialect","status":"pending","priority":"P2","why":"prose","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"WEIRD-1","title":"unfixable","status":"pending","priority":"P2","mystery_field":"x","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})
@@ -126,8 +126,8 @@ func TestValidateReportsKeyDrift(t *testing.T) {
 func TestAliasWithPresentTargetIsNotAdvertisedAsFixable(t *testing.T) {
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id":"NULLPRI-1","title":"t","status":"pending","priority":null,"pri":"P0"}` + "\n" +
-			`{"id":"CLEANPRI-1","title":"t","status":"pending","pri":"P1"}` + "\n",
+		"tasks.jsonl": `{"id":"NULLPRI-1","title":"t","status":"pending","priority":null,"pri":"P0","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"CLEANPRI-1","title":"t","status":"pending","pri":"P1","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})
@@ -159,7 +159,7 @@ func TestAliasWithPresentTargetIsNotAdvertisedAsFixable(t *testing.T) {
 }
 
 func TestRenameKeyPreservesPositionAndValue(t *testing.T) {
-	row, err := ParseRow([]byte(`{"id":"A-1","title":"t","why":"because","status":"pending","priority":"P2"}`))
+	row, err := ParseRow([]byte(`{"id":"A-1","title":"t","why":"because","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,8 +190,8 @@ func TestRenameKeyPreservesPositionAndValue(t *testing.T) {
 		t.Fatalf("old key still present after rename")
 	}
 	// the marshalled line differs ONLY in the key spelling
-	out := string(row.Marshal(DetectStyle([]byte(`{"id":"A-1","title":"t","why":"because","status":"pending","priority":"P2"}`))))
-	if out != `{"id":"A-1","title":"t","reasoning":"because","status":"pending","priority":"P2"}` {
+	out := string(row.Marshal(DetectStyle([]byte(`{"id":"A-1","title":"t","why":"because","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}`))))
+	if out != `{"id":"A-1","title":"t","reasoning":"because","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` {
 		t.Fatalf("unexpected rewrite: %s", out)
 	}
 }
@@ -234,10 +234,10 @@ func TestRenameKeyRefusals(t *testing.T) {
 // and is idempotent on the second run.
 func TestNormalizeTaskRenamesKeyAlias(t *testing.T) {
 	dir := t.TempDir()
-	other := `{"id":"OTHER-1","title":"untouched","status":"pending","priority":"P2","why":"also prose"}` + "\n"
+	other := `{"id":"OTHER-1","title":"untouched","status":"pending","priority":"P2","why":"also prose","created_at":"2026-09-01 00:00:00"}` + "\n"
 	writeBoardFiles(t, dir, map[string]string{
 		"tasks.jsonl": other +
-			`{"id":"ALIAS-1","title":"drift","status":"pending","priority":"P2","why":"the reason"}` + "\n",
+			`{"id":"ALIAS-1","title":"drift","status":"pending","priority":"P2","why":"the reason","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})

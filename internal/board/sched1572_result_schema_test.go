@@ -26,19 +26,19 @@ func seed1572Board(t *testing.T) *Board {
 	t.Helper()
 	dir := t.TempDir()
 	writeBoardFiles(t, dir, map[string]string{
-		"tasks.jsonl": `{"id":"S1572-OBJ-OK","title":"valid structured form","status":"pending","priority":"P2","ci_result":{"status":"pending","details":"pending CI poll"}}}` + "\n" +
-			`{"id":"S1572-OBJ-EXTRA","title":"structured with extra keys","status":"pending","priority":"P2","guard_result":{"status":"pass","details":"guard PASS 4/4","runs":2}}` + "\n" +
-			`{"id":"S1572-OBJ-NOSTATUS","title":"object missing status","status":"pending","priority":"P2","ci_result":{"details":"orphan prose"}}` + "\n" +
-			`{"id":"S1572-OBJ-BADSTATUS","title":"status off-vocabulary","status":"pending","priority":"P2","ci_result":{"status":"GREENISH","details":"x"}}` + "\n" +
-			`{"id":"S1572-OBJ-NUMSTATUS","title":"status not a string","status":"pending","priority":"P2","ci_result":{"status":3,"details":"x"}}` + "\n" +
-			`{"id":"S1572-OBJ-NODETAILS","title":"object missing details","status":"pending","priority":"P2","guard_result":{"status":"skip"}}` + "\n" +
-			`{"id":"S1572-OBJ-NUMDETAILS","title":"details not a string","status":"pending","priority":"P2","guard_result":{"status":"fail","details":42}}` + "\n" +
-			`{"id":"S1572-NUMBER","title":"number where a result belongs","status":"pending","priority":"P2","ci_result":7}` + "\n" +
-			`{"id":"S1572-ARRAY","title":"array where a result belongs","status":"pending","priority":"P2","ci_result":["GREEN"]}` + "\n" +
-			`{"id":"S1572-SILENT-ABSENT","title":"results never run","status":"pending","priority":"P2"}` + "\n" +
-			`{"id":"S1572-SILENT-NULL","title":"explicit null result","status":"pending","priority":"P2","guard_result":null}` + "\n" +
-			`{"id":"S1572-SILENT-EMPTY","title":"empty string result","status":"pending","priority":"P2","ci_result":""}` + "\n" +
-			`{"id":"S1572-SILENT-CANON","title":"canonical string still fine","status":"pending","priority":"P2","guard_result":"pass","ci_result":"GREEN"}` + "\n",
+		"tasks.jsonl": `{"id":"S1572-OBJ-OK","title":"valid structured form","status":"pending","priority":"P2","ci_result":{"status":"pending","details":"pending CI poll"},"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-OBJ-EXTRA","title":"structured with extra keys","status":"pending","priority":"P2","guard_result":{"status":"pass","details":"guard PASS 4/4","runs":2},"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-OBJ-NOSTATUS","title":"object missing status","status":"pending","priority":"P2","ci_result":{"details":"orphan prose"},"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-OBJ-BADSTATUS","title":"status off-vocabulary","status":"pending","priority":"P2","ci_result":{"status":"GREENISH","details":"x"},"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-OBJ-NUMSTATUS","title":"status not a string","status":"pending","priority":"P2","ci_result":{"status":3,"details":"x"},"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-OBJ-NODETAILS","title":"object missing details","status":"pending","priority":"P2","guard_result":{"status":"skip"},"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-OBJ-NUMDETAILS","title":"details not a string","status":"pending","priority":"P2","guard_result":{"status":"fail","details":42},"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-NUMBER","title":"number where a result belongs","status":"pending","priority":"P2","ci_result":7,"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-ARRAY","title":"array where a result belongs","status":"pending","priority":"P2","ci_result":["GREEN"],"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-SILENT-ABSENT","title":"results never run","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-SILENT-NULL","title":"explicit null result","status":"pending","priority":"P2","guard_result":null,"created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-SILENT-EMPTY","title":"empty string result","status":"pending","priority":"P2","ci_result":"","created_at":"2026-09-01 00:00:00"}` + "\n" +
+			`{"id":"S1572-SILENT-CANON","title":"canonical string still fine","status":"pending","priority":"P2","guard_result":"pass","ci_result":"GREEN","created_at":"2026-09-01 00:00:00"}` + "\n",
 		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
 		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
 	})
