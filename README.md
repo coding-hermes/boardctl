@@ -718,6 +718,15 @@ boardctl -C ~/myproject update FEAT-2 --status complete \
     --worktree /home/me/wt/ft-2 --branch wt/ft-2 --session 91ab77c2
 ```
 
+> **Since v0.1.11 (unreleased): plural association flags.** On top of the
+> three fields documented here, `create`/`update` also accept repeatable
+> `--pull-request PR`, `--assoc-branch B` and `--assoc-worktree PATH`
+> flags (BT-077) that merge elements into `pull_requests`/`branches`/
+> `worktrees` arrays on the row. These are NOT in the published v0.1.10
+> binary — `--pull-request` there fails with "flag provided but not
+> defined". See `boardctl create --help` for their usage until v0.1.11
+> ships.
+
 Rules that hold on both commands:
 
 - **Absent is valid.** A flag that was not passed writes NO key — never an
@@ -749,6 +758,11 @@ No other command needed changing: `validate`, `doctor`, `stats`, `render`,
 row.
 
 ### The deferred flag (BT-076)
+
+> **Since v0.1.11 (unreleased).** The flag documented below is NOT in the
+> published v0.1.10 binary — it rejects `--deferred` with "flag provided
+> but not defined". Everything in this section describes the
+> post-v0.1.10 behavior.
 
 A task row may carry a first-class boolean `deferred` field, distinct from
 `blocked` and `complete`: deferral is "the owner parked this on purpose", not
