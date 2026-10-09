@@ -431,6 +431,7 @@ const uploaderPage = `<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>boardctl serve — board report uploader</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzBkMTExNyIvPjxyZWN0IHg9IjYiIHk9IjciIHdpZHRoPSI1IiBoZWlnaHQ9IjE4IiByeD0iMiIgZmlsbD0iIzU4YTZmZiIvPjxyZWN0IHg9IjE0IiB5PSI3IiB3aWR0aD0iNSIgaGVpZ2h0PSIxMiIgcng9IjIiIGZpbGw9IiMzZmI5NTAiLz48cmVjdCB4PSIyMiIgeT0iNyIgd2lkdGg9IjUiIGhlaWdodD0iMTUiIHJ4PSIyIiBmaWxsPSIjOGI5NDllIi8+PC9zdmc+">
 <style>
 :root{--bg:#0d1117;--bg2:#161b22;--fg:#e6edf3;--muted:#8b949e;--line:#30363d;--accent:#58a6ff}
 *{box-sizing:border-box}
