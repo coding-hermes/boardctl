@@ -1082,11 +1082,18 @@ func TestBT072NetworkConfined(t *testing.T) {
 			t.Errorf("fetch(%q) is not a same-origin /api/ route (R17)", f[1])
 		}
 	}
-	// The document head carries no external stylesheet/script/link.
+	// The document head carries no external stylesheet/script/link. The
+	// one allowed <link> form is the inline data: favicon icon
+	// (DF-BOARDCTL-30); any link referencing an origin is banned.
 	head := body[:strings.Index(body, "</head>")]
-	for _, banned := range []string{`<link`, `src="http`, `href="http`, `src="//`, `href="//`} {
+	for _, banned := range []string{`src="http`, `href="http`, `src="//`, `href="//`} {
 		if strings.Contains(head, banned) {
 			t.Errorf("/ui head references an external asset (%q)", banned)
+		}
+	}
+	for _, tag := range regexp.MustCompile(`<link[^>]*>`).FindAllString(head, -1) {
+		if !strings.Contains(tag, `rel="icon"`) || !strings.Contains(tag, `href="data:image/svg+xml;base64,`) {
+			t.Errorf("/ui head <link> is not an inline data: icon (%q)", tag)
 		}
 	}
 }
