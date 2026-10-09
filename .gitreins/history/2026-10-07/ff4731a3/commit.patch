@@ -1,0 +1,1187 @@
+commit 27fd97b3b8c24e31d3b0924db1b71bf2d4acf80b
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Wed Oct 7 06:05:17 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Wed Oct 7 06:05:17 2026 -0500
+
+    feat(board): first-class deferred task flag (BT-076)
+    
+    A task row may carry a boolean `deferred` field, distinct from blocked and
+    complete: deferral is "the owner parked this on purpose", not "something is
+    wrong" and not "this is done". Deferred rows stay searchable and retained in
+    list/show/export/import; what changes is reporting — they are counted
+    separately and excluded from the pending/actionable tally, so a board whose
+    only open row is deferred no longer reads as having pending work (Bane
+    2026-10-05: deferred work must not wake a tasks-admission foreman).
+    
+    - keys.go: `deferred` joins the sanctioned task-row key canon (create's
+      schema mirroring and validate must never flag it as drift).
+    - read.go: RowIsDeferred reads the raw bytes (true/True literals only;
+      null/absent/false — and any non-boolean, which validate warns about —
+      read as NOT deferred, mirroring priorityLabel's style). Stats grows
+      `deferred` + `actionable` JSON keys; RenderText prints both lines;
+      ComputeStats keeps deferred rows in Total and in the by-status tally but
+      excludes them from Actionable (actionable = non-deferred pending rows).
+    - write.go: TaskRowSpec.Deferred / UpdateSpec.Deferred (*bool, the BT-037
+      nil-untouched discipline). create --deferred writes deferred:true; an
+      omitted flag writes NO key — create never neutral-mirrors the key from
+      the last row (a deferred:true board would otherwise stamp
+      deferred:null on every fresh row; RED-proven: disabling the skip fails
+      both the board-level and CLI omitted-flag tests with that exact shape).
+      update --deferred false writes deferred:false (never deletes the key);
+      an omitted update leaves the key untouched; --deferred joins the
+      change-flag gate and --normalize's refusal list.
+    - validate.go: a non-boolean deferred value is an itemized WARNING (board
+      stays exit-0), same soft-field convention as priority/depends_on shape
+      drift; absent/true/false/null stay silent.
+    - cmd/boardctl: `create --deferred` (bare bool flag, excluded from
+      reorderArgs value flags) and `update --deferred true|false`
+      (strconv.ParseBool; a non-boolean spelling is a usage error with nothing
+      written). Both usage closures and the root usageText document the flags
+      (usage-closure meta-tests stay green). stats/umbrella output carries the
+      separate deferred + actionable lines; umbrella aggregates both.
+    - internal/render: Derived.deferred_count counts deferred rows; open_count
+      excludes them (the actionable reading behind completion % and the
+      burndown headline); complete rows that are deferred still count complete.
+    - README: "The deferred flag (BT-076)" subsection under the task-field docs.
+    
+    Tests: bt076_deferred_test.go (board-level write contract, canon
+    sanctioning, validate warning, stats split, list/show retention, BT-022
+    raw-import verbatim round-trip), bt076_cli_test.go (create/update flags,
+    invalid-value usage error, help closure, stats text+JSON),
+    bt076_deferred_derive_test.go (deferred_count/open_count/complete split).
+    
+    Suite: go build ./... && go vet ./... && gofmt -l (clean) && go test
+    ./... -count=1 — all packages ok. Live CLI probe on a scratch board:
+    create --deferred / update --deferred false / stats / stats --json /
+    validate all behave per contract.
+    
+    ch:trace row=BT-076 evidence=go test ./... -count=1 green + RED-proof on
+    the create mirror-skip + commit (this commit)
+---
+ README.md                                     |  27 ++
+ cmd/boardctl/bt076_cli_test.go                | 236 +++++++++++++++++
+ cmd/boardctl/main.go                          |  36 ++-
+ cmd/boardctl/umbrella.go                      |   2 +
+ internal/board/bt076_deferred_test.go         | 356 ++++++++++++++++++++++++++
+ internal/board/keys.go                        |   7 +
+ internal/board/read.go                        |  32 ++-
+ internal/board/umbrella.go                    |  16 +-
+ internal/board/validate.go                    |  17 ++
+ internal/board/write.go                       |  38 ++-
+ internal/render/bt076_deferred_derive_test.go |  71 +++++
+ internal/render/derive.go                     |  17 +-
+ 12 files changed, 838 insertions(+), 17 deletions(-)
+
+diff --git a/README.md b/README.md
+index 3054b7e..66b8f55 100644
+--- a/README.md
++++ b/README.md
+@@ -748,6 +748,33 @@ No other command needed changing: `validate`, `doctor`, `stats`, `render`,
+ `import` copies exported rows verbatim, so the three fields round-trip with the
+ row.
+ 
++### The deferred flag (BT-076)
++
++A task row may carry a first-class boolean `deferred` field, distinct from
++`blocked` and `complete`: deferral is "the owner parked this on purpose", not
++"something is wrong" (blocked) and not "this is done" (complete). Write it with
++`boardctl create --deferred` (bare flag, writes `deferred: true`) or
++`boardctl update <id> --deferred true|false` (any `strconv.ParseBool` spelling
++is accepted; a non-boolean value is a usage error with nothing written). The
++same nil-untouched discipline as the worktree fields applies: an omitted flag
++never creates or changes the key — a row without `deferred` is not deferred.
++
++Deferred rows stay **searchable and retained**: `list`, `show`, `render`, and
++`import` return and round-trip them like any other row. What changes is
++reporting — `stats` counts them in a **separate `deferred` line** (and a
++`deferred` key in `--json`) and **excludes them from the actionable/pending
++tally** (`actionable: N`), so a board whose only open row is deferred does not
++read as having pending work. Deferred rows still count in `total` and keep
++their status in the by-status tally (a deferred `pending` row is still counted
++under `pending` there). `validate` warns (never fails) on a hand-edited
++non-boolean `deferred` value, which reads as not deferred.
++
++```bash
++boardctl -C ~/myproject create --id FEAT-3 --title "Maybe later" --deferred
++boardctl -C ~/myproject update FEAT-3 --deferred false   # un-defer
++boardctl -C ~/myproject stats    # total, actionable, deferred: separate lines
++```
++
+ ## Board topology
+ 
+ ```
+diff --git a/cmd/boardctl/bt076_cli_test.go b/cmd/boardctl/bt076_cli_test.go
+new file mode 100644
+index 0000000..dd881e3
+--- /dev/null
++++ b/cmd/boardctl/bt076_cli_test.go
+@@ -0,0 +1,236 @@
++package main
++
++import (
++	"encoding/json"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++// BT-076 CLI coverage: --deferred on create (bare bool flag), --deferred
++// true|false on update (strconv.ParseBool value flag), the help closures
++// documenting both, and the stats surface carrying the separate deferred
++// count with deferred rows excluded from actionable. The board-level write
++// contract is pinned in internal/board (bt076_deferred_test.go).
++
++// seedBT076CLIBoard seeds a board with one deferred pending row and one
++// plain pending row, mirroring vocab_test.go's seedCLIBoard shape.
++func seedBT076CLIBoard(t *testing.T) string {
++	t.Helper()
++	dir := t.TempDir()
++	boardDir := filepath.Join(dir, ".coding-hermes", "board")
++	if err := os.MkdirAll(boardDir, 0o755); err != nil {
++		t.Fatal(err)
++	}
++	files := map[string]string{
++		"tasks.jsonl": `{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[]}` + "\n" +
++			`{"id":"EXIST-2","title":"parked","status":"pending","priority":"P1","deferred":true}` + "\n",
++		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
++		"board.jsonl":  `{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
++	}
++	for name, content := range files {
++		if err := os.WriteFile(filepath.Join(boardDir, name), []byte(content), 0o644); err != nil {
++			t.Fatal(err)
++		}
++	}
++	return dir
++}
++
++func bt076TaskLine(t *testing.T, dir, id string) string {
++	t.Helper()
++	raw, err := os.ReadFile(filepath.Join(dir, ".coding-hermes", "board", "tasks.jsonl"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, l := range strings.Split(string(raw), "\n") {
++		if strings.Contains(l, `"id":"`+id+`"`) {
++			return l
++		}
++	}
++	t.Fatalf("task %q not found in %s", id, raw)
++	return ""
++}
++
++// TestCmdCreateDeferredWritesFlag: `create --deferred` writes deferred:true.
++func TestCmdCreateDeferredWritesFlag(t *testing.T) {
++	dir := seedBT076CLIBoard(t)
++	if code := run([]string{"-C", dir, "create", "--id", "DF-C1", "--title", "deferred row", "--deferred"}); code != 0 {
++		t.Fatalf("create --deferred exit = %d, want 0", code)
++	}
++	var row map[string]any
++	if err := json.Unmarshal([]byte(bt076TaskLine(t, dir, "DF-C1")), &row); err != nil {
++		t.Fatal(err)
++	}
++	if row["deferred"] != true {
++		t.Fatalf("create --deferred wrote deferred = %v, want true", row["deferred"])
++	}
++}
++
++// TestCmdCreateOmittedDeferredWritesNoKey: the omitted flag writes no key,
++// even though the mirrored last row carries deferred:true (no null
++// placeholder may leak into the new row).
++func TestCmdCreateOmittedDeferredWritesNoKey(t *testing.T) {
++	dir := seedBT076CLIBoard(t)
++	if code := run([]string{"-C", dir, "create", "--id", "DF-C2", "--title", "plain row"}); code != 0 {
++		t.Fatalf("create exit = %d, want 0", code)
++	}
++	line := bt076TaskLine(t, dir, "DF-C2")
++	if strings.Contains(line, "deferred") {
++		t.Fatalf("omitted --deferred wrote the key anyway (mirrored?): %s", line)
++	}
++}
++
++// TestCmdUpdateDeferredTrueFalse: `update --deferred false` writes
++// deferred:false on a deferred row; an omitted update leaves the key
++// untouched; `--deferred true` defers a plain row.
++func TestCmdUpdateDeferredTrueFalse(t *testing.T) {
++	dir := seedBT076CLIBoard(t)
++	if code := run([]string{"-C", dir, "update", "EXIST-2", "--deferred", "false"}); code != 0 {
++		t.Fatalf("update --deferred false exit = %d, want 0", code)
++	}
++	var row map[string]any
++	if err := json.Unmarshal([]byte(bt076TaskLine(t, dir, "EXIST-2")), &row); err != nil {
++		t.Fatal(err)
++	}
++	if row["deferred"] != false {
++		t.Fatalf("deferred = %v, want false", row["deferred"])
++	}
++	// omitted update leaves the key untouched
++	before := bt076TaskLine(t, dir, "EXIST-2")
++	if code := run([]string{"-C", dir, "update", "EXIST-2", "--summary", "note"}); code != 0 {
++		t.Fatalf("omitted update exit = %d, want 0", code)
++	}
++	after := bt076TaskLine(t, dir, "EXIST-2")
++	if !strings.Contains(after, `"deferred":false`) && !strings.Contains(after, `"deferred": false`) {
++		t.Fatalf("omitted update changed the deferred key:\nbefore %s\nafter  %s", before, after)
++	}
++	if v, ok := rowOf(after)["deferred"]; !ok || v != false {
++		t.Fatalf("omitted update altered deferred = %v (present=%v)", v, ok)
++	}
++	// defer a plain row
++	if code := run([]string{"-C", dir, "update", "EXIST-1", "--deferred", "true"}); code != 0 {
++		t.Fatalf("update --deferred true exit = %d, want 0", code)
++	}
++	if v := rowOf(bt076TaskLine(t, dir, "EXIST-1"))["deferred"]; v != true {
++		t.Fatalf("deferred = %v, want true", v)
++	}
++}
++
++// rowOf parses one task line into a map (helper shared by this file).
++func rowOf(line string) map[string]any {
++	var m map[string]any
++	if err := json.Unmarshal([]byte(line), &m); err != nil {
++		return map[string]any{}
++	}
++	return m
++}
++
++// TestCmdUpdateDeferredInvalidValue: a non-boolean spelling is a usage
++// error (exit 2, the flag-level failure class) and writes nothing.
++func TestCmdUpdateDeferredInvalidValue(t *testing.T) {
++	dir := seedBT076CLIBoard(t)
++	tasksPath := filepath.Join(dir, ".coding-hermes", "board", "tasks.jsonl")
++	before, err := os.ReadFile(tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	code := 0
++	stderr, err := captureStderr(func() {
++		code = run([]string{"-C", dir, "update", "EXIST-1", "--deferred", "maybe"})
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if code != 1 && code != 2 {
++		t.Fatalf("update --deferred maybe exit = %d, want 1 or 2 (usage/validation)", code)
++	}
++	after, err := os.ReadFile(tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if string(before) != string(after) {
++		t.Fatal("rejected --deferred value mutated tasks.jsonl")
++	}
++	if !strings.Contains(stderr, "not a boolean") {
++		t.Fatalf("stderr %q missing \"not a boolean\"", stderr)
++	}
++}
++
++// TestCmdHelpListsDeferredFlag: both closures and the root usage document
++// the new flags.
++func TestCmdHelpListsDeferredFlag(t *testing.T) {
++	createHelp, err := captureStdout(func() {
++		if code := run([]string{"create", "-h"}); code != 0 {
++			t.Fatalf("create -h exit = %d, want 0", code)
++		}
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !strings.Contains(createHelp, "--deferred") {
++		t.Fatalf("create -h missing --deferred:\n%s", createHelp)
++	}
++	updateHelp, err := captureStdout(func() {
++		if code := run([]string{"update", "-h"}); code != 0 {
++			t.Fatalf("update -h exit = %d, want 0", code)
++		}
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !strings.Contains(updateHelp, "--deferred") {
++		t.Fatalf("update -h missing --deferred:\n%s", updateHelp)
++	}
++	if !strings.Contains(usageText, "--deferred") {
++		t.Fatal("root usageText missing --deferred")
++	}
++}
++
++// TestCmdStatsDeferredCounts: stats output carries the separate deferred
++// count, excludes deferred rows from actionable, and keeps them in total and
++// in the status tally — via the CLI surface.
++func TestCmdStatsDeferredCounts(t *testing.T) {
++	dir := seedBT076CLIBoard(t)
++	got, err := captureStdout(func() {
++		if code := run([]string{"-C", dir, "stats"}); code != 0 {
++			t.Fatalf("stats exit = %d, want 0", code)
++		}
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !strings.Contains(got, "total tasks: 2") {
++		t.Fatalf("stats output missing total tasks: 2:\n%s", got)
++	}
++	if !strings.Contains(got, "actionable: 1") {
++		t.Fatalf("stats output missing actionable: 1 (deferred pending row must be excluded):\n%s", got)
++	}
++	if !strings.Contains(got, "deferred: 1") {
++		t.Fatalf("stats output missing deferred: 1:\n%s", got)
++	}
++	if !strings.Contains(got, "pending") {
++		t.Fatalf("stats output lost the status tally:\n%s", got)
++	}
++	// JSON stats carry the key too
++	gotJSON, err := captureStdout(func() {
++		if code := run([]string{"-C", dir, "stats", "--json"}); code != 0 {
++			t.Fatalf("stats --json exit = %d, want 0", code)
++		}
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	var st struct {
++		Total      int `json:"total"`
++		Deferred   int `json:"deferred"`
++		Actionable int `json:"actionable"`
++		Status     map[string]int
++	}
++	if err := json.Unmarshal([]byte(gotJSON), &st); err != nil {
++		t.Fatalf("stats --json not parseable: %v\n%s", err, gotJSON)
++	}
++	if st.Deferred != 1 || st.Actionable != 1 || st.Total != 2 || st.Status["pending"] != 2 {
++		t.Fatalf("JSON stats = %+v, want deferred 1, actionable 1, total 2, pending 2", st)
++	}
++}
+diff --git a/cmd/boardctl/main.go b/cmd/boardctl/main.go
+index 28eb39c..f0b4d3d 100644
+--- a/cmd/boardctl/main.go
++++ b/cmd/boardctl/main.go
+@@ -52,12 +52,12 @@ commands:
+   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
+           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
+           [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
+-          [--session ID]...   (a re-detected finding is REFUSED with exit 2)
++          [--session ID]... [--deferred]   (a re-detected finding is REFUSED with exit 2)
+   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
+           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
+           [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
+           [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
+-          [--evidence-run-id RUN] [--normalize] [--force]
++          [--evidence-run-id RUN] [--deferred true|false] [--normalize] [--force]
+   event   --type task_created|task_dispatched|task_completed|audit|...
+           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
+           [--tick N] [--no-tick-write]
+@@ -641,11 +641,15 @@ func cmdCreate(dir string, args []string) error {
+ 	branch := fs.String("branch", "", "git branch of --worktree, e.g. wt/cht-031")
+ 	var sessions stringListFlag
+ 	fs.Var(&sessions, "session", "Hermes session id that worked this task (repeatable: --session A --session B records the ordered array)")
++	// BT-076: bool flag — a deferred row stays searchable but is excluded
++	// from the actionable/pending tally (stats). Takes no value, so it must
++	// NOT join the reorderArgs valueFlags list (same as --force).
++	deferred := fs.Bool("deferred", false, "file the task as deferred (stays searchable; excluded from actionable counts)")
+ 	force := fs.Bool("force", false, "write the id even if it violates the fleet id format (also files a duplicate finding as a variant)")
+ 	var cdir string
+ 	addCFlag(fs, &cdir)
+ 	fs.Usage = func() {
+-		fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--force] [flags] [-C dir]\n")
++		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--deferred] [--force] [flags] [-C dir]\n")
+ 		fmt.Fprintf(fs.Output(), "\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n")
+ 		fmt.Fprintf(fs.Output(), "          -review → P4, -docs/-readme → P5. An explicit --priority\n")
+ 		fmt.Fprintf(fs.Output(), "          always wins (BT-071).\n")
+@@ -690,6 +694,9 @@ func cmdCreate(dir string, args []string) error {
+ 		list := []string(sessions)
+ 		spec.Sessions = &list
+ 	}
++	if *deferred {
++		spec.Deferred = deferred
++	}
+ 	if *complexity != "" {
+ 		n, err := parseIntFlag("--complexity", *complexity)
+ 		if err != nil {
+@@ -709,7 +716,7 @@ func cmdCreate(dir string, args []string) error {
+ 
+ func cmdUpdate(dir string, args []string) error {
+ 	fs := newFlagSet("update")
+-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session", "priority", "evidence-run-id"))
++	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id"))
+ 	status := fs.String("status", "", "status (write vocabulary)")
+ 	// BT-060: create has always accepted --title; update could only rewrite
+ 	// the title by hand-editing the row. Same shape as every other optional
+@@ -740,6 +747,12 @@ func cmdUpdate(dir string, args []string) error {
+ 	// priority is rejected by the same write-time gate create uses.
+ 	priority := fs.String("priority", "", "priority (P0-P5; bare 0-5 and case variants are normalized; omitted = leave untouched)")
+ 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence on the existing row's detail (SG-126)")
++	// BT-076: value flag taking true|false (strconv.ParseBool spellings),
++	// NOT a bare bool — un-deferring needs the explicit false, which a bare
++	// bool flag cannot express. Omitted = the row's deferred key is
++	// untouched. Takes a value, so it MUST join the reorderArgs valueFlags
++	// list.
++	deferred := fs.String("deferred", "", "deferred true|false (a deferred row stays searchable but is excluded from actionable counts; omitted = leave untouched)")
+ 	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
+ 	// to their canonical forms (read-alias fix path). Takes no value, so it
+ 	// must NOT join the reorderArgs valueFlags list.
+@@ -750,7 +763,7 @@ func cmdUpdate(dir string, args []string) error {
+ 	fs.Usage = func() {
+ 		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
+ 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
+-		fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--worktree PATH] [--branch NAME]\n")
++		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--worktree PATH] [--branch NAME]\n")
+ 		fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
+ 	}
+ 	if err := parseFlags(fs, args); err != nil {
+@@ -774,7 +787,7 @@ func cmdUpdate(dir string, args []string) error {
+ 	// --normalize alone satisfies the change-flag gate and needs no --force
+ 	// beyond the fleet-id escape hatch.
+ 	if *normalize {
+-		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "worktree", "branch", "session", "priority", "evidence-run-id"} {
++		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id"} {
+ 			if fs.Lookup(f).Value.String() != "" {
+ 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
+ 			}
+@@ -822,6 +835,17 @@ func cmdUpdate(dir string, args []string) error {
+ 	if *evidenceRunID != "" {
+ 		spec.EvidenceRunID = *evidenceRunID
+ 	}
++	// BT-076: --deferred true|false via strconv.ParseBool — the contract's
++	// parse rule. Any non-boolean spelling ("yes", "1" is accepted by
++	// ParseBool and fine; "maybe") fails the update as a usage error with
++	// NOTHING written. An omitted flag stays nil (the key is untouched).
++	if *deferred != "" {
++		dv, err := strconv.ParseBool(*deferred)
++		if err != nil {
++			return fmt.Errorf("--deferred: %q is not a boolean (valid: true, false; strconv.ParseBool spellings accepted: 1, t, T, TRUE, 0, f, F, FALSE)", *deferred)
++		}
++		spec.Deferred = &dv
++	}
+ 	if *worktree != "" {
+ 		spec.Worktree = worktree
+ 	}
+diff --git a/cmd/boardctl/umbrella.go b/cmd/boardctl/umbrella.go
+index 9ccf0d7..61b6a2d 100644
+--- a/cmd/boardctl/umbrella.go
++++ b/cmd/boardctl/umbrella.go
+@@ -184,6 +184,8 @@ func umbrellaStats(um *board.Umbrella, strict bool) error {
+ 	}
+ 	_, _ = fmt.Fprintln(os.Stdout, "umbrella total:")
+ 	_, _ = fmt.Fprintf(os.Stdout, "  total tasks: %d\n", us.Total)
++	_, _ = fmt.Fprintf(os.Stdout, "  actionable: %d\n", us.Actionable)
++	_, _ = fmt.Fprintf(os.Stdout, "  deferred: %d\n", us.Deferred)
+ 	_, _ = fmt.Fprintln(os.Stdout, "  by status:")
+ 	for _, k := range board.SortedKeys(us.Status) {
+ 		_, _ = fmt.Fprintf(os.Stdout, "    %-12s %d\n", k, us.Status[k])
+diff --git a/internal/board/bt076_deferred_test.go b/internal/board/bt076_deferred_test.go
+new file mode 100644
+index 0000000..0cec651
+--- /dev/null
++++ b/internal/board/bt076_deferred_test.go
+@@ -0,0 +1,356 @@
++package board
++
++import (
++	"encoding/json"
++	"os"
++	"strings"
++	"testing"
++)
++
++// BT-076: the first-class deferred flag. These tests pin the whole contract:
++//
++//   - create --deferred writes deferred:true; the omitted flag writes NO key
++//   - update --deferred false writes deferred:false; an omitted update never
++//     creates or changes the key
++//   - the key is sanctioned (no canon drift), and a non-boolean value warns
++//     without failing validate
++//   - stats counts deferred separately and excludes deferred rows from the
++//     pending/actionable tally (they stay in Total and in the status tally)
++//   - list/show/export/import never filter or drop deferred rows
++//
++// The seed rows use spaced style on purpose: the boolean must be encoded in
++// the file's own style, like every BT-037 field before it.
++
++// seedBT076Board writes a topology-A board with one plain pending row to
++// update and one deferred row to count.
++func seedBT076Board(t *testing.T) *Board {
++	t.Helper()
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl": `{"id": "DF-1", "title": "plain pending", "status": "pending", "priority": "P2"}` + "\n" +
++			`{"id": "DF-2", "title": "parked", "status": "pending", "priority": "P1", "deferred": true}` + "\n",
++		"events.jsonl": `{"id": 1, "timestamp": "2026-10-07 00:00:00", "event_type": "audit", "task_id": null, "actor": "foreman", "detail": null, "tick_number": 1}` + "\n",
++		"board.jsonl":  `{"project": "bt076", "namespace": "bt076", "version": 1, "ticks_total": 1, "ticks_idle": 0, "last_commit": "abc1234"}` + "\n",
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	return b
++}
++
++// bt076Row parses one tasks.jsonl line by id.
++func bt076Row(t *testing.T, b *Board, id string) *Row {
++	t.Helper()
++	rows, err := b.TaskRows()
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, r := range rows {
++		if r.String("id") == id {
++			return r
++		}
++	}
++	t.Fatalf("task %q not found", id)
++	return nil
++}
++
++func bt076Raw(t *testing.T, b *Board, id string) string {
++	t.Helper()
++	raw, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, l := range strings.Split(string(raw), "\n") {
++		if strings.Contains(l, `"id": "`) && bt076LineID(l) == id {
++			return l
++		}
++	}
++	t.Fatalf("task %q not found in %s", id, raw)
++	return ""
++}
++
++// bt076LineID pulls the id value out of a spaced-style line without a full
++// parse (the seed rows are the only writer in these tests).
++func bt076LineID(line string) string {
++	i := strings.Index(line, `"id": "`)
++	if i < 0 {
++		return ""
++	}
++	rest := line[i+len(`"id": "`):]
++	j := strings.Index(rest, `"`)
++	if j < 0 {
++		return ""
++	}
++	return rest[:j]
++}
++
++// TestCreateDeferredWritesFlag: create --deferred writes deferred:true.
++func TestCreateDeferredWritesFlag(t *testing.T) {
++	b := seedBT076Board(t)
++	t.Helper()
++	id, err := b.Create(TaskRowSpec{ID: "DF-NEW", Title: "new deferred row", Deferred: boolPtr(true)})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if id != "DF-NEW" {
++		t.Fatalf("created %q", id)
++	}
++	r := bt076Row(t, b, "DF-NEW")
++	raw := r.Get("deferred")
++	if raw == nil {
++		t.Fatalf("deferred key missing on the created row: %s", bt076Raw(t, b, "DF-NEW"))
++	}
++	if !RowIsDeferred(r) {
++		t.Fatalf("deferred = %s, want a true literal", raw)
++	}
++	if !r.Has("deferred") {
++		t.Fatal("deferred key absent")
++	}
++}
++
++// TestCreateOmittedDeferredWritesNoKey: the omitted flag never creates the
++// key (nil-untouched discipline, BT-037 pattern).
++func TestCreateOmittedDeferredWritesNoKey(t *testing.T) {
++	b := seedBT076Board(t)
++	if _, err := b.Create(TaskRowSpec{ID: "DF-PLAIN", Title: "plain row"}); err != nil {
++		t.Fatal(err)
++	}
++	line := bt076Raw(t, b, "DF-PLAIN")
++	if strings.Contains(line, "deferred") {
++		t.Fatalf("omitted --deferred wrote the key anyway: %s", line)
++	}
++	if RowIsDeferred(bt076Row(t, b, "DF-PLAIN")) {
++		t.Fatal("row reads as deferred without the key")
++	}
++}
++
++// TestCreateDeferredFalseWritesFalse: an explicit false IS written (a fresh
++// row that names its own not-deferred state carries the key).
++func TestCreateDeferredFalseWritesFalse(t *testing.T) {
++	b := seedBT076Board(t)
++	if _, err := b.Create(TaskRowSpec{ID: "DF-FALSE", Title: "explicit false", Deferred: boolPtr(false)}); err != nil {
++		t.Fatal(err)
++	}
++	r := bt076Row(t, b, "DF-FALSE")
++	if !r.Has("deferred") {
++		t.Fatalf("explicit --deferred false did not write the key: %s", bt076Raw(t, b, "DF-FALSE"))
++	}
++	if RowIsDeferred(r) {
++		t.Fatal("deferred:false reads as deferred")
++	}
++}
++
++// TestUpdateDeferredRoundTrip: --deferred false on a deferred row writes
++// deferred:false; an omitted update leaves the key untouched (both value and
++// position — untouched line bytes round-trip).
++func TestUpdateDeferredRoundTrip(t *testing.T) {
++	b := seedBT076Board(t)
++	before := bt076Raw(t, b, "DF-2")
++	dv := false
++	if _, err := b.UpdateTask("DF-2", UpdateSpec{Deferred: &dv}); err != nil {
++		t.Fatal(err)
++	}
++	after := bt076Raw(t, b, "DF-2")
++	if !strings.Contains(after, `"deferred": false`) {
++		t.Fatalf("update --deferred false wrote %s, want \"deferred\": false", after)
++	}
++	if RowIsDeferred(bt076Row(t, b, "DF-2")) {
++		t.Fatal("row still reads deferred after --deferred false")
++	}
++	// omitted update leaves the key untouched
++	if _, err := b.UpdateTask("DF-2", UpdateSpec{Summary: strPtr("note")}); err != nil {
++		t.Fatal(err)
++	}
++	line := bt076Raw(t, b, "DF-2")
++	if !strings.Contains(line, `"deferred": false`) {
++		t.Fatalf("omitted update changed the deferred key: %s", line)
++	}
++	// and on a row that never carried the key, an omitted update must not
++	// create it
++	if _, err := b.UpdateTask("DF-1", UpdateSpec{Summary: strPtr("note")}); err != nil {
++		t.Fatal(err)
++	}
++	if strings.Contains(bt076Raw(t, b, "DF-1"), "deferred") {
++		t.Fatal("omitted update created the deferred key")
++	}
++	// un-deferred -> deferred again via update
++	tv := true
++	if _, err := b.UpdateTask("DF-1", UpdateSpec{Deferred: &tv}); err != nil {
++		t.Fatal(err)
++	}
++	if !RowIsDeferred(bt076Row(t, b, "DF-1")) {
++		t.Fatal("update --deferred true did not defer the row")
++	}
++	if before == "" {
++		t.Fatal("sanity: before line empty")
++	}
++}
++
++// TestDeferredKeySanctioned: the deferred key must not flag as canon drift.
++func TestDeferredKeySanctioned(t *testing.T) {
++	if !IsSanctionedTaskKey("deferred") {
++		t.Fatal(`key "deferred" should be sanctioned (BT-076)`)
++	}
++	// the near-miss plural and the alias spelling must stay drift
++	for _, k := range []string{"deferred_reason", "defered"} {
++		if IsSanctionedTaskKey(k) {
++			t.Errorf("key %q should NOT be sanctioned (it is drift, not the BT-076 key)", k)
++		}
++	}
++	b := seedBT076Board(t)
++	rep, err := b.Validate()
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, f := range rep.Findings {
++		if strings.Contains(f.Msg, "outside the declared canon") {
++			t.Fatalf("seed board flagged canon drift:\n%s", f.Msg)
++		}
++	}
++}
++
++// TestValidateDeferredNonBooleanWarns: a non-boolean deferred value is an
++// itemized warning, not a failure — the board stays exit-0.
++func TestValidateDeferredNonBooleanWarns(t *testing.T) {
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl":  `{"id": "DF-NB", "title": "hand-edited", "status": "pending", "priority": "P2", "deferred": "yes"}` + "\n",
++		"events.jsonl": `{"id": 1, "timestamp": "2026-10-07 00:00:00", "event_type": "audit", "task_id": null, "actor": "foreman", "detail": null, "tick_number": 1}` + "\n",
++		"board.jsonl":  `{"project": "bt076", "namespace": "bt076", "version": 1, "ticks_total": 1, "ticks_idle": 0, "last_commit": "abc1234"}` + "\n",
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	rep, err := b.Validate()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if rep.HasErrors() {
++		t.Fatalf("non-boolean deferred failed validate (want warn only):\n%s", rep.RenderText())
++	}
++	found := false
++	for _, f := range rep.Findings {
++		if f.Level == "warn" && strings.Contains(f.Msg, "deferred is not a boolean") {
++			found = true
++		}
++	}
++	if !found {
++		t.Fatalf("no deferred-shape warning found:\n%s", rep.RenderText())
++	}
++	// absent and boolean shapes stay silent
++	b2 := seedBT076Board(t)
++	rep2, err := b2.Validate()
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, f := range rep2.Findings {
++		if strings.Contains(f.Msg, "deferred") {
++			t.Fatalf("boolean/absent deferred flagged:\n%s", f.Msg)
++		}
++	}
++	// a non-boolean value reads as NOT deferred (soft semantics)
++	if RowIsDeferred(bt076Row(t, b, "DF-NB")) {
++		t.Fatal(`deferred:"yes" read as deferred`)
++	}
++}
++
++// TestStatsDeferredSeparateAndNotActionable: deferred rows count in Total and
++// keep their status tally, ride the separate Deferred count, and are excluded
++// from Actionable.
++func TestStatsDeferredSeparateAndNotActionable(t *testing.T) {
++	b := seedBT076Board(t)
++	st, err := b.ComputeStats(TaskFilter{})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if st.Total != 2 {
++		t.Fatalf("total = %d, want 2 (deferred rows stay counted)", st.Total)
++	}
++	if st.Deferred != 1 {
++		t.Fatalf("deferred = %d, want 1", st.Deferred)
++	}
++	if st.Actionable != 1 {
++		t.Fatalf("actionable = %d, want 1 (the deferred pending row is excluded)", st.Actionable)
++	}
++	if st.Status["pending"] != 2 {
++		t.Fatalf("status[pending] = %d, want 2 (status tally keeps deferred rows)", st.Status["pending"])
++	}
++	// a deferred COMPLETE row: rides Deferred, still complete in the tally,
++	// never actionable either way
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl":  `{"id": "DF-C", "title": "done while parked", "status": "complete", "priority": "P2", "deferred": true}` + "\n",
++		"events.jsonl": `{"id": 1, "timestamp": "2026-10-07 00:00:00", "event_type": "audit", "task_id": null, "actor": "foreman", "detail": null, "tick_number": 1}` + "\n",
++		"board.jsonl":  `{"project": "bt076", "namespace": "bt076", "version": 1, "ticks_total": 1, "ticks_idle": 0, "last_commit": "abc1234"}` + "\n",
++	})
++	b2, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	st2, err := b2.ComputeStats(TaskFilter{})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if st2.Deferred != 1 || st2.Actionable != 0 || st2.Status["complete"] != 1 {
++		t.Fatalf("deferred complete row stats = %+v, want deferred 1, actionable 0, complete 1", st2)
++	}
++	// the rendered text carries both lines
++	txt := st.RenderText()
++	if !strings.Contains(txt, "deferred: 1") || !strings.Contains(txt, "actionable: 1") {
++		t.Fatalf("RenderText missing deferred/actionable lines:\n%s", txt)
++	}
++	// the JSON stats carry the deferred key
++	out, err := json.Marshal(st)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var m map[string]any
++	if err := json.Unmarshal(out, &m); err != nil {
++		t.Fatal(err)
++	}
++	if m["deferred"] != float64(1) {
++		t.Fatalf("JSON stats deferred = %v, want 1", m["deferred"])
++	}
++}
++
++// TestListAndShowRetainDeferredRows: list/show keep returning deferred rows —
++// retention, not filtering.
++func TestListAndShowRetainDeferredRows(t *testing.T) {
++	b := seedBT076Board(t)
++	rows, err := b.ListTasks(TaskFilter{})
++	if err != nil {
++		t.Fatal(err)
++	}
++	ids := map[string]bool{}
++	for _, r := range rows {
++		ids[r.String("id")] = true
++	}
++	if !ids["DF-2"] {
++		t.Fatal("list dropped the deferred row")
++	}
++	row, _, err := b.ShowTask("DF-2")
++	if err != nil || row == nil {
++		t.Fatalf("show lost the deferred row: %v, %v", row, err)
++	}
++}
++
++// TestImportRoundTripsDeferred: the BT-022 raw-row path preserves the
++// deferred key and its verbatim value through create(Raw).
++func TestImportRoundTripsDeferred(t *testing.T) {
++	b := seedBT076Board(t)
++	raw := `{"id": "DF-IMP", "title": "imported deferred", "status": "pending", "priority": "P3", "deferred": true}`
++	if _, err := b.Create(TaskRowSpec{ID: "DF-IMP", Title: "imported deferred", Raw: []byte(raw)}); err != nil {
++		t.Fatal(err)
++	}
++	got := bt076Raw(t, b, "DF-IMP")
++	if got != raw {
++		t.Fatalf("import did not round-trip the row verbatim:\nwant %s\ngot  %s", raw, got)
++	}
++	if !RowIsDeferred(bt076Row(t, b, "DF-IMP")) {
++		t.Fatal("imported deferred row reads as not deferred")
++	}
++}
++
++func boolPtr(v bool) *bool { return &v }
+diff --git a/internal/board/keys.go b/internal/board/keys.go
+index d130d80..6ea98c9 100644
+--- a/internal/board/keys.go
++++ b/internal/board/keys.go
+@@ -117,6 +117,13 @@ var sanctionedExtras = []string{
+ 	"repo",
+ 	"tick",
+ 	"ch:trace",
++	// BT-076: the owner-deferral flag. Written by `create --deferred` and
++	// `update --deferred true|false`; a deferred row stays searchable and
++	// returnable in every result set but must not inflate the pending /
++	// actionable tallies (stats counts it separately). Sanctioned here —
++	// not aliased onto blocked/complete — because deferral is its own
++	// lifecycle state the status vocabulary has no member for.
++	"deferred",
+ }
+ 
+ // SanctionedTaskRowKeys is the full allowed set: the create schema plus the
+diff --git a/internal/board/read.go b/internal/board/read.go
+index 8b5deb1..ccc5eaa 100644
+--- a/internal/board/read.go
++++ b/internal/board/read.go
+@@ -350,10 +350,19 @@ type Stats struct {
+ 	Total    int            `json:"total"`
+ 	Status   map[string]int `json:"status"`
+ 	Priority map[string]int `json:"priority"`
++	// BT-076: deferred rows are counted SEPARATELY and are excluded from
++	// Actionable: a deferred row remains searchable and keeps its status
++	// tally (Status keeps counting it), but it must not read as pending
++	// work a foreman should pick up. Actionable = non-deferred rows whose
++	// status resolves to pending.
++	Deferred   int `json:"deferred"`
++	Actionable int `json:"actionable"`
+ }
+ 
+ // ComputeStats tallies counts by status and by priority (string form; numeric
+-// priorities like 1/2/3 appear as "1"/"2"/"3", distinct from "P1").
++// priorities like 1/2/3 appear as "1"/"2"/"3", distinct from "P1"). BT-076:
++// deferred rows keep their status/priority tallies but ride the separate
++// Deferred count and are excluded from Actionable.
+ // DF-BOARDCTL-9: in SkipBad mode the underlying reads are tolerant; bad lines
+ // ride the skipped-line evidence instead of aborting the tally.
+ func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
+@@ -371,6 +380,11 @@ func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
+ 			continue
+ 		}
+ 		st.Total++
++		if RowIsDeferred(r) {
++			st.Deferred++
++		} else if NormalizeStatus(r.String("status")) == "pending" {
++			st.Actionable++
++		}
+ 		status := NormalizeStatus(r.String("status"))
+ 		if status == "" {
+ 			status = "(none)"
+@@ -383,6 +397,20 @@ func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
+ 	return st, nil
+ }
+ 
++// RowIsDeferred reports whether a task row carries the BT-076 deferred flag
++// as a truthy boolean. Mirrors priorityLabel's style: the raw bytes are read
++// directly; null/absent/false (and any non-boolean value, which validate
++// warns about) read as NOT deferred. The bare literals true/True are the
++// only accepted shapes.
++func RowIsDeferred(r *Row) bool {
++	raw := r.Get("deferred")
++	if raw == nil {
++		return false
++	}
++	return bytes.Equal(bytes.TrimSpace(raw), []byte("true")) ||
++		bytes.Equal(bytes.TrimSpace(raw), []byte("True"))
++}
++
+ // priorityLabel renders a row's priority as its display string: strings as-is
+ // (P0..P5), JSON numbers as their decimal form ("1".."5"). Boards mix both.
+ func priorityLabel(r *Row) (string, bool) {
+@@ -422,6 +450,8 @@ func SortedKeys[V any](m map[string]V) []string {
+ func (s *Stats) RenderText() string {
+ 	var sb strings.Builder
+ 	sb.WriteString(fmt.Sprintf("total tasks: %d\n", s.Total))
++	_, _ = fmt.Fprintf(&sb, "actionable: %d\n", s.Actionable)
++	_, _ = fmt.Fprintf(&sb, "deferred: %d\n", s.Deferred)
+ 	sb.WriteString("by status:\n")
+ 	for _, k := range SortedKeys(s.Status) {
+ 		sb.WriteString(fmt.Sprintf("  %-12s %d\n", k, s.Status[k]))
+diff --git a/internal/board/umbrella.go b/internal/board/umbrella.go
+index d058d0b..30aa9a2 100644
+--- a/internal/board/umbrella.go
++++ b/internal/board/umbrella.go
+@@ -404,11 +404,15 @@ type RepoStats struct {
+ 
+ // UmbrellaStats aggregates per-repo stats plus a grand total.
+ type UmbrellaStats struct {
+-	Root     string         `json:"root"`
+-	Repos    []RepoStats    `json:"repos"`
+-	Total    int            `json:"total"`
+-	Status   map[string]int `json:"status"`
+-	Priority map[string]int `json:"priority"`
++	Root  string      `json:"root"`
++	Repos []RepoStats `json:"repos"`
++	Total int         `json:"total"`
++	// BT-076: the grand-total twin of Stats.Deferred — the sum of the
++	// per-repo counts, excluded from the actionable reading the same way.
++	Deferred   int            `json:"deferred"`
++	Actionable int            `json:"actionable"`
++	Status     map[string]int `json:"status"`
++	Priority   map[string]int `json:"priority"`
+ }
+ 
+ // Stats computes per-repo status/priority tallies (the same ComputeStats the
+@@ -422,6 +426,8 @@ func (u *Umbrella) Stats(f TaskFilter) (*UmbrellaStats, error) {
+ 		}
+ 		us.Repos = append(us.Repos, RepoStats{Repo: qb.Repo, BoardDir: qb.BoardDir, Stats: st})
+ 		us.Total += st.Total
++		us.Deferred += st.Deferred
++		us.Actionable += st.Actionable
+ 		for k, v := range st.Status {
+ 			us.Status[k] += v
+ 		}
+diff --git a/internal/board/validate.go b/internal/board/validate.go
+index 777f7d4..89610d9 100644
+--- a/internal/board/validate.go
++++ b/internal/board/validate.go
+@@ -241,6 +241,23 @@ func (b *Board) validateTasks(rep *Report) {
+ 		for _, dep := range rowStringSlice(row, "depends_on") {
+ 			depends[dep] = append(depends[dep], depRef{line: idx + 1, id: id})
+ 		}
++		// BT-076: the deferred flag is boolean on every row boardctl
++		// writes (create --deferred / update --deferred). Hand-edited or
++		// legacy rows may carry another shape; like the priority and
++		// depends_on checks above this is an itemized WARNING, not a
++		// failure — the row's meaning is unaffected (RowIsDeferred reads
++		// any non-true value as NOT deferred), so flagging (not failing)
++		// keeps live boards at exit 0 while the drift stays visible.
++		// Absent stays silent: rows without the key are not deferred by
++		// definition.
++		if raw := row.Get("deferred"); raw != nil {
++			trimmed := bytes.TrimSpace(raw)
++			if !bytes.Equal(trimmed, []byte("true")) && !bytes.Equal(trimmed, []byte("false")) &&
++				!bytes.Equal(trimmed, []byte("null")) {
++				rep.Add("warn", "tasks.jsonl line %d (task %s): deferred is not a boolean (%s) — treated as not deferred (writes store true/false; hand-edit the row or rewrite via boardctl update)",
++					idx+1, id, jsonKindName(raw))
++			}
++		}
+ 		// BT-056: the row's KEY SET must stay inside the declared canon
+ 		// (keys.go). Until this check existed, "the row parsed" was the only
+ 		// shape test, so the fleet drifted to ~230 distinct keys — one-key
+diff --git a/internal/board/write.go b/internal/board/write.go
+index 008fb18..9adaa36 100644
+--- a/internal/board/write.go
++++ b/internal/board/write.go
+@@ -204,6 +204,14 @@ type TaskRowSpec struct {
+ 	Branch   *string
+ 	Sessions *[]string
+ 
++	// BT-076: owner-deferral flag, same nil-untouched discipline as the
++	// fields above. nil (flag omitted) writes NO deferred key at all — a
++	// row without the key is not deferred by definition. A non-nil
++	// pointer is authoritative and IS written, including false (an
++	// explicit --deferred false un-defers a row by writing
++	// deferred:false; it never deletes the key).
++	Deferred *bool
++
+ 	// BT-022: prevalidated raw row for the import path. When Raw is set,
+ 	// Create still performs every check below (id format, duplicate id,
+ 	// status/priority vocabulary, depends_on existence) but appends these
+@@ -414,6 +422,15 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
+ 			if !IsSanctionedTaskKey(k) {
+ 				continue
+ 			}
++			// BT-076: the deferred flag is NEVER neutral-mirrored — a null
++			// placeholder would create the key on rows the flag was omitted
++			// for, and "rows without the key are not deferred" is the
++			// contract. When the caller names the flag it is appended via the
++			// user-keys path below; when they omit it the new row carries no
++			// deferred key at all, no matter what the mirrored row held.
++			if k == "deferred" && spec.Deferred == nil {
++				continue
++			}
+ 			row.Keys = append(row.Keys, k)
+ 			row.Vals[k] = neutral(k)
+ 		}
+@@ -463,6 +480,9 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
+ 	if spec.Sessions != nil {
+ 		overrides["sessions"] = *spec.Sessions
+ 	}
++	if spec.Deferred != nil {
++		overrides["deferred"] = *spec.Deferred
++	}
+ 	overrides["created_at"] = nowStr
+ 	overrides["updated_at"] = nowStr
+ 	for k, v := range overrides {
+@@ -473,7 +493,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
+ 		}
+ 	}
+ 	// Keys the user asked for but the mirrored schema lacks: append at end.
+-	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions"} {
++	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred"} {
+ 		if v, ok := overrides[k]; ok && !row.Has(k) {
+ 			if err := set(k, v); err != nil {
+ 				return "", err
+@@ -675,6 +695,12 @@ type UpdateSpec struct {
+ 	Worktree *string
+ 	Branch   *string
+ 	Sessions *[]string
++	// BT-076: owner-deferral flag, same nil-untouched discipline. nil
++	// leaves the key alone (never creating it, never clearing a value
++	// already on the row); a non-nil pointer sets it — including false,
++	// which is how a deferred row is un-deferred (the key is written as
++	// false, never deleted).
++	Deferred *bool
+ 	// DF-BOARDCTL-13: priority + SG-126 run evidence, same nil-untouched
+ 	// discipline. Priority rides create's BT-007 write-time gate verbatim
+ 	// (normalize bare digits/case variants, reject the rest) — BT-060 left
+@@ -882,6 +908,14 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
+ 			return nil, err
+ 		}
+ 	}
++	// BT-076: --deferred writes the boolean verbatim. Unlike the string
++	// flags the CLI resolves omission to nil itself (an empty flag value
++	// is a parse error), so nil here really means "flag absent".
++	if spec.Deferred != nil {
++		if err := set("deferred", *spec.Deferred); err != nil {
++			return nil, err
++		}
++	}
+ 	// DF-BOARDCTL-13: priority goes through the SAME write-time gate as
+ 	// create (BT-007) — bare digits ("1") and case variants ("p2") map onto
+ 	// the canonical P0-P5 set, anything else fails the whole update with
+@@ -922,7 +956,7 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
+ 		}
+ 	}
+ 	if len(changed) == 0 && !spec.Normalize {
+-		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id) or --normalize")
++		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred) or --normalize")
+ 	}
+ 
+ 	newLines := make([][]byte, len(lines))
+diff --git a/internal/render/bt076_deferred_derive_test.go b/internal/render/bt076_deferred_derive_test.go
+new file mode 100644
+index 0000000..6386693
+--- /dev/null
++++ b/internal/render/bt076_deferred_derive_test.go
+@@ -0,0 +1,71 @@
++package render
++
++import (
++	"testing"
++
++	"github.com/coding-hermes/boardctl/internal/board"
++)
++
++// BT-076: the derived block counts deferred rows separately (deferred_count)
++// and excludes them from open_count — the actionable tally the completion %
++// and burndown headline read. Status counts keep the deferred rows.
++
++// TestDerivedDeferredExcludedFromOpen: a pending deferred row rides
++// deferred_count, not open_count; a plain pending row still counts open.
++func TestDerivedDeferredExcludedFromOpen(t *testing.T) {
++	tasks := []*board.Row{
++		mustRow(t, taskLine("DF-A", "2026-09-01 00:00:00", "", "pending")),
++		// spaced seed style with the boolean deferred key
++		mustRow(t, `{"id":"DF-B","title":"t DF-B","status":"pending","priority":"P1","created_at":"2026-09-01 00:00:00","deferred":true}`),
++	}
++	d := mkBoard(tasks, nil)
++	der := derive(d)
++	if der.DeferredCount != 1 {
++		t.Fatalf("deferred_count = %d, want 1", der.DeferredCount)
++	}
++	if der.OpenCount != 1 {
++		t.Fatalf("open_count = %d, want 1 (the deferred pending row is excluded)", der.OpenCount)
++	}
++	if der.StatusCounts["pending"] != 2 {
++		t.Fatalf("status_counts[pending] = %d, want 2 (deferred rows keep their status tally)", der.StatusCounts["pending"])
++	}
++	if der.TotalNonFix != 2 {
++		t.Fatalf("total_nonfixture = %d, want 2", der.TotalNonFix)
++	}
++}
++
++// TestDerivedDeferredCompleteRow: a deferred COMPLETE row counts complete
++// (deferral neutralizes open work, not done work) and rides deferred_count.
++func TestDerivedDeferredCompleteRow(t *testing.T) {
++	tasks := []*board.Row{
++		mustRow(t, taskLine("DF-C", "2026-09-01 00:00:00", "2026-09-02 00:00:00", "complete")),
++		mustRow(t, `{"id":"DF-D","title":"t DF-D","status":"complete","priority":"P2","created_at":"2026-09-01 00:00:00","completed_at":"2026-09-02 00:00:00","deferred":true}`),
++	}
++	d := mkBoard(tasks, nil)
++	der := derive(d)
++	if der.DeferredCount != 1 {
++		t.Fatalf("deferred_count = %d, want 1", der.DeferredCount)
++	}
++	if der.CompleteCount != 2 {
++		t.Fatalf("complete_count = %d, want 2", der.CompleteCount)
++	}
++	if der.OpenCount != 0 {
++		t.Fatalf("open_count = %d, want 0", der.OpenCount)
++	}
++}
++
++// TestDerivedDeferredNullAndAbsent: null/absent deferred never counts.
++func TestDerivedDeferredNullAndAbsent(t *testing.T) {
++	tasks := []*board.Row{
++		mustRow(t, `{"id":"DF-E","title":"t DF-E","status":"pending","priority":"P2","created_at":"2026-09-01 00:00:00","deferred":null}`),
++		mustRow(t, taskLine("DF-F", "2026-09-01 00:00:00", "", "pending")),
++	}
++	d := mkBoard(tasks, nil)
++	der := derive(d)
++	if der.DeferredCount != 0 {
++		t.Fatalf("deferred_count = %d, want 0 (null is not deferred)", der.DeferredCount)
++	}
++	if der.OpenCount != 2 {
++		t.Fatalf("open_count = %d, want 2", der.OpenCount)
++	}
++}
+diff --git a/internal/render/derive.go b/internal/render/derive.go
+index 82f7274..e20d0ea 100644
+--- a/internal/render/derive.go
++++ b/internal/render/derive.go
+@@ -144,8 +144,14 @@ type Derived struct {
+ 	PriorityCount map[string]int `json:"priority_counts"`
+ 	OpenCount     int            `json:"open_count"`
+ 	CompleteCount int            `json:"complete_count"`
+-	TotalNonFix   int            `json:"total_nonfixture"`
+-	LastActivity  string         `json:"last_activity_day"`
++	// BT-076: deferred rows stay in OpenCount's search surface but must not
++	// inflate the actionable numbers — OpenCount here is the actionable
++	// open tally the completion % and burndown headline read, so deferred
++	// rows are counted separately in DeferredCount and EXCLUDED from
++	// OpenCount. Their status_counts entries keep their status.
++	DeferredCount int    `json:"deferred_count"`
++	TotalNonFix   int    `json:"total_nonfixture"`
++	LastActivity  string `json:"last_activity_day"`
+ }
+ 
+ // BoardPayload is one board's entry in the report payload (6.2). Tasks and
+@@ -218,10 +224,15 @@ func derive(d *boardData) Derived {
+ 
+ 	// 3.9 status/priority counts: fixture rows EXCLUDED (stats defaults).
+ 	for _, t := range tasks {
++		// BT-076: deferred rows keep their status/priority tallies but do
++		// not count as open actionable work.
+ 		der.StatusCounts[t.status]++
+ 		if t.status == "complete" {
+ 			der.CompleteCount++
+-		} else {
++		}
++		if board.RowIsDeferred(t.row) {
++			der.DeferredCount++
++		} else if t.status != "complete" {
+ 			der.OpenCount++
+ 		}
+ 		if t.priority != nil {

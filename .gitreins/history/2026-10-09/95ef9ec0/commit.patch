@@ -1,0 +1,31 @@
+commit 3c83aa8404255be71f464be0d73b244bb7dc7abe
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 9 13:14:09 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 9 13:14:09 2026 -0500
+
+    fix(vuln): bump go 1.26.6 -> 1.26.9 — 7 reachable stdlib vulns (net/http, crypto/tls, net/textproto, mime/multipart)
+    
+    vuln gate was RED with 7 GO-2026-66xx advisories all fixed in go1.26.9.
+    Single-line go.mod bump; GOTOOLCHAIN=auto fetches the patched toolchain.
+    make vuln-check now exits 0 with no findings; full go test -short green.
+    
+    Fixes BT-080.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ go.mod | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/go.mod b/go.mod
+index cf5060d..2e96496 100644
+--- a/go.mod
++++ b/go.mod
+@@ -1,6 +1,6 @@
+ module github.com/coding-hermes/boardctl
+ 
+-go 1.26.6
++go 1.26.9
+ 
+ require (
+ 	github.com/getkin/kin-openapi v0.149.0

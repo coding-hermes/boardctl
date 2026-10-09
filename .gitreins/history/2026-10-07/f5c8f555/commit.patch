@@ -1,0 +1,22 @@
+commit 9420c6292327616326d6b8fd9017012c10cdb0c4
+Merge: bd5fb8d 2390a19
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Tue Oct 6 18:57:06 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Tue Oct 6 18:57:06 2026 -0500
+
+    merge: BT-078 umbrella command — read-only unified view over symlinked sub-repo boards
+
+ README.md                               |  50 +++
+ cmd/boardctl/bt041_help_exit_test.go    |   2 +-
+ cmd/boardctl/bt078_umbrella_cli_test.go | 566 +++++++++++++++++++++++++++
+ cmd/boardctl/df15_skill_closure_test.go |   8 +-
+ cmd/boardctl/main.go                    |  11 +
+ cmd/boardctl/umbrella.go                | 308 +++++++++++++++
+ internal/board/board.go                 |  48 +--
+ internal/board/umbrella.go              | 573 +++++++++++++++++++++++++++
+ internal/board/umbrella_test.go         | 661 ++++++++++++++++++++++++++++++++
+ internal/describe/describe.go           |   1 +
+ internal/describe/describe_test.go      |   6 +-
+ skills/boardctl-usage/SKILL.md          |  23 +-
+ 12 files changed, 2224 insertions(+), 33 deletions(-)

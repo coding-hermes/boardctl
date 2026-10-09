@@ -1,0 +1,93 @@
+{
+  "task_id": "BT-080",
+  "task_title": "bump go 1.26.6 -> 1.26.9: 7 new reachable stdlib vulns (net/http, crypto/tls, net/textproto, mime/multipart) \u2014 vuln gate RED",
+  "task_criteria": [
+    "go.mod go directive bumped from 1.26.6 to 1.26.9; make vuln-check exits 0 with no findings; go build/vet/test -short all green; CI green on the push; downloaded asset (if a release is cut) reports go1.26.9 via go version -m"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "3c83aa8404255be71f464be0d73b244bb7dc7abe",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n1:16PM INF scanned ~2970724 bytes (2.97 MB) in 540ms\n1:16PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 198 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T181409.886006Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.654s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.012s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.524s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.008s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.118s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.306s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.026s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.020s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.270s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.012s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261009T181409.886006Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 go.mod go directive bumped from 1.26.6 to 1.26.9; make vuln-check exits 0 with no findings; go build/vet/test -short all green; CI green on the push; downloaded asset (if a release is cut) reports go1.26.9 via go version -m: go.mod:3 now reads 'go 1.26.9' (git show HEAD confirms single-line diff -go 1.26.6 +go 1.26.9). `make vuln-check` EXIT=0 with output 'ok github.com/coding-hermes/boardctl/internal/vulncheck 3.340s'; direct `govulncheck ./...` => 'No vulnerabilities found.' exit 0 (govulncheck@v1.7.0, Go go1.26.9). `go build ./...` EXIT=0, `go vet ./...` EXIT=0, `go test -short -count=1 ./...` EXIT=0 with 12 packages ok and no FAIL/SKIP. CI (.github/workflows/ci.yml) runs the byte-identical gates (go-version 1.26, govulncheck@v1.7.0 install then TestVulncheck, then go test -short) \u2014 all verified green locally; no GitHub API access to query the run, but the workflow commands match the passing local runs. Asset clause is conditional ('if a release is cut'): `git tag --points-at HEAD` is empty, so this commit cut no release; dist/boardctl_linux_amd64 is a stale v0.1.10 artifact (go1.26.8, vcs.revision be5f347, dated Sep 29) predating this change, so the clause is N/A. LSP diagnostics: 0.\ngo.mod bumped to 1.26.9 and all gates (vuln-check, build, vet, test -short) verified green with fresh command output; no release was cut so the conditional asset check is not applicable.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 go.mod go directive bumped from 1.26.6 to 1.26.9; make vuln-check exits 0 with no findings; go build/vet/test -short all green; CI green on the push; downloaded asset (if a release is cut) reports go1.26.9 via go version -m: go.mod:3 now reads 'go 1.26.9' (git show HEAD confirms single-line diff -go 1.26.6 +go 1.26.9). `make vuln-check` EXIT=0 with output 'ok github.com/coding-hermes/boardctl/internal/vulncheck 3.340s'; direct `govulncheck ./...` => 'No vulnerabilities found.' exit 0 (govulncheck@v1.7.0, Go go1.26.9). `go build ./...` EXIT=0, `go vet ./...` EXIT=0, `go test -short -count=1 ./...` EXIT=0 with 12 packages ok and no FAIL/SKIP. CI (.github/workflows/ci.yml) runs the byte-identical gates (go-version 1.26, govulncheck@v1.7.0 install then TestVulncheck, then go test -short) \u2014 all verified green locally; no GitHub API access to query the run, but the workflow commands match the passing local runs. Asset clause is conditional ('if a release is cut'): `git tag --points-at HEAD` is empty, so this commit cut no release; dist/boardctl_linux_amd64 is a stale v0.1.10 artifact (go1.26.8, vcs.revision be5f347, dated Sep 29) predating this change, so the clause is N/A. LSP diagnostics: 0.\ngo.mod bumped to 1.26.9 and all gates (vuln-check, build, vet, test -short) verified green with fresh command output; no release was cut so the conditional asset check is not applicable.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "go.mod go directive bumped from 1.26.6 to 1.26.9; make vuln-check exits 0 with no findings; go build/vet/test -short all green; CI green on the push; downloaded asset (if a release is cut) reports go1.26.9 via go version -m",
+                "status": "PASS",
+                "detail": "go.mod:3 now reads 'go 1.26.9' (git show HEAD confirms single-line diff -go 1.26.6 +go 1.26.9). `make vuln-check` EXIT=0 with output 'ok github.com/coding-hermes/boardctl/internal/vulncheck 3.340s'; direct `govulncheck ./...` => 'No vulnerabilities found.' exit 0 (govulncheck@v1.7.0, Go go1.26.9). `go build ./...` EXIT=0, `go vet ./...` EXIT=0, `go test -short -count=1 ./...` EXIT=0 with 12 packages ok and no FAIL/SKIP. CI (.github/workflows/ci.yml) runs the byte-identical gates (go-version 1.26, govulncheck@v1.7.0 install then TestVulncheck, then go test -short) \u2014 all verified green locally; no GitHub API access to query the run, but the workflow commands match the passing local runs. Asset clause is conditional ('if a release is cut'): `git tag --points-at HEAD` is empty, so this commit cut no release; dist/boardctl_linux_amd64 is a stale v0.1.10 artifact (go1.26.8, vcs.revision be5f347, dated Sep 29) predating this change, so the clause is N/A. LSP diagnostics: 0."
+              }
+            ],
+            "summary": "go.mod bumped to 1.26.9 and all gates (vuln-check, build, vet, test -short) verified green with fresh command output; no release was cut so the conditional asset check is not applicable."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: BT-080\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 go.mod go directive bumped from 1.26.6 to 1.26.9; make vuln-check exits 0 with no findings; go build/vet/test -short all green; CI green on the push; downloaded asset (if a release is cut) reports go1.26.9 via go version -m: go.mod:3 now reads 'go 1.26.9' (git show HEAD confirms single-line diff -go 1.26.6 +go 1.26.9). `make vuln-check` EXIT=0 with output 'ok github.com/coding-hermes/boardctl/internal/vulncheck 3.340s'; direct `govulncheck ./...` => 'No vulnerabilities found.' exit 0 (govulncheck@v1.7.0, Go go1.26.9). `go build ./...` EXIT=0, `go vet ./...` EXIT=0, `go test -short -count=1 ./...` EXIT=0 with 12 packages ok and no FAIL/SKIP. CI (.github/workflows/ci.yml) runs the byte-identical gates (go-version 1.26, govulncheck@v1.7.0 install then TestVulncheck, then go test -short) \u2014 all verified green locally; no GitHub API access to query the run, but the workflow commands match the passing local runs. Asset clause is conditional ('if a release is cut'): `git tag --points-at HEAD` is empty, so this commit cut no release; dist/boardctl_linux_amd64 is a stale v0.1.10 artifact (go1.26.8, vcs.revision be5f347, dated Sep 29) predating this change, so the clause is N/A. LSP diagnostics: 0.\ngo.mod bumped to 1.26.9 and all gates (vuln-check, build, vet, test -short) verified green with fresh command output; no release was cut so the conditional asset check is not applicable.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-09T18:17:30.650294",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-09T18:17:30.662428+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1011,
+        "truncated": false,
+        "source": "git show 3c83aa840425"
+      }
+    ],
+    "task_id": "BT-080"
+  }
+}

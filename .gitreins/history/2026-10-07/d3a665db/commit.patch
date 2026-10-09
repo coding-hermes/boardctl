@@ -1,0 +1,1610 @@
+commit 001c75e580e91f065ab3e0ac9e9d85c36e6e09fd
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Wed Oct 7 14:14:09 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Wed Oct 7 14:14:09 2026 -0500
+
+    feat(board): plural association fields (pull_requests/branches/worktrees) with validation and merge semantics (BT-077)
+    
+    Additive structured plural fields so a task can track multiple associated PRs,
+    branches and worktrees across the dimensions involved, without losing existing
+    singular worktree/branch fields or sessions.
+    
+    - internal/board/associations.go: association types, PR URL/number identity
+      normalization (accept GitHub PR URL or bare number; reject malformed values),
+      merge-without-overwrite semantics per dimension
+    - internal/board/keys.go, validate.go, write.go: schema + validation + write
+      path support; legacy singular-only rows still parse/validate
+    - cmd/boardctl/main.go: create/update/show/list/search/render/export expose
+      the plural fields; adding one PR keeps existing PRs and other dimensions
+    - tests: multi-value per dimension, legacy rows, sibling preservation,
+      normalization rules, malformed rejection, CLI-level round-trip
+    
+    Verified: go build/vet/test ./... green, gofmt clean; throwaway-board probe
+    (2 PRs + 2 branches + 2 worktrees accumulate; 3rd PR merge preserves siblings;
+    export/import round-trip; validate+doctor OK); legacy-row probe passes.
+    
+    ch:trace row=BT-077 test=internal/board/bt077_associations_test.go evidence=internal/board/bt077_associations_cli_test.go witness=none:CLI probes ran on throwaway /tmp boards, not archived
+---
+ cmd/boardctl/bt077_associations_cli_test.go | 253 +++++++++++++
+ cmd/boardctl/main.go                        | 129 ++++++-
+ internal/board/associations.go              | 379 +++++++++++++++++++
+ internal/board/bt077_associations_test.go   | 556 ++++++++++++++++++++++++++++
+ internal/board/keys.go                      |  10 +
+ internal/board/validate.go                  |  27 ++
+ internal/board/write.go                     |  69 +++-
+ 7 files changed, 1416 insertions(+), 7 deletions(-)
+
+diff --git a/cmd/boardctl/bt077_associations_cli_test.go b/cmd/boardctl/bt077_associations_cli_test.go
+new file mode 100644
+index 0000000..90e21f4
+--- /dev/null
++++ b/cmd/boardctl/bt077_associations_cli_test.go
+@@ -0,0 +1,253 @@
++package main
++
++import (
++	"encoding/json"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++// BT-077 CLI coverage: the association flags on create and update.
++// The board-level write/merge/normalize contract is pinned in
++// internal/board (bt077_associations_test.go); these tests pin the CLI
++// surface: flags land on the row, multi-value flags keep every occurrence,
++// malformed values fail the command with nothing written, and the help
++// closures document the merge semantics.
++
++// seedBT077CLIBoard seeds a board with one plain row and one legacy
++// singular row (worktree/branch/sessions only).
++func seedBT077CLIBoard(t *testing.T) string {
++	_ = t
++	dir := t.TempDir()
++	boardDir := filepath.Join(dir, ".coding-hermes", "board")
++	if err := os.MkdirAll(boardDir, 0o755); err != nil {
++		t.Fatal(err)
++	}
++	files := map[string]string{
++		"tasks.jsonl": `{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[]}` + "\n" +
++			`{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}` + "\n",
++		"events.jsonl": `{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
++		"board.jsonl":  `{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
++	}
++	for name, content := range files {
++		if err := os.WriteFile(filepath.Join(boardDir, name), []byte(content), 0o644); err != nil {
++			t.Fatal(err)
++		}
++	}
++	return dir
++}
++
++// bt077Line returns the tasks.jsonl line carrying the given id.
++func bt077Line(t *testing.T, dir, id string) string {
++	_ = t
++	raw, err := os.ReadFile(filepath.Join(dir, ".coding-hermes", "board", "tasks.jsonl"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, l := range strings.Split(string(raw), "\n") {
++		if strings.Contains(l, `"id":"`+id+`"`) || strings.Contains(l, `"id": "`+id+`"`) {
++			return l
++		}
++	}
++	t.Fatalf("task %q not found in %s", id, raw)
++	return ""
++}
++
++// bt077RowMap parses one line into a generic map.
++func bt077RowMap(t *testing.T, line string) map[string]any {
++	_ = t
++	var row map[string]any
++	if err := json.Unmarshal([]byte(line), &row); err != nil {
++		t.Fatalf("row does not parse: %v (%s)", err, line)
++	}
++	return row
++}
++
++// TestCmdCreateAssociationFlagsMultiValue: create with repeated
++// --pull-request flags lands every element in CLI order; the merge
++// semantics and canonical shapes are pinned board-level.
++func TestCmdCreateAssociationFlagsMultiValue(t *testing.T) {
++	dir := seedBT077CLIBoard(t)
++	code := run([]string{"-C", dir, "create", "--id", "AS-C1", "--title", "assoc row",
++		"--pull-request", "21", "--pull-request", "https://github.com/o/r/pull/22"})
++	if code != 0 {
++		t.Fatalf("create exit = %d, want 0", code)
++	}
++	row := bt077RowMap(t, bt077Line(t, dir, "AS-C1"))
++	prs, ok := row["pull_requests"].([]any)
++	if !ok || len(prs) != 2 {
++		t.Fatalf("pull_requests = %v, want 2 elements", row["pull_requests"])
++	}
++	first, _ := prs[0].(map[string]any)
++	if first["number"] != float64(21) {
++		t.Errorf("first PR = %v, want 21", first["number"])
++	}
++	second, _ := prs[1].(map[string]any)
++	if second["number"] != float64(22) || second["url"] != "https://github.com/o/r/pull/22" {
++		t.Errorf("second PR = %v, want {22, url}", second)
++	}
++	// omitted dimensions write no key
++	if _, present := row["branches"]; present {
++		t.Errorf("omitted --assoc-branch wrote a branches key anyway")
++	}
++}
++
++// TestCmdCreateAssociationRejectsMalformed: a malformed --pull-request
++// value fails the command with NOTHING written.
++func TestCmdCreateAssociationRejectsMalformed(t *testing.T) {
++	dir := seedBT077CLIBoard(t)
++	if code := run([]string{"-C", dir, "create", "--id", "AS-BAD", "--title", "never",
++		"--pull-request", "bad id!"}); code == 0 {
++		t.Fatal("create accepted a malformed PR value (exit 0)")
++	}
++	raw, err := os.ReadFile(filepath.Join(dir, ".coding-hermes", "board", "tasks.jsonl"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	if strings.Contains(string(raw), "AS-BAD") {
++		t.Fatalf("failed create left its row behind:\n%s", raw)
++	}
++}
++
++// TestCmdUpdateAssociationMerges: repeated update calls accumulate across
++// all three dimensions without touching siblings — the third PR keeps the
++// first two; branches/worktrees stay; the legacy singular row keeps its
++// worktree/branch/sessions fields.
++func TestCmdUpdateAssociationMerges(t *testing.T) {
++	dir := seedBT077CLIBoard(t)
++	steps := [][]string{
++		{"-C", dir, "update", "EXIST-1", "--pull-request", "21"},
++		{"-C", dir, "update", "EXIST-1", "--pull-request", "https://github.com/o/r/pull/22"},
++		{"-C", dir, "update", "EXIST-1", "--assoc-branch", "feat/a", "--assoc-branch", "feat/b"},
++		{"-C", dir, "update", "EXIST-1", "--assoc-worktree", "/tmp/w1", "--assoc-worktree", "/tmp/w2"},
++		{"-C", dir, "update", "EXIST-1", "--pull-request", "23"}, // third PR must not drop the first two
++	}
++	for i, args := range steps {
++		if code := run(args); code != 0 {
++			t.Fatalf("step %d (%v): exit = %d, want 0", i+1, args, code)
++		}
++	}
++	row := bt077RowMap(t, bt077Line(t, dir, "EXIST-1"))
++	prs := row["pull_requests"].([]any)
++	if len(prs) != 3 {
++		t.Fatalf("pull_requests = %v, want 3 (merge, never overwrite)", row["pull_requests"])
++	}
++	branches := row["branches"].([]any)
++	if len(branches) != 2 || branches[0] != "feat/a" || branches[1] != "feat/b" {
++		t.Fatalf("branches = %v, want [feat/a feat/b]", branches)
++	}
++	wts := row["worktrees"].([]any)
++	if len(wts) != 2 || wts[0] != "/tmp/w1" || wts[1] != "/tmp/w2" {
++		t.Fatalf("worktrees = %v, want [/tmp/w1 /tmp/w2]", wts)
++	}
++	// legacy row: singular fields survive an association merge
++	if code := run([]string{"-C", dir, "update", "EXIST-LEG", "--pull-request", "7"}); code != 0 {
++		t.Fatalf("legacy update exit = %d, want 0", code)
++	}
++	leg := bt077RowMap(t, bt077Line(t, dir, "EXIST-LEG"))
++	if leg["worktree"] != "/home/me/wt-1" || leg["branch"] != "wt/lg-1" {
++		t.Fatalf("legacy singular fields lost: %v / %v", leg["worktree"], leg["branch"])
++	}
++	if prs, ok := leg["pull_requests"].([]any); !ok || len(prs) != 1 {
++		t.Fatalf("legacy pull_requests = %v, want 1 element", leg["pull_requests"])
++	}
++}
++
++// TestCmdUpdateAssociationIdempotent: merging the same PR again reports no
++// pull_requests change and does not duplicate the element.
++func TestCmdUpdateAssociationIdempotent(t *testing.T) {
++	dir := seedBT077CLIBoard(t)
++	if code := run([]string{"-C", dir, "update", "EXIST-1", "--pull-request", "https://github.com/o/r/pull/22"}); code != 0 {
++		t.Fatal("first merge failed")
++	}
++	line := bt077Line(t, dir, "EXIST-1")
++	if code := run([]string{"-C", dir, "update", "EXIST-1", "--pull-request", "22"}); code != 0 {
++		t.Fatal("second (bare-number) merge failed")
++	}
++	after := bt077Line(t, dir, "EXIST-1")
++	if strings.Count(after, `"number":22`) != 1 && strings.Count(after, `"number": 22`) != 1 {
++		t.Fatalf("PR 22 duplicated:\n%s", after)
++	}
++	if !strings.Contains(after, `"url"`) {
++		t.Fatalf("richer stored form (with url) not preserved:\n%s", after)
++	}
++	_ = line
++}
++
++// TestCmdUpdateAssociationRejectsMalformed: a malformed element fails the
++// update with nothing written.
++func TestCmdUpdateAssociationRejectsMalformed(t *testing.T) {
++	dir := seedBT077CLIBoard(t)
++	if code := run([]string{"-C", dir, "update", "EXIST-1", "--pull-request", "nope!"}); code == 0 {
++		t.Fatal("update accepted a malformed PR value")
++	}
++	line := bt077Line(t, dir, "EXIST-1")
++	if strings.Contains(line, "pull_requests") {
++		t.Fatalf("failed update wrote pull_requests anyway:\n%s", line)
++	}
++}
++
++// TestCmdShowAndListExposeAssociations: show pretty-prints the plural
++// fields and list --json carries them verbatim.
++func TestCmdShowAndListExposeAssociations(t *testing.T) {
++	dir := seedBT077CLIBoard(t)
++	if code := run([]string{"-C", dir, "update", "EXIST-1", "--pull-request", "21"}); code != 0 {
++		t.Fatal("pull-request update failed")
++	}
++	if code := run([]string{"-C", dir, "update", "EXIST-1", "--assoc-branch", "feat/x"}); code != 0 {
++		t.Fatal("assoc-branch update failed")
++	}
++	showOut, serr := captureStdout(func() {
++		if code := run([]string{"-C", dir, "show", "EXIST-1"}); code != 0 {
++			t.Fatal("show failed")
++		}
++	})
++	if serr != nil {
++		t.Fatal(serr)
++	}
++	if !strings.Contains(showOut, `"pull_requests"`) || !strings.Contains(showOut, `"branches"`) {
++		t.Fatalf("show lost the plural fields:\n%s", showOut)
++	}
++	listOut, lerr := captureStdout(func() {
++		if code := run([]string{"-C", dir, "list", "--json"}); code != 0 {
++			t.Fatal("list --json failed")
++		}
++	})
++	if lerr != nil {
++		t.Fatal(lerr)
++	}
++	if !strings.Contains(listOut, `"pull_requests"`) || !strings.Contains(listOut, `"number": 21`) {
++		t.Fatalf("list --json lost pull_requests:\n%s", listOut)
++	}
++	if !strings.Contains(listOut, `"branches"`) || !strings.Contains(listOut, `"feat/x"`) {
++		t.Fatalf("list --json lost branches:\n%s", listOut)
++	}
++}
++
++// TestAssociationFlagsDocumentedInHelp: the usage closures name all three
++// association flags and state the merge semantics.
++func TestAssociationFlagsDocumentedInHelp(t *testing.T) {
++	createOut, cerr := captureStdout(func() {
++		_ = run([]string{"create", "--help"})
++	})
++	for _, want := range []string{"--pull-request", "--assoc-branch", "--assoc-worktree"} {
++		if !strings.Contains(createOut, want) {
++			t.Errorf("create help lost %q:\n%s", want, createOut)
++		}
++	}
++	if cerr != nil {
++		t.Fatal(cerr)
++	}
++	updateOut, uerr := captureStdout(func() {
++		_ = run([]string{"update", "--help"})
++	})
++	if uerr != nil {
++		t.Fatal(uerr)
++	}
++	for _, want := range []string{"--pull-request", "--assoc-branch", "--assoc-worktree", "MERGES"} {
++		if !strings.Contains(updateOut, want) {
++			t.Errorf("update help lost %q:\n%s", want, updateOut)
++		}
++	}
++}
+diff --git a/cmd/boardctl/main.go b/cmd/boardctl/main.go
+index f0b4d3d..f14c11f 100644
+--- a/cmd/boardctl/main.go
++++ b/cmd/boardctl/main.go
+@@ -52,11 +52,15 @@ commands:
+   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
+           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
+           [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
+-          [--session ID]... [--deferred]   (a re-detected finding is REFUSED with exit 2)
++          [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred]   (a re-detected finding is REFUSED with exit 2)
+   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
+           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
+           [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
+           [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
++          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]...
++          (repeatable; each merges one element into its pull_requests/
++          branches/worktrees dimension — existing elements, the other
++          dimensions, and the singular worktree/branch fields survive)
+           [--evidence-run-id RUN] [--deferred true|false] [--normalize] [--force]
+   event   --type task_created|task_dispatched|task_completed|audit|...
+           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
+@@ -622,7 +626,7 @@ func cmdShow(dir string, args []string) error {
+ 
+ func cmdCreate(dir string, args []string) error {
+ 	fs := newFlagSet("create")
+-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "evidence-run-id", "worktree", "branch", "session"))
++	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "evidence-run-id", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
+ 	id := fs.String("id", "", "task id (required)")
+ 	title := fs.String("title", "", "task title (required)")
+ 	status := fs.String("status", "pending", "status (write vocabulary)")
+@@ -641,6 +645,18 @@ func cmdCreate(dir string, args []string) error {
+ 	branch := fs.String("branch", "", "git branch of --worktree, e.g. wt/cht-031")
+ 	var sessions stringListFlag
+ 	fs.Var(&sessions, "session", "Hermes session id that worked this task (repeatable: --session A --session B records the ordered array)")
++	// BT-077: the plural association dimensions, create-side. Each
++	// repeatable flag appends ONE element to ONE dimension (merge
++	// semantics — create builds a fresh row, so this is plain append);
++	// the singular worktree/branch above are untouched. Values are
++	// validated here before the board is opened: a malformed element
++	// (a non-GitHub PR URL, "bad id!", an empty branch) is a usage
++	// failure with nothing written. Takes values, so all three join the
++	// reorderArgs valueFlags list.
++	var prFlags, brFlags, wtFlags stringListFlag
++	fs.Var(&prFlags, "pull-request", "associate a GitHub PR (repeatable; bare number 123 or PR URL https://github.com/owner/repo/pull/123; appends to pull_requests)")
++	fs.Var(&brFlags, "assoc-branch", "associate a git branch (repeatable; appends to branches)")
++	fs.Var(&wtFlags, "assoc-worktree", "associate a git worktree path (repeatable; appends to worktrees)")
+ 	// BT-076: bool flag — a deferred row stays searchable but is excluded
+ 	// from the actionable/pending tally (stats). Takes no value, so it must
+ 	// NOT join the reorderArgs valueFlags list (same as --force).
+@@ -649,7 +665,7 @@ func cmdCreate(dir string, args []string) error {
+ 	var cdir string
+ 	addCFlag(fs, &cdir)
+ 	fs.Usage = func() {
+-		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--deferred] [--force] [flags] [-C dir]\n")
++		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--force] [flags] [-C dir]\n")
+ 		fmt.Fprintf(fs.Output(), "\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n")
+ 		fmt.Fprintf(fs.Output(), "          -review → P4, -docs/-readme → P5. An explicit --priority\n")
+ 		fmt.Fprintf(fs.Output(), "          always wins (BT-071).\n")
+@@ -694,6 +710,49 @@ func cmdCreate(dir string, args []string) error {
+ 		list := []string(sessions)
+ 		spec.Sessions = &list
+ 	}
++	if len(prFlags) > 0 || len(brFlags) > 0 || len(wtFlags) > 0 {
++		// BT-077 create-side association flags. Create builds a fresh
++		// row, so each dimension appends once; a single create carries
++		// ONE dimension's elements (the merge machinery takes one
++		// dimension per call) — the CLI validates every element up
++		// front and rejects a mixed-dimension create with a named
++		// error instead of silently dropping flags.
++		dims := 0
++		for _, n := range []int{len(prFlags), len(brFlags), len(wtFlags)} {
++			if n > 0 {
++				dims++
++			}
++		}
++		if dims > 1 {
++			return fmt.Errorf("create: --pull-request/--assoc-branch/--assoc-worktree apply one dimension per invocation — run a second create or update for the next dimension")
++		}
++		switch {
++		case len(prFlags) > 0:
++			for _, v := range prFlags {
++				if _, err := board.ValidateAssociationValue(board.PullRequestsKey, v); err != nil {
++					return err
++				}
++			}
++			spec.AssocDim = board.PullRequestsKey
++			spec.AssocValues = []string(prFlags)
++		case len(brFlags) > 0:
++			for _, v := range brFlags {
++				if _, err := board.ValidateAssociationValue(board.BranchesKey, v); err != nil {
++					return err
++				}
++			}
++			spec.AssocDim = board.BranchesKey
++			spec.AssocValues = []string(brFlags)
++		default:
++			for _, v := range wtFlags {
++				if _, err := board.ValidateAssociationValue(board.WorktreesKey, v); err != nil {
++					return err
++				}
++			}
++			spec.AssocDim = board.WorktreesKey
++			spec.AssocValues = []string(wtFlags)
++		}
++	}
+ 	if *deferred {
+ 		spec.Deferred = deferred
+ 	}
+@@ -716,7 +775,7 @@ func cmdCreate(dir string, args []string) error {
+ 
+ func cmdUpdate(dir string, args []string) error {
+ 	fs := newFlagSet("update")
+-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id"))
++	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id", "pull-request", "assoc-branch", "assoc-worktree"))
+ 	status := fs.String("status", "", "status (write vocabulary)")
+ 	// BT-060: create has always accepted --title; update could only rewrite
+ 	// the title by hand-editing the row. Same shape as every other optional
+@@ -753,6 +812,17 @@ func cmdUpdate(dir string, args []string) error {
+ 	// untouched. Takes a value, so it MUST join the reorderArgs valueFlags
+ 	// list.
+ 	deferred := fs.String("deferred", "", "deferred true|false (a deferred row stays searchable but is excluded from actionable counts; omitted = leave untouched)")
++	// BT-077: the plural association dimensions. Each repeatable flag
++	// appends ONE element to ONE dimension — merge semantics, never a
++	// sibling overwrite: existing PRs/branches/worktrees (and the singular
++	// worktree/branch fields and sessions) all survive. A value that
++	// fails validation (a non-GitHub PR URL, "bad id!", an empty branch)
++	// fails the update with NOTHING written. Takes values, so all three
++	// join the reorderArgs valueFlags list.
++	var prFlags, brFlags, wtFlags stringListFlag
++	fs.Var(&prFlags, "pull-request", "associate a GitHub PR (repeatable; bare number 123 or PR URL https://github.com/owner/repo/pull/123; MERGES into pull_requests, never overwrites)")
++	fs.Var(&brFlags, "assoc-branch", "associate a git branch (repeatable; MERGES into branches, never overwrites)")
++	fs.Var(&wtFlags, "assoc-worktree", "associate a git worktree path (repeatable; MERGES into worktrees, never overwrites)")
+ 	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
+ 	// to their canonical forms (read-alias fix path). Takes no value, so it
+ 	// must NOT join the reorderArgs valueFlags list.
+@@ -764,7 +834,8 @@ func cmdUpdate(dir string, args []string) error {
+ 		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
+ 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
+ 		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--worktree PATH] [--branch NAME]\n")
+-		fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
++		_, _ = fmt.Fprintf(fs.Output(), "          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... (repeatable; each MERGES one element into its dimension — pull_requests/branches/worktrees — never overwriting existing elements or the other dimensions)\n")
++		_, _ = fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
+ 	}
+ 	if err := parseFlags(fs, args); err != nil {
+ 		return err
+@@ -856,6 +927,54 @@ func cmdUpdate(dir string, args []string) error {
+ 		list := []string(sessions)
+ 		spec.Sessions = &list
+ 	}
++	// BT-077: the association dimensions go through one shared merge arm —
++	// the FIRST dimension with a flag occurrence wins the spec slot, so
++	// mixed dimensions are applied one update per dimension (a single
++	// update cannot name two dimensions at once; the CLI documents that
++	// explicitly rather than silently dropping). Every value is validated
++	// HERE, before the board is even opened, so a malformed element is a
++	// pure usage failure with nothing written.
++	assocSet := func(dim string, vals stringListFlag) error {
++		for _, v := range vals {
++			if _, err := board.ValidateAssociationValue(dim, v); err != nil {
++				return err
++			}
++		}
++		return nil
++	}
++	switch {
++	case len(prFlags) > 0 && (len(brFlags) > 0 || len(wtFlags) > 0):
++		return fmt.Errorf("update: --pull-request/--assoc-branch/--assoc-worktree apply one dimension per invocation — run a second update for the next dimension")
++	case len(brFlags) > 0 && len(wtFlags) > 0:
++		return fmt.Errorf("update: --pull-request/--assoc-branch/--assoc-worktree apply one dimension per invocation — run a second update for the next dimension")
++	}
++	if len(prFlags) > 0 {
++		if err := assocSet(board.PullRequestsKey, prFlags); err != nil {
++			return err
++		}
++		spec.AssocDim = board.PullRequestsKey
++		spec.AssocValues = []string(prFlags)
++	}
++	if len(brFlags) > 0 {
++		if err := assocSet(board.BranchesKey, brFlags); err != nil {
++			return err
++		}
++		if spec.AssocDim != "" {
++			return fmt.Errorf("update: only one association dimension per invocation (--pull-request/--assoc-branch/--assoc-worktree)")
++		}
++		spec.AssocDim = board.BranchesKey
++		spec.AssocValues = []string(brFlags)
++	}
++	if len(wtFlags) > 0 {
++		if err := assocSet(board.WorktreesKey, wtFlags); err != nil {
++			return err
++		}
++		if spec.AssocDim != "" {
++			return fmt.Errorf("update: only one association dimension per invocation (--pull-request/--assoc-branch/--assoc-worktree)")
++		}
++		spec.AssocDim = board.WorktreesKey
++		spec.AssocValues = []string(wtFlags)
++	}
+ 	changed, err := b.UpdateTask(fs.Arg(0), spec)
+ 	if err != nil {
+ 		return err
+diff --git a/internal/board/associations.go b/internal/board/associations.go
+new file mode 100644
+index 0000000..c8a3bf9
+--- /dev/null
++++ b/internal/board/associations.go
+@@ -0,0 +1,379 @@
++package board
++
++import (
++	"bytes"
++	"encoding/json"
++	"fmt"
++	"regexp"
++	"strconv"
++	"strings"
++)
++
++// BT-077: structured PLURAL work-artifact associations on a task row.
++//
++// The singular fields (worktree, branch) and sessions record ONE build
++// location per dimension; real work spans several PRs, branches and
++// worktrees, and the relationship was being lost. These helpers define the
++// three plural dimensions and their element validation:
++//
++//	pull_requests — array of association objects {number?, url?} accepting
++//	                a GitHub PR URL or a bare number, normalized to
++//	                {"number": N} (bare input) or {"number": N, "url": U}
++//	                (URL input; the number is parsed from the URL when it
++//	                carries one)
++//	branches      — array of non-empty strings
++//	worktrees     — array of non-empty strings (absolute paths)
++//
++// The singular fields and sessions are PRESERVED untouched (backward
++// compatibility); the plural dimensions are additive and independent: an
++// update that adds one element merges into its own dimension only and never
++// overwrites siblings — not the other dimensions, not other elements of the
++// same dimension. Round-trip support (create/update/show/list/render/export)
++// rides the existing row machinery: the keys are canonical (sanctioned in
++// keys.go), every result set returns whole rows, and export re-serializes
++// the row verbatim.
++//
++// Validation discipline mirrors the house style (BT-076 deferred,
++// BT-048 priority): WRITE paths reject malformed values loudly with a clear
++// error naming the dimension and offending value; READ/validate paths
++// itemize WARNINGS (existing and legacy boards stay exit-0) and read the
++// malformed shape as "no associations in that dimension".
++
++// PullRequestsKey / BranchesKey / WorktreesKey are the plural dimension keys
++// on the task row.
++const (
++	PullRequestsKey = "pull_requests"
++	BranchesKey     = "branches"
++	WorktreesKey    = "worktrees"
++)
++
++// PRNumberKey / PRURLKey are the association-object field names inside a
++// pull_requests element.
++const (
++	PRNumberKey = "number"
++	PRURLKey    = "url"
++)
++
++// AssociationKeys lists the plural dimensions in canonical order (create
++// appends the keys in this order; validate walks it the same way).
++var AssociationKeys = []string{PullRequestsKey, BranchesKey, WorktreesKey}
++
++// prURLHostRe pins the GitHub PR URL host. Only https/http URLs on
++// github.com (or its www form) are accepted; everything else is malformed
++// for this dimension (a GitLab PR is a different concept and must not
++// silently become a GitHub number).
++var prURLHostRe = regexp.MustCompile(`^https?://(www\.)?github\.com/[^/\s]+/[^/\s]+/pull/`)
++
++// prURLNumberRe extracts the PR number from the URL path tail /pull/<n>
++// (optionally followed by a fragment anchor or query — GitHub emits
++// /pull/42#issuecomment-… and /pull/42/files links for the same PR).
++var prURLNumberRe = regexp.MustCompile(`^/pull/([0-9]+)(?:[/?#].*)?$`)
++
++// NormalizePullRequest canonicalizes one pull_requests element from user
++// input. Accepted shapes:
++//
++//   - a bare positive integer ("42")            -> {"number": 42}
++//   - a GitHub PR URL carrying a number
++//     ("https://github.com/o/r/pull/42", with optional trailing anchor,
++//     "/files" suffix or query)                 -> {"url": <cleaned>, "number": 42}
++//   - a GitHub PR URL without a parseable number -> {"url": <cleaned>}
++//   - an object carrying number and/or url — each field validated and
++//     re-emitted in canonical {number?, url?} order; a url must be a
++//     GitHub PR URL when present, a number must be a positive integer,
++//     and a url-embedded number must agree with an explicit number
++//
++// The returned bytes are the canonical JSON for the element (compact, in
++// number-before-url order). Malformed input returns an error naming the
++// offending value and the accepted shapes — write paths surface it verbatim.
++func NormalizePullRequest(v string) (json.RawMessage, error) {
++	v = strings.TrimSpace(v)
++	if v == "" {
++		return nil, fmt.Errorf("empty pull_requests value — provide a GitHub PR URL or a bare PR number")
++	}
++	// Bare number: digits only (positive integer; "007" normalizes to 7 —
++	// the leading zeros are the caller's spelling, the integer value is
++	// what the row stores).
++	if n, err := strconv.Atoi(v); err == nil {
++		if n <= 0 {
++			return nil, fmt.Errorf("pull_requests %q: PR number must be a positive integer", v)
++		}
++		return prElemJSON(n, ""), nil
++	}
++	if strings.HasPrefix(v, "{") {
++		return normalizePullRequestObject(v)
++	}
++	// URL form.
++	if !prURLHostRe.MatchString(v) {
++		return nil, fmt.Errorf("pull_requests %q is not a GitHub PR URL or a bare PR number (accepted: https://github.com/owner/repo/pull/123, or 123)", v)
++	}
++	cleaned := cleanPRURL(v)
++	num := prNumberFromURL(cleaned)
++	return prElemJSON(num, cleaned), nil
++}
++
++// normalizePullRequestObject validates an already-structured element
++// ({"number": …, "url": …} in either order; unknown keys are dropped) and
++// re-emits it canonically.
++func normalizePullRequestObject(v string) (json.RawMessage, error) {
++	var obj struct {
++		Number *int64  `json:"number"`
++		URL    *string `json:"url"`
++	}
++	dec := json.NewDecoder(strings.NewReader(v))
++	if err := dec.Decode(&obj); err != nil {
++		return nil, fmt.Errorf("pull_requests element %s is not a valid association object ({\"number\": N} and/or {\"url\": U})", v)
++	}
++	num := int64(0)
++	if obj.Number != nil {
++		if *obj.Number <= 0 {
++			return nil, fmt.Errorf("pull_requests: number %d must be a positive integer", *obj.Number)
++		}
++		num = *obj.Number
++	}
++	url := ""
++	if obj.URL != nil {
++		u := strings.TrimSpace(*obj.URL)
++		if u != "" {
++			if !prURLHostRe.MatchString(u) {
++				return nil, fmt.Errorf("pull_requests: url %q is not a GitHub PR URL (accepted: https://github.com/owner/repo/pull/123)", u)
++			}
++			cleaned := cleanPRURL(u)
++			if n := prNumberFromURL(cleaned); n > 0 {
++				if num > 0 && num != int64(n) {
++					return nil, fmt.Errorf("pull_requests: number %d disagrees with the number in url %q", num, cleaned)
++				}
++				num = int64(n)
++			}
++			url = cleaned
++		}
++	}
++	if num == 0 && url == "" {
++		return nil, fmt.Errorf("pull_requests element carries neither a usable number nor a usable url: %s", v)
++	}
++	return prElemJSON(int(num), url), nil
++}
++
++// cleanPRURL strips a trailing fragment/query and a trailing slash so the
++// stored spelling of the same PR is stable.
++func cleanPRURL(u string) string {
++	if i := strings.IndexAny(u, "#?"); i >= 0 {
++		u = u[:i]
++	}
++	return strings.TrimRight(u, "/")
++}
++
++// prNumberFromURL extracts the PR number from a cleaned GitHub PR URL
++// (0 when the path tail is not /pull/<digits>).
++func prNumberFromURL(u string) int {
++	i := strings.LastIndex(u, "/pull/")
++	if i < 0 {
++		return 0
++	}
++	path := u[i:]
++	m := prURLNumberRe.FindStringSubmatch(path)
++	if m == nil {
++		return 0
++	}
++	n, err := strconv.Atoi(m[1])
++	if err != nil || n <= 0 {
++		return 0
++	}
++	return n
++}
++
++// prElemJSON renders the canonical association object: {"number": N} when
++// only a number is known, {"url": U} when only a URL, {"number": N,
++// "url": U} when both. Number precedes URL (stable order).
++func prElemJSON(num int, url string) json.RawMessage {
++	var sb strings.Builder
++	sb.WriteByte('{')
++	first := true
++	emit := func(k string, v any) {
++		if !first {
++			sb.WriteByte(',')
++		}
++		first = false
++		kb, _ := json.Marshal(k)
++		vb, err := json.Marshal(v)
++		if err != nil {
++			return // unreachable for int/string values
++		}
++		sb.Write(kb)
++		sb.WriteByte(':')
++		sb.Write(vb)
++	}
++	if num > 0 {
++		emit(PRNumberKey, num)
++	}
++	if url != "" {
++		emit(PRURLKey, url)
++	}
++	sb.WriteByte('}')
++	return json.RawMessage(sb.String())
++}
++
++// ValidateAssociationValue validates/normalizes one element of the named
++// plural dimension from CLI string input. pull_requests accepts GitHub PR
++// URLs and bare numbers (see NormalizePullRequest); branches and worktrees
++// accept any non-empty string with surrounding whitespace trimmed.
++func ValidateAssociationValue(dim, v string) (json.RawMessage, error) {
++	switch dim {
++	case PullRequestsKey:
++		return NormalizePullRequest(v)
++	case BranchesKey, WorktreesKey:
++		t := strings.TrimSpace(v)
++		if t == "" {
++			return nil, fmt.Errorf("%s element must be a non-empty string (got %q)", dim, v)
++		}
++		b, _ := json.Marshal(t)
++		return json.RawMessage(b), nil
++	default:
++		return nil, fmt.Errorf("unknown association dimension %q (known: %s)", dim, strings.Join(AssociationKeys, ", "))
++	}
++}
++
++// normalizeStoredAssociation returns the canonical JSON bytes for one
++// element ALREADY stored on a row (the read path): it re-validates through
++// the same rules as the write path and reports whether the stored value was
++// malformed. Malformed input yields ok=false; the caller decides
++// error-vs-warning. The element may be a JSON string (branches/worktrees
++// spelling) or an object (pull_requests).
++func normalizeStoredAssociation(dim string, raw json.RawMessage) (canonical json.RawMessage, ok bool) {
++	trimmed := bytes.TrimSpace(raw)
++	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
++		return nil, false
++	}
++	var s string
++	if err := json.Unmarshal(trimmed, &s); err == nil {
++		c, err := ValidateAssociationValue(dim, s)
++		if err != nil {
++			return nil, false
++		}
++		return c, true
++	}
++	if dim == PullRequestsKey {
++		c, err := normalizePullRequestObject(string(trimmed))
++		if err != nil {
++			return nil, false
++		}
++		return c, true
++	}
++	return nil, false
++}
++
++// AssociationElems returns the canonical element list stored under the
++// named dimension on a row, skipping elements that fail validation. ok
++// reports whether every stored element was canonical (false => the caller
++// should warn about the malformed shape; use AssociationBadIndex to name
++// it). Absent/null keys return (nil, true) — no associations is the neutral
++// shape.
++func AssociationElems(row *Row, dim string) (elems []json.RawMessage, ok bool) {
++	raw := row.Get(dim)
++	if raw == nil {
++		return nil, true
++	}
++	dec := json.NewDecoder(bytes.NewReader(raw))
++	var arr []json.RawMessage
++	if err := dec.Decode(&arr); err != nil {
++		return nil, false
++	}
++	for _, el := range arr {
++		c, good := normalizeStoredAssociation(dim, el)
++		if !good {
++			return elems, false
++		}
++		elems = append(elems, c)
++	}
++	return elems, true
++}
++
++// AssociationBadIndex returns the 0-based index of the FIRST element of the
++// named dimension that fails validation (-1 when none does). Only
++// meaningful when AssociationElems reported ok=false.
++func AssociationBadIndex(row *Row, dim string) int {
++	raw := row.Get(dim)
++	if raw == nil {
++		return -1
++	}
++	dec := json.NewDecoder(bytes.NewReader(raw))
++	var arr []json.RawMessage
++	if err := dec.Decode(&arr); err != nil {
++		return 0
++	}
++	for i, el := range arr {
++		if _, good := normalizeStoredAssociation(dim, el); !good {
++			return i
++		}
++	}
++	return -1
++}
++
++// MergeAssociation appends one validated element to the named dimension on
++// the row, MERGING rather than replacing: existing elements — and every
++// other key on the row — are preserved byte-verbatim; the new element lands
++// at the end of the dimension's array. A dimension key the row does not
++// carry yet is appended at the end of the row's key order (Row.SetRaw
++// semantics). Element style follows the row's serialization style so the
++// rewritten line differs only where it must.
++//
++// Duplicates: an element already present (exact canonical equality) is not
++// appended again — merging the same PR twice is a no-op for that element
++// and reports no change.
++func MergeAssociation(row *Row, dim string, value json.RawMessage, style Style) (added bool, err error) {
++	canonical := bytes.TrimSpace(value)
++	if len(canonical) == 0 {
++		return false, fmt.Errorf("%s: empty association value", dim)
++	}
++	elems, _ := AssociationElems(row, dim)
++	for _, e := range elems {
++		if bytes.Equal(bytes.TrimSpace(e), canonical) {
++			return false, nil // already present (exact element) — idempotent
++		}
++	}
++	if dim == PullRequestsKey {
++		// PR identity is the NUMBER: a bare 22 and a URL spelling of PR
++		// 22 are the same association, so a merge that only carries a
++		// number must not append a second element for a PR already
++		// present under its URL (and vice versa). Both spellings
++		// normalize to {"number": N} in the identity comparison; the
++		// richer STORED element (url included) always wins.
++		if nNew := prElemNumber(canonical); nNew > 0 {
++			for _, e := range elems {
++				if prElemNumber(e) == nNew {
++					return false, nil // same PR by number — idempotent
++				}
++			}
++		}
++	}
++	elems = append(elems, canonical)
++	if err := setAssociationElems(row, dim, elems, style); err != nil {
++		return false, err
++	}
++	return true, nil
++}
++
++// prElemNumber extracts the "number" field from one stored pull_requests
++// element (0 when absent or not a positive integer).
++func prElemNumber(raw json.RawMessage) int64 {
++	var obj struct {
++		Number int64 `json:"number"`
++	}
++	dec := json.NewDecoder(bytes.NewReader(bytes.TrimSpace(raw)))
++	if err := dec.Decode(&obj); err != nil {
++		return 0
++	}
++	if obj.Number <= 0 {
++		return 0
++	}
++	return obj.Number
++}
++
++// setAssociationElems writes the element list back onto the row in the
++// row's own style (SetGoValue with []any so spacing/ASCII follow Style).
++func setAssociationElems(row *Row, dim string, elems []json.RawMessage, style Style) error {
++	arr := make([]any, 0, len(elems))
++	for _, e := range elems {
++		arr = append(arr, e)
++	}
++	return row.SetGoValue(dim, arr, style)
++}
+diff --git a/internal/board/bt077_associations_test.go b/internal/board/bt077_associations_test.go
+new file mode 100644
+index 0000000..a67df1e
+--- /dev/null
++++ b/internal/board/bt077_associations_test.go
+@@ -0,0 +1,556 @@
++package board
++
++import (
++	"bytes"
++	"encoding/json"
++	"os"
++	"strings"
++	"testing"
++)
++
++// BT-077: plural work-artifact associations (pull_requests, branches,
++// worktrees) as first-class row fields. These tests pin the whole contract:
++//
++//   - create --pull-request/--assoc-branch/--assoc-worktree land canonical
++//     elements on the fresh row; multiple flags = multiple elements, in
++//     CLI order
++//   - update MERGES one element per dimension without overwriting
++//     siblings: other dimensions, other elements of the same dimension,
++//     the singular worktree/branch fields and sessions all survive
++//     byte-verbatim (including untouched-line round-trip)
++//   - PR normalization: bare number -> {"number": N}; GitHub PR URL ->
++//     {"number": N, "url": U} (number parsed from the URL, trailing
++//     fragment/query/slash stripped); malformed input ("bad id!", a
++//     non-GitHub URL, 0, empty) is REJECTED by the write path with a
++//     clear error naming the dimension and value
++//   - PR identity is the NUMBER: merging URL-form then bare-form of the
++//     same PR is one element (idempotent), and the richer stored form
++//     (with url) is kept
++//   - legacy singular rows (worktree/branch/sessions only) load, validate
++//     (zero findings), show, render and merge-extend fine
++//   - validate itemizes malformed stored elements as WARNINGS (exit-0);
++//     canonical rows and legacy rows stay silent
++//   - the new keys are canon-sanctioned (no BT-056 drift warning)
++//
++// Seed rows use spaced style on purpose: arrays must be encoded in the
++// file's own style (the encodeValue []any path through Style), never a
++// hand-rolled compact json.Marshal.
++
++// seedBT077Board writes a topology-A board with one plain row to update
++// and one LEGACY singular row (worktree/branch/sessions, no plural keys).
++func seedBT077Board(t *testing.T) *Board {
++	t.Helper()
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl": `{"id": "AS-1", "title": "plain pending", "status": "pending", "priority": "P2"}` + "\n" +
++			`{"id": "AS-LEG", "title": "legacy singular", "status": "pending", "priority": "P3", "worktree": "/home/me/wt-1", "branch": "wt/as-1", "sessions": ["s1", "s2"]}` + "\n",
++		"events.jsonl": `{"id": 1, "timestamp": "2026-10-07 00:00:00", "event_type": "audit", "task_id": null, "actor": "foreman", "detail": null, "tick_number": 1}` + "\n",
++		"board.jsonl":  `{"project": "bt077", "namespace": "bt077", "version": 1, "ticks_total": 1, "ticks_idle": 0, "last_commit": "abc1234"}` + "\n",
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	return b
++}
++
++// bt077RowOrNil returns the parsed row with the given id (nil when absent).
++func bt077RowOrNil(t *testing.T, b *Board, id string) *Row {
++	t.Helper()
++	rows, err := b.TaskRows()
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, r := range rows {
++		if r.String("id") == id {
++			return r
++		}
++	}
++	return nil
++}
++
++// bt077Line returns the raw tasks.jsonl line carrying the given id (the
++// exact-bytes oracle for style and sibling-preservation assertions).
++func bt077Line(t *testing.T, b *Board, id string) string {
++	t.Helper()
++	raw, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, l := range strings.Split(string(raw), "\n") {
++		row, err := ParseRow([]byte(l))
++		if err == nil && row.String("id") == id {
++			return l
++		}
++	}
++	t.Fatalf("line for %q not found", id)
++	return ""
++}
++
++// bt077Objs decodes a dimension into decoded objects for assertion.
++func bt077Objs(t *testing.T, line, key string) []map[string]any {
++	t.Helper()
++	row, err := ParseRow([]byte(line))
++	if err != nil {
++		t.Fatalf("line does not parse: %v", err)
++	}
++	raw := row.Get(key)
++	if raw == nil {
++		return nil
++	}
++	var out []map[string]any
++	if err := json.Unmarshal(raw, &out); err != nil {
++		t.Fatalf("%s does not decode as an array of objects: %v (%s)", key, err, raw)
++	}
++	return out
++}
++
++// bt077Strings decodes a string-array dimension.
++func bt077Strings(t *testing.T, line, key string) []string {
++	t.Helper()
++	row, err := ParseRow([]byte(line))
++	if err != nil {
++		t.Fatalf("line does not parse: %v", err)
++	}
++	raw := row.Get(key)
++	if raw == nil {
++		return nil
++	}
++	var out []string
++	if err := json.Unmarshal(raw, &out); err != nil {
++		t.Fatalf("%s does not decode as a string array: %v (%s)", key, err, raw)
++	}
++	return out
++}
++
++// ---------- create ----------
++
++// TestCreateAssociationsMultiValue: create with repeated flags lands
++// multiple canonical elements in the dimension's array in CLI order, in
++// the file's own spaced style; the omitted dimensions write no keys; the
++// create stays append-only (pre-existing bytes intact).
++func TestCreateAssociationsMultiValue(t *testing.T) {
++	b := seedBT077Board(t)
++	before, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err := b.Create(TaskRowSpec{
++		ID: "AS-NEW", Title: "assoc row",
++		AssocDim:    PullRequestsKey,
++		AssocValues: []string{"21", "https://github.com/o/r/pull/22"},
++	}); err != nil {
++		t.Fatalf("create with pull_requests: %v", err)
++	}
++	// append-only: every pre-existing byte is still there unchanged.
++	after, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !bytes.HasPrefix(after, before) {
++		t.Fatalf("create rewrote existing bytes:\nbefore %q\nafter  %q", before, after)
++	}
++	line := bt077Line(t, b, "AS-NEW")
++	// Spaced style like the seed file; number before url; the URL's own
++	// number is parsed into the object.
++	want := `"pull_requests": [{"number":21}, {"number":22,"url":"https://github.com/o/r/pull/22"}]`
++	if !strings.Contains(line, want) {
++		t.Fatalf("pull_requests not serialized canonically in the file's style:\nwant: %s\ngot:  %s", want, line)
++	}
++	// The dimensions not named write no key (nil-untouched discipline).
++	if strings.Contains(line, `"branches"`) || strings.Contains(line, `"worktrees"`) {
++		t.Fatalf("omitted association dimensions wrote keys anyway:\n%s", line)
++	}
++}
++
++// TestCreateAssociationValidationRejectsMalformed: the write path refuses
++// malformed elements with an error naming the dimension and value; NOTHING
++// is appended (the file is byte-identical after each failed create).
++func TestCreateAssociationValidationRejectsMalformed(t *testing.T) {
++	b := seedBT077Board(t)
++	before, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	cases := []struct {
++		dim, val, wantSub string
++	}{
++		{PullRequestsKey, "bad id!", "not a GitHub PR URL"},
++		{PullRequestsKey, "https://gitlab.com/o/r/-/merge_requests/3", "not a GitHub PR URL"},
++		{PullRequestsKey, "0", "positive integer"},
++		{PullRequestsKey, "-3", "positive integer"},
++		{PullRequestsKey, "", "empty pull_requests"},
++		{BranchesKey, "   ", "non-empty string"},
++		{WorktreesKey, "", "non-empty string"},
++	}
++	for _, tc := range cases {
++		_, err := b.Create(TaskRowSpec{
++			ID: "AS-BAD", Title: "never lands",
++			AssocDim:    tc.dim,
++			AssocValues: []string{tc.val},
++		})
++		if err == nil {
++			t.Fatalf("%s %q: create accepted a malformed element", tc.dim, tc.val)
++		}
++		if !strings.Contains(err.Error(), tc.wantSub) {
++			t.Errorf("%s %q: error %q does not name the problem (want substring %q)", tc.dim, tc.val, err, tc.wantSub)
++		}
++	}
++	after, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if string(before) != string(after) {
++		t.Fatalf("failed create left bytes behind:\nbefore %q\nafter  %q", before, after)
++	}
++	if bt077RowOrNil(t, b, "AS-BAD") != nil {
++		t.Fatal("failed create appended its row anyway")
++	}
++}
++
++// ---------- PR normalization ----------
++
++// TestNormalizePullRequestRules pins the accepted shapes and canonical
++// outputs element-by-element (the unit oracle behind the CLI behavior).
++func TestNormalizePullRequestRules(t *testing.T) {
++	cases := []struct {
++		in   string
++		want string // canonical JSON
++	}{
++		{"21", `{"number":21}`},
++		{"  21  ", `{"number":21}`},
++		{"007", `{"number":7}`},
++		{"https://github.com/o/r/pull/22", `{"number":22,"url":"https://github.com/o/r/pull/22"}`},
++		{"https://www.github.com/o/r/pull/22", `{"number":22,"url":"https://www.github.com/o/r/pull/22"}`},
++		{"http://github.com/o/r/pull/22", `{"number":22,"url":"http://github.com/o/r/pull/22"}`},
++		{"https://github.com/o/r/pull/22/files", `{"number":22,"url":"https://github.com/o/r/pull/22/files"}`},
++		{"https://github.com/o/r/pull/22#issuecomment-1", `{"number":22,"url":"https://github.com/o/r/pull/22"}`},
++		{"https://github.com/o/r/pull/22?diff=split", `{"number":22,"url":"https://github.com/o/r/pull/22"}`},
++		{"https://github.com/o/r/pull/22/", `{"number":22,"url":"https://github.com/o/r/pull/22"}`},
++		{`{"number": 5}`, `{"number":5}`},
++		{`{"url": "https://github.com/o/r/pull/6"}`, `{"number":6,"url":"https://github.com/o/r/pull/6"}`},
++		{`{"number": 8, "url": "https://github.com/o/r/pull/8"}`, `{"number":8,"url":"https://github.com/o/r/pull/8"}`},
++	}
++	for _, tc := range cases {
++		got, err := NormalizePullRequest(tc.in)
++		if err != nil {
++			t.Errorf("%q: unexpected error %v", tc.in, err)
++			continue
++		}
++		if string(got) != tc.want {
++			t.Errorf("%q: got %s, want %s", tc.in, got, tc.want)
++		}
++	}
++	bad := []string{
++		"", " ", "0", "-1", "bad id!", "22a",
++		"https://gitlab.com/o/r/-/merge_requests/3",
++		"https://github.com/o/r",                                // not a PR URL
++		"https://github.com/o/pull/3",                           // one path segment: not owner/repo/pull
++		"ftp://github.com/o/r/pull/4",                           // scheme
++		`{"number": 0}`,                                         // zero
++		`{"number": -2}`,                                        // negative
++		`{"url": "https://gitlab.com/x/y/-/mr/1"}`,              // non-GitHub url
++		`{"number": 5, "url": "https://github.com/o/r/pull/6"}`, // disagreement
++		`{}`,              // neither field
++		`{"number": "x"}`, // wrong type
++	}
++	for _, tc := range bad {
++		if got, err := NormalizePullRequest(tc); err == nil {
++			t.Errorf("%q: accepted, produced %s", tc, got)
++		}
++	}
++}
++
++// TestValidateAssociationValueStrings: the string dimensions trim
++// whitespace, reject empties, and reject unknown dimensions.
++func TestValidateAssociationValueStrings(t *testing.T) {
++	for _, dim := range []string{BranchesKey, WorktreesKey} {
++		got, err := ValidateAssociationValue(dim, "  wt/x  ")
++		if err != nil || string(got) != `"wt/x"` {
++			t.Errorf("%s: got %s, %v; want \"wt/x\"", dim, got, err)
++		}
++		_, err = ValidateAssociationValue(dim, "   ")
++		if err == nil {
++			t.Errorf("%s: accepted an empty element", dim)
++		}
++		if !strings.Contains(err.Error(), "non-empty string") {
++			t.Errorf("%s: error does not say non-empty string: %v", dim, err)
++		}
++	}
++	_, err := ValidateAssociationValue("commits", "abc")
++	if err == nil || !strings.Contains(err.Error(), "unknown association dimension") {
++		t.Errorf("unknown dimension not rejected: %v", err)
++	}
++}
++
++// ---------- update: merge semantics ----------
++
++// TestUpdateMergesWithoutOverwritingSiblings: adding a third PR keeps the
++// first two, both other dimensions, and the singular fields; untouched
++// bytes of the row and every other line round-trip.
++func TestUpdateMergesWithoutOverwritingSiblings(t *testing.T) {
++	b := seedBT077Board(t)
++	// Build the multi-association row: two PRs, two branches, two
++	// worktrees, plus singular fields and sessions.
++	wt := "/tmp/w1"
++	br := "wt/x"
++	list := []string{"s1"}
++	if _, err := b.UpdateTask("AS-1", UpdateSpec{
++		Worktree: &wt, Branch: &br, Sessions: &list,
++		AssocDim:    PullRequestsKey,
++		AssocValues: []string{"21", "https://github.com/o/r/pull/22"},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	if _, err := b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    BranchesKey,
++		AssocValues: []string{"feat/a", "feat/b"},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	if _, err := b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    WorktreesKey,
++		AssocValues: []string{"/tmp/w1", "/tmp/w2"},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	// Adding a THIRD PR must keep the first two PRs, all three other
++	// dimensions, and the singular fields.
++	if _, err := b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    PullRequestsKey,
++		AssocValues: []string{"23"},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	line := bt077Line(t, b, "AS-1")
++	prs := bt077Objs(t, line, PullRequestsKey)
++	if len(prs) != 3 {
++		t.Fatalf("pull_requests = %d elements, want 3 (adding one must not drop siblings)", len(prs))
++	}
++	if n := prs[0]["number"]; n != float64(21) {
++		t.Errorf("first PR = %v, want 21", n)
++	}
++	if n := prs[1]["number"]; n != float64(22) {
++		t.Errorf("second PR = %v, want 22", n)
++	}
++	if u, _ := prs[1]["url"].(string); u != "https://github.com/o/r/pull/22" {
++		t.Errorf("second PR url = %v, want the github URL (the richer stored form survives)", prs[1]["url"])
++	}
++	branches := bt077Strings(t, line, BranchesKey)
++	if len(branches) != 2 || branches[0] != "feat/a" || branches[1] != "feat/b" {
++		t.Fatalf("branches changed by a pull_requests update: %v", branches)
++	}
++	wts := bt077Strings(t, line, WorktreesKey)
++	if len(wts) != 2 || wts[0] != "/tmp/w1" || wts[1] != "/tmp/w2" {
++		t.Fatalf("worktrees changed by a pull_requests update: %v", wts)
++	}
++	if !strings.Contains(line, `"worktree": "/tmp/w1"`) || !strings.Contains(line, `"branch": "wt/x"`) {
++		t.Fatalf("singular worktree/branch did not survive:\n%s", line)
++	}
++	if !strings.Contains(line, `"sessions": ["s1"]`) {
++		t.Fatalf("sessions did not survive:\n%s", line)
++	}
++	// other rows byte-identical
++	legacy := bt077Line(t, b, "AS-LEG")
++	if !strings.Contains(legacy, `"worktree": "/home/me/wt-1"`) || strings.Contains(legacy, "pull_requests") {
++		t.Fatalf("legacy sibling row mutated:\n%s", legacy)
++	}
++}
++
++// TestUpdateAssociationIdempotentByNumber: merging the same PR in its other
++// spelling (bare <-> URL) is a no-op reporting no change; the element is
++// not duplicated and nothing else moves. Exact duplicates on the string
++// dimensions are idempotent the same way.
++func TestUpdateAssociationIdempotentByNumber(t *testing.T) {
++	b := seedBT077Board(t)
++	if _, err := b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    PullRequestsKey,
++		AssocValues: []string{"https://github.com/o/r/pull/22"},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	changed, err := b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    PullRequestsKey,
++		AssocValues: []string{"22"},
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, c := range changed {
++		if c == PullRequestsKey {
++			t.Fatalf("duplicate PR merge reported a change: %v", changed)
++		}
++	}
++	line := bt077Line(t, b, "AS-1")
++	if !strings.Contains(line, `{"number":22,"url":"https://github.com/o/r/pull/22"}`) {
++		t.Fatalf("url-bearing element not preserved across the no-op merge:\n%s", line)
++	}
++	if strings.Count(line, `"number":22`) != 1 {
++		t.Fatalf("PR 22 duplicated:\n%s", line)
++	}
++	// exact-duplicate idempotence on the string dimensions too
++	if _, err := b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    BranchesKey,
++		AssocValues: []string{"feat/x"},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	changed, err = b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    BranchesKey,
++		AssocValues: []string{"feat/x"},
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, c := range changed {
++		if c == BranchesKey {
++			t.Fatalf("exact-duplicate branch merge reported a change: %v", changed)
++		}
++	}
++	if n := strings.Count(bt077Line(t, b, "AS-1"), `"feat/x"`); n != 1 {
++		t.Fatalf("branch duplicated %d times", n)
++	}
++}
++
++// TestUpdateAssociationValidationAbortsWrite: a malformed element fails the
++// whole update with NOTHING written — every line byte-identical after.
++func TestUpdateAssociationValidationAbortsWrite(t *testing.T) {
++	b := seedBT077Board(t)
++	if _, err := b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    PullRequestsKey,
++		AssocValues: []string{"21"},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	before, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	_, err = b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    PullRequestsKey,
++		AssocValues: []string{"bad id!"},
++	})
++	if err == nil {
++		t.Fatal("update accepted a malformed element")
++	}
++	after, err := os.ReadFile(b.TasksPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if string(before) != string(after) {
++		t.Fatalf("failed update left bytes behind:\nbefore %q\nafter  %q", before, after)
++	}
++}
++
++// ---------- legacy compat ----------
++
++// TestLegacySingularRowSurvivesEverywhere: a task that only carries the
++// singular worktree/branch/sessions fields loads, validates with zero
++// findings, shows, renders into the report payload — and an association
++// merge onto it preserves the singular fields byte-verbatim.
++func TestLegacySingularRowSurvivesEverywhere(t *testing.T) {
++	b := seedBT077Board(t)
++	rep, err := b.Validate()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if rep.HasErrors() || len(rep.Findings) != 0 {
++		t.Fatalf("legacy board has findings:\n%s", rep.RenderText())
++	}
++	row, _, err := b.ShowTask("AS-LEG")
++	if err != nil || row == nil {
++		t.Fatalf("show lost the legacy row: %v %v", row, err)
++	}
++	// merge onto the legacy row keeps every singular byte
++	if _, err := b.UpdateTask("AS-LEG", UpdateSpec{
++		AssocDim:    WorktreesKey,
++		AssocValues: []string{"/home/me/wt-2"},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	line := bt077Line(t, b, "AS-LEG")
++	for _, want := range []string{
++		`"worktree": "/home/me/wt-1"`, `"branch": "wt/as-1"`,
++		`"sessions": ["s1", "s2"]`, `"worktrees": ["/home/me/wt-2"]`,
++	} {
++		if !strings.Contains(line, want) {
++			t.Fatalf("legacy merge lost %s:\n%s", want, line)
++		}
++	}
++	// the CLI render surface is pinned in cmd/boardctl's bt077 test (the
++	// render package imports this one; a payload check here would be an
++	// import cycle)
++}
++
++// ---------- validate ----------
++
++// TestValidateWarnsOnMalformedStoredElements: hand-edited rows carrying
++// malformed elements are itemized WARNINGS (exit-0); a canonical row stays
++// silent; a non-array dimension value warns too.
++func TestValidateWarnsOnMalformedStoredElements(t *testing.T) {
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl": `{"id": "AS-OK", "title": "canonical", "status": "pending", "priority": "P2", "pull_requests": [{"number": 21}], "branches": ["feat/a"]}` + "\n" +
++			`{"id": "AS-BADPR", "title": "hand-edited", "status": "pending", "priority": "P2", "pull_requests": [{"number": 21}, "not-an-object"]}` + "\n" +
++			`{"id": "AS-BADSTR", "title": "empty branch", "status": "pending", "priority": "P2", "branches": [""]}` + "\n" +
++			`{"id": "AS-BADSHAPE", "title": "not an array", "status": "pending", "priority": "P2", "worktrees": "/tmp/w1"}` + "\n",
++		"events.jsonl": `{"id": 1, "timestamp": "2026-10-07 00:00:00", "event_type": "audit", "task_id": null, "actor": "foreman", "detail": null, "tick_number": 1}` + "\n",
++		"board.jsonl":  `{"project": "bt077", "namespace": "bt077", "version": 1, "ticks_total": 1, "ticks_idle": 0, "last_commit": "abc1234"}` + "\n",
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	rep, err := b.Validate()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if rep.HasErrors() {
++		t.Fatalf("malformed ASSOCIATION elements must warn, not fail:\n%s", rep.RenderText())
++	}
++	got := map[string]int{}
++	for _, f := range rep.Findings {
++		if f.Level != "warn" {
++			t.Fatalf("non-warn finding on an associations board:\n[%s] %s", f.Level, f.Msg)
++		}
++		switch {
++		case strings.Contains(f.Msg, "AS-BADPR") && strings.Contains(f.Msg, PullRequestsKey):
++			got["badpr"]++
++		case strings.Contains(f.Msg, "AS-BADSTR") && strings.Contains(f.Msg, BranchesKey):
++			got["badstr"]++
++		case strings.Contains(f.Msg, "AS-BADSHAPE") && strings.Contains(f.Msg, WorktreesKey) && strings.Contains(f.Msg, "not an array"):
++			got["badshape"]++
++		case strings.Contains(f.Msg, "AS-OK"):
++			t.Fatalf("canonical row AS-OK flagged:\n%s", f.Msg)
++		}
++	}
++	if got["badpr"] != 1 || got["badstr"] != 1 || got["badshape"] != 1 {
++		t.Fatalf("expected exactly one warning per malformed row, got %v:\n%s", got, rep.RenderText())
++	}
++}
++
++// TestAssociationKeysSanctioned: the three plural keys must not flag as
++// canon drift (BT-056) on any row that carries them.
++func TestAssociationKeysSanctioned(t *testing.T) {
++	for _, k := range AssociationKeys {
++		if !IsSanctionedTaskKey(k) {
++			t.Errorf("key %q should be sanctioned (BT-077)", k)
++		}
++	}
++	b := seedBT077Board(t)
++	if _, err := b.UpdateTask("AS-1", UpdateSpec{
++		AssocDim:    PullRequestsKey,
++		AssocValues: []string{"1"},
++	}); err != nil {
++		t.Fatal(err)
++	}
++	rep, err := b.Validate()
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, f := range rep.Findings {
++		if strings.Contains(f.Msg, "outside the declared canon") {
++			t.Fatalf("association key flagged as drift:\n%s", f.Msg)
++		}
++	}
++}
+diff --git a/internal/board/keys.go b/internal/board/keys.go
+index 6ea98c9..4780409 100644
+--- a/internal/board/keys.go
++++ b/internal/board/keys.go
+@@ -124,6 +124,16 @@ var sanctionedExtras = []string{
+ 	// not aliased onto blocked/complete — because deferral is its own
+ 	// lifecycle state the status vocabulary has no member for.
+ 	"deferred",
++	// BT-077: plural work-artifact associations — the multi-value twins of
++	// the singular worktree/branch fields. pull_requests holds validated
++	// association objects ({number}, {url}, or both — GitHub PR identity,
++	// normalized from a bare number or a PR URL); branches and worktrees
++	// hold plain non-empty strings. All three are arrays, additive
++	// (update merges, never overwrites), and independent of the singular
++	// fields, which stay on every row that carries them.
++	"pull_requests",
++	"branches",
++	"worktrees",
+ }
+ 
+ // SanctionedTaskRowKeys is the full allowed set: the create schema plus the
+diff --git a/internal/board/validate.go b/internal/board/validate.go
+index 89610d9..436c5c2 100644
+--- a/internal/board/validate.go
++++ b/internal/board/validate.go
+@@ -258,6 +258,33 @@ func (b *Board) validateTasks(rep *Report) {
+ 					idx+1, id, jsonKindName(raw))
+ 			}
+ 		}
++		// BT-077: the plural association dimensions. The write paths
++		// (create/update) validate every element before anything lands,
++		// so a malformed element on a row is hand-edited or legacy drift
++		// — an itemized WARNING per offending element, not a failure,
++		// for the same reason the deferred/depends_on/priority checks
++		// above warn: live boards must stay exit-0 while the drift is
++		// visible and repairable. The row reads malformed elements as
++		// "not present in that dimension" (AssociationElems skips them);
++		// a NON-ARRAY dimension value warns it was treated as no
++		// associations. Canonical rows (all elements validate, correct
++		// array shape) stay silent.
++		for _, dim := range AssociationKeys {
++			raw := row.Get(dim)
++			if raw == nil {
++				continue
++			}
++			if kind := jsonKindName(raw); kind != "array" {
++				rep.Add("warn", "tasks.jsonl line %d (task %s): %s is not an array (%s) — treated as no associations (writes store an array of validated elements)",
++					idx+1, id, dim, kind)
++				continue
++			}
++			if _, ok := AssociationElems(row, dim); !ok {
++				bad := AssociationBadIndex(row, dim)
++				rep.Add("warn", "tasks.jsonl line %d (task %s): %s element [%d] fails the association schema — pull_requests elements must be a GitHub PR URL or a bare PR number (normalized to {\"number\"[,\"url\"]}); branches/worktrees elements must be non-empty strings; the malformed element is treated as absent (hand-edit the row or rewrite via boardctl update)",
++					idx+1, id, dim, bad)
++			}
++		}
+ 		// BT-056: the row's KEY SET must stay inside the declared canon
+ 		// (keys.go). Until this check existed, "the row parsed" was the only
+ 		// shape test, so the fleet drifted to ~230 distinct keys — one-key
+diff --git a/internal/board/write.go b/internal/board/write.go
+index 9adaa36..bd2c84d 100644
+--- a/internal/board/write.go
++++ b/internal/board/write.go
+@@ -212,6 +212,21 @@ type TaskRowSpec struct {
+ 	// deferred:false; it never deletes the key).
+ 	Deferred *bool
+ 
++	// BT-077: plural work-artifact associations — the raw CLI string for
++	// ONE element of ONE dimension (nil = flag absent, nothing written;
++	// the singular worktree/branch fields and sessions above are never
++	// touched by these). The value is validated at the create call site
++	// via ValidateAssociationValue before Create runs, so a malformed
++	// element (a non-GitHub PR URL, "bad id!", an empty branch) aborts
++	// the whole create with nothing written. A dimension may be named
++	// several times (--pull-request 21 --pull-request 22): every flag
++	// occurrence appends one element to that dimension's array in CLI
++	// order. AssocDim names the dimension; AssocValues carries ONE OR
++	// MORE raw CLI strings (one per repeated flag occurrence) that are
++	// each validated and merged onto the row in CLI order.
++	AssocDim    string
++	AssocValues []string
++
+ 	// BT-022: prevalidated raw row for the import path. When Raw is set,
+ 	// Create still performs every check below (id format, duplicate id,
+ 	// status/priority vocabulary, depends_on existence) but appends these
+@@ -480,6 +495,20 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
+ 	if spec.Sessions != nil {
+ 		overrides["sessions"] = *spec.Sessions
+ 	}
++	// BT-077: the create-path association element. The CLI validated the
++	// value and named its dimension; the canonical element merges onto the
++	// fresh row as an appended key (Create builds a fresh row, so there is
++	// nothing to preserve, but the same merge machinery runs for
++	// uniformity with update).
++	for _, av := range spec.AssocValues {
++		elem, verr := ValidateAssociationValue(spec.AssocDim, av)
++		if verr != nil {
++			return "", verr
++		}
++		if _, aerr := MergeAssociation(row, spec.AssocDim, elem, style); aerr != nil {
++			return "", aerr
++		}
++	}
+ 	if spec.Deferred != nil {
+ 		overrides["deferred"] = *spec.Deferred
+ 	}
+@@ -701,6 +730,16 @@ type UpdateSpec struct {
+ 	// which is how a deferred row is un-deferred (the key is written as
+ 	// false, never deleted).
+ 	Deferred *bool
++	// BT-077: the update-path association elements, same nil-untouched
++	// discipline. AssocDim names the dimension (pull_requests, branches,
++	// worktrees); AssocValues carries ONE OR MORE raw CLI strings (one
++	// per repeated flag occurrence). Empty = flag absent, every dimension
++	// untouched. Each value is validated and MERGED into its dimension in
++	// order: existing elements and all other keys survive (never a
++	// sibling overwrite), an already-present element is an idempotent
++	// no-op reporting no change.
++	AssocDim    string
++	AssocValues []string
+ 	// DF-BOARDCTL-13: priority + SG-126 run evidence, same nil-untouched
+ 	// discipline. Priority rides create's BT-007 write-time gate verbatim
+ 	// (normalize bare digits/case variants, reject the rest) — BT-060 left
+@@ -916,6 +955,32 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
+ 			return nil, err
+ 		}
+ 	}
++	// BT-077: --pull-request/--branch-assoc/--worktree-assoc MERGE one
++	// element into its dimension. Every other key on the row — including
++	// the other association dimensions and the other elements of this one —
++	// is preserved byte-verbatim (MergeAssociation only rewrites this
++	// dimension's array); an already-present element is a no-op that
++	// reports no change, so a repeated flag value stays idempotent. The
++	// malformed value (a non-GitHub PR URL, "bad id!", an empty branch)
++	// fails the whole update with NOTHING written — the error names the
++	// dimension and the offending value.
++	anyAdded := false
++	for _, av := range spec.AssocValues {
++		elem, verr := ValidateAssociationValue(spec.AssocDim, av)
++		if verr != nil {
++			return nil, verr
++		}
++		added, aerr := MergeAssociation(target, spec.AssocDim, elem, style)
++		if aerr != nil {
++			return nil, aerr
++		}
++		if added {
++			anyAdded = true
++		}
++	}
++	if anyAdded {
++		changed = append(changed, spec.AssocDim)
++	}
+ 	// DF-BOARDCTL-13: priority goes through the SAME write-time gate as
+ 	// create (BT-007) — bare digits ("1") and case variants ("p2") map onto
+ 	// the canonical P0-P5 set, anything else fails the whole update with
+@@ -955,8 +1020,8 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
+ 			return nil, err
+ 		}
+ 	}
+-	if len(changed) == 0 && !spec.Normalize {
+-		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred) or --normalize")
++	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 {
++		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
+ 	}
+ 
+ 	newLines := make([][]byte, len(lines))
