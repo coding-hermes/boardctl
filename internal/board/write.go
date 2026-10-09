@@ -206,10 +206,12 @@ type TaskRowSpec struct {
 
 	// BT-076: owner-deferral flag, same nil-untouched discipline as the
 	// fields above. nil (flag omitted) writes NO deferred key at all — a
-	// row without the key is not deferred by definition. A non-nil
-	// pointer is authoritative and IS written, including false (an
-	// explicit --deferred false un-defers a row by writing
-	// deferred:false; it never deletes the key).
+	// row without the key is not deferred by definition. On create a
+	// non-nil pointer is authoritative and IS written, including false
+	// (a fresh row may name its own not-deferred state); on update an
+	// explicit false REMOVES the key entirely (DF-BOARDCTL-29), so the
+	// un-deferred row is byte-identical to a never-deferred one apart
+	// from updated_at.
 	Deferred *bool
 
 	// BT-077: plural work-artifact associations — the raw CLI string for
@@ -726,9 +728,11 @@ type UpdateSpec struct {
 	Sessions *[]string
 	// BT-076: owner-deferral flag, same nil-untouched discipline. nil
 	// leaves the key alone (never creating it, never clearing a value
-	// already on the row); a non-nil pointer sets it — including false,
-	// which is how a deferred row is un-deferred (the key is written as
-	// false, never deleted).
+	// already on the row); a non-nil pointer to true defers the row,
+	// and an explicit false UN-defers it by REMOVING the key entirely
+	// (DF-BOARDCTL-29) — after the write the row carries no deferred
+	// key at all, byte-identical to a never-deferred row apart from
+	// updated_at.
 	Deferred *bool
 	// BT-077: the update-path association elements, same nil-untouched
 	// discipline. AssocDim names the dimension (pull_requests, branches,
@@ -947,12 +951,22 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
-	// BT-076: --deferred writes the boolean verbatim. Unlike the string
-	// flags the CLI resolves omission to nil itself (an empty flag value
-	// is a parse error), so nil here really means "flag absent".
+	// BT-076: --deferred true|false. true writes the boolean verbatim;
+	// an explicit false REMOVES the key entirely (DF-BOARDCTL-29) —
+	// deleteKey reorders nothing, so the rest of the row keeps its
+	// exact key order, and the surviving keys re-serialize in the row's
+	// own style. A false on a row without the key is an idempotent
+	// no-op (nothing reported, nothing rewritten). Unlike the string
+	// flags the CLI resolves omission to nil itself (an empty flag
+	// value is a parse error), so nil here really means "flag absent".
 	if spec.Deferred != nil {
-		if err := set("deferred", *spec.Deferred); err != nil {
-			return nil, err
+		if *spec.Deferred {
+			if err := set("deferred", true); err != nil {
+				return nil, err
+			}
+		} else if target.Has("deferred") {
+			target.DeleteKey("deferred")
+			changed = append(changed, "deferred")
 		}
 	}
 	// BT-077: --pull-request/--branch-assoc/--worktree-assoc MERGE one
@@ -1020,7 +1034,12 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
-	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 {
+	// DF-BOARDCTL-29: --deferred false on a row that never carried the key
+	// is an idempotent no-op (like an already-present association element,
+	// above) — the deferred arm appended nothing to `changed`, so the
+	// no-change gate must not refuse it; anything else without a change
+	// flag still fails with the full flag list.
+	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil {
 		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
 	}
 
