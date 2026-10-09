@@ -772,6 +772,10 @@ A task row may carry a first-class boolean `deferred` field, distinct from
 is accepted; a non-boolean value is a usage error with nothing written). The
 same nil-untouched discipline as the worktree fields applies: an omitted flag
 never creates or changes the key — a row without `deferred` is not deferred.
+An explicit `--deferred false` un-defers by REMOVING the key entirely
+(DF-BOARDCTL-29): the un-deferred row is byte-identical to a never-deferred
+one apart from `updated_at`, and `--deferred false` on a row without the key
+is an idempotent no-op (no rewrite, nothing reported as changed).
 
 Deferred rows stay **searchable and retained**: `list`, `show`, `render`, and
 `import` return and round-trip them like any other row. What changes is

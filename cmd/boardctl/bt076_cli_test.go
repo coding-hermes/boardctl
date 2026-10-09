@@ -81,32 +81,32 @@ func TestCmdCreateOmittedDeferredWritesNoKey(t *testing.T) {
 	}
 }
 
-// TestCmdUpdateDeferredTrueFalse: `update --deferred false` writes
-// deferred:false on a deferred row; an omitted update leaves the key
-// untouched; `--deferred true` defers a plain row.
+// TestCmdUpdateDeferredTrueFalse: `update --deferred false` REMOVES the
+// deferred key on a deferred row (DF-BOARDCTL-29 — the row reads exactly
+// like a never-deferred one afterwards); an omitted update never creates
+// the key; `--deferred true` defers a plain row.
 func TestCmdUpdateDeferredTrueFalse(t *testing.T) {
 	dir := seedBT076CLIBoard(t)
 	if code := run([]string{"-C", dir, "update", "EXIST-2", "--deferred", "false"}); code != 0 {
 		t.Fatalf("update --deferred false exit = %d, want 0", code)
 	}
+	line := bt076TaskLine(t, dir, "EXIST-2")
+	if strings.Contains(line, "deferred") {
+		t.Fatalf("update --deferred false left a deferred key behind: %s", line)
+	}
 	var row map[string]any
-	if err := json.Unmarshal([]byte(bt076TaskLine(t, dir, "EXIST-2")), &row); err != nil {
+	if err := json.Unmarshal([]byte(line), &row); err != nil {
 		t.Fatal(err)
 	}
-	if row["deferred"] != false {
-		t.Fatalf("deferred = %v, want false", row["deferred"])
+	if _, present := row["deferred"]; present {
+		t.Fatalf("deferred key still present after --deferred false: %s", line)
 	}
-	// omitted update leaves the key untouched
-	before := bt076TaskLine(t, dir, "EXIST-2")
+	// an omitted update never recreates the key
 	if code := run([]string{"-C", dir, "update", "EXIST-2", "--summary", "note"}); code != 0 {
 		t.Fatalf("omitted update exit = %d, want 0", code)
 	}
-	after := bt076TaskLine(t, dir, "EXIST-2")
-	if !strings.Contains(after, `"deferred":false`) && !strings.Contains(after, `"deferred": false`) {
-		t.Fatalf("omitted update changed the deferred key:\nbefore %s\nafter  %s", before, after)
-	}
-	if v, ok := rowOf(after)["deferred"]; !ok || v != false {
-		t.Fatalf("omitted update altered deferred = %v (present=%v)", v, ok)
+	if v, ok := rowOf(bt076TaskLine(t, dir, "EXIST-2"))["deferred"]; ok {
+		t.Fatalf("omitted update created deferred = %v", v)
 	}
 	// defer a plain row
 	if code := run([]string{"-C", dir, "update", "EXIST-1", "--deferred", "true"}); code != 0 {
@@ -124,6 +124,79 @@ func rowOf(line string) map[string]any {
 		return map[string]any{}
 	}
 	return m
+}
+
+// TestCmdCreateThenUndeferRemovesKey: the full DF-BOARDCTL-29 lifecycle via
+// the CLI surface — create --deferred writes the key, update --deferred
+// false removes it entirely (the parsed row carries no deferred key), and
+// stats afterwards counts the row as NOT deferred (deferred drops to 0,
+// actionable picks the row back up).
+func TestCmdCreateThenUndeferRemovesKey(t *testing.T) {
+	dir := seedBT076CLIBoard(t)
+	if code := run([]string{"-C", dir, "create", "--id", "DF-29A", "--title", "parked", "--deferred"}); code != 0 {
+		t.Fatalf("create --deferred exit = %d, want 0", code)
+	}
+	if v := rowOf(bt076TaskLine(t, dir, "DF-29A"))["deferred"]; v != true {
+		t.Fatalf("create --deferred did not defer: %s", bt076TaskLine(t, dir, "DF-29A"))
+	}
+	out, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "update", "DF-29A", "--deferred", "false"}); code != 0 {
+			t.Fatalf("update --deferred false exit = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := bt076TaskLine(t, dir, "DF-29A")
+	if strings.Contains(line, "deferred") {
+		t.Fatalf("update --deferred false left a deferred key behind: %s", line)
+	}
+	if _, present := rowOf(line)["deferred"]; present {
+		t.Fatalf("deferred key still present after un-defer: %s", line)
+	}
+	if !strings.Contains(out, "deferred") {
+		t.Fatalf("update output did not report the deferred change:\n%s", out)
+	}
+	// stats: the un-deferred pending row is actionable again. After the
+	// un-defer only EXIST-2 (still deferred) stays out of actionable:
+	// 3 pending rows total − 1 deferred = 2.
+	got, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "stats"}); code != 0 {
+			t.Fatalf("stats exit = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "deferred: 1") {
+		t.Fatalf("stats deferred = want 1 (only EXIST-2 still deferred):\n%s", got)
+	}
+	if !strings.Contains(got, "actionable: 2") {
+		t.Fatalf("stats actionable = want 2 (DF-29A is pending and no longer deferred):\n%s", got)
+	}
+	// un-defer EXIST-2 too: the seeded deferred row un-defers to a row with
+	// NO deferred key at all (the DF-BOARDCTL-29 nil-out on pre-existing
+	// boards), and stats drop to deferred: 0.
+	if code := run([]string{"-C", dir, "update", "EXIST-2", "--deferred", "false"}); code != 0 {
+		t.Fatalf("update EXIST-2 --deferred false exit = %d, want 0", code)
+	}
+	if strings.Contains(bt076TaskLine(t, dir, "EXIST-2"), "deferred") {
+		t.Fatalf("un-defer of the seeded deferred row left the key: %s", bt076TaskLine(t, dir, "EXIST-2"))
+	}
+	got2, err := captureStdout(func() {
+		if code := run([]string{"-C", dir, "stats"}); code != 0 {
+			t.Fatalf("stats exit = %d, want 0", code)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got2, "deferred: 0") {
+		t.Fatalf("stats deferred = want 0 after un-deferring both rows:\n%s", got2)
+	}
+	if !strings.Contains(got2, "actionable: 3") {
+		t.Fatalf("stats actionable = want 3 (all 3 pending rows, none deferred):\n%s", got2)
+	}
 }
 
 // TestCmdUpdateDeferredInvalidValue: a non-boolean spelling is a usage

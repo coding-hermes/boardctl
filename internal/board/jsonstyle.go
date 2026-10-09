@@ -108,6 +108,25 @@ func (r *Row) SetRaw(key string, raw json.RawMessage) {
 	r.Vals[key] = raw
 }
 
+// DeleteKey removes a key from the row entirely (a no-op when absent).
+// DF-BOARDCTL-29: update --deferred false needs to UN-write the deferred key
+// so an un-deferred row is byte-identical to a never-deferred one. The key
+// disappears from both the value map and the key order; every other key
+// keeps its exact position (Delete reorders nothing), so a Marshal after a
+// Delete re-serializes only the surviving keys.
+func (r *Row) DeleteKey(key string) {
+	if _, ok := r.Vals[key]; !ok {
+		return
+	}
+	delete(r.Vals, key)
+	for i, k := range r.Keys {
+		if k == key {
+			r.Keys = append(r.Keys[:i], r.Keys[i+1:]...)
+			return
+		}
+	}
+}
+
 // String returns the string value of a key, or "" when absent/null.
 func (r *Row) String(key string) string {
 	raw := r.Vals[key]

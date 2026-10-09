@@ -10,8 +10,8 @@ import (
 // BT-076: the first-class deferred flag. These tests pin the whole contract:
 //
 //   - create --deferred writes deferred:true; the omitted flag writes NO key
-//   - update --deferred false writes deferred:false; an omitted update never
-//     creates or changes the key
+//   - update --deferred false REMOVES the key (DF-BOARDCTL-29); an omitted
+//     update never creates or changes the key
 //   - the key is sanctioned (no canon drift), and a non-boolean value warns
 //     without failing validate
 //   - stats counts deferred separately and excludes deferred rows from the
@@ -141,9 +141,10 @@ func TestCreateDeferredFalseWritesFalse(t *testing.T) {
 	}
 }
 
-// TestUpdateDeferredRoundTrip: --deferred false on a deferred row writes
-// deferred:false; an omitted update leaves the key untouched (both value and
-// position — untouched line bytes round-trip).
+// TestUpdateDeferredRoundTrip: --deferred false on a deferred row REMOVES
+// the key entirely (DF-BOARDCTL-29); an omitted update on a row still
+// carrying the key leaves it untouched (value and position — untouched line
+// bytes round-trip).
 func TestUpdateDeferredRoundTrip(t *testing.T) {
 	b := seedBT076Board(t)
 	before := bt076Raw(t, b, "DF-2")
@@ -152,19 +153,19 @@ func TestUpdateDeferredRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	after := bt076Raw(t, b, "DF-2")
-	if !strings.Contains(after, `"deferred": false`) {
-		t.Fatalf("update --deferred false wrote %s, want \"deferred\": false", after)
+	if strings.Contains(after, "deferred") {
+		t.Fatalf("update --deferred false wrote %s, want the key REMOVED entirely", after)
 	}
 	if RowIsDeferred(bt076Row(t, b, "DF-2")) {
 		t.Fatal("row still reads deferred after --deferred false")
 	}
-	// omitted update leaves the key untouched
+	// an omitted update on a row that no longer carries the key must not
+	// recreate it
 	if _, err := b.UpdateTask("DF-2", UpdateSpec{Summary: strPtr("note")}); err != nil {
 		t.Fatal(err)
 	}
-	line := bt076Raw(t, b, "DF-2")
-	if !strings.Contains(line, `"deferred": false`) {
-		t.Fatalf("omitted update changed the deferred key: %s", line)
+	if strings.Contains(bt076Raw(t, b, "DF-2"), "deferred") {
+		t.Fatalf("omitted update created the deferred key: %s", bt076Raw(t, b, "DF-2"))
 	}
 	// and on a row that never carried the key, an omitted update must not
 	// create it
