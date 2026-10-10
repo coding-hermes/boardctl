@@ -1,0 +1,101 @@
+{
+  "task_id": "DOC-24",
+  "task_title": "document update write flags",
+  "task_criteria": [
+    "README documents update --worker-status, --note, --blocked-reason, and --completed-at with accurate semantics and examples; existing docs remain valid; focused verification passes"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "85c0c3b52cab69b003116af0bf7b7db935120e7c",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n2:31PM INF scanned ~3070402 bytes (3.07 MB) in 799ms\n2:31PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 208 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261010T193111.565985Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.779s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.006s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.648s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.158s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.019s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.008s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.560s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261010T193111.565985Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README documents update --worker-status, --note, --blocked-reason, and --completed-at with accurate semantics and examples; existing docs remain valid; focused verification passes: README.md:105-110 adds all four flags with accurate semantics: --worker-status writes worker_status (separate from task status \u2014 verified live: row had worker_status:\"complete\" while status:\"blocked\"), --note appends to foreman_note (verified live: \"Verified on the staging board\\n\\nSecond note\"), --blocked-reason writes blocked_reason, --completed-at writes completed_at with example \"2026-10-10 19:30:00\" which is accepted (internal/board/timestamps.go:50 layout \"2006-01-02 15:04:05\"). All README examples ran verbatim against a real board (exit 0). SKILL.md:125-132 mirrors the same accurate semantics. Existing docs remain valid: diff is purely additive (0 removed lines in README.md/SKILL.md). Focused verification: `go test -count=1 ./...` exit_code=0, all packages ok (cmd/boardctl ok 2.852s, internal/board ok 0.559s, internal/speccheck ok, internal/versioncheck ok).\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README documents update --worker-status, --note, --blocked-reason, and --completed-at with accurate semantics and examples; existing docs remain valid; focused verification passes: README.md:105-110 adds all four flags with accurate semantics: --worker-status writes worker_status (separate from task status \u2014 verified live: row had worker_status:\"complete\" while status:\"blocked\"), --note appends to foreman_note (verified live: \"Verified on the staging board\\n\\nSecond note\"), --blocked-reason writes blocked_reason, --completed-at writes completed_at with example \"2026-10-10 19:30:00\" which is accepted (internal/board/timestamps.go:50 layout \"2006-01-02 15:04:05\"). All README examples ran verbatim against a real board (exit 0). SKILL.md:125-132 mirrors the same accurate semantics. Existing docs remain valid: diff is purely additive (0 removed lines in README.md/SKILL.md). Focused verification: `go test -count=1 ./...` exit_code=0, all packages ok (cmd/boardctl ok 2.852s, internal/board ok 0.559s, internal/speccheck ok, internal/versioncheck ok).\n",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README documents update --worker-status, --note, --blocked-reason, and --completed-at with accurate semantics and examples; existing docs remain valid; focused verification passes",
+                "status": "PASS",
+                "detail": "README.md:105-110 adds all four flags with accurate semantics: --worker-status writes worker_status (separate from task status \u2014 verified live: row had worker_status:\"complete\" while status:\"blocked\"), --note appends to foreman_note (verified live: \"Verified on the staging board\\n\\nSecond note\"), --blocked-reason writes blocked_reason, --completed-at writes completed_at with example \"2026-10-10 19:30:00\" which is accepted (internal/board/timestamps.go:50 layout \"2006-01-02 15:04:05\"). All README examples ran verbatim against a real board (exit 0). SKILL.md:125-132 mirrors the same accurate semantics. Existing docs remain valid: diff is purely additive (0 removed lines in README.md/SKILL.md). Focused verification: `go test -count=1 ./...` exit_code=0, all packages ok (cmd/boardctl ok 2.852s, internal/board ok 0.559s, internal/speccheck ok, internal/versioncheck ok)."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-24\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README documents update --worker-status, --note, --blocked-reason, and --completed-at with accurate semantics and examples; existing docs remain valid; focused verification passes: README.md:105-110 adds all four flags with accurate semantics: --worker-status writes worker_status (separate from task status \u2014 verified live: row had worker_status:\"complete\" while status:\"blocked\"), --note appends to foreman_note (verified live: \"Verified on the staging board\\n\\nSecond note\"), --blocked-reason writes blocked_reason, --completed-at writes completed_at with example \"2026-10-10 19:30:00\" which is accepted (internal/board/timestamps.go:50 layout \"2006-01-02 15:04:05\"). All README examples ran verbatim against a real board (exit 0). SKILL.md:125-132 mirrors the same accurate semantics. Existing docs remain valid: diff is purely additive (0 removed lines in README.md/SKILL.md). Focused verification: `go test -count=1 ./...` exit_code=0, all packages ok (cmd/boardctl ok 2.852s, internal/board ok 0.559s, internal/speccheck ok, internal/versioncheck ok).\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-10T19:33:21.938168",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-10T19:33:21.957262+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 2644,
+        "truncated": false,
+        "source": "git show 85c0c3b52cab"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 11748,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DOC-24"
+  }
+}
