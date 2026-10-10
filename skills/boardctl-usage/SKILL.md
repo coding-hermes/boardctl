@@ -125,6 +125,14 @@ boardctl -C R create --id FEAT-2 --title "T" \
     --session <hermes-session-id> --session <second-session-id>
 boardctl -C R update FEAT-2 --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
     --session <hermes-session-id>
+# update metadata: --worker-status is separate from task --status;
+# --note appends; --blocked-reason records the blocking explanation;
+# --completed-at sets the completion timestamp (use the board timestamp format).
+boardctl -C R update FEAT-2 --worker-status complete \
+    --completed-at "2026-10-10 19:30:00"
+boardctl -C R update FEAT-2 --note "Verified on the staging board"
+boardctl -C R update FEAT-2 --status blocked \
+    --blocked-reason "Waiting for release authorization"
 boardctl -C R event --type audit --tick 42 --detail-text "..."   # or --detail @file;
                                             # --tick N ALSO bumps the header
                                             # ticks_total to max(old,N) (stderr

@@ -102,6 +102,12 @@ boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
 boardctl -C ~/myproject update FEAT-1 --title "Add retry with backoff"
 boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
     --branch wt/ft-1 --session 2f8c41a0
+# worker and completion metadata (each flag updates only its named field)
+boardctl -C ~/myproject update FEAT-1 --worker-status complete \
+    --completed-at "2026-10-10 19:30:00"
+boardctl -C ~/myproject update FEAT-1 --note "Verified on the staging board"
+boardctl -C ~/myproject update FEAT-1 --status blocked \
+    --blocked-reason "Waiting for release authorization"
 
 # canonicalize one row's status/guard_result/ci_result spelling in place
 # (read-alias fix path; no-op + "already canonical" when nothing is dirty)
