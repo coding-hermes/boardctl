@@ -358,6 +358,32 @@ Operator notes:
 - **What it gates on.** `boardctl validate -C <repo> --fail-on dangling-dep`.
   Duplicate ids or dangling refs exit 1 and the commit is refused with the
   validator's output shown; ordinary `[warn]` lines do not block.
+- **Rollout across the fleet (BT-053).** `--fleet PAT` switches `install` into
+  rollout mode: it enumerates the git repos under `--fleet-root` (default the
+  home directory), selects the ones matching PAT — a comma-separated list of
+  glob patterns or plain paths, e.g. `/home/me/*` or `axiom,crier` — and
+  installs the same hook the single-repo command writes into each selected
+  repo, printing one outcome line per repo (`installed`, `present`,
+  `skipped-no-board`, `skipped-no-binary`, …) plus a closing summary. In fleet
+  mode `-C` and `--hook-path` are refused as a usage error (they name one
+  repo); `--timeout`, `--dry-run` and `--lint-mode` are honored and carried
+  into every hook.
+
+  ```bash
+  # preview the rollout everywhere, nothing written
+  boardctl install --fleet '/home/me/*' --dry-run
+  # roll out under one root, warn-only lint
+  boardctl install --fleet 'axiom,crier' --fleet-root ~/src --lint-mode warn
+  ```
+
+- **Lint mode (BT-069).** `--lint-mode enforce` (the default) is the classic
+  behavior: a `boardctl validate` failure BLOCKS the commit. `--lint-mode
+  warn` instead prints the validator's evidence behind a
+  `WARN-ONLY — commit allowed (boardctl validate failed)` banner and lets the
+  commit through — useful while a fleet of boards still carries legacy rows.
+  In fleet mode the requested mode is written into every hook, so a warn
+  re-roll lands fleet-wide with one invocation. An unknown mode is a usage
+  error (`enforce` and `warn` are the only values).
 - **Rollout fallout (BT-069).** Arming this on a repo whose board already
   carries spec-invalid rows makes every commit fail until the board is
   repaired. Before installing on an existing repo, run
