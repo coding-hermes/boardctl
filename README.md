@@ -330,6 +330,75 @@ boardctl -C ~/myproject validate                    # RESULT: OK
 
 Full metric semantics: [`docs/specs/board-analytics-report.md`](docs/specs/board-analytics-report.md).
 
+### validate --strict-keys: key-uniformity enforcement (BT-056)
+
+Fleet boards drifted into hundreds of one-off row shapes — typos
+(`review_otes`), private dialects (`why` on 19 rows of one project),
+composite squatters (`lines_added_removed`) — and nothing reported it,
+because "the row parsed" was the only shape test. BT-056 declares a
+task-row key canon (in `internal/board/keys.go`, not a config file, so a
+board cannot widen its own canon):
+
+- required on every row: `id`, `title`, `status`, `priority`;
+- sanctioned extras: the create schema plus the measured fleet extras
+  (`closed_at`, `detail`, `model_used`, `superseded_by`, ...);
+- the `_note` family: any `<anything>_note` annotation key is sanctioned,
+  so annotating a row never becomes drift.
+
+A row key outside that canon is DRIFT. `validate` always reports it and
+always prints the census line, but by default (lenient mode) drift is only
+a `[warn]` and the command exits 0 — a legacy board still validates while
+the drift stays visible:
+
+```bash
+$ tasks.jsonl has: {"id":"FEAT-2","title":"Legacy row","status":"review",
+                    "priority":"P3","why":"needed for launch"}
+boardctl -C ~/myproject validate
+# key uniformity: 3/4 rows carry only canon keys; drift 1 row(s): why(1)
+#   — 1 fixable by 'boardctl update <id> --normalize'
+# [warn] tasks.jsonl line 4 (task FEAT-2): key(s) {why} outside the declared
+#        canon — fixable with 'boardctl update FEAT-2 --normalize'
+# RESULT: OK (4 warning(s))
+#                                        <- exit 0: lenient by default
+```
+
+`--strict-keys` is the switch that makes the census a GATE: when any row
+carries an off-canon key, the drift finding is promoted to an `[error]`
+and validate exits 1 — so a CI job, cron sweep or hook chain can block on
+row-shape drift the same way it blocks on duplicate ids:
+
+```bash
+boardctl -C ~/myproject validate --strict-keys
+# ... same census and [warn] lines ...
+# [error] key-uniformity drift: key uniformity: 3/4 rows carry only canon
+#         keys; drift 1 row(s): why(1) — 1 fixable by
+#         'boardctl update <id> --normalize' (promoted by --strict-keys)
+# RESULT: FAIL (1 error(s), 4 warning(s))
+#                                        <- exit 1: strict gate
+```
+
+Repair path: alias drift has a named fix — `boardctl update <id>
+--normalize` renames a known alias to its canonical key (`why` →
+`reasoning`, `acceptance` → `acceptance_criteria`, ...), refusing to
+overwrite a key the row already has. Non-alias drift (typos, dialect keys)
+needs a human decision; validate names the offending keys per row.
+
+```bash
+boardctl -C ~/myproject update FEAT-2 --normalize
+# normalized task FEAT-2: key "why" -> "reasoning"
+boardctl -C ~/myproject validate --strict-keys
+# key uniformity: 4/4 rows carry only canon keys (0 drift)
+# RESULT: OK
+#                                        <- exit 0: gate passes
+```
+
+Every validate run ends its census with the evidence line — quote it as
+proof of zero drift:
+
+```
+key uniformity: N/M rows carry only canon keys (0 drift)
+```
+
 ## Board-lint pre-commit hook (BT-054)
 
 `boardctl install` arms a git pre-commit hook that rejects a commit whose board
