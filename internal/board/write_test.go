@@ -278,6 +278,57 @@ func TestAppendEventTickBumpsHeaderTicksTotal(t *testing.T) {
 	}
 }
 
+func TestAppendEventTickStampsLastTickAndRespectsNoTickOptions(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl":  `{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234","updated_at":"2026-09-01 00:00:00.000000"}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.AppendEvent(EventSpec{Type: "audit", Tick: i64Ptr(5)}); err != nil {
+		t.Fatal(err)
+	}
+	hdr, err := b.HeaderRow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastTick := hdr.String("last_tick")
+	if lastTick == "" || !ValidTimestamp(lastTick) {
+		t.Fatalf("last_tick = %q, want a valid timestamp", lastTick)
+	}
+	if _, err := time.Parse("2006-01-02 15:04:05.000000", lastTick); err != nil {
+		t.Fatalf("last_tick = %q does not preserve the header's space/fraction dialect: %v", lastTick, err)
+	}
+	if total, _ := hdr.Int("ticks_total"); total != 5 {
+		t.Fatalf("ticks_total = %d, want 5", total)
+	}
+
+	if _, err := b.AppendEvent(EventSpec{Type: "audit"}); err != nil {
+		t.Fatal(err)
+	}
+	plainHdr, err := b.HeaderRow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := plainHdr.String("last_tick"); got != lastTick {
+		t.Fatalf("plain event changed last_tick from %q to %q", lastTick, got)
+	}
+	if _, err := b.AppendEvent(EventSpec{Type: "audit", Tick: i64Ptr(6), NoTickWrite: true}); err != nil {
+		t.Fatal(err)
+	}
+	noWriteHdr, err := b.HeaderRow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := noWriteHdr.String("last_tick"); got != lastTick {
+		t.Fatalf("--no-tick-write changed last_tick from %q to %q", lastTick, got)
+	}
+}
+
 // BT-014: a tick-bearing event must never REGRESS the header counter — an
 // out-of-order event (tick 2 on a board already at 5) leaves ticks_total 5.
 func TestAppendEventTickNeverRegressesTicksTotal(t *testing.T) {
@@ -339,6 +390,44 @@ func TestAppendEventTickBumpsHeaderOnTopologyB(t *testing.T) {
 	}
 	if len(tasks) != 1 || tasks[0].String("id") != "EXIST-1" {
 		t.Fatalf("topology-B task rows disturbed: %v", tasks)
+	}
+}
+
+func TestAppendEventTickStampsLastTickOnTopologyB(t *testing.T) {
+	dir := t.TempDir()
+	taskLine := `{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}`
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl":  `{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234","updated_at":"2026-09-01T00:00:00Z"}` + "\n" + taskLine + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.AppendEvent(EventSpec{Type: "audit", Tick: i64Ptr(3)}); err != nil {
+		t.Fatal(err)
+	}
+	hdr, err := b.HeaderRow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastTick := hdr.String("last_tick")
+	if lastTick == "" || !strings.HasSuffix(lastTick, "Z") {
+		t.Fatalf("topology-B last_tick = %q, want a Z-suffixed timestamp", lastTick)
+	}
+	if _, err := time.Parse(time.RFC3339, lastTick); err != nil {
+		t.Fatalf("topology-B last_tick = %q does not parse as RFC3339: %v", lastTick, err)
+	}
+	if total, _ := hdr.Int("ticks_total"); total != 3 {
+		t.Fatalf("topology-B ticks_total = %d, want 3", total)
+	}
+	lines, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.SplitN(strings.TrimRight(string(lines), "\n"), "\n", 2)
+	if len(got) != 2 || got[1] != taskLine {
+		t.Fatalf("topology-B task row changed: %v", got)
 	}
 }
 

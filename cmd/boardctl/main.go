@@ -65,7 +65,7 @@ commands:
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N] [--no-tick-write]
-  header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
+  header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [--set-last-tick TIMESTAMP]
   validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep]
   sweep-status [--apply] [--decide] [--json] [--skip-bad-lines]
            report (and with --apply fix) off-vocabulary task statuses on ONE
@@ -1086,15 +1086,16 @@ func cmdEvent(dir string, args []string) error {
 
 func cmdHeader(dir string, args []string) error {
 	fs := newFlagSet("header")
-	args = reorderArgs(args, valueFlags("C", "set-ticks-total", "set-ticks-idle", "set-last-commit"))
+	args = reorderArgs(args, valueFlags("C", "set-ticks-total", "set-ticks-idle", "set-last-commit", "set-last-tick"))
 	asJSON := fs.Bool("json", false, "emit header as JSON")
 	setTotal := fs.String("set-ticks-total", "", "set ticks_total counter")
 	setIdle := fs.String("set-ticks-idle", "", "set ticks_idle counter")
 	setCommit := fs.String("set-last-commit", "", "set last_commit sha")
+	setLastTick := fs.String("set-last-tick", "", "set last_tick timestamp")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl header [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl header [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [--set-last-tick TIMESTAMP] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -1109,7 +1110,7 @@ func cmdHeader(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	writing := *setTotal != "" || *setIdle != "" || *setCommit != ""
+	writing := *setTotal != "" || *setIdle != "" || *setCommit != "" || *setLastTick != ""
 	// BT-010: no topology special case — HeaderRow reads board.jsonl (A) or
 	// line 1 of tasks.jsonl (B), and SetHeader rewrites whichever carries
 	// the header. Both read and write work identically on either topology.
@@ -1148,6 +1149,9 @@ func cmdHeader(dir string, args []string) error {
 	}
 	if *setCommit != "" {
 		u.LastCommit = setCommit
+	}
+	if *setLastTick != "" {
+		u.LastTick = setLastTick
 	}
 	changed, err := b.SetHeader(u)
 	if err != nil {

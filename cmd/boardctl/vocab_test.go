@@ -138,6 +138,37 @@ func TestCmdHeaderRejectsNegativeTicks(t *testing.T) {
 	}
 }
 
+func TestCmdHeaderSetsExactLastTick(t *testing.T) {
+	dir := seedCLIBoard(t)
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	tasksPath := filepath.Join(boardDir, "tasks.jsonl")
+	beforeTasks, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "2026-09-10 11:12:13.000000"
+	if code := run([]string{"-C", dir, "header", "--set-last-tick", want}); code != 0 {
+		t.Fatalf("header --set-last-tick exit code = %d, want 0", code)
+	}
+	raw, err := os.ReadFile(filepath.Join(boardDir, "board.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"last_tick":"`+want+`"`) {
+		t.Fatalf("header --set-last-tick did not preserve the exact value %q: %s", want, raw)
+	}
+	if !strings.Contains(string(raw), `"last_commit":null`) || !strings.Contains(string(raw), `"project":"demo"`) {
+		t.Fatalf("explicit last_tick update disturbed unrelated header fields: %s", raw)
+	}
+	afterTasks, err := os.ReadFile(tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(beforeTasks) != string(afterTasks) {
+		t.Fatalf("header --set-last-tick changed task rows:\nbefore %s\nafter  %s", beforeTasks, afterTasks)
+	}
+}
+
 // BT-007 CLI: validate flags the junk row (warn) while staying exit 0, and
 // the exact dogfood scenario (free-form guard) is visible in the report.
 func TestCmdValidateFlagsJunkRow(t *testing.T) {

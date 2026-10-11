@@ -1572,14 +1572,18 @@ func (b *Board) bumpHeaderTicksTotal(n int64, report func(TickWriteNotice)) erro
 	if err != nil {
 		return err
 	}
-	if cur, ok := hdr.Int("ticks_total"); ok && cur >= n {
-		return nil
-	}
 	old := int64(0)
 	if cur, ok := hdr.Int("ticks_total"); ok {
 		old = cur
 	}
-	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &n}); err != nil {
+	if old >= n {
+		return nil
+	}
+	// The counter bump is the actual tick-bearing header write. Stamp last_tick
+	// in the header's detected timestamp dialect alongside it; an out-of-order
+	// tick remains a no-op, preserving the existing no-rewrite contract.
+	lastTick := b.headerTSFormat(hdr).Now()
+	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &n, LastTick: &lastTick}); err != nil {
 		return err
 	}
 	if report != nil {
@@ -1593,6 +1597,7 @@ type HeaderUpdate struct {
 	TicksTotal *int64
 	TicksIdle  *int64
 	LastCommit *string
+	LastTick   *string
 }
 
 // SetHeader rewrites ONLY the header row — line 1 of board.jsonl (topology A)
@@ -1659,11 +1664,11 @@ func (b *Board) setHeaderLocked(u HeaderUpdate) ([]string, error) {
 	// classified topology B because line 1 was unparseable at resolve time
 	// yet parses now as a task row, this still refuses before any mutation.
 	if rowIsTaskShape(header) {
-		return nil, fmt.Errorf("%w: line %d of %s is the TASK row %q (it carries id/title/status) — refusing to write header keys (ticks_total/ticks_idle/last_commit/updated_at) into a task row",
+		return nil, fmt.Errorf("%w: line %d of %s is the TASK row %q (it carries id/title/status) — refusing to write header keys (ticks_total/ticks_idle/last_commit/last_tick/updated_at) into a task row",
 			ErrNoHeader, headerIdx+1, filepath.Base(headerPath), header.String("id"))
 	}
-	if u.TicksTotal == nil && u.TicksIdle == nil && u.LastCommit == nil {
-		return nil, fmt.Errorf("header requires at least one --set flag (--set-ticks-total/--set-ticks-idle/--set-last-commit)")
+	if u.TicksTotal == nil && u.TicksIdle == nil && u.LastCommit == nil && u.LastTick == nil {
+		return nil, fmt.Errorf("header requires at least one --set flag (--set-ticks-total/--set-ticks-idle/--set-last-commit/--set-last-tick)")
 	}
 	style := DetectStyle(lines[headerIdx])
 	var changed []string
@@ -1694,6 +1699,11 @@ func (b *Board) setHeaderLocked(u HeaderUpdate) ([]string, error) {
 	}
 	if u.LastCommit != nil {
 		if err := set("last_commit", *u.LastCommit); err != nil {
+			return nil, err
+		}
+	}
+	if u.LastTick != nil {
+		if err := set("last_tick", *u.LastTick); err != nil {
 			return nil, err
 		}
 	}
