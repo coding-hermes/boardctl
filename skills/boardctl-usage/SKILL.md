@@ -127,12 +127,17 @@ boardctl -C R update FEAT-2 --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
     --session <hermes-session-id>
 # update metadata: --worker-status is separate from task --status;
 # --note appends; --blocked-reason records the blocking explanation;
-# --completed-at sets the completion timestamp (use the board timestamp format).
+# --completed-at sets the completion timestamp (use the board timestamp format);
+# --deferred parks a row as not-yet-actionable: create takes a bare flag,
+# update takes true|false (--deferred false REMOVES the key; HEAD-only
+# until the next release — see Run-20 lessons below).
+boardctl -C R create --id FEAT-3 --title "T" --deferred
 boardctl -C R update FEAT-2 --worker-status complete \
     --completed-at "2026-10-10 19:30:00"
 boardctl -C R update FEAT-2 --note "Verified on the staging board"
 boardctl -C R update FEAT-2 --status blocked \
     --blocked-reason "Waiting for release authorization"
+boardctl -C R update FEAT-3 --deferred false          # un-defers: key removed
 boardctl -C R event --type audit --tick 42 --detail-text "..."   # or --detail @file;
                                             # --tick N ALSO bumps the header
                                             # ticks_total to max(old,N) (stderr
@@ -164,9 +169,23 @@ boardctl -C R sweep-status                 # census of off-vocabulary statuses:
                                            # the BT-025 byte-preserving path;
                                            # explicit rows (duplicate/parked/
                                            # retired) are NEVER touched.
+boardctl -C R sweep-status --decide        # machine-checkable re-classification
+                                           # of off-vocab rows (REVIEW-BOARDCTL-001,
+                                           # see README "sweep-status --decide"):
+                                           # guard/ci_result values are decided by
+                                           # rule (PASS|OK->PASS, FAIL|ERROR->FAIL,
+                                           # GREEN, RED, standalone SKIP/N/A->SKIP,
+                                           # SUCCESS->GREEN, else stays explicit);
+                                           # a "duplicate" WITH an earlier same-id
+                                           # twin closes as superseded-by-earliest.
+                                           # --decide ALONE never writes; only
+                                           # --decide --apply does. PENDING and
+                                           # unmatched values stay explicit
+                                           # decisions.
 
 # pre-commit board lint (run 15, v0.1.8+, BT-054)
 boardctl -C R install [--hook-path P] [--timeout S] [--dry-run]
+       [--fleet PAT] [--fleet-root DIR] [--lint-mode enforce|warn]
                                            # writes .git/hooks/pre-commit (or
                                            # --hook-path P) with a managed
                                            # `boardctl validate` block.
@@ -180,6 +199,18 @@ boardctl -C R install [--hook-path P] [--timeout S] [--dry-run]
                                            # chaining). Chained installs
                                            # (gitreins + board-lint) honor
                                            # BOTH exit statuses.
+                                           # --fleet PAT rolls out the same
+                                           # hook to every repo under
+                                           # --fleet-root (default $HOME)
+                                           # matching PAT (comma-separated
+                                           # globs/paths); fleet mode REFUSES
+                                           # -C/--hook-path, honors the rest.
+                                           # --lint-mode warn makes a validate
+                                           # failure print a WARN-ONLY banner
+                                           # and ALLOW the commit (default
+                                           # enforce blocks); the mode is
+                                           # written into every hook, unknown
+                                           # values are a usage error.
 
 # report surface (BT-020..022 — details + pitfalls in "Report surface" below)
 boardctl -C R render -o report.html        # self-contained HTML report:
