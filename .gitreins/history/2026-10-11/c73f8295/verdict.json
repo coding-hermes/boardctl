@@ -1,0 +1,93 @@
+{
+  "task_id": "DOC-25",
+  "task_title": "document validate --strict-keys in README",
+  "task_criteria": [
+    "README reference section documents the --strict-keys flag added by BT-056, including its purpose (enforce key uniformity across task rows), default behavior, and usage examples"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "6f2426d257a2e506e40c5e02143b98197206e155",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n11:46PM INF scanned ~3074781 bytes (3.07 MB) in 652ms\n11:46PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 208 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T044506.801652Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.948s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.566s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.136s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.024s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.008s\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckWithFakeBinaryclean_scan_passes366230162/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\n--- FAIL: TestVulncheck (0.30s)\n    vulncheck_test.go:449: dependency-vulnerability gate refused: govulncheck version mismatch: this repo's gates pin v1.7.0 but the resolved binary /home/kara/go/bin/govulncheck reports v1.8.0 \u2014 a scan by a different scanner rule set must not stand in for the pinned gate (fix: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0)\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an2222182986/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an2222182986/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an2222182986/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nFAIL\nFAIL\tgithub.com/coding-hermes/boardctl/internal/vulncheck\t0.374s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\nFAIL\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T044506.801652Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README reference section documents the --strict-keys flag added by BT-056, including its purpose (enforce key uniformity across task rows), default behavior, and usage examples: README.md:333-397 adds section '### validate --strict-keys: key-uniformity enforcement (BT-056)' in the reference/usage area (after the validate section, before the pre-commit hook section). Purpose: declares the task-row key canon (required keys id/title/status/priority, sanctioned extras, _note family) and reports off-canon keys as drift \u2014 matches internal/board/keys.go:43 (RequiredTaskRowKeys) and :48-69 (sanctionedExtras). Default behavior: 'by default (lenient mode) drift is only a [warn] and the command exits 0' \u2014 matches cmd/boardctl/main.go:1217-1219 where drift is promoted to error only when *strictKeys is set. Usage examples: `validate --strict-keys` (exit 1, RESULT: FAIL) and repair via `update <id> --normalize` (exit 0) \u2014 output formats match main.go:875 ('normalized task %s: %s %q -> %q') and keys.go:337-351 (Summary census line 'key uniformity: N/M rows carry only canon keys'). Alias examples why->reasoning and acceptance->acceptance_criteria confirmed at keys.go:176-177. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/ -run 'Keys|StrictKeys|Normalize|Validate|Usage'` all PASS (TestValidateReportsKeyDrift, TestNormalizeTaskRenamesKeyAlias, TestValidateCleanBoardReportsZeroDrift); full `go test -count=1 ./...` only fails TestVulncheck due to an environment govulncheck binary version mismatch (v1.8.0 vs pinned v1.7.0), unrelated to this docs change.\nREADME.md:333-397 fully documents the --strict-keys flag (purpose, lenient default, and usage examples) with all claims verified against the BT-056 implementation and passing tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README reference section documents the --strict-keys flag added by BT-056, including its purpose (enforce key uniformity across task rows), default behavior, and usage examples: README.md:333-397 adds section '### validate --strict-keys: key-uniformity enforcement (BT-056)' in the reference/usage area (after the validate section, before the pre-commit hook section). Purpose: declares the task-row key canon (required keys id/title/status/priority, sanctioned extras, _note family) and reports off-canon keys as drift \u2014 matches internal/board/keys.go:43 (RequiredTaskRowKeys) and :48-69 (sanctionedExtras). Default behavior: 'by default (lenient mode) drift is only a [warn] and the command exits 0' \u2014 matches cmd/boardctl/main.go:1217-1219 where drift is promoted to error only when *strictKeys is set. Usage examples: `validate --strict-keys` (exit 1, RESULT: FAIL) and repair via `update <id> --normalize` (exit 0) \u2014 output formats match main.go:875 ('normalized task %s: %s %q -> %q') and keys.go:337-351 (Summary census line 'key uniformity: N/M rows carry only canon keys'). Alias examples why->reasoning and acceptance->acceptance_criteria confirmed at keys.go:176-177. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/ -run 'Keys|StrictKeys|Normalize|Validate|Usage'` all PASS (TestValidateReportsKeyDrift, TestNormalizeTaskRenamesKeyAlias, TestValidateCleanBoardReportsZeroDrift); full `go test -count=1 ./...` only fails TestVulncheck due to an environment govulncheck binary version mismatch (v1.8.0 vs pinned v1.7.0), unrelated to this docs change.\nREADME.md:333-397 fully documents the --strict-keys flag (purpose, lenient default, and usage examples) with all claims verified against the BT-056 implementation and passing tests.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README reference section documents the --strict-keys flag added by BT-056, including its purpose (enforce key uniformity across task rows), default behavior, and usage examples",
+                "status": "PASS",
+                "detail": "README.md:333-397 adds section '### validate --strict-keys: key-uniformity enforcement (BT-056)' in the reference/usage area (after the validate section, before the pre-commit hook section). Purpose: declares the task-row key canon (required keys id/title/status/priority, sanctioned extras, _note family) and reports off-canon keys as drift \u2014 matches internal/board/keys.go:43 (RequiredTaskRowKeys) and :48-69 (sanctionedExtras). Default behavior: 'by default (lenient mode) drift is only a [warn] and the command exits 0' \u2014 matches cmd/boardctl/main.go:1217-1219 where drift is promoted to error only when *strictKeys is set. Usage examples: `validate --strict-keys` (exit 1, RESULT: FAIL) and repair via `update <id> --normalize` (exit 0) \u2014 output formats match main.go:875 ('normalized task %s: %s %q -> %q') and keys.go:337-351 (Summary census line 'key uniformity: N/M rows carry only canon keys'). Alias examples why->reasoning and acceptance->acceptance_criteria confirmed at keys.go:176-177. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/ -run 'Keys|StrictKeys|Normalize|Validate|Usage'` all PASS (TestValidateReportsKeyDrift, TestNormalizeTaskRenamesKeyAlias, TestValidateCleanBoardReportsZeroDrift); full `go test -count=1 ./...` only fails TestVulncheck due to an environment govulncheck binary version mismatch (v1.8.0 vs pinned v1.7.0), unrelated to this docs change."
+              }
+            ],
+            "summary": "README.md:333-397 fully documents the --strict-keys flag (purpose, lenient default, and usage examples) with all claims verified against the BT-056 implementation and passing tests."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-25\n\nStage tier1: FAIL\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README reference section documents the --strict-keys flag added by BT-056, including its purpose (enforce key uniformity across task rows), default behavior, and usage examples: README.md:333-397 adds section '### validate --strict-keys: key-uniformity enforcement (BT-056)' in the reference/usage area (after the validate section, before the pre-commit hook section). Purpose: declares the task-row key canon (required keys id/title/status/priority, sanctioned extras, _note family) and reports off-canon keys as drift \u2014 matches internal/board/keys.go:43 (RequiredTaskRowKeys) and :48-69 (sanctionedExtras). Default behavior: 'by default (lenient mode) drift is only a [warn] and the command exits 0' \u2014 matches cmd/boardctl/main.go:1217-1219 where drift is promoted to error only when *strictKeys is set. Usage examples: `validate --strict-keys` (exit 1, RESULT: FAIL) and repair via `update <id> --normalize` (exit 0) \u2014 output formats match main.go:875 ('normalized task %s: %s %q -> %q') and keys.go:337-351 (Summary census line 'key uniformity: N/M rows carry only canon keys'). Alias examples why->reasoning and acceptance->acceptance_criteria confirmed at keys.go:176-177. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/ -run 'Keys|StrictKeys|Normalize|Validate|Usage'` all PASS (TestValidateReportsKeyDrift, TestNormalizeTaskRenamesKeyAlias, TestValidateCleanBoardReportsZeroDrift); full `go test -count=1 ./...` only fails TestVulncheck due to an environment govulncheck binary version mismatch (v1.8.0 vs pinned v1.7.0), unrelated to this docs change.\nREADME.md:333-397 fully documents the --strict-keys flag (purpose, lenient default, and usage examples) with all claims verified against the BT-056 implementation and passing tests.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-11T04:47:25.733999",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-11T04:47:25.749723+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 4504,
+        "truncated": false,
+        "source": "git show 6f2426d257a2"
+      }
+    ],
+    "task_id": "DOC-25"
+  }
+}
