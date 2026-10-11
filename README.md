@@ -938,8 +938,8 @@ under `pending` there). `validate` warns (never fails) on a hand-edited
 non-boolean `deferred` value, which reads as not deferred.
 
 ```bash
-boardctl -C ~/myproject create --id FEAT-3 --title "Maybe later" --deferred
-boardctl -C ~/myproject update FEAT-3 --deferred false   # un-defer
+boardctl -C ~/myproject create --id FEAT-3 --title "Maybe later" --deferred   # (since v0.1.11)
+boardctl -C ~/myproject update FEAT-3 --deferred false   # un-defer (since v0.1.11)
 boardctl -C ~/myproject stats    # total, actionable, deferred: separate lines
 ```
 
@@ -973,9 +973,9 @@ worktree path, stored verbatim; must be non-empty).
 
 ```bash
 # one dimension per invocation — a second update for the next dimension
-boardctl -C ~/myproject update FEAT-3 --pull-request 42 --pull-request 43
-boardctl -C ~/myproject update FEAT-3 --assoc-branch wt/fix-a --assoc-branch wt/fix-b
-boardctl -C ~/myproject update FEAT-3 --assoc-worktree ~/worktrees/fix-a
+boardctl -C ~/myproject update FEAT-3 --pull-request 42 --pull-request 43   # (since v0.1.11)
+boardctl -C ~/myproject update FEAT-3 --assoc-branch wt/fix-a --assoc-branch wt/fix-b   # (since v0.1.11)
+boardctl -C ~/myproject update FEAT-3 --assoc-worktree ~/worktrees/fix-a   # (since v0.1.11)
 boardctl -C ~/myproject show FEAT-3   # pull_requests / branches / worktrees arrays on the row
 ```
 
