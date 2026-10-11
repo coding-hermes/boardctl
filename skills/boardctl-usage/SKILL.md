@@ -544,8 +544,8 @@ Boards are tiny; there is no need to batch or cache.
   merge ONE dimension per invocation; combining dimensions in a single update is a
   usage error. Repeatable: each flag instance appends/merges one element; duplicate
   elements are kept once; singular worktree/branch and other dimensions survive.
-- `update --deferred false` stores an explicit `"deferred":false` key (does not
-  remove it); stats/read semantics are identical to key-absence.
+- `update --deferred false` REMOVES the `deferred` key entirely (DF-BOARDCTL-29,
+  commit 4ab5527); the row is byte-identical to one that was never deferred.
 - Hand-edited non-boolean `deferred` values validate as WARN (treated as not
   deferred) — the report parser flags unparseable created_at/timestamps the same
   way; validate does NOT warn on unparseable created_at (gap filed DF-BOARDCTL-27).
