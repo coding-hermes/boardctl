@@ -223,9 +223,18 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
   disagrees with the row's `priority` field, the priority FIELD wins — fix
   with `update <id> --title ...` (or `--priority` if the field is the stale
   half) instead of hand-editing tasks.jsonl.
-- `event --type`: must be one of the enumerated event types (`audit`,
-  `tick`, `task_created`, `task_completed`, `task_updated`, `idle`,
-  `dogfood`, `e2e_verified`, ... — the error message lists them all).
+- `event --type`: must be one of the 18 enumerated event types (DOC-27 —
+  the complete vocabulary, alphabetical; the CLI refuses unknown values
+  with `not in vocabulary {…}`):
+  - Board lifecycle: `board_bootstrap`, `board_init`, `board_migration`
+  - Task lifecycle: `task_added`, `task_created`, `task_dispatched`,
+    `task_started`, `task_updated`, `task_evidence`, `task_completed`,
+    `task_verified`
+  - Operational: `audit`, `tick`, `idle`, `dogfood`, `e2e_verified`,
+    `spec_created`, `worker_dispatched`
+
+  Legacy free-form `event_type` rows already on a board are not flagged by
+  `validate`; only new writes are restricted.
 - `event --tick N` / `--no-tick-write`: by default the tick also rewrites
   the header `ticks_total` to `max(old, N)`; `--no-tick-write` skips that
   rewrite, so the counter can go stale and `doctor` fails its drift check

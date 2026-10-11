@@ -530,6 +530,55 @@ with the fix hint `boardctl header --set-ticks-total=N`). The default header
 bump is the safer choice; `--no-tick-write` is an escape hatch for boards
 and tools that manage the header themselves.
 
+## Event type vocabulary (DOC-27)
+
+`event --type` is vocabulary-checked: the CLI refuses unknown values with
+exit 1 and a `not in vocabulary` error that enumerates the set — the same
+18 values below, enforced at the write path (and on `import`) by
+`internal/board`'s `EventTypeVocabulary`. There is no free-form escape
+hatch for new writes. Legacy free-form `event_type` rows already on a
+board are NOT flagged by `validate` — the vocabulary restricts new writes
+only. An omitted `--type` is refused too (no default), with the allowed
+values in the error message.
+
+The 18 allowed values, grouped by lifecycle stage:
+
+**Board lifecycle** — events about the board file itself:
+
+```
+board_bootstrap, board_init, board_migration
+```
+
+**Task lifecycle** — a task row's history, from creation to verified
+completion:
+
+```
+task_added, task_created, task_dispatched, task_started,
+task_updated, task_evidence, task_completed, task_verified
+```
+
+**Operational** — board-run bookkeeping that is not tied to one task row:
+
+```
+audit, tick, idle, dogfood, spec_created, e2e_verified, worker_dispatched
+```
+
+Example:
+
+```
+boardctl -C ~/myproject event --type tick --tick 42 --detail-text 'tick 42 summary'
+```
+
+`event --type bogus` is refused:
+
+```
+boardctl: event type "bogus" not in vocabulary {audit,board_bootstrap,
+board_init,board_migration,dogfood,e2e_verified,idle,spec_created,
+task_added,task_completed,task_created,task_dispatched,task_evidence,
+task_started,task_updated,task_verified,tick,worker_dispatched} — use one
+of the enumerated event_type values
+```
+
 ## Status vocabulary and read aliases (BT-025)
 
 boardctl WRITES one canonical status vocabulary:
