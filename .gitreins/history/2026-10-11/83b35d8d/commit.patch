@@ -1,0 +1,35 @@
+commit a3a6dff5c31b3a2ef9950305cfd9567534b2f27a
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Oct 11 00:01:58 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Oct 11 00:01:58 2026 -0500
+
+    docs: fix SKILL.md rot — update --deferred false REMOVES key (DF-BOARDCTL-29)
+    
+    Run-20 lessons contradicted DF-BOARDCTL-29 (commit 4ab5527): SKILL.md:547-548
+    said --deferred false 'stores an explicit deferred:false key (does not remove it)'
+    but the code removes the key entirely and README.md:775 documents removal.
+    
+    Live-verified at HEAD 9ba0b61: update DOC-TEST --deferred false leaves the row
+    with NO deferred key. Agents reading Run-20 would report a false bug.
+    
+    Addresses DOC-32.
+---
+ skills/boardctl-usage/SKILL.md | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/skills/boardctl-usage/SKILL.md b/skills/boardctl-usage/SKILL.md
+index b5b17da..d48e766 100644
+--- a/skills/boardctl-usage/SKILL.md
++++ b/skills/boardctl-usage/SKILL.md
+@@ -544,8 +544,8 @@ Boards are tiny; there is no need to batch or cache.
+   merge ONE dimension per invocation; combining dimensions in a single update is a
+   usage error. Repeatable: each flag instance appends/merges one element; duplicate
+   elements are kept once; singular worktree/branch and other dimensions survive.
+-- `update --deferred false` stores an explicit `"deferred":false` key (does not
+-  remove it); stats/read semantics are identical to key-absence.
++- `update --deferred false` REMOVES the `deferred` key entirely (DF-BOARDCTL-29,
++  commit 4ab5527); the row is byte-identical to one that was never deferred.
+ - Hand-edited non-boolean `deferred` values validate as WARN (treated as not
+   deferred) — the report parser flags unparseable created_at/timestamps the same
+   way; validate does NOT warn on unparseable created_at (gap filed DF-BOARDCTL-27).

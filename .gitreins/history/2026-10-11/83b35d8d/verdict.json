@@ -1,0 +1,93 @@
+{
+  "task_id": "DOC-32",
+  "task_title": "Fix skill rot: Run-20 lessons contradict DF-BOARDCTL-29 (--deferred false now REMOVES the key)",
+  "task_criteria": [
+    "skills/boardctl-usage/SKILL.md:535-536 says 'update --deferred false stores an explicit \"deferred\":false key (does not remove it)'. README.md:775 and commit 4ab5527 (DF-BOARDCTL-29) say the opposite and the code implements removal (internal/board/write.go:1037). Live-verified at HEAD 9ba0b61: boardctl update DOC-TEST --deferred false leaves the row with NO deferred key. Fix: update SKILL.md:535-536 to state that --deferred false REMOVES the key, matching the code and README."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "a3a6dff5c31b3a2ef9950305cfd9567534b2f27a",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n12:02AM INF scanned ~3041657 bytes (3.04 MB) in 962ms\n12:02AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 209 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T050158.307833Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.337s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t3.358s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.175s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckWithFakeBinaryclean_scan_passes1976553619/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\n--- FAIL: TestVulncheck (0.47s)\n    vulncheck_test.go:449: dependency-vulnerability gate refused: govulncheck version mismatch: this repo's gates pin v1.7.0 but the resolved binary /home/kara/go/bin/govulncheck reports v1.8.0 \u2014 a scan by a different scanner rule set must not stand in for the pinned gate (fix: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0)\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an1683017971/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an1683017971/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an1683017971/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nFAIL\nFAIL\tgithub.com/coding-hermes/boardctl/internal/vulncheck\t0.586s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\nFAIL\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T050158.307833Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 skills/boardctl-usage/SKILL.md:535-536 says 'update --deferred false stores an explicit \"deferred\":false key (does not remove it)'. README.md:775 and commit 4ab5527 (DF-BOARDCTL-29) say the opposite and the code implements removal (internal/board/write.go:1037). Live-verified at HEAD 9ba0b61: boardctl update DOC-TEST --deferred false leaves the row with NO deferred key. Fix: update SKILL.md:535-536 to state that --deferred false REMOVES the key, matching the code and README.: SKILL.md:547-548 now reads '`update --deferred false` REMOVES the `deferred` key entirely (DF-BOARDCTL-29, commit 4ab5527); the row is byte-identical to one that was never deferred.' The old contradictory text is gone (grep for 'does not remove'/'stores an explicit' returns nothing). This matches the code at internal/board/write.go:967-969 (else if target.Has(\"deferred\") { target.DeleteKey(\"deferred\") }) and README.md:876-878 ('un-defers by REMOVING the key entirely (DF-BOARDCTL-29)'). Verified via git show HEAD (commit a3a6dff, 2 insertions/2 deletions in SKILL.md) and go test -count=1 ./internal/board/... => 'ok github.com/coding-hermes/boardctl/internal/board 1.386s'. Note: the criterion cited lines 535-536, but the corrected text now sits at 547-548 due to surrounding content; the required semantic fix is present and correct.\nSKILL.md's Run-20 lesson now correctly states that `update --deferred false` REMOVES the deferred key, matching the code (write.go:967-969) and README (876-878), with the board test suite passing.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 skills/boardctl-usage/SKILL.md:535-536 says 'update --deferred false stores an explicit \"deferred\":false key (does not remove it)'. README.md:775 and commit 4ab5527 (DF-BOARDCTL-29) say the opposite and the code implements removal (internal/board/write.go:1037). Live-verified at HEAD 9ba0b61: boardctl update DOC-TEST --deferred false leaves the row with NO deferred key. Fix: update SKILL.md:535-536 to state that --deferred false REMOVES the key, matching the code and README.: SKILL.md:547-548 now reads '`update --deferred false` REMOVES the `deferred` key entirely (DF-BOARDCTL-29, commit 4ab5527); the row is byte-identical to one that was never deferred.' The old contradictory text is gone (grep for 'does not remove'/'stores an explicit' returns nothing). This matches the code at internal/board/write.go:967-969 (else if target.Has(\"deferred\") { target.DeleteKey(\"deferred\") }) and README.md:876-878 ('un-defers by REMOVING the key entirely (DF-BOARDCTL-29)'). Verified via git show HEAD (commit a3a6dff, 2 insertions/2 deletions in SKILL.md) and go test -count=1 ./internal/board/... => 'ok github.com/coding-hermes/boardctl/internal/board 1.386s'. Note: the criterion cited lines 535-536, but the corrected text now sits at 547-548 due to surrounding content; the required semantic fix is present and correct.\nSKILL.md's Run-20 lesson now correctly states that `update --deferred false` REMOVES the deferred key, matching the code (write.go:967-969) and README (876-878), with the board test suite passing.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "skills/boardctl-usage/SKILL.md:535-536 says 'update --deferred false stores an explicit \"deferred\":false key (does not remove it)'. README.md:775 and commit 4ab5527 (DF-BOARDCTL-29) say the opposite and the code implements removal (internal/board/write.go:1037). Live-verified at HEAD 9ba0b61: boardctl update DOC-TEST --deferred false leaves the row with NO deferred key. Fix: update SKILL.md:535-536 to state that --deferred false REMOVES the key, matching the code and README.",
+                "status": "PASS",
+                "detail": "SKILL.md:547-548 now reads '`update --deferred false` REMOVES the `deferred` key entirely (DF-BOARDCTL-29, commit 4ab5527); the row is byte-identical to one that was never deferred.' The old contradictory text is gone (grep for 'does not remove'/'stores an explicit' returns nothing). This matches the code at internal/board/write.go:967-969 (else if target.Has(\"deferred\") { target.DeleteKey(\"deferred\") }) and README.md:876-878 ('un-defers by REMOVING the key entirely (DF-BOARDCTL-29)'). Verified via git show HEAD (commit a3a6dff, 2 insertions/2 deletions in SKILL.md) and go test -count=1 ./internal/board/... => 'ok github.com/coding-hermes/boardctl/internal/board 1.386s'. Note: the criterion cited lines 535-536, but the corrected text now sits at 547-548 due to surrounding content; the required semantic fix is present and correct."
+              }
+            ],
+            "summary": "SKILL.md's Run-20 lesson now correctly states that `update --deferred false` REMOVES the deferred key, matching the code (write.go:967-969) and README (876-878), with the board test suite passing."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-32\n\nStage tier1: FAIL\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 skills/boardctl-usage/SKILL.md:535-536 says 'update --deferred false stores an explicit \"deferred\":false key (does not remove it)'. README.md:775 and commit 4ab5527 (DF-BOARDCTL-29) say the opposite and the code implements removal (internal/board/write.go:1037). Live-verified at HEAD 9ba0b61: boardctl update DOC-TEST --deferred false leaves the row with NO deferred key. Fix: update SKILL.md:535-536 to state that --deferred false REMOVES the key, matching the code and README.: SKILL.md:547-548 now reads '`update --deferred false` REMOVES the `deferred` key entirely (DF-BOARDCTL-29, commit 4ab5527); the row is byte-identical to one that was never deferred.' The old contradictory text is gone (grep for 'does not remove'/'stores an explicit' returns nothing). This matches the code at internal/board/write.go:967-969 (else if target.Has(\"deferred\") { target.DeleteKey(\"deferred\") }) and README.md:876-878 ('un-defers by REMOVING the key entirely (DF-BOARDCTL-29)'). Verified via git show HEAD (commit a3a6dff, 2 insertions/2 deletions in SKILL.md) and go test -count=1 ./internal/board/... => 'ok github.com/coding-hermes/boardctl/internal/board 1.386s'. Note: the criterion cited lines 535-536, but the corrected text now sits at 547-548 due to surrounding content; the required semantic fix is present and correct.\nSKILL.md's Run-20 lesson now correctly states that `update --deferred false` REMOVES the deferred key, matching the code (write.go:967-969) and README (876-878), with the board test suite passing.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-11T05:02:40.040560",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-11T05:02:40.266489+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1963,
+        "truncated": false,
+        "source": "git show a3a6dff5c31b"
+      }
+    ],
+    "task_id": "DOC-32"
+  }
+}
