@@ -1,0 +1,278 @@
+commit 1b1da024704d68e876731a5b2239bb1f9384c1c0
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Oct 11 06:49:26 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Oct 11 06:49:26 2026 -0500
+
+    fix: stamp board last_tick on tick events. Addresses MP-GAP-027.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ cmd/boardctl/main.go         | 12 ++++--
+ cmd/boardctl/vocab_test.go   | 31 +++++++++++++++
+ internal/board/write.go      | 24 ++++++++----
+ internal/board/write_test.go | 89 ++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 145 insertions(+), 11 deletions(-)
+
+diff --git a/cmd/boardctl/main.go b/cmd/boardctl/main.go
+index f14c11f..7dc546c 100644
+--- a/cmd/boardctl/main.go
++++ b/cmd/boardctl/main.go
+@@ -65,7 +65,7 @@ commands:
+   event   --type task_created|task_dispatched|task_completed|audit|...
+           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
+           [--tick N] [--no-tick-write]
+-  header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
++  header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [--set-last-tick TIMESTAMP]
+   validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep]
+   sweep-status [--apply] [--decide] [--json] [--skip-bad-lines]
+            report (and with --apply fix) off-vocabulary task statuses on ONE
+@@ -1086,15 +1086,16 @@ func cmdEvent(dir string, args []string) error {
+ 
+ func cmdHeader(dir string, args []string) error {
+ 	fs := newFlagSet("header")
+-	args = reorderArgs(args, valueFlags("C", "set-ticks-total", "set-ticks-idle", "set-last-commit"))
++	args = reorderArgs(args, valueFlags("C", "set-ticks-total", "set-ticks-idle", "set-last-commit", "set-last-tick"))
+ 	asJSON := fs.Bool("json", false, "emit header as JSON")
+ 	setTotal := fs.String("set-ticks-total", "", "set ticks_total counter")
+ 	setIdle := fs.String("set-ticks-idle", "", "set ticks_idle counter")
+ 	setCommit := fs.String("set-last-commit", "", "set last_commit sha")
++	setLastTick := fs.String("set-last-tick", "", "set last_tick timestamp")
+ 	var cdir string
+ 	addCFlag(fs, &cdir)
+ 	fs.Usage = func() {
+-		fmt.Fprintf(fs.Output(), "boardctl header [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [-C dir]\n")
++		_, _ = fmt.Fprintf(fs.Output(), "boardctl header [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [--set-last-tick TIMESTAMP] [-C dir]\n")
+ 	}
+ 	if err := parseFlags(fs, args); err != nil {
+ 		return err
+@@ -1109,7 +1110,7 @@ func cmdHeader(dir string, args []string) error {
+ 	if err != nil {
+ 		return err
+ 	}
+-	writing := *setTotal != "" || *setIdle != "" || *setCommit != ""
++	writing := *setTotal != "" || *setIdle != "" || *setCommit != "" || *setLastTick != ""
+ 	// BT-010: no topology special case — HeaderRow reads board.jsonl (A) or
+ 	// line 1 of tasks.jsonl (B), and SetHeader rewrites whichever carries
+ 	// the header. Both read and write work identically on either topology.
+@@ -1149,6 +1150,9 @@ func cmdHeader(dir string, args []string) error {
+ 	if *setCommit != "" {
+ 		u.LastCommit = setCommit
+ 	}
++	if *setLastTick != "" {
++		u.LastTick = setLastTick
++	}
+ 	changed, err := b.SetHeader(u)
+ 	if err != nil {
+ 		return err
+diff --git a/cmd/boardctl/vocab_test.go b/cmd/boardctl/vocab_test.go
+index af6b5f8..368ad47 100644
+--- a/cmd/boardctl/vocab_test.go
++++ b/cmd/boardctl/vocab_test.go
+@@ -138,6 +138,37 @@ func TestCmdHeaderRejectsNegativeTicks(t *testing.T) {
+ 	}
+ }
+ 
++func TestCmdHeaderSetsExactLastTick(t *testing.T) {
++	dir := seedCLIBoard(t)
++	boardDir := filepath.Join(dir, ".coding-hermes", "board")
++	tasksPath := filepath.Join(boardDir, "tasks.jsonl")
++	beforeTasks, err := os.ReadFile(tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	want := "2026-09-10 11:12:13.000000"
++	if code := run([]string{"-C", dir, "header", "--set-last-tick", want}); code != 0 {
++		t.Fatalf("header --set-last-tick exit code = %d, want 0", code)
++	}
++	raw, err := os.ReadFile(filepath.Join(boardDir, "board.jsonl"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !strings.Contains(string(raw), `"last_tick":"`+want+`"`) {
++		t.Fatalf("header --set-last-tick did not preserve the exact value %q: %s", want, raw)
++	}
++	if !strings.Contains(string(raw), `"last_commit":null`) || !strings.Contains(string(raw), `"project":"demo"`) {
++		t.Fatalf("explicit last_tick update disturbed unrelated header fields: %s", raw)
++	}
++	afterTasks, err := os.ReadFile(tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if string(beforeTasks) != string(afterTasks) {
++		t.Fatalf("header --set-last-tick changed task rows:\nbefore %s\nafter  %s", beforeTasks, afterTasks)
++	}
++}
++
+ // BT-007 CLI: validate flags the junk row (warn) while staying exit 0, and
+ // the exact dogfood scenario (free-form guard) is visible in the report.
+ func TestCmdValidateFlagsJunkRow(t *testing.T) {
+diff --git a/internal/board/write.go b/internal/board/write.go
+index f26ba03..53338af 100644
+--- a/internal/board/write.go
++++ b/internal/board/write.go
+@@ -1572,14 +1572,18 @@ func (b *Board) bumpHeaderTicksTotal(n int64, report func(TickWriteNotice)) erro
+ 	if err != nil {
+ 		return err
+ 	}
+-	if cur, ok := hdr.Int("ticks_total"); ok && cur >= n {
+-		return nil
+-	}
+ 	old := int64(0)
+ 	if cur, ok := hdr.Int("ticks_total"); ok {
+ 		old = cur
+ 	}
+-	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &n}); err != nil {
++	if old >= n {
++		return nil
++	}
++	// The counter bump is the actual tick-bearing header write. Stamp last_tick
++	// in the header's detected timestamp dialect alongside it; an out-of-order
++	// tick remains a no-op, preserving the existing no-rewrite contract.
++	lastTick := b.headerTSFormat(hdr).Now()
++	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &n, LastTick: &lastTick}); err != nil {
+ 		return err
+ 	}
+ 	if report != nil {
+@@ -1593,6 +1597,7 @@ type HeaderUpdate struct {
+ 	TicksTotal *int64
+ 	TicksIdle  *int64
+ 	LastCommit *string
++	LastTick   *string
+ }
+ 
+ // SetHeader rewrites ONLY the header row — line 1 of board.jsonl (topology A)
+@@ -1659,11 +1664,11 @@ func (b *Board) setHeaderLocked(u HeaderUpdate) ([]string, error) {
+ 	// classified topology B because line 1 was unparseable at resolve time
+ 	// yet parses now as a task row, this still refuses before any mutation.
+ 	if rowIsTaskShape(header) {
+-		return nil, fmt.Errorf("%w: line %d of %s is the TASK row %q (it carries id/title/status) — refusing to write header keys (ticks_total/ticks_idle/last_commit/updated_at) into a task row",
++		return nil, fmt.Errorf("%w: line %d of %s is the TASK row %q (it carries id/title/status) — refusing to write header keys (ticks_total/ticks_idle/last_commit/last_tick/updated_at) into a task row",
+ 			ErrNoHeader, headerIdx+1, filepath.Base(headerPath), header.String("id"))
+ 	}
+-	if u.TicksTotal == nil && u.TicksIdle == nil && u.LastCommit == nil {
+-		return nil, fmt.Errorf("header requires at least one --set flag (--set-ticks-total/--set-ticks-idle/--set-last-commit)")
++	if u.TicksTotal == nil && u.TicksIdle == nil && u.LastCommit == nil && u.LastTick == nil {
++		return nil, fmt.Errorf("header requires at least one --set flag (--set-ticks-total/--set-ticks-idle/--set-last-commit/--set-last-tick)")
+ 	}
+ 	style := DetectStyle(lines[headerIdx])
+ 	var changed []string
+@@ -1697,6 +1702,11 @@ func (b *Board) setHeaderLocked(u HeaderUpdate) ([]string, error) {
+ 			return nil, err
+ 		}
+ 	}
++	if u.LastTick != nil {
++		if err := set("last_tick", *u.LastTick); err != nil {
++			return nil, err
++		}
++	}
+ 	// BT-024: every successful header mutation stamps updated_at (refreshing
+ 	// it, or adding it when the header never carried the key) so the header's
+ 	// own freshness never goes stale. The dialect is sampled from the header's
+diff --git a/internal/board/write_test.go b/internal/board/write_test.go
+index 8010629..e8076d9 100644
+--- a/internal/board/write_test.go
++++ b/internal/board/write_test.go
+@@ -278,6 +278,57 @@ func TestAppendEventTickBumpsHeaderTicksTotal(t *testing.T) {
+ 	}
+ }
+ 
++func TestAppendEventTickStampsLastTickAndRespectsNoTickOptions(t *testing.T) {
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl":  `{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}` + "\n",
++		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
++		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234","updated_at":"2026-09-01 00:00:00.000000"}` + "\n",
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err := b.AppendEvent(EventSpec{Type: "audit", Tick: i64Ptr(5)}); err != nil {
++		t.Fatal(err)
++	}
++	hdr, err := b.HeaderRow()
++	if err != nil {
++		t.Fatal(err)
++	}
++	lastTick := hdr.String("last_tick")
++	if lastTick == "" || !ValidTimestamp(lastTick) {
++		t.Fatalf("last_tick = %q, want a valid timestamp", lastTick)
++	}
++	if _, err := time.Parse("2006-01-02 15:04:05.000000", lastTick); err != nil {
++		t.Fatalf("last_tick = %q does not preserve the header's space/fraction dialect: %v", lastTick, err)
++	}
++	if total, _ := hdr.Int("ticks_total"); total != 5 {
++		t.Fatalf("ticks_total = %d, want 5", total)
++	}
++
++	if _, err := b.AppendEvent(EventSpec{Type: "audit"}); err != nil {
++		t.Fatal(err)
++	}
++	plainHdr, err := b.HeaderRow()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if got := plainHdr.String("last_tick"); got != lastTick {
++		t.Fatalf("plain event changed last_tick from %q to %q", lastTick, got)
++	}
++	if _, err := b.AppendEvent(EventSpec{Type: "audit", Tick: i64Ptr(6), NoTickWrite: true}); err != nil {
++		t.Fatal(err)
++	}
++	noWriteHdr, err := b.HeaderRow()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if got := noWriteHdr.String("last_tick"); got != lastTick {
++		t.Fatalf("--no-tick-write changed last_tick from %q to %q", lastTick, got)
++	}
++}
++
+ // BT-014: a tick-bearing event must never REGRESS the header counter — an
+ // out-of-order event (tick 2 on a board already at 5) leaves ticks_total 5.
+ func TestAppendEventTickNeverRegressesTicksTotal(t *testing.T) {
+@@ -342,6 +393,44 @@ func TestAppendEventTickBumpsHeaderOnTopologyB(t *testing.T) {
+ 	}
+ }
+ 
++func TestAppendEventTickStampsLastTickOnTopologyB(t *testing.T) {
++	dir := t.TempDir()
++	taskLine := `{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}`
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl":  `{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234","updated_at":"2026-09-01T00:00:00Z"}` + "\n" + taskLine + "\n",
++		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err := b.AppendEvent(EventSpec{Type: "audit", Tick: i64Ptr(3)}); err != nil {
++		t.Fatal(err)
++	}
++	hdr, err := b.HeaderRow()
++	if err != nil {
++		t.Fatal(err)
++	}
++	lastTick := hdr.String("last_tick")
++	if lastTick == "" || !strings.HasSuffix(lastTick, "Z") {
++		t.Fatalf("topology-B last_tick = %q, want a Z-suffixed timestamp", lastTick)
++	}
++	if _, err := time.Parse(time.RFC3339, lastTick); err != nil {
++		t.Fatalf("topology-B last_tick = %q does not parse as RFC3339: %v", lastTick, err)
++	}
++	if total, _ := hdr.Int("ticks_total"); total != 3 {
++		t.Fatalf("topology-B ticks_total = %d, want 3", total)
++	}
++	lines, err := os.ReadFile(b.tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	got := strings.SplitN(strings.TrimRight(string(lines), "\n"), "\n", 2)
++	if len(got) != 2 || got[1] != taskLine {
++		t.Fatalf("topology-B task row changed: %v", got)
++	}
++}
++
+ // ---------- BT-024: SetHeader stamps header updated_at ----------
+ 
+ // seedStaleHeaderBoard builds a topology-A board whose header carries a STALE

@@ -1,0 +1,19 @@
+{
+  "tick_id": "my-project-foreman-2026-10-11-11-09-45",
+  "project": "my-project",
+  "wave_budget": 1,
+  "mode": "serial-fallback",
+  "tasks": [
+    {
+      "task_id": "MP-GAP-027",
+      "execution_repo": "/home/kara/coding-hermes-boardctl",
+      "worktree": "/home/kara/worktrees/boardctl-MP-GAP-027",
+      "branch": "wt/MP-GAP-027",
+      "base": "origin/main",
+      "base_sha": "ce8401d",
+      "recovery": "Already landed on main as an ancestor of HEAD; main advanced afterward. No merge required; branch delta is empty."
+    }
+  ],
+  "recovery_completed_at": "2026-10-11T21:31:49-05:00",
+  "finished_at": "2026-10-11T21:31:49-05:00"
+}
