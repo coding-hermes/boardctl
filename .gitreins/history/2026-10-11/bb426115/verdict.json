@@ -1,0 +1,93 @@
+{
+  "task_id": "DOC-27",
+  "task_title": "document complete event_type vocabulary",
+  "task_criteria": [
+    "README gains a section enumerating all 18 event_type values from cmd/boardctl/main.go:1036 (audit,board_bootstrap,board_init,board_migration,dogfood,e2e_verified,idle,spec_created,task_added,task_completed,task_created,task_dispatched,task_evidence,task_started,task_updated,task_verified,tick,worker_dispatched); skills/boardctl-usage/SKILL.md gains the same enumeration; tests or CLI probe confirm the list matches the live refusal message"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "ae09f14d62113c91d7bfa706d627beb20909b427",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n12:20AM INF scanned ~3111402 bytes (3.11 MB) in 905ms\n12:20AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 210 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T051841.403008Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.530s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.975s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.164s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.037s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.010s\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckWithFakeBinaryclean_scan_passes1489636216/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\n--- FAIL: TestVulncheck (0.34s)\n    vulncheck_test.go:449: dependency-vulnerability gate refused: govulncheck version mismatch: this repo's gates pin v1.7.0 but the resolved binary /home/kara/go/bin/govulncheck reports v1.8.0 \u2014 a scan by a different scanner rule set must not stand in for the pinned gate (fix: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0)\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an2413559040/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an2413559040/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an2413559040/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nFAIL\nFAIL\tgithub.com/coding-hermes/boardctl/internal/vulncheck\t0.442s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\nFAIL\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T051841.403008Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README gains a section enumerating all 18 event_type values from cmd/boardctl/main.go:1036 (audit,board_bootstrap,board_init,board_migration,dogfood,e2e_verified,idle,spec_created,task_added,task_completed,task_created,task_dispatched,task_evidence,task_started,task_updated,task_verified,tick,worker_dispatched); skills/boardctl-usage/SKILL.md gains the same enumeration; tests or CLI probe confirm the list matches the live refusal message: README.md:533-580 adds '## Event type vocabulary (DOC-27)' enumerating all 18 values (programmatic check: README missing=[]). skills/boardctl-usage/SKILL.md:226-237 enumerates the same 18 (SKILL missing=[]). Live set internal/board/read.go:107-126 EventTypeVocabulary contains exactly those 18 keys. CLI probe: `boardctl event --type bogus` -> exit=1, stderr 'event type \"bogus\" not in vocabulary {audit,board_bootstrap,board_init,board_migration,dogfood,e2e_verified,idle,spec_created,task_added,task_completed,task_created,task_dispatched,task_evidence,task_started,task_updated,task_verified,tick,worker_dispatched} \u2014 use one of the enumerated event_type values' \u2014 matches README's documented refusal verbatim. Tests: cmd/boardctl/bt041_help_exit_test.go:123 iterates board.EventTypeVocabulary asserting each member appears in the refusal, and :177 asserts 'not in vocabulary'; `go test ./cmd/boardctl/ -run TestBT041 -count=1` -> ok github.com/coding-hermes/boardctl/cmd/boardctl 0.010s.\nREADME and SKILL.md both enumerate all 18 event_type values matching the live EventTypeVocabulary, confirmed by a CLI probe and passing TestBT041 tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README gains a section enumerating all 18 event_type values from cmd/boardctl/main.go:1036 (audit,board_bootstrap,board_init,board_migration,dogfood,e2e_verified,idle,spec_created,task_added,task_completed,task_created,task_dispatched,task_evidence,task_started,task_updated,task_verified,tick,worker_dispatched); skills/boardctl-usage/SKILL.md gains the same enumeration; tests or CLI probe confirm the list matches the live refusal message: README.md:533-580 adds '## Event type vocabulary (DOC-27)' enumerating all 18 values (programmatic check: README missing=[]). skills/boardctl-usage/SKILL.md:226-237 enumerates the same 18 (SKILL missing=[]). Live set internal/board/read.go:107-126 EventTypeVocabulary contains exactly those 18 keys. CLI probe: `boardctl event --type bogus` -> exit=1, stderr 'event type \"bogus\" not in vocabulary {audit,board_bootstrap,board_init,board_migration,dogfood,e2e_verified,idle,spec_created,task_added,task_completed,task_created,task_dispatched,task_evidence,task_started,task_updated,task_verified,tick,worker_dispatched} \u2014 use one of the enumerated event_type values' \u2014 matches README's documented refusal verbatim. Tests: cmd/boardctl/bt041_help_exit_test.go:123 iterates board.EventTypeVocabulary asserting each member appears in the refusal, and :177 asserts 'not in vocabulary'; `go test ./cmd/boardctl/ -run TestBT041 -count=1` -> ok github.com/coding-hermes/boardctl/cmd/boardctl 0.010s.\nREADME and SKILL.md both enumerate all 18 event_type values matching the live EventTypeVocabulary, confirmed by a CLI probe and passing TestBT041 tests.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README gains a section enumerating all 18 event_type values from cmd/boardctl/main.go:1036 (audit,board_bootstrap,board_init,board_migration,dogfood,e2e_verified,idle,spec_created,task_added,task_completed,task_created,task_dispatched,task_evidence,task_started,task_updated,task_verified,tick,worker_dispatched); skills/boardctl-usage/SKILL.md gains the same enumeration; tests or CLI probe confirm the list matches the live refusal message",
+                "status": "PASS",
+                "detail": "README.md:533-580 adds '## Event type vocabulary (DOC-27)' enumerating all 18 values (programmatic check: README missing=[]). skills/boardctl-usage/SKILL.md:226-237 enumerates the same 18 (SKILL missing=[]). Live set internal/board/read.go:107-126 EventTypeVocabulary contains exactly those 18 keys. CLI probe: `boardctl event --type bogus` -> exit=1, stderr 'event type \"bogus\" not in vocabulary {audit,board_bootstrap,board_init,board_migration,dogfood,e2e_verified,idle,spec_created,task_added,task_completed,task_created,task_dispatched,task_evidence,task_started,task_updated,task_verified,tick,worker_dispatched} \u2014 use one of the enumerated event_type values' \u2014 matches README's documented refusal verbatim. Tests: cmd/boardctl/bt041_help_exit_test.go:123 iterates board.EventTypeVocabulary asserting each member appears in the refusal, and :177 asserts 'not in vocabulary'; `go test ./cmd/boardctl/ -run TestBT041 -count=1` -> ok github.com/coding-hermes/boardctl/cmd/boardctl 0.010s."
+              }
+            ],
+            "summary": "README and SKILL.md both enumerate all 18 event_type values matching the live EventTypeVocabulary, confirmed by a CLI probe and passing TestBT041 tests."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-27\n\nStage tier1: FAIL\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README gains a section enumerating all 18 event_type values from cmd/boardctl/main.go:1036 (audit,board_bootstrap,board_init,board_migration,dogfood,e2e_verified,idle,spec_created,task_added,task_completed,task_created,task_dispatched,task_evidence,task_started,task_updated,task_verified,tick,worker_dispatched); skills/boardctl-usage/SKILL.md gains the same enumeration; tests or CLI probe confirm the list matches the live refusal message: README.md:533-580 adds '## Event type vocabulary (DOC-27)' enumerating all 18 values (programmatic check: README missing=[]). skills/boardctl-usage/SKILL.md:226-237 enumerates the same 18 (SKILL missing=[]). Live set internal/board/read.go:107-126 EventTypeVocabulary contains exactly those 18 keys. CLI probe: `boardctl event --type bogus` -> exit=1, stderr 'event type \"bogus\" not in vocabulary {audit,board_bootstrap,board_init,board_migration,dogfood,e2e_verified,idle,spec_created,task_added,task_completed,task_created,task_dispatched,task_evidence,task_started,task_updated,task_verified,tick,worker_dispatched} \u2014 use one of the enumerated event_type values' \u2014 matches README's documented refusal verbatim. Tests: cmd/boardctl/bt041_help_exit_test.go:123 iterates board.EventTypeVocabulary asserting each member appears in the refusal, and :177 asserts 'not in vocabulary'; `go test ./cmd/boardctl/ -run TestBT041 -count=1` -> ok github.com/coding-hermes/boardctl/cmd/boardctl 0.010s.\nREADME and SKILL.md both enumerate all 18 event_type values matching the live EventTypeVocabulary, confirmed by a CLI probe and passing TestBT041 tests.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-11T05:21:13.013580",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-11T05:21:13.030965+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 4141,
+        "truncated": false,
+        "source": "git show ae09f14d6211"
+      }
+    ],
+    "task_id": "DOC-27"
+  }
+}

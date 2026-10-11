@@ -1,0 +1,50 @@
+commit 85c0c3b52cab69b003116af0bf7b7db935120e7c
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sat Oct 10 14:31:25 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sat Oct 10 14:31:25 2026 -0500
+
+    docs: document update write flags — clarify worker and completion metadata. Addresses DOC-24.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ README.md                      | 6 ++++++
+ skills/boardctl-usage/SKILL.md | 8 ++++++++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/README.md b/README.md
+index 75e5725..564ca2f 100644
+--- a/README.md
++++ b/README.md
+@@ -102,6 +102,12 @@ boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
+ boardctl -C ~/myproject update FEAT-1 --title "Add retry with backoff"
+ boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
+     --branch wt/ft-1 --session 2f8c41a0
++# worker and completion metadata (each flag updates only its named field)
++boardctl -C ~/myproject update FEAT-1 --worker-status complete \
++    --completed-at "2026-10-10 19:30:00"
++boardctl -C ~/myproject update FEAT-1 --note "Verified on the staging board"
++boardctl -C ~/myproject update FEAT-1 --status blocked \
++    --blocked-reason "Waiting for release authorization"
+ 
+ # canonicalize one row's status/guard_result/ci_result spelling in place
+ # (read-alias fix path; no-op + "already canonical" when nothing is dirty)
+diff --git a/skills/boardctl-usage/SKILL.md b/skills/boardctl-usage/SKILL.md
+index 2ecc8fc..b5b17da 100644
+--- a/skills/boardctl-usage/SKILL.md
++++ b/skills/boardctl-usage/SKILL.md
+@@ -125,6 +125,14 @@ boardctl -C R create --id FEAT-2 --title "T" \
+     --session <hermes-session-id> --session <second-session-id>
+ boardctl -C R update FEAT-2 --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
+     --session <hermes-session-id>
++# update metadata: --worker-status is separate from task --status;
++# --note appends; --blocked-reason records the blocking explanation;
++# --completed-at sets the completion timestamp (use the board timestamp format).
++boardctl -C R update FEAT-2 --worker-status complete \
++    --completed-at "2026-10-10 19:30:00"
++boardctl -C R update FEAT-2 --note "Verified on the staging board"
++boardctl -C R update FEAT-2 --status blocked \
++    --blocked-reason "Waiting for release authorization"
+ boardctl -C R event --type audit --tick 42 --detail-text "..."   # or --detail @file;
+                                             # --tick N ALSO bumps the header
+                                             # ticks_total to max(old,N) (stderr
