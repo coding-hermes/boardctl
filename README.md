@@ -240,7 +240,9 @@ boardctl serve                       # …then open http://127.0.0.1:8787/ui —
 page — inline CSS/JS, no external assets, no auth (the same loopback posture
 as the uploader) — that lists every loaded board and lets you browse rows,
 validation findings, analytics and the event timeline without running CLI
-verbs. Everything it shows is a SNAPSHOT: the `-C` board as resolved at
+verbs. The page's head carries one inline `data:image/svg+xml` favicon link,
+so the browser renders the tab icon without requesting `/favicon.ico` or any
+external asset (DF-BOARDCTL-30). Everything it shows is a SNAPSHOT: the `-C` board as resolved at
 startup, or an upload as extracted. Files changing on disk afterwards never
 change what the UI shows until a new upload or a restart ("refresh =
 re-upload or restart serve"). The UI is read-only: zero write surfaces, no
@@ -259,6 +261,9 @@ Read-only API of the same snapshots:
 An unknown slug answers 404 with a JSON body. The complete route set of
 `serve` is exactly `GET /`, `POST /`, `GET /api/boards`, `GET /ui`,
 `GET /api/board/{slug}`, `GET /api/events/{slug}` — anything else 404s.
+The favicon on both `GET /` and `GET /ui` is the same inline
+`data:image/svg+xml` link baked into each page's head, so `/favicon.ico`
+is never requested and no seventh route or external asset exists.
 The generated OpenAPI contract (docs/muster/openapi.yaml) describes all six
 operations; `go run ./cmd/gendocs` regenerates it after any serve change.
 
