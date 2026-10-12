@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.14.0
-date: 2026-10-06
+version: 1.15.0
+date: 2026-10-12
 category: software-development
 ---
 
@@ -594,3 +594,37 @@ Boards are tiny; there is no need to batch or cache.
 - `serve /ui` is the fastest integrity cross-check for a board: upload the folder or
   zip, read the parse-warning notes panel, and compare TASKS/OPEN/COMPLETE against
   an independent `jq` census before trusting any report number.
+
+### Run-21 lessons (2026-10-12, dedupe-board --by-id surface)
+
+- `dedupe-board --by-id --apply` is verified correct end-to-end: closes exactly
+  the later duplicate lines (status=complete, `superseded_by`, worker_summary
+  naming the kept LINE number), one audit event per closed line, terminal
+  later lines untouched, untouched lines byte-identical, idempotent on re-run.
+  Apply it to a SCRATCH copy first anyway — validate stays red after the
+  repair (DF-BOARDCTL-31), so you cannot use validate to confirm the repair.
+- The repair does NOT clear validate's duplicate-id errors — a later duplicate
+  carrying `superseded_by` still fails `duplicate task id` (DF-BOARDCTL-31).
+  Until that lands, a repaired board still fails an enforce-mode board-lint
+  hook; treat validate's duplicate-id errors on a repaired board as resolved
+  by checking `superseded_by` yourself (grep the board).
+- `recycled ids: N` in the summary counts ids with duplicate LINES, not
+  actionable groups. `N` then `nothing to do` is the all-already-terminal
+  case (bunker board: 4 recycled, 0 groups) — not a contradiction in the
+  engine, but read `--json` groups to see what would actually close
+  (DF-BOARDCTL-32).
+- `--json` reports per-id `already_terminal_lines` only inside actionable
+  groups; ids whose later lines are ALL terminal never appear in `groups` —
+  the 4-vs-1 gap on lore (3 recycled ids invisible) is that omission
+  (DF-BOARDCTL-32).
+- The `--lanes` refusal exits 0 in text mode, 2 in JSON mode (DF-BOARDCTL-33).
+  In scripts, check output text, not exit code, for the refusal — or pass
+  `--json`.
+- The audit event preserves title+reasoning verbatim; finding text stored in a
+  custom row field (e.g. lore's `releng_note`) is preserved on the closed ROW
+  but NOT quoted into the event log. If a lane's finding text lives outside
+  title/reasoning, capture it before applying (DF-BOARDCTL-31 scope note).
+- Install (fresh box, verified): source-only entrypoint — stage the module
+  tree (go.mod/go.sum + cmd/ + internal/), `go install ./cmd/dedupe-board`.
+  Cold: 21.7s including a Go toolchain download; the binary alone is ~2MB of
+  source, stdlib-only.

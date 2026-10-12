@@ -540,3 +540,43 @@ cannot clobber it. The seams found by real use:
    of green validates (DF-BOARDCTL-27).
 3. The zip upload path in the browser now has a full live proof (run 20, CDP file
    input + real submit) — DF-BOARDCTL-6's "unverifiable" premise is closed.
+
+## Run-21 addendum (2026-10-12) — dedupe-board --by-id: the repair works, the validator doesn't know
+
+The recycled-id repair (`dedupe-board --by-id`, DF-BOARDCTL-10) is built on a
+clean contract: keep the earliest LINE (the id is the recycled key, so line
+number is the only unambiguous pointer), close later lines as superseded with
+`superseded_by` + a summary naming the kept line, quote the closed row's
+title+reasoning verbatim into an audit event, leave terminal lines alone, and
+assert every untouched line round-trips byte-identical before the atomic
+rewrite. Real use confirmed every clause of that contract on a scratch copy of
+a live board (lore: 4 recycled ids, 1 actionable group) and byte-identically on
+a fresh bunker box.
+
+Where real use bit:
+
+1. **The tool's own reason to exist is not yet true.** iddupe.go's header says
+   validate "permanently errors (exit 1) on every such board ... Nothing
+   repaired the HYGIENE. This file is the missing repair tool." But validate
+   still exits 1 on the REPAIRED board — the five duplicate-id errors are
+   identical pre- and post-repair. Any repo with an enforce-mode board-lint
+   hook is permanently uncommitable even after a correct repair. The missing
+   clause is one rule: a later duplicate carrying `superseded_by` is resolved
+   (DF-BOARDCTL-31).
+2. **The census numbers can contradict the verdict line.** "recycled ids: 4"
+   followed by "nothing to do — no recycled task ids on this board" (bunker
+   board: 722 rows, all 4 recycled ids' later lines already terminal) is true
+   by the code's definitions and still reads as a bug to every human and every
+   grep. `recycled_ids` counts ids with duplicate LINES; groups only materialize
+   for actionable ones (DF-BOARDCTL-32).
+3. **The verbatim-preservation contract has a hole for custom fields.** The
+   audit event quotes title+reasoning only. Rows whose finding text lives in a
+   project-specific field (lore's `releng_note`) are preserved on the closed
+   ROW but not in the EVENT LOG — for a downstream consumer reading only
+   events, the finding text is gone. Either quote all long-form text fields or
+   say in the docs that preservation covers title+reasoning (DF-BOARDCTL-31
+   scope note).
+4. **Exit-code parity:** the `--lanes` refusal exits 0 in text mode and 2 in
+   JSON mode (DF-BOARDCTL-33) — the 0/1/2 contract the CLI holds elsewhere
+   leaks exactly where a guard is refusing to write.
+
