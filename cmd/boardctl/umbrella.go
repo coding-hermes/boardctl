@@ -172,6 +172,11 @@ func umbrellaList(um *board.Umbrella, strict bool) error {
 }
 
 // umbrellaStats renders per-repo stats plus the grand totals.
+// DF-BOARDCTL-34: the aggregated priority maps are gated on the canonical
+// vocabulary — a non-vocabulary stored value never appears as a bucket key;
+// instead each invalid value is reported as a warning on stderr (repo +
+// board provenance, the raw value, the row count) and fails the command
+// under --strict.
 func umbrellaStats(um *board.Umbrella, strict bool) error {
 	us, err := um.Stats(board.TaskFilter{})
 	if err != nil {
@@ -194,7 +199,20 @@ func umbrellaStats(um *board.Umbrella, strict bool) error {
 	for _, k := range board.SortedKeys(us.Priority) {
 		_, _ = fmt.Fprintf(os.Stdout, "    %-4s %d\n", k, us.Priority[k])
 	}
-	return umbrellaExit(um, strict, nil, 0)
+	return umbrellaExitStats(um, strict, us.Findings)
+}
+
+// umbrellaExitStats is umbrellaExit's stats-mode twin: the stats gate's
+// priority-value findings ride the depFindings channel, so umbrellaExit
+// renders each once on stderr and counts them into the strict path
+// (warnings fail only under --strict, the same contract as every other
+// warning-class finding).
+func umbrellaExitStats(um *board.Umbrella, strict bool, priFindings []board.PriorityValueFinding) error {
+	depFindings := make([]board.UmbrellaFinding, 0, len(priFindings))
+	for _, f := range priFindings {
+		depFindings = append(depFindings, board.UmbrellaFinding{Level: f.Level, Msg: f.Msg})
+	}
+	return umbrellaExit(um, strict, depFindings, 0)
 }
 
 // indentBlock re-indents every line of s by pad (for nesting one board's

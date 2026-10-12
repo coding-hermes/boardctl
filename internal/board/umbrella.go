@@ -402,6 +402,25 @@ type RepoStats struct {
 	Stats    *Stats `json:"stats"`
 }
 
+// PriorityValueFinding reports the rows of ONE board whose stored priority is
+// outside PriorityVocabulary {P0..P5}. Repo/BoardDir carry the provenance,
+// Value is the raw stored spelling, and Count is the number of rows holding
+// it (same spelling may repeat across rows). DF-BOARDCTL-34: these rows are
+// EXCLUDED from the aggregated priority maps — never silently counted as
+// canonical priorities — and surfaced instead.
+type PriorityValueFinding struct {
+	Level    string `json:"level"` // always "warn"
+	Repo     string `json:"repo"`
+	BoardDir string `json:"board_dir"`
+	Value    string `json:"value"`
+	Count    int    `json:"count"`
+	Msg      string `json:"msg"`
+}
+
+// IsError reports whether the finding fails the umbrella command (exit 1).
+// Priority-value findings are warnings: the aggregate stays complete.
+func (f PriorityValueFinding) IsError() bool { return false }
+
 // UmbrellaStats aggregates per-repo stats plus a grand total.
 type UmbrellaStats struct {
 	Root  string      `json:"root"`
@@ -413,10 +432,20 @@ type UmbrellaStats struct {
 	Actionable int            `json:"actionable"`
 	Status     map[string]int `json:"status"`
 	Priority   map[string]int `json:"priority"`
+	// DF-BOARDCTL-34: one finding per invalid priority VALUE per board, in
+	// deterministic order (board order, then sorted value). Empty when every
+	// stored priority is canonical.
+	Findings []PriorityValueFinding `json:"findings,omitempty"`
 }
 
 // Stats computes per-repo status/priority tallies (the same ComputeStats the
 // single-repo `stats` command uses) plus grand totals over the whole view.
+// DF-BOARDCTL-34: the aggregated priority maps are gated on the canonical
+// vocabulary (P0..P5, PriorityVocabulary) — non-vocabulary stored values
+// never become bucket keys; each distinct invalid value per board is
+// reported as a PriorityValueFinding with repo/board provenance instead.
+// Task totals, status and deferred/actionable counts are untouched: an
+// invalid-priority row is still a row.
 func (u *Umbrella) Stats(f TaskFilter) (*UmbrellaStats, error) {
 	us := &UmbrellaStats{Root: u.Root, Status: map[string]int{}, Priority: map[string]int{}}
 	for _, qb := range u.Boards {
@@ -424,18 +453,95 @@ func (u *Umbrella) Stats(f TaskFilter) (*UmbrellaStats, error) {
 		if err != nil {
 			return nil, fmt.Errorf("board %s (%s): %w", qb.Repo, qb.BoardDir, err)
 		}
-		us.Repos = append(us.Repos, RepoStats{Repo: qb.Repo, BoardDir: qb.BoardDir, Stats: st})
+		for k, v := range st.Priority {
+			us.Priority[k] += v
+		}
+		// Findings are collected from the RAW tally BEFORE sanitizing the
+		// published per-repo view — the invalid values must still be visible.
+		us.Findings = appendPriorityValueFindings(us.Findings, qb.Repo, qb.BoardDir, st.Priority)
+		us.Repos = append(us.Repos, RepoStats{Repo: qb.Repo, BoardDir: qb.BoardDir, Stats: sanitizeBoardStats(st)})
 		us.Total += st.Total
 		us.Deferred += st.Deferred
 		us.Actionable += st.Actionable
 		for k, v := range st.Status {
 			us.Status[k] += v
 		}
-		for k, v := range st.Priority {
-			us.Priority[k] += v
+	}
+	us.Priority = sanitizePriorityMap(us.Priority)
+	return us, nil
+}
+
+// sanitizeBoardStats returns st with every non-vocabulary priority bucket
+// removed (a fresh Stats when anything dropped, st unchanged otherwise). The
+// per-repo stats are the umbrella's published view, so the same gate applies
+// to them as to the grand total. ComputeStats itself stays untouched: the
+// single-repo `stats` command keeps rendering the raw tallies it always did.
+func sanitizeBoardStats(st *Stats) *Stats {
+	dropped := false
+	for k := range st.Priority {
+		if !PriorityVocabulary[k] {
+			dropped = true
+			break
 		}
 	}
-	return us, nil
+	if !dropped {
+		return st
+	}
+	out := &Stats{
+		Total:      st.Total,
+		Status:     st.Status,
+		Deferred:   st.Deferred,
+		Actionable: st.Actionable,
+		Priority:   map[string]int{},
+	}
+	for k, v := range st.Priority {
+		if PriorityVocabulary[k] {
+			out.Priority[k] = v
+		}
+	}
+	return out
+}
+
+// sanitizePriorityMap strips the non-vocabulary buckets from an aggregated
+// priority map in place.
+func sanitizePriorityMap(m map[string]int) map[string]int {
+	for k := range m {
+		if !PriorityVocabulary[k] {
+			delete(m, k)
+		}
+	}
+	return m
+}
+
+// appendPriorityValueFindings appends one finding per distinct non-vocabulary
+// priority VALUE in tally (a board's raw priority counts), sorted by value so
+// the order is deterministic. Each finding carries repo/board provenance, the
+// invalid value, the row count, and the vocabulary so the message alone tells
+// an operator what to rewrite.
+func appendPriorityValueFindings(findings []PriorityValueFinding, repo, boardDir string, tally map[string]int) []PriorityValueFinding {
+	type valueCount struct {
+		value string
+		count int
+	}
+	var invalid []valueCount
+	for k, v := range tally {
+		if !PriorityVocabulary[k] {
+			invalid = append(invalid, valueCount{value: k, count: v})
+		}
+	}
+	sort.Slice(invalid, func(i, j int) bool { return invalid[i].value < invalid[j].value })
+	for _, vc := range invalid {
+		findings = append(findings, PriorityValueFinding{
+			Level:    "warn",
+			Repo:     repo,
+			BoardDir: boardDir,
+			Value:    vc.value,
+			Count:    vc.count,
+			Msg: fmt.Sprintf("board %s (%s): priority %q on %d row(s) is not in vocabulary {P0,P1,P2,P3,P4,P5} — excluded from the umbrella priority totals; hand-edit the row or rewrite via 'boardctl update --priority <Pn>'",
+				repo, boardDir, vc.value, vc.count),
+		})
+	}
+	return findings
 }
 
 // ValidateAll runs the per-board Validate on every board in the view (read
