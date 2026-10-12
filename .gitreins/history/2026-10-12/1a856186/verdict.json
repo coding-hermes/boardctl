@@ -1,0 +1,101 @@
+{
+  "task_id": "DOC-30",
+  "task_title": "Document inline favicon posture",
+  "task_criteria": [
+    "README serve documentation names the inline data SVG favicon on both GET / and GET /ui, explains no favicon route or external asset request, and remains consistent with the six-route table; docs tests or verification pass"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "f87de04ed8f76c85756943fa33a75b875ebe687d",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n5:38AM INF scanned ~3097480 bytes (3.10 MB) in 543ms\n5:38AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 211 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261012T103759.340217Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.789s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.515s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.107s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.006s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.260s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261012T103759.340217Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README serve documentation names the inline data SVG favicon on both GET / and GET /ui, explains no favicon route or external asset request, and remains consistent with the six-route table; docs tests or verification pass: README.md:243-245 documents the inline `data:image/svg+xml` favicon on the /ui page head with no /favicon.ico or external asset request; README.md:264-266 explicitly names the favicon on BOTH `GET /` and `GET /ui`, states `/favicon.ico` is never requested and no seventh route/external asset exists. Six-route table at README.md:262-263 matches serve.go:396-401 exactly (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}). Code confirms the claim: serve.go:434 (GET /) and ui_page.go:29 (GET /ui) both embed the identical inline data:image/svg+xml;base64 favicon link. Verification: `go test -count=1 ./...` exit_code=0, all packages `ok` including cmd/boardctl (2.589s); favicon tests df_boardctl_30_favicon_test.go and bt072_webui_test.go pass.\nREADME accurately documents the inline data SVG favicon on both GET / and GET /ui with no favicon route or external asset, consistent with the six-route table, and the full test suite passes.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README serve documentation names the inline data SVG favicon on both GET / and GET /ui, explains no favicon route or external asset request, and remains consistent with the six-route table; docs tests or verification pass: README.md:243-245 documents the inline `data:image/svg+xml` favicon on the /ui page head with no /favicon.ico or external asset request; README.md:264-266 explicitly names the favicon on BOTH `GET /` and `GET /ui`, states `/favicon.ico` is never requested and no seventh route/external asset exists. Six-route table at README.md:262-263 matches serve.go:396-401 exactly (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}). Code confirms the claim: serve.go:434 (GET /) and ui_page.go:29 (GET /ui) both embed the identical inline data:image/svg+xml;base64 favicon link. Verification: `go test -count=1 ./...` exit_code=0, all packages `ok` including cmd/boardctl (2.589s); favicon tests df_boardctl_30_favicon_test.go and bt072_webui_test.go pass.\nREADME accurately documents the inline data SVG favicon on both GET / and GET /ui with no favicon route or external asset, consistent with the six-route table, and the full test suite passes.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README serve documentation names the inline data SVG favicon on both GET / and GET /ui, explains no favicon route or external asset request, and remains consistent with the six-route table; docs tests or verification pass",
+                "status": "PASS",
+                "detail": "README.md:243-245 documents the inline `data:image/svg+xml` favicon on the /ui page head with no /favicon.ico or external asset request; README.md:264-266 explicitly names the favicon on BOTH `GET /` and `GET /ui`, states `/favicon.ico` is never requested and no seventh route/external asset exists. Six-route table at README.md:262-263 matches serve.go:396-401 exactly (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}). Code confirms the claim: serve.go:434 (GET /) and ui_page.go:29 (GET /ui) both embed the identical inline data:image/svg+xml;base64 favicon link. Verification: `go test -count=1 ./...` exit_code=0, all packages `ok` including cmd/boardctl (2.589s); favicon tests df_boardctl_30_favicon_test.go and bt072_webui_test.go pass."
+              }
+            ],
+            "summary": "README accurately documents the inline data SVG favicon on both GET / and GET /ui with no favicon route or external asset, consistent with the six-route table, and the full test suite passes."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-30\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README serve documentation names the inline data SVG favicon on both GET / and GET /ui, explains no favicon route or external asset request, and remains consistent with the six-route table; docs tests or verification pass: README.md:243-245 documents the inline `data:image/svg+xml` favicon on the /ui page head with no /favicon.ico or external asset request; README.md:264-266 explicitly names the favicon on BOTH `GET /` and `GET /ui`, states `/favicon.ico` is never requested and no seventh route/external asset exists. Six-route table at README.md:262-263 matches serve.go:396-401 exactly (GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug}). Code confirms the claim: serve.go:434 (GET /) and ui_page.go:29 (GET /ui) both embed the identical inline data:image/svg+xml;base64 favicon link. Verification: `go test -count=1 ./...` exit_code=0, all packages `ok` including cmd/boardctl (2.589s); favicon tests df_boardctl_30_favicon_test.go and bt072_webui_test.go pass.\nREADME accurately documents the inline data SVG favicon on both GET / and GET /ui with no favicon route or external asset, consistent with the six-route table, and the full test suite passes.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-12T10:38:46.486547",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-12T10:38:46.505339+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 2433,
+        "truncated": false,
+        "source": "git show f87de04ed8f7"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 12433,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DOC-30"
+  }
+}
