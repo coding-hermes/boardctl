@@ -55,7 +55,12 @@ func (r *Report) HasErrors() bool { return r.Errors() > 0 }
 
 // Validate checks a board:
 //   - every line of tasks.jsonl / events.jsonl / board.jsonl / fixtures.jsonl parses
-//   - task ids are unique (error on duplicate)
+//   - task ids are unique (error on duplicate); DF-BOARDCTL-31: a LATER
+//     duplicate line that the id-dupe repair closed as superseded (non-empty
+//     superseded_by — what `dedupe-board --by-id --apply` and
+//     `sweep-status --decide --apply` write) is reported as a RESOLVED
+//     duplicate WARNING instead, so a repaired board validates clean; a
+//     plain duplicate (no superseded_by) still errors
 //   - event ids are ascending with tolerated gaps; duplicate and non-numeric
 //     ids are itemized warnings (benign legacy rows exist on live boards)
 //   - board.jsonl header (topology A) parses with integer counters
@@ -115,7 +120,21 @@ func (b *Board) validateTasks(rep *Report) {
 		if id == "" {
 			rep.Add("warn", "tasks.jsonl line %d: row has no id", idx+1)
 		} else if prev, dup := seen[id]; dup {
-			rep.Add("error", "tasks.jsonl line %d: duplicate task id %q (also line %d)", idx+1, id, prev)
+			// DF-BOARDCTL-31: a LATER duplicate line that the id-dupe
+			// repair closed as superseded (superseded_by naming the kept
+			// id — what `dedupe-board --by-id --apply` and
+			// `sweep-status --decide --apply` write) is the repair's own
+			// OUTPUT, so re-erroring on it makes the repair permanent:
+			// every later line it closes still fails validate. The
+			// resolved duplicate downgrades to a WARNING that names the
+			// kept line; a PLAIN duplicate (no superseded_by) stays an
+			// error exactly as before.
+			if sup := strings.TrimSpace(row.String("superseded_by")); sup != "" {
+				rep.Add("warn", "tasks.jsonl line %d: duplicate task id %q (also line %d) RESOLVED — later line closed as superseded (superseded_by=%q); remove the closed line once its audit event is no longer needed",
+					idx+1, id, prev, sup)
+			} else {
+				rep.Add("error", "tasks.jsonl line %d: duplicate task id %q (also line %d)", idx+1, id, prev)
+			}
 		} else {
 			seen[id] = idx + 1
 		}
