@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-31",
+  "task_title": "validate treats superseded_by duplicates as resolved",
+  "task_criteria": [
+    "after dedupe-board --by-id --apply closes later duplicate lines, boardctl validate on the same board exits 0 (resolved duplicates warn or count separately); plain duplicates without superseded_by still exit 1; build+vet+test green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "855b9f0cc2ae565612f23b826ace55a45b26db6c",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:22AM INF scanned ~3192251 bytes (3.19 MB) in 789ms\n6:22AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 220 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261013T112216.124529Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t17.011s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.154s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t11.210s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.239s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t3.311s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.158s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.151s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.009s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.841s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.153s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261013T112216.124529Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 after dedupe-board --by-id --apply closes later duplicate lines, boardctl validate on the same board exits 0 (resolved duplicates warn or count separately); plain duplicates without superseded_by still exit 1; build+vet+test green: internal/board/validate.go:132-138 downgrades a later duplicate to a warning when strings.TrimSpace(row.String(\"superseded_by\")) != \"\", else keeps the byte-identical error. Independently reproduced with freshly built real binaries on a fresh board: pre-repair `boardctl validate` printed `[error] tasks.jsonl line 2: duplicate task id \"QA-ASCE-1\" (also line 1)` / `RESULT: FAIL (1 error(s), 0 warning(s))` EXIT=1; `dedupe-board --board-dir $BD --by-id --apply` EXIT=0 wrote status=complete, superseded_by=\"QA-ASCE-1\", completed_at; post-repair `boardctl validate` printed `[warn] tasks.jsonl line 2: duplicate task id \"QA-ASCE-1\" (also line 1) RESOLVED \u2014 later line closed as superseded (superseded_by=\"QA-ASCE-1\")` / `RESULT: OK (1 warning(s))` EXIT=0. Plain duplicate (no superseded_by) EXIT=1 with the unchanged error; empty-string superseded_by also EXIT=1. Tests: `go test -count=1 -v -run 'DF31|IDDupe' ./internal/board/... ./cmd/boardctl/...` -> all PASS (TestValidateIDDupeSupersededResolves, TestValidateIDDupePlainStillErrors, TestValidateIDDupeEmptySupersededByStillErrors, TestValidateIDDupeRepairMakesBoardGreen, TestDF31ValidateSupersededDuplicateExitZero, TestDF31ValidatePlainDuplicateStillExitOne, TestDF31DedupeBoardApplyThenValidateGreen). `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` all packages `ok` (cmd/boardctl 11.286s, internal/board 9.057s) with no FAIL; LSP diagnostics empty. README.md --by-id section documents the resolution.\nvalidate now downgrades superseded_by duplicates to a RESOLVED warning (exit 0) while plain duplicates still exit 1, verified end-to-end with real binaries and a fully green build/vet/test run.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 after dedupe-board --by-id --apply closes later duplicate lines, boardctl validate on the same board exits 0 (resolved duplicates warn or count separately); plain duplicates without superseded_by still exit 1; build+vet+test green: internal/board/validate.go:132-138 downgrades a later duplicate to a warning when strings.TrimSpace(row.String(\"superseded_by\")) != \"\", else keeps the byte-identical error. Independently reproduced with freshly built real binaries on a fresh board: pre-repair `boardctl validate` printed `[error] tasks.jsonl line 2: duplicate task id \"QA-ASCE-1\" (also line 1)` / `RESULT: FAIL (1 error(s), 0 warning(s))` EXIT=1; `dedupe-board --board-dir $BD --by-id --apply` EXIT=0 wrote status=complete, superseded_by=\"QA-ASCE-1\", completed_at; post-repair `boardctl validate` printed `[warn] tasks.jsonl line 2: duplicate task id \"QA-ASCE-1\" (also line 1) RESOLVED \u2014 later line closed as superseded (superseded_by=\"QA-ASCE-1\")` / `RESULT: OK (1 warning(s))` EXIT=0. Plain duplicate (no superseded_by) EXIT=1 with the unchanged error; empty-string superseded_by also EXIT=1. Tests: `go test -count=1 -v -run 'DF31|IDDupe' ./internal/board/... ./cmd/boardctl/...` -> all PASS (TestValidateIDDupeSupersededResolves, TestValidateIDDupePlainStillErrors, TestValidateIDDupeEmptySupersededByStillErrors, TestValidateIDDupeRepairMakesBoardGreen, TestDF31ValidateSupersededDuplicateExitZero, TestDF31ValidatePlainDuplicateStillExitOne, TestDF31DedupeBoardApplyThenValidateGreen). `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` all packages `ok` (cmd/boardctl 11.286s, internal/board 9.057s) with no FAIL; LSP diagnostics empty. README.md --by-id section documents the resolution.\nvalidate now downgrades superseded_by duplicates to a RESOLVED warning (exit 0) while plain duplicates still exit 1, verified end-to-end with real binaries and a fully green build/vet/test run.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "after dedupe-board --by-id --apply closes later duplicate lines, boardctl validate on the same board exits 0 (resolved duplicates warn or count separately); plain duplicates without superseded_by still exit 1; build+vet+test green",
+                "status": "PASS",
+                "detail": "internal/board/validate.go:132-138 downgrades a later duplicate to a warning when strings.TrimSpace(row.String(\"superseded_by\")) != \"\", else keeps the byte-identical error. Independently reproduced with freshly built real binaries on a fresh board: pre-repair `boardctl validate` printed `[error] tasks.jsonl line 2: duplicate task id \"QA-ASCE-1\" (also line 1)` / `RESULT: FAIL (1 error(s), 0 warning(s))` EXIT=1; `dedupe-board --board-dir $BD --by-id --apply` EXIT=0 wrote status=complete, superseded_by=\"QA-ASCE-1\", completed_at; post-repair `boardctl validate` printed `[warn] tasks.jsonl line 2: duplicate task id \"QA-ASCE-1\" (also line 1) RESOLVED \u2014 later line closed as superseded (superseded_by=\"QA-ASCE-1\")` / `RESULT: OK (1 warning(s))` EXIT=0. Plain duplicate (no superseded_by) EXIT=1 with the unchanged error; empty-string superseded_by also EXIT=1. Tests: `go test -count=1 -v -run 'DF31|IDDupe' ./internal/board/... ./cmd/boardctl/...` -> all PASS (TestValidateIDDupeSupersededResolves, TestValidateIDDupePlainStillErrors, TestValidateIDDupeEmptySupersededByStillErrors, TestValidateIDDupeRepairMakesBoardGreen, TestDF31ValidateSupersededDuplicateExitZero, TestDF31ValidatePlainDuplicateStillExitOne, TestDF31DedupeBoardApplyThenValidateGreen). `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` all packages `ok` (cmd/boardctl 11.286s, internal/board 9.057s) with no FAIL; LSP diagnostics empty. README.md --by-id section documents the resolution."
+              }
+            ],
+            "summary": "validate now downgrades superseded_by duplicates to a RESOLVED warning (exit 0) while plain duplicates still exit 1, verified end-to-end with real binaries and a fully green build/vet/test run."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-31\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 after dedupe-board --by-id --apply closes later duplicate lines, boardctl validate on the same board exits 0 (resolved duplicates warn or count separately); plain duplicates without superseded_by still exit 1; build+vet+test green: internal/board/validate.go:132-138 downgrades a later duplicate to a warning when strings.TrimSpace(row.String(\"superseded_by\")) != \"\", else keeps the byte-identical error. Independently reproduced with freshly built real binaries on a fresh board: pre-repair `boardctl validate` printed `[error] tasks.jsonl line 2: duplicate task id \"QA-ASCE-1\" (also line 1)` / `RESULT: FAIL (1 error(s), 0 warning(s))` EXIT=1; `dedupe-board --board-dir $BD --by-id --apply` EXIT=0 wrote status=complete, superseded_by=\"QA-ASCE-1\", completed_at; post-repair `boardctl validate` printed `[warn] tasks.jsonl line 2: duplicate task id \"QA-ASCE-1\" (also line 1) RESOLVED \u2014 later line closed as superseded (superseded_by=\"QA-ASCE-1\")` / `RESULT: OK (1 warning(s))` EXIT=0. Plain duplicate (no superseded_by) EXIT=1 with the unchanged error; empty-string superseded_by also EXIT=1. Tests: `go test -count=1 -v -run 'DF31|IDDupe' ./internal/board/... ./cmd/boardctl/...` -> all PASS (TestValidateIDDupeSupersededResolves, TestValidateIDDupePlainStillErrors, TestValidateIDDupeEmptySupersededByStillErrors, TestValidateIDDupeRepairMakesBoardGreen, TestDF31ValidateSupersededDuplicateExitZero, TestDF31ValidatePlainDuplicateStillExitOne, TestDF31DedupeBoardApplyThenValidateGreen). `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` all packages `ok` (cmd/boardctl 11.286s, internal/board 9.057s) with no FAIL; LSP diagnostics empty. README.md --by-id section documents the resolution.\nvalidate now downgrades superseded_by duplicates to a RESOLVED warning (exit 0) while plain duplicates still exit 1, verified end-to-end with real binaries and a fully green build/vet/test run.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-13T11:23:45.572457",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-13T11:23:45.629180+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1510,
+        "truncated": false,
+        "source": "git show 855b9f0cc2ae"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-31"
+  }
+}

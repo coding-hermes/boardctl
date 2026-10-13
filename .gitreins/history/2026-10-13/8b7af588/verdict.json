@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-35",
+  "task_title": "doctor warns on untracked db/parquet fossils in the board dir",
+  "task_criteria": [
+    "doctor exits 0 with a warning naming an untracked board.db/parquet in the board dir; tracked .db still errors; clean dir unchanged; build+vet+test green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "855b9f0cc2ae565612f23b826ace55a45b26db6c",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:23AM INF scanned ~3192251 bytes (3.19 MB) in 757ms\n6:23AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 220 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261013T112216.124529Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t8.822s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.072s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.352s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.080s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261013T112216.124529Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 doctor exits 0 with a warning naming an untracked board.db/parquet in the board dir; tracked .db still errors; clean dir unchanged; build+vet+test green: Code: internal/board/doctor.go doctorUntrackedCacheFossils (commit 14366e2) walks the board dir, warns on untracked .db/.parquet via rep.Add(\"warn\", \"untracked-set: %s ... cache fossil\"), skips tracked files (pathTracked) and the .lock sidecar. E2E with built binary /tmp/boardctl in a temp git repo: (1) untracked board.db -> '[warn] untracked-set: .coding-hermes/board/board.db sits in the board dir but is not tracked by git \u2014 a leftover db/parquet cache fossil', 'RESULT: OK (2 warning(s))', EXIT=0; untracked events.parquet and gitignored board.db likewise warn with EXIT=0. (2) tracked board.db -> '[error] git-tracked-set: .coding-hermes/board/board.db is tracked under .coding-hermes/board', 'RESULT: FAIL (1 error(s), 1 warning(s))', EXIT=1, and zero fossil warns (no double-report). (3) clean dir -> no untracked-set finding, 'RESULT: OK (1 warning(s))', EXIT=0; board.lock sidecar -> 0 untracked-set warns; no-repo dir -> 'not inside a git repo ... cannot be classified' warn, EXIT=0. Tests: `go test ./internal/board/ -count=1 -run 'DF35|Fossil|Doctor' -v` -> all PASS including TestDoctorUntrackedDBFossilWarns, TestDoctorUntrackedParquetFossilWarns, TestDoctorTrackedDBNoFossilWarn, TestDoctorCleanDirNoFossilWarn, TestDoctorFossilWarnOutsideGitRepo, TestDoctorFossilWarnRealExecParity (3/3 subtests). Full suite `go test ./... -count=1` -> every package 'ok' (cmd/boardctl 7.751s, internal/board 3.788s, etc.). `go build ./...` exit 0; `go vet ./...` exit 0; `gofmt -l internal/board/ cmd/` empty.\ndoctor warns (exit 0) on untracked board.db/parquet fossils, still errors on tracked .db, leaves clean dirs unchanged, and build+vet+full test suite are green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 doctor exits 0 with a warning naming an untracked board.db/parquet in the board dir; tracked .db still errors; clean dir unchanged; build+vet+test green: Code: internal/board/doctor.go doctorUntrackedCacheFossils (commit 14366e2) walks the board dir, warns on untracked .db/.parquet via rep.Add(\"warn\", \"untracked-set: %s ... cache fossil\"), skips tracked files (pathTracked) and the .lock sidecar. E2E with built binary /tmp/boardctl in a temp git repo: (1) untracked board.db -> '[warn] untracked-set: .coding-hermes/board/board.db sits in the board dir but is not tracked by git \u2014 a leftover db/parquet cache fossil', 'RESULT: OK (2 warning(s))', EXIT=0; untracked events.parquet and gitignored board.db likewise warn with EXIT=0. (2) tracked board.db -> '[error] git-tracked-set: .coding-hermes/board/board.db is tracked under .coding-hermes/board', 'RESULT: FAIL (1 error(s), 1 warning(s))', EXIT=1, and zero fossil warns (no double-report). (3) clean dir -> no untracked-set finding, 'RESULT: OK (1 warning(s))', EXIT=0; board.lock sidecar -> 0 untracked-set warns; no-repo dir -> 'not inside a git repo ... cannot be classified' warn, EXIT=0. Tests: `go test ./internal/board/ -count=1 -run 'DF35|Fossil|Doctor' -v` -> all PASS including TestDoctorUntrackedDBFossilWarns, TestDoctorUntrackedParquetFossilWarns, TestDoctorTrackedDBNoFossilWarn, TestDoctorCleanDirNoFossilWarn, TestDoctorFossilWarnOutsideGitRepo, TestDoctorFossilWarnRealExecParity (3/3 subtests). Full suite `go test ./... -count=1` -> every package 'ok' (cmd/boardctl 7.751s, internal/board 3.788s, etc.). `go build ./...` exit 0; `go vet ./...` exit 0; `gofmt -l internal/board/ cmd/` empty.\ndoctor warns (exit 0) on untracked board.db/parquet fossils, still errors on tracked .db, leaves clean dirs unchanged, and build+vet+full test suite are green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "doctor exits 0 with a warning naming an untracked board.db/parquet in the board dir; tracked .db still errors; clean dir unchanged; build+vet+test green",
+                "status": "PASS",
+                "detail": "Code: internal/board/doctor.go doctorUntrackedCacheFossils (commit 14366e2) walks the board dir, warns on untracked .db/.parquet via rep.Add(\"warn\", \"untracked-set: %s ... cache fossil\"), skips tracked files (pathTracked) and the .lock sidecar. E2E with built binary /tmp/boardctl in a temp git repo: (1) untracked board.db -> '[warn] untracked-set: .coding-hermes/board/board.db sits in the board dir but is not tracked by git \u2014 a leftover db/parquet cache fossil', 'RESULT: OK (2 warning(s))', EXIT=0; untracked events.parquet and gitignored board.db likewise warn with EXIT=0. (2) tracked board.db -> '[error] git-tracked-set: .coding-hermes/board/board.db is tracked under .coding-hermes/board', 'RESULT: FAIL (1 error(s), 1 warning(s))', EXIT=1, and zero fossil warns (no double-report). (3) clean dir -> no untracked-set finding, 'RESULT: OK (1 warning(s))', EXIT=0; board.lock sidecar -> 0 untracked-set warns; no-repo dir -> 'not inside a git repo ... cannot be classified' warn, EXIT=0. Tests: `go test ./internal/board/ -count=1 -run 'DF35|Fossil|Doctor' -v` -> all PASS including TestDoctorUntrackedDBFossilWarns, TestDoctorUntrackedParquetFossilWarns, TestDoctorTrackedDBNoFossilWarn, TestDoctorCleanDirNoFossilWarn, TestDoctorFossilWarnOutsideGitRepo, TestDoctorFossilWarnRealExecParity (3/3 subtests). Full suite `go test ./... -count=1` -> every package 'ok' (cmd/boardctl 7.751s, internal/board 3.788s, etc.). `go build ./...` exit 0; `go vet ./...` exit 0; `gofmt -l internal/board/ cmd/` empty."
+              }
+            ],
+            "summary": "doctor warns (exit 0) on untracked board.db/parquet fossils, still errors on tracked .db, leaves clean dirs unchanged, and build+vet+full test suite are green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-35\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 doctor exits 0 with a warning naming an untracked board.db/parquet in the board dir; tracked .db still errors; clean dir unchanged; build+vet+test green: Code: internal/board/doctor.go doctorUntrackedCacheFossils (commit 14366e2) walks the board dir, warns on untracked .db/.parquet via rep.Add(\"warn\", \"untracked-set: %s ... cache fossil\"), skips tracked files (pathTracked) and the .lock sidecar. E2E with built binary /tmp/boardctl in a temp git repo: (1) untracked board.db -> '[warn] untracked-set: .coding-hermes/board/board.db sits in the board dir but is not tracked by git \u2014 a leftover db/parquet cache fossil', 'RESULT: OK (2 warning(s))', EXIT=0; untracked events.parquet and gitignored board.db likewise warn with EXIT=0. (2) tracked board.db -> '[error] git-tracked-set: .coding-hermes/board/board.db is tracked under .coding-hermes/board', 'RESULT: FAIL (1 error(s), 1 warning(s))', EXIT=1, and zero fossil warns (no double-report). (3) clean dir -> no untracked-set finding, 'RESULT: OK (1 warning(s))', EXIT=0; board.lock sidecar -> 0 untracked-set warns; no-repo dir -> 'not inside a git repo ... cannot be classified' warn, EXIT=0. Tests: `go test ./internal/board/ -count=1 -run 'DF35|Fossil|Doctor' -v` -> all PASS including TestDoctorUntrackedDBFossilWarns, TestDoctorUntrackedParquetFossilWarns, TestDoctorTrackedDBNoFossilWarn, TestDoctorCleanDirNoFossilWarn, TestDoctorFossilWarnOutsideGitRepo, TestDoctorFossilWarnRealExecParity (3/3 subtests). Full suite `go test ./... -count=1` -> every package 'ok' (cmd/boardctl 7.751s, internal/board 3.788s, etc.). `go build ./...` exit 0; `go vet ./...` exit 0; `gofmt -l internal/board/ cmd/` empty.\ndoctor warns (exit 0) on untracked board.db/parquet fossils, still errors on tracked .db, leaves clean dirs unchanged, and build+vet+full test suite are green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-13T11:24:50.385908",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-13T11:24:50.402359+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1510,
+        "truncated": false,
+        "source": "git show 855b9f0cc2ae"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-35"
+  }
+}

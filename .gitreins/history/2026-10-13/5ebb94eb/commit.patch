@@ -1,0 +1,34 @@
+commit 855b9f0cc2ae565612f23b826ace55a45b26db6c
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Tue Oct 13 06:22:09 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Tue Oct 13 06:22:09 2026 -0500
+
+    test: TestDoctorRepoBoardNoTrackedCaches skips db/parquet fossils (DF-BOARDCTL-35 interaction)
+    
+    The live board dir carries an untracked board.db cache fossil; copying it
+    into the fresh test repo made it tracked and tripped the git-tracked-set
+    error. The fossil-warning path has its own test.
+---
+ internal/board/doctor_test.go | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/internal/board/doctor_test.go b/internal/board/doctor_test.go
+index 89132c2..abd09e9 100644
+--- a/internal/board/doctor_test.go
++++ b/internal/board/doctor_test.go
+@@ -274,6 +274,14 @@ func TestDoctorRepoBoardNoTrackedCaches(t *testing.T) {
+ 		if e.IsDir() {
+ 			continue
+ 		}
++		// Skip db/parquet cache fossils: the live board dir may carry an
++		// UNTRACKED cache (board.db), but this test copies every file into a
++		// FRESH git repo where it becomes tracked — a shape the real board
++		// never has. This test pins the tracked-set property of the JSONL
++		// board only; the fossil-warning path has its own test.
++		if strings.HasSuffix(e.Name(), ".db") || strings.HasSuffix(e.Name(), ".parquet") {
++			continue
++		}
+ 		data, err := os.ReadFile(filepath.Join(src, e.Name()))
+ 		if err != nil {
+ 			t.Fatal(err)
