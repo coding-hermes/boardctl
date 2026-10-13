@@ -14,6 +14,14 @@ import (
 //
 //   - git tracked-set: no tracked path under the board dir may carry a .db or
 //     .parquet extension — JSONL is the canonical store, caches are untracked
+//   - DF-BOARDCTL-35: the mirror image of the tracked-set rule — an
+//     UNTRACKED .db/.parquet file physically present in the board dir is
+//     itemized as a WARNING naming it a cache fossil (README: "the JSONL
+//     files are the board"). Warnings only: an untracked cache is a stale
+//     artifact, not board corruption, and the tracked-set error above stays
+//     the sole fail path. When the board dir is not inside a git repo the
+//     tracked-set distinction is unavailable, so the same files warn as
+//     unclassified db/parquet files rather than staying silent.
 //   - header counter sanity (both topologies — topology B reads the line-1
 //     tasks.jsonl header): header ticks_total must not be behind the newest
 //     numeric tick_number in events.jsonl, and ticks_idle must not exceed
@@ -36,6 +44,7 @@ func (b *Board) Doctor() (*Report, error) {
 		return nil, err
 	}
 	b.doctorGitTrackedSet(rep)
+	b.doctorUntrackedCacheFossils(rep)
 	b.doctorTopologyBLineOne(rep)
 	b.doctorHeaderVsEvents(rep)
 	b.doctorFixtureOrphans(rep)
@@ -82,6 +91,89 @@ func (b *Board) doctorGitTrackedSet(rep *Report) {
 			rep.Add("error", "git-tracked-set: %s is tracked under %s — JSONL-canonical boards must not track db/parquet caches", line, rel)
 		}
 	}
+}
+
+// cacheFossilExtensions are the cache file extensions doctor's fossil scan
+// looks for in the board dir. Same set the tracked-set error flags, applied
+// to the physical directory instead of the git index.
+var cacheFossilExtensions = map[string]bool{
+	".db":      true,
+	".parquet": true,
+}
+
+// doctorUntrackedCacheFossils is DF-BOARDCTL-35, the mirror image of the
+// git tracked-set check: the tracked-set rule only inspects `git ls-files`
+// output, so a stale DuckDB `*.db` cache (plus any -shm/-wal siblings)
+// sitting in the board dir UNTRACKED went unnoticed while README declares
+// "the JSONL files are the board". The real dogfood case: an untracked,
+// gitignored `*.db` cache sat in a live board dir, doctor exited 0 in
+// silence, and only a human scrolling the directory found the cache fossil.
+//
+// The scan walks the board dir itself and itemizes every db/parquet file as
+// a WARNING naming it a cache fossil — a stale artifact, not board
+// corruption, so it never fails doctor; the tracked-set ERROR above stays
+// the sole fail path for a cache that got committed. Gitignored files are
+// scanned too (that is exactly the case this check exists for); the local
+// write-guard lock sidecar (.lock) is excluded so a healthy board holding
+// its write lock never warns. When the board dir is outside any git repo
+// the tracked/untracked distinction is unavailable and the finding says so
+// ("unclassified") instead of asserting a provenance git never confirmed.
+func (b *Board) doctorUntrackedCacheFossils(rep *Report) {
+	entries, err := os.ReadDir(b.Dir)
+	if err != nil {
+		return // validate already reported the board-dir read failure
+	}
+	root := findRepoRoot(b.Dir)
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if !cacheFossilExtensions[strings.ToLower(filepath.Ext(e.Name()))] {
+			continue
+		}
+		if e.Name() == boardLockFileName {
+			continue // write-guard lock sidecar, not a cache fossil
+		}
+		path := filepath.Join(relBoardPath(b.Dir, root), e.Name())
+		if root == "" {
+			rep.Add("warn",
+				"untracked-set: %s is a db/parquet file in the board dir but the dir is not inside a git repo, so tracked/untracked cannot be classified — JSONL is the board; a cache here is a fossil to remove",
+				path)
+			continue
+		}
+		if pathTracked(root, path) {
+			continue // tracked caches are the tracked-set check's ERROR, never this warn
+		}
+		rep.Add("warn",
+			"untracked-set: %s sits in the board dir but is not tracked by git — a leftover db/parquet cache fossil (the JSONL files are the board; caches are untracked rebuildables; safe to remove)",
+			path)
+	}
+}
+
+// relBoardPath renders the board dir relative to the repo root for finding
+// messages (the tracked-set check's `rel` shape, "." collapsed away so a
+// board at the repo root reads "cache.db" rather than "./cache.db"). Outside
+// a repo it falls back to the board dir itself.
+func relBoardPath(dir, root string) string {
+	if root == "" {
+		return dir
+	}
+	if rel, err := filepath.Rel(root, dir); err == nil {
+		return filepath.ToSlash(rel)
+	}
+	return dir
+}
+
+// pathTracked reports whether git tracks path relative to repo root — the
+// exact probe doctorGitTrackedSet's ls-files switch is built on, factored
+// out so the fossil scan can skip tracked files (their finding is the
+// tracked-set ERROR). Git failures are reported as NOT tracked: the fossil
+// warn is advisory and duplicating it onto a tracked file would mislabel the
+// tracked-set error's subject; the git-failure case already emits its own
+// warn in the tracked-set check.
+func pathTracked(root, path string) bool {
+	cmd := exec.Command("git", "-C", root, "ls-files", "--error-unmatch", "--", path)
+	return cmd.Run() == nil
 }
 
 // findRepoRoot walks up from dir until it finds a .git entry (a directory, or

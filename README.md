@@ -71,7 +71,8 @@ boardctl -C ~/myproject list --status pending
 boardctl -C ~/myproject show DF-MYPROJECT-1 --events
 boardctl -C ~/myproject validate
 boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
-                                   # (no .db/.parquet), header vs events ticks,
+                                   # (no .db/.parquet; untracked ones warn as
+                                   # cache fossils), header vs events ticks,
                                    # fixture orphans
 boardctl version                   # prints e.g. "boardctl version v0.1.10"
                                    # (the release tag; a UTC date for release
@@ -1081,6 +1082,12 @@ spawned an entire genre of parity-probe/resync/repair ceremony, and produced
 false-divergence alarms. Removed 2026-09-03: the JSONL files **are** the board.
 Query them with `boardctl`, `jq`, or DuckDB's `read_json_auto()` — no cache to
 drift.
+
+A leftover cache can still reappear (a stale local writer, an old checkout).
+`doctor` catches it either way: a db/parquet file that got git-tracked is an
+ERROR, and one merely sitting UNTRACKED in the board dir is a WARNING naming
+it a cache fossil (`untracked-set: … safe to remove`) — doctor stays green,
+the fossil becomes visible (DF-BOARDCTL-35).
 
 ## Development
 
