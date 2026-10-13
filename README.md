@@ -851,6 +851,9 @@ dedupe-board --board-dir ~/asce --by-id --json       # machine-readable report
 line), and preserves the closed line's original title+reasoning in an audit
 event. Already-terminal later lines (complete/failed) are left untouched.
 `--json` emits the report as JSON (only supported with `--by-id`).
+`validate` reads a closed line's `superseded_by` as RESOLVED: it reports the
+duplicate as a warning (exit 0) instead of the plain-duplicate error, so a
+repaired board validates clean.
 
 **Fresh-id rule**: a lane must ALWAYS mint a fresh task id for a new finding.
 An id-recycled filing — a new finding under an old key — is never a
