@@ -274,6 +274,14 @@ func TestDoctorRepoBoardNoTrackedCaches(t *testing.T) {
 		if e.IsDir() {
 			continue
 		}
+		// Skip db/parquet cache fossils: the live board dir may carry an
+		// UNTRACKED cache (board.db), but this test copies every file into a
+		// FRESH git repo where it becomes tracked — a shape the real board
+		// never has. This test pins the tracked-set property of the JSONL
+		// board only; the fossil-warning path has its own test.
+		if strings.HasSuffix(e.Name(), ".db") || strings.HasSuffix(e.Name(), ".parquet") {
+			continue
+		}
 		data, err := os.ReadFile(filepath.Join(src, e.Name()))
 		if err != nil {
 			t.Fatal(err)
