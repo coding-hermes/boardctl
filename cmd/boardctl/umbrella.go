@@ -41,16 +41,21 @@ import (
 
 func cmdUmbrella(dir string, args []string) error {
 	fs := newFlagSet("umbrella")
-	args = reorderArgs(args, valueFlags("C"))
+	args = reorderArgs(args, valueFlags("C", "status"))
 	asJSON := fs.Bool("json", false, "emit the census as JSON (boards, findings, totals)")
 	asList := fs.Bool("list", false, "list every task row across the boards, with the REPO column")
 	asStats := fs.Bool("stats", false, "per-repo stats plus grand totals")
 	asValidate := fs.Bool("validate", false, "run validate per board plus the cross-board depends_on checks")
 	strict := fs.Bool("strict", false, "treat warning-level findings as failures (exit 1)")
+	// DF-BOARDCTL-37: --status filters --list by status. Accepts a
+	// comma-separated list and the same read aliases as `list --status`
+	// (completed/done -> complete, todo/open -> pending, ...); unknown
+	// spellings are a usage error, not a silent empty view.
+	statusFilter := fs.String("status", "", "with --list: filter by status (comma-separated list accepted; aliases like done/todo normalize)")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl umbrella [--list|--stats|--validate] [--json] [--strict] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\n  read-only unified view over one umbrella repo and every child board\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  symlinked under its .coding-hermes/links/ registry (one symlink per\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  child repo, named after the repo, aimed at <child>/.coding-hermes).\n")
@@ -80,6 +85,20 @@ func cmdUmbrella(dir string, args []string) error {
 	if *asJSON && modes > 0 {
 		return fmt.Errorf("umbrella: --json cannot be combined with --list/--stats/--validate: %w", errUsage)
 	}
+	// DF-BOARDCTL-37: --status is a --list-only filter — without a mode flag
+	// it is the ambiguous case (census vs filtered list), so refuse it like
+	// the other usage-class conflicts.
+	if *statusFilter != "" && !*asList {
+		return fmt.Errorf("umbrella: --status filters the --list task table and cannot be used without --list: %w", errUsage)
+	}
+	listFilter := board.TaskFilter{}
+	if *statusFilter != "" {
+		f, err := parseStatuses(*statusFilter)
+		if err != nil {
+			return fmt.Errorf("umbrella: %w", err)
+		}
+		listFilter.Statuses = f
+	}
 	um, err := board.OpenUmbrella(dir)
 	if err != nil {
 		return err
@@ -88,7 +107,7 @@ func cmdUmbrella(dir string, args []string) error {
 		return umbrellaJSON(um, *strict)
 	}
 	if *asList {
-		return umbrellaList(um, *strict)
+		return umbrellaList(um, *strict, listFilter)
 	}
 	if *asStats {
 		return umbrellaStats(um, *strict)
@@ -151,10 +170,37 @@ func umbrellaCensus(um *board.Umbrella, strict bool) error {
 	return umbrellaExit(um, strict, nil, 0)
 }
 
+// parseStatuses splits a --status value into canonical filter statuses,
+// accepting comma-separated lists (the same convention as create's
+// --depends-on/--capability-tags) and the read-side status aliases
+// (StatusAliases — "done"/"completed" count as complete, "todo"/"open" as
+// pending, ...). Order is preserved; duplicates collapse. Any spelling that
+// does not resolve into the canonical write vocabulary is a usage-class
+// error naming the offending value and the vocabulary — an unknown status
+// must fail loud, never silently list zero rows.
+func parseStatuses(raw string) ([]string, error) {
+	seen := map[string]bool{}
+	var out []string
+	for _, part := range splitCSV(raw) {
+		norm := board.NormalizeStatus(part)
+		if !board.StatusVocabulary[norm] {
+			return nil, fmt.Errorf("--status %q not in vocabulary {%s} ('completed' accepted as alias): %w", part, vocabSet(), errUsage)
+		}
+		if seen[norm] {
+			continue
+		}
+		seen[norm] = true
+		out = append(out, norm)
+	}
+	return out, nil
+}
+
 // umbrellaList renders the unified task table with the repo provenance
-// column and repo-qualified ids.
-func umbrellaList(um *board.Umbrella, strict bool) error {
-	qts, err := um.ListTasks(board.TaskFilter{})
+// column and repo-qualified ids. filter carries the DF-BOARDCTL-37 --status
+// status filter (Statuses, normalized to canonical values by parseStatuses);
+// the empty TaskFilter{} keeps the unfiltered listing.
+func umbrellaList(um *board.Umbrella, strict bool, filter board.TaskFilter) error {
+	qts, err := um.ListTasks(filter)
 	if err != nil {
 		return err
 	}

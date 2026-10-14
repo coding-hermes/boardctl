@@ -79,6 +79,11 @@ ln -s ~/services/auth/.coding-hermes    ~/myproduct/.coding-hermes/links/auth
 ln -s ~/services/billing/.coding-hermes ~/myproduct/.coding-hermes/links/billing
 boardctl -C ~/myproduct umbrella            # census: one line per board + task counts
 boardctl -C ~/myproduct umbrella --list     # unified task table (REPO column)
+boardctl -C ~/myproduct umbrella --list --status pending,in_progress
+                                            # --list only: filter by status —
+                                            # comma-separated OR list, aliases
+                                            # (done/todo) normalize; unknown =
+                                            # exit 2
 boardctl -C ~/myproduct umbrella --stats    # per-repo stats + grand totals
 boardctl -C ~/myproduct umbrella --validate # per-board validate + dep resolution
 boardctl -C ~/myproduct umbrella --json     # machine-readable census

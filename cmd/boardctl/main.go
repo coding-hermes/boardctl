@@ -100,10 +100,12 @@ commands:
           same evidence behind a WARN-ONLY banner and allows it (a
           re-install flips the mode in place; --fleet carries the mode
           into every hook it writes)
-  umbrella [--list|--stats|--validate] [--json] [--strict] [-C dir]
+  umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict] [-C dir]
           read-only unified view over this repo and every child board
           symlinked under .coding-hermes/links/ (one symlink per child
           repo, named after the repo, aimed at <child>/.coding-hermes).
+          --status filters the --list task table (comma-separated
+          statuses; aliases like done/todo normalize).
           Tasks keep repo provenance; ids are repo-qualified (<repo>/<id>),
           colliding ids stay distinct, and cross-board depends_on refs
           resolve only when unambiguous (AMBIGUOUS is reported, never
