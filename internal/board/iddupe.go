@@ -82,6 +82,14 @@ type IDDupeReport struct {
 	Groups      []IDDupeGroup `json:"groups"`
 	// ClosedAway labels each closed line as "<id> (line N)", in file order.
 	ClosedAway []string `json:"closed_away"`
+	// AlreadyTerminalIDs lists, in first-seen id order, every recycled id
+	// whose later lines are ALL already terminal. Such an id needs no
+	// closure, so it never produces a group — but the census counts it, so
+	// the id is named here to keep recycled_ids explainable from the JSON
+	// report alone (DF-BOARDCTL-32): recycled_ids == len(Groups) +
+	// len(AlreadyTerminalIDs). Empty (omitted) when every recycled id has
+	// at least one open later line to close.
+	AlreadyTerminalIDs []string `json:"already_terminal_ids,omitempty"`
 }
 
 // Changed reports whether the run has anything to write.
@@ -160,8 +168,14 @@ func (b *Board) DedupeByID(apply bool) (*IDDupeReport, error) {
 			g.ClosedStatusWas = append(g.ClosedStatusWas, st)
 			rep.ClosedAway = append(rep.ClosedAway, fmt.Sprintf("%s (line %d)", id, later.idx+1))
 		}
+		// DF-BOARDCTL-32: a recycled id whose later lines are all
+		// already terminal produces a census entry but NO group — the id
+		// needs no closure, so it lands on AlreadyTerminalIDs instead. A
+		// group is only created when there is something to close.
 		if len(g.ClosedLines) > 0 {
 			rep.Groups = append(rep.Groups, g)
+		} else {
+			rep.AlreadyTerminalIDs = append(rep.AlreadyTerminalIDs, id)
 		}
 	}
 

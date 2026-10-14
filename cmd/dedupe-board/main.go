@@ -249,16 +249,29 @@ func runByID(b *board.Board, lane string, apply, asJSON bool) int {
 		if rep.Changed() {
 			fmt.Println("DRY-RUN — no files written (pass --apply to close later lines as superseded-by-earliest)")
 		} else {
-			fmt.Println("nothing to do — no recycled task ids on this board (no files written)")
+			fmt.Println(nothingToDoLine(rep))
 		}
 		return 0
 	}
 	if !rep.Changed() {
-		fmt.Println("nothing to do — no recycled task ids on this board (no files written)")
+		fmt.Println(nothingToDoLine(rep))
 		return 0
 	}
 	fmt.Println("applied — later lines closed as superseded-by-earliest, one audit event per closed line (original title+reasoning preserved in events.jsonl)")
 	return 0
+}
+
+// nothingToDoLine is the --by-id "nothing to do" report line. The old message
+// ("no recycled task ids on this board") fired whenever nothing was closable,
+// which miscounted pre-repair boards: after a first --apply every later line
+// is terminal, so a second run has recycled_ids > 0 with an empty group list —
+// the hygiene problem is still on the board, there is just nothing left to
+// close (DF-BOARDCTL-32).
+func nothingToDoLine(rep *board.IDDupeReport) string {
+	if rep.RecycledIDs == 0 {
+		return "nothing to do — no recycled task ids on this board (no files written)"
+	}
+	return fmt.Sprintf("nothing to do — %d recycled id(s), all later lines already terminal (no files written)", rep.RecycledIDs)
 }
 
 // idDupeClosedLabel renders a group's closed lines as "<id> (line N), …".
