@@ -132,7 +132,17 @@ func ensureTrailingNewline(path string) error {
 }
 
 // appendBytes appends with O_APPEND semantics — never rewrites the file.
+//
+// GR-150: the payload is checked BEFORE anything is written, so the append
+// primitives cannot be the way a fused record enters the board. The payload
+// must be exactly one JSON object terminated by exactly one newline: a payload
+// carrying two objects, a missing terminator (which would glue this record
+// onto the previous line), a double terminator (a stray blank line), or
+// non-JSON bytes is refused loudly.
 func appendBytes(path string, data []byte) error {
+	if err := checkAppendPayload(data); err != nil {
+		return fmt.Errorf("%s: %w", filepath.Base(path), err)
+	}
 	if err := ensureTrailingNewline(path); err != nil {
 		return err
 	}
@@ -143,6 +153,32 @@ func appendBytes(path string, data []byte) error {
 	defer f.Close()
 	_, err = f.Write(data)
 	return err
+}
+
+// checkAppendPayload enforces the one-object-per-line + single-final-newline
+// shape on a payload about to be appended to a board file.
+func checkAppendPayload(data []byte) error {
+	if len(data) == 0 {
+		return fmt.Errorf("refusing to append an empty payload")
+	}
+	if !bytes.HasSuffix(data, []byte("\n")) {
+		return fmt.Errorf("refusing to append %d byte(s) with no newline terminator — the record would fuse onto the previous line (%s)",
+			len(data), oneObjectPerLineHint)
+	}
+	body := data[:len(data)-1]
+	if bytes.HasSuffix(body, []byte("\n")) {
+		return fmt.Errorf("refusing to append a payload with more than one trailing newline (%s)", oneObjectPerLineHint)
+	}
+	if bytes.ContainsAny(body, "\n\r") {
+		return fmt.Errorf("refusing to append a payload spanning more than one physical line (%s)", oneObjectPerLineHint)
+	}
+	if bytes.TrimSpace(body) == nil {
+		return fmt.Errorf("refusing to append a blank line (%s)", oneObjectPerLineHint)
+	}
+	if _, err := ParseRow(body); err != nil {
+		return fmt.Errorf("refusing to append a malformed row (%s): %v", oneObjectPerLineHint, err)
+	}
+	return nil
 }
 
 // atomicRewrite replaces file content via a same-directory temp file + rename.
@@ -1052,7 +1088,7 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			return nil, fmt.Errorf("internal error: untouched line %d would change — update aborted (nothing written)", i+1)
 		}
 	}
-	if err := atomicRewrite(b.tasksPath, JoinLines(newLines)); err != nil {
+	if err := atomicRewrite(b.tasksPath, TerminateLines(newLines)); err != nil {
 		return nil, err
 	}
 	// README-promised audit trail, appended only after the row rewrite
@@ -1253,7 +1289,7 @@ func (b *Board) normalizeTaskLocked(id string, force bool) ([]fieldChange, error
 			return nil, fmt.Errorf("internal error: untouched line %d would change — normalize aborted (nothing written)", i+1)
 		}
 	}
-	if err := atomicRewrite(b.tasksPath, JoinLines(newLines)); err != nil {
+	if err := atomicRewrite(b.tasksPath, TerminateLines(newLines)); err != nil {
 		return nil, err
 	}
 	return pending, nil
@@ -1338,7 +1374,7 @@ func (b *Board) setResultValueLocked(id, column, canonical string) error {
 			return fmt.Errorf("internal error: untouched line %d would change — result-value write aborted (nothing written)", i+1)
 		}
 	}
-	return atomicRewrite(b.tasksPath, JoinLines(newLines))
+	return atomicRewrite(b.tasksPath, TerminateLines(newLines))
 }
 
 // vocabKeys renders a vocabulary map sorted (deterministic error messages).
@@ -1723,7 +1759,7 @@ func (b *Board) setHeaderLocked(u HeaderUpdate) ([]string, error) {
 			return nil, fmt.Errorf("internal error: untouched line %d of %s would change — header update aborted (nothing written)", i+1, filepath.Base(headerPath))
 		}
 	}
-	if err := atomicRewrite(headerPath, JoinLines(newLines)); err != nil {
+	if err := atomicRewrite(headerPath, TerminateLines(newLines)); err != nil {
 		return nil, err
 	}
 	return changed, nil

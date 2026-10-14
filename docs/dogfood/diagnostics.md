@@ -39,6 +39,28 @@ way to do things. Not a log dump.
   win of the whole tool — proven by reformatting a line by hand and watching
   the next update normalize it back to board style, changing only the edited
   field.
+- **JSONL invariants (GR-150):** every board file is line-oriented, and the
+  one shape that breaks line-orientation is a line carrying MORE than one JSON
+  value. Two rules, enforced on both ends:
+  - *one JSON object per physical line.* A physical line holds exactly one
+    complete JSON value — no second object, no trailing bytes. `ParseRow`
+    enforces this (`ErrMultipleJSONValues` / `ErrTrailingData`, with the byte
+    offset named); a fused line is an error everywhere it is read (validate,
+    list, show, stats, doctor, render) instead of being read as its first
+    object with the rest silently dropped.
+  - *exactly one final newline.* Appends terminate the previous line first
+    (`ensureTrailingNewline`), the append primitives refuse a payload that is
+    not one terminated object, and the rewriting writers (update / normalize /
+    dedupe / header) re-join lines with `TerminateLines` so a file that arrived
+    without its final terminator is written back terminated — never left
+    mid-line for the next append to fuse onto.
+  - Recovery: the tolerant read (`--skip-bad-lines`) counts a fused line as
+    SKIPPED-with-evidence and exits non-zero; `validate --repair` REFUSES a
+    source with fused/trailing lines (it compares row ids and event records
+    before/after and would otherwise pick one object and drop the rest).
+  - Fix path: split the fused line(s) so each object is on its own line
+    (`jq -c . <file >split`), then re-validate. Operators: docs/operations.md
+    class 5.
 - **Performance:** everything is a single linear scan of small files. 0.01s
   stats/validate, 0.02s doctor on the largest real fleet board (259 rows).
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) runs build + vet +

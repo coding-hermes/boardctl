@@ -357,6 +357,26 @@ func JoinLines(lines [][]byte) []byte {
 	return bytes.Join(lines, []byte("\n"))
 }
 
+// TerminateLines renders lines as JSONL file content with the GR-150 writer
+// invariant: one JSON object per physical line and EXACTLY one final newline.
+//
+// ReadJSONLLines' split convention means a terminated file's last element is
+// the empty string after the final '\n' (JoinLines restores it). A file whose
+// last line lacks its terminator arrives WITHOUT that empty tail, so joining it
+// verbatim would rewrite a file that ends mid-line — and the next append (or a
+// hand-edit) then fuses two records onto one physical line, which is exactly
+// the corruption class this task exists to prevent. Normalizing the terminator
+// here keeps the invariant on every rewriting writer, not only on the append
+// paths. An empty line set stays empty (no newline is invented for a file that
+// had no content).
+func TerminateLines(lines [][]byte) []byte {
+	joined := JoinLines(lines)
+	if len(joined) > 0 && !bytes.HasSuffix(joined, []byte("\n")) {
+		joined = append(joined, '\n')
+	}
+	return joined
+}
+
 // NonEmptyLines filters out empty/whitespace-only lines (blank lines are
 // tolerated in board files) while retaining their index positions via
 // IterRows below when needed.

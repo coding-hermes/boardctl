@@ -6,8 +6,34 @@ package board
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 )
+
+// The two physical-line corruption classes GR-150 rejects. A JSONL line is
+// EXACTLY one JSON value; anything after the first object is data no line
+// reader will ever see.
+//
+// They are sentinel errors so callers can classify without matching text: the
+// tolerant reader records them as skipped-line evidence, validate turns them
+// into error findings, and the repair path REFUSES them (re-serializing such a
+// line would keep the first object and silently drop the rest).
+var (
+	// ErrMultipleJSONValues marks a line carrying more than one JSON value —
+	// the fused-record class (N complete objects concatenated on one physical
+	// line, e.g. what a lost trailing newline plus an append produces, or a
+	// 445-object line committed by hand). A json.Decoder stops after the FIRST
+	// value, so the strict path used to read such a line as one record.
+	ErrMultipleJSONValues = errors.New("multiple JSON values on one physical line")
+	// ErrTrailingData marks a line whose object is followed by bytes that are
+	// not another JSON value ("{...}oops", "{...}{oops}").
+	ErrTrailingData = errors.New("trailing data after the JSON object")
+)
+
+// oneObjectPerLineHint is appended to both rejections: the invariant, stated
+// where the operator will read it.
+const oneObjectPerLineHint = "JSONL requires exactly one JSON object per line"
 
 // Style describes the JSON serialization style of a board file, detected from
 // its last line (python json.dumps conventions used by the fleet scripts):
@@ -52,6 +78,12 @@ type Row struct {
 // ParseRow parses one JSONL line into an ordered Row. Whitespace between
 // tokens is skipped; each field's value is kept as verbatim RawMessage bytes
 // (including any inner spacing of nested values).
+//
+// GR-150: the line must carry EXACTLY ONE JSON value. json.Decoder stops after
+// the first value, so a fused line ("{...}{...}") or a line with a malformed
+// tail ("{...}oops") used to parse as the first object and every record after
+// it vanished silently. Both are rejected now (ErrMultipleJSONValues /
+// ErrTrailingData) with the byte offset named.
 func ParseRow(line []byte) (*Row, error) {
 	dec := json.NewDecoder(bytes.NewReader(line))
 	dec.UseNumber()
@@ -85,10 +117,105 @@ func ParseRow(line []byte) (*Row, error) {
 	if _, err := dec.Token(); err != nil { // consume closing '}'
 		return nil, err
 	}
+	if err := checkOneValuePerLine(line); err != nil {
+		return nil, err
+	}
 	if len(r.Keys) == 0 {
 		return nil, fmt.Errorf("empty JSON object")
 	}
 	return r, nil
+}
+
+// checkOneValuePerLine enforces the JSONL invariant on a line whose FIRST
+// value already parsed: everything after that object must be whitespace.
+//
+// It re-decodes the first value with a dedicated decoder to get a well-defined
+// end offset (json.Decoder.InputOffset after the object), then classifies the
+// leftover so the diagnostic says WHICH corruption it is:
+//
+//   - another complete JSON value follows  -> ErrMultipleJSONValues (fused record)
+//   - a value that starts but is truncated -> ErrMultipleJSONValues (incomplete
+//     second value: the line is fused AND damaged)
+//   - anything else                        -> ErrTrailingData
+//
+// A line whose first value does not decode at all is left to ParseRow's own
+// token-walk error (this helper returns nil), so a truncated single object
+// keeps its existing EOF-class diagnostic.
+func checkOneValuePerLine(line []byte) error {
+	probe := json.NewDecoder(bytes.NewReader(line))
+	probe.UseNumber()
+	var first json.RawMessage
+	if err := probe.Decode(&first); err != nil {
+		return nil // the token walk already reported this line's parse failure
+	}
+	tail := line[probe.InputOffset():]
+	rest := bytes.TrimSpace(tail)
+	if len(rest) == 0 {
+		return nil
+	}
+	// 0-based byte offset of the first leftover byte (leading JSON whitespace
+	// between the object and the leftover is not part of the diagnosis).
+	at := int(probe.InputOffset()) + (len(tail) - len(bytes.TrimLeft(tail, " 	\r\n")))
+
+	next := json.NewDecoder(bytes.NewReader(rest))
+	next.UseNumber()
+	var second json.RawMessage
+	err := next.Decode(&second)
+	switch {
+	case err == nil:
+		detail := fmt.Sprintf("a second JSON value starts at byte %d: %s", at, diagnosticSnippet(rest))
+		if more := bytes.TrimSpace(rest[next.InputOffset():]); len(more) > 0 {
+			detail = fmt.Sprintf("a second JSON value starts at byte %d with further data after it: %s", at, diagnosticSnippet(rest))
+		}
+		return fmt.Errorf("%w (a fused record — %s): %s", ErrMultipleJSONValues, oneObjectPerLineHint, detail)
+	case errors.Is(err, io.ErrUnexpectedEOF) || isEOFJSONErr(err):
+		return fmt.Errorf("%w (a fused, damaged record — %s): the value after the first object is incomplete at byte %d: %v: %s",
+			ErrMultipleJSONValues, oneObjectPerLineHint, at, err, diagnosticSnippet(rest))
+	default:
+		return fmt.Errorf("%w (%s): %s at byte %d is not a second JSON value: %v",
+			ErrTrailingData, oneObjectPerLineHint, diagnosticSnippet(rest), at, err)
+	}
+}
+
+// IsAmbiguousLineErr reports whether err is one of the physical-line
+// corruption classes whose line holds more than one record's bytes — fused
+// records and trailing data. Neither may be normalized away, because
+// re-serializing the line would keep the first object and silently drop the
+// remainder.
+func IsAmbiguousLineErr(err error) bool {
+	return errors.Is(err, ErrMultipleJSONValues) || errors.Is(err, ErrTrailingData)
+}
+
+// fusedLineNumbers returns the 1-based numbers of the physical lines in lines
+// that carry more than one JSON value (or trailing data after the object).
+// Blank lines and lines that fail in any OTHER way (truncated fragment,
+// embedded raw newline) are not this class — they hold no hidden records and
+// stay salvageable. Used by the repair path, which refuses ambiguous input.
+func fusedLineNumbers(lines [][]byte) []int {
+	var out []int
+	for i, l := range lines {
+		if len(bytes.TrimSpace(l)) == 0 {
+			continue
+		}
+		if _, err := ParseRow(l); err != nil && IsAmbiguousLineErr(err) {
+			out = append(out, i+1)
+		}
+	}
+	return out
+}
+
+// diagnosticSnippet renders a bounded, rune-safe excerpt of leftover bytes for
+// an error message. Never a dump of a whole fused line.
+func diagnosticSnippet(b []byte) string {
+	const max = 80
+	s := string(bytes.Join(bytes.Fields(b), []byte(" ")))
+	if s == "" {
+		return "…"
+	}
+	if r := []rune(s); len(r) > max {
+		return string(r[:max]) + "…"
+	}
+	return s
 }
 
 // Get returns the raw value bytes for key, or nil when absent.

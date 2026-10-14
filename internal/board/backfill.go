@@ -253,7 +253,7 @@ func (b *Board) DedupeBackfill(apply bool) (*DedupeReport, error) {
 			return nil, fmt.Errorf("internal error: untouched line %d would change — dedupe aborted (nothing written)", i+1)
 		}
 	}
-	if err := atomicRewrite(b.tasksPath, JoinLines(newLines)); err != nil {
+	if err := atomicRewrite(b.tasksPath, TerminateLines(newLines)); err != nil {
 		return nil, err
 	}
 

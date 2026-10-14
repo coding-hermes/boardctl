@@ -28,6 +28,9 @@ review: diff it, validate it in a scratch board, then swap by hand.
 
 README: "### render" → "Damaged-board salvage (DF-BOARDCTL-9)", lines ~301-329 (anchor `#render`).
 
+Related: class 5 (fused lines) — a line carrying SEVERAL records is a
+different failure with a different repair path.
+
 ### 2. Header drift — ticks_total vs max event tick
 
 Symptom: `doctor` FAILS with `header ticks_total N < max events tick_number M —
@@ -70,6 +73,29 @@ BOARDCTL_SKIP_FRESHNESS=1 ...  # suppress the warning when staying stale on purp
 ```
 
 README: "### Deployment freshness gate (BT-057)", lines ~1102-1117 (anchor `#deployment-freshness-gate-bt-057`).
+
+### 5. Fused JSONL lines — several records on one physical line
+
+Symptom: `validate` exits 1 with `multiple JSON values on one physical line
+(a fused record — JSONL requires exactly one JSON object per line)` naming the
+physical line; `list`/`show`/`stats` exit 1 with the same file:line diagnostic
+instead of quietly reporting fewer tasks.
+
+Cause: two (or many) JSON objects landed on ONE physical line — a lost final
+newline plus an append, a hand-edit, a bad merge, or a generator that wrote
+records without terminators. A line-based reader sees one line, so everything
+after the first object is invisible; before GR-150 `validate` reported
+`RESULT OK` and the missing rows simply were not there.
+
+```bash
+boardctl -C ~/myproject validate            # fails, names the fused line(s)
+boardctl -C ~/myproject list --skip-bad-lines   # salvage the clean rows, exit 1, SKIPPED-LINES evidence
+```
+
+Fix by hand: split the named line(s) so each object occupies its own physical
+line (`jq -c . <file >split` writes exactly that), then re-run `validate`.
+`validate --repair` REFUSES a board with fused lines — re-serializing one would
+keep the first object and silently drop the rest — so it must be split first.
 
 ## Not covered here
 

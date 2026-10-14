@@ -217,7 +217,7 @@ func (b *Board) DedupeByID(apply bool) (*IDDupeReport, error) {
 			return nil, fmt.Errorf("internal error: untouched line %d would change — id-aware dedupe aborted (nothing written)", i+1)
 		}
 	}
-	if err := atomicRewrite(b.tasksPath, JoinLines(newLines)); err != nil {
+	if err := atomicRewrite(b.tasksPath, TerminateLines(newLines)); err != nil {
 		return nil, err
 	}
 
@@ -398,7 +398,7 @@ func (b *Board) closeIDDupeLineLocked(line1 int) error {
 			return fmt.Errorf("internal error: untouched line %d would change — id-dupe line close aborted (nothing written)", i+1)
 		}
 	}
-	if err := atomicRewrite(b.tasksPath, JoinLines(newLines)); err != nil {
+	if err := atomicRewrite(b.tasksPath, TerminateLines(newLines)); err != nil {
 		return err
 	}
 	// The audit event quotes the closed line's original title, reasoning and
