@@ -164,6 +164,12 @@ boardctl -C ~/myproduct umbrella
 # unified task list with the REPO column; ids are repo-qualified (<repo>/<id>)
 boardctl -C ~/myproduct umbrella --list
 
+# filter the task table by status (comma-separated OR list; read aliases
+# like done/completed/todo normalize to their canonical value; unknown
+# spellings are a usage error)
+boardctl -C ~/myproduct umbrella --list --status pending
+boardctl -C ~/myproduct umbrella --list --status in_progress,review
+
 # per-repo stats + grand totals
 boardctl -C ~/myproduct umbrella --stats
 

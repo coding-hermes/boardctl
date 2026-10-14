@@ -184,6 +184,16 @@ type TaskFilter struct {
 	Status   string // "" = any; canonicalized via NormalizeStatus
 	Priority string // "" = any; compared case-insensitively on string form
 	All      bool   // include tasks whose id lives in fixtures.jsonl
+	// Statuses is the multi-status OR filter (DF-BOARDCTL-37, behind
+	// `umbrella --list --status s1,s2`): when non-empty, a row matches when
+	// its NORMALIZED status equals any listed value, so a stored alias row
+	// ("done") matches the canonical filter value ("complete") exactly like
+	// the single Status filter does. Values are expected canonical (the CLI
+	// normalizes aliases at parse time; re-normalizing here is a no-op).
+	// An unknown canonical value simply matches nothing — the CLI, not this
+	// mechanical filter, rejects non-vocabulary spellings. Composes with
+	// Status (both must hold) and leaves the empty list as "any status".
+	Statuses []string
 }
 
 // Match reports whether a task row satisfies the filter.
@@ -192,8 +202,21 @@ func (f TaskFilter) Match(row *Row, fixtureIDs map[string]bool) bool {
 	if !f.All && id != "" && fixtureIDs[id] {
 		return false
 	}
-	if f.Status != "" && NormalizeStatus(row.String("status")) != f.Status {
+	rowStatus := NormalizeStatus(row.String("status"))
+	if f.Status != "" && rowStatus != f.Status {
 		return false
+	}
+	if len(f.Statuses) > 0 {
+		matched := false
+		for _, want := range f.Statuses {
+			if rowStatus == want {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
 	}
 	if f.Priority != "" {
 		got := strings.ToUpper(strings.TrimSpace(row.String("priority")))
