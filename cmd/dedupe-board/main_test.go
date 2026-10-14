@@ -408,3 +408,37 @@ func TestCLI_ByIDRefusesUnknownStatus(t *testing.T) {
 	}
 	assertSnapshotsEqual(t, before, boardSnapshot(t, dir))
 }
+
+// DF-BOARDCTL-33: a --by-id --lanes refusal must exit 2 in TEXT mode too (it
+// already did under --json); a scripted caller checking exit codes must not
+// see success on a refused write-mode run.
+func TestCLI_ByIDLanesRefusalExitsTwoTextMode(t *testing.T) {
+	dir := t.TempDir()
+	writeBoard(t, dir, `{"id":"QA-X-1","title":"first","reasoning":"r1","status":"pending","priority":"P2"}`+"\n", testEvents, testHeader)
+	before := boardSnapshot(t, dir)
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldErr := os.Stderr
+	os.Stderr = w
+	code := run([]string{"--board-dir", dir, "--by-id", "--lanes", "crier"})
+	os.Stderr = oldErr
+	w.Close() //nolint:errcheck
+	buf := make([]byte, 0, 4096)
+	tmp := make([]byte, 1024)
+	for {
+		n, err := r.Read(tmp)
+		buf = append(buf, tmp[:n]...)
+		if err != nil {
+			break
+		}
+	}
+	if code != 2 {
+		t.Fatalf("lanes refusal exit = %d, want 2 (stderr: %s)", code, buf)
+	}
+	if !strings.Contains(string(buf), "refusing to touch board") {
+		t.Fatalf("refusal message missing:\n%s", buf)
+	}
+	assertSnapshotsEqual(t, before, boardSnapshot(t, dir))
+}
