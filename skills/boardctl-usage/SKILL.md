@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.16.0
-date: 2026-10-12
+version: 1.17.0
+date: 2026-10-13
 category: software-development
 ---
 
@@ -182,6 +182,24 @@ boardctl -C R sweep-status --decide        # machine-checkable re-classification
                                            # --decide --apply does. PENDING and
                                            # unmatched values stay explicit
                                            # decisions.
+
+# drifted row SHAPES, board-wide (DF-BOARDCTL-36)
+boardctl -C R normalize-board              # classify + stage tasks.normalized.jsonl:
+                                           # key aliases -> canon (BT-056 table),
+                                           # string depends_on -> array when
+                                           # unambiguous ("[]"/"" -> [], a JSON
+                                           # array string -> the array, one bare
+                                           # fleet id -> [id]), alias statuses ->
+                                           # canon. AMBIGUOUS rows are REFUSED and
+                                           # listed (alias over a present key,
+                                           # number/object/malformed depends_on,
+                                           # absent/null/unknown status) — decide
+                                           # those by hand. Rows without
+                                           # created_at are counted, NEVER
+                                           # fabricated. DRY RUN by default;
+                                           # --apply rewrites tasks.jsonl in ONE
+                                           # guarded atomic pass. EXITS 0 in both
+                                           # modes (validate owns exit semantics).
 
 # pre-commit board lint (run 15, v0.1.8+, BT-054)
 boardctl -C R install [--hook-path P] [--timeout S] [--dry-run]

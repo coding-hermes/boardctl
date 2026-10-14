@@ -28,6 +28,23 @@ review: diff it, validate it in a scratch board, then swap by hand.
 
 README: "### render" → "Damaged-board salvage (DF-BOARDCTL-9)", lines ~301-329 (anchor `#render`).
 
+### 1b. Drifted row shapes (keys/depends_on/status outside canon)
+
+Symptom: `validate` census shows many rows off-canon ("drift N row(s)"),
+`render` report excludes most rows from time metrics, or rows carry
+`depends_on: "[]"` string shapes the cross-check cannot see through.
+
+```bash
+boardctl -C ~/myproject normalize-board               # classify + stage tasks.normalized.jsonl
+boardctl -C ~/myproject normalize-board --apply       # rewrite tasks.jsonl, one atomic pass
+```
+
+Mechanical repairs only (key aliases, string `depends_on` -> array, alias
+statuses); ambiguous rows are REFUSED and listed — decide those by hand.
+Rows without `created_at` are reported, never fabricated.
+
+README: "## normalize-board — drifted row SHAPES, board-wide (DF-BOARDCTL-36)".
+
 ### 2. Header drift — ticks_total vs max event tick
 
 Symptom: `doctor` FAILS with `header ticks_total N < max events tick_number M —

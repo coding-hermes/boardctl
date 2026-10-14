@@ -78,9 +78,24 @@ commands:
            GREEN on ci / PASS on guard; PENDING, ambiguous PASS+FAIL prose
            and anything unmatched stays explicit), and a status "duplicate"
            WITH an earlier same-id twin closes as superseded-by-earliest
-           (--apply only; one audit event quotes the preserved text). A
-           "duplicate" with no earlier twin is refused. --decide alone never
-           writes; only --decide --apply does
+           (--apply only; one audit event quotes the preserved text);
+           a "duplicate" with no earlier twin is refused. --decide alone
+           never writes; only --decide --apply does.
+  normalize-board [--apply] [--json] [--skip-bad-lines]
+           report (and with --apply fix) drifted row SHAPES on ONE board —
+           the board-wide twin of 'update --normalize': renames known key
+           aliases to their canonical keys, converts string depends_on
+           values to arrays where the conversion is unambiguous ("[]" and
+           "" -> [], a JSON array string -> the array, one bare id ->
+           [id]), and canonicalizes alias statuses (open -> pending). Rows
+           needing a human decision are REFUSED and reported: an alias over
+           a key the row already carries, an unconvertible depends_on shape
+           (number/object/malformed), a status that is absent/null/unknown.
+           Rows without created_at are counted and reported — never
+           fabricated. DRY-RUN by default: stages the would-be bytes at
+           <boarddir>/tasks.normalized.jsonl for review; --apply rewrites
+           tasks.jsonl in ONE guarded atomic pass (all repairs or nothing).
+
   doctor
   version [--json]
   stats   [--json] [--all] [--skip-bad-lines]
@@ -187,6 +202,8 @@ func run(args []string) int {
 		err = cmdValidate(boardDir, rest)
 	case "sweep-status":
 		err = cmdSweepStatus(boardDir, rest)
+	case "normalize-board":
+		err = cmdNormalizeBoard(boardDir, rest)
 	case "doctor":
 		err = cmdDoctor(boardDir, rest)
 	case "version":
@@ -1313,6 +1330,69 @@ func cmdSweepStatus(dir string, args []string) error {
 	fmt.Fprint(os.Stdout, rep.RenderText())
 	if !*apply {
 		fmt.Fprintln(os.Stdout, "DRY-RUN — no files written (pass --apply to normalize the alias rows)")
+	}
+	return exitError(reportSkipped(b))
+}
+
+// ---------- normalize-board ----------
+
+// cmdNormalizeBoard runs the DF-BOARDCTL-36 drift normalization on ONE
+// board: the board-wide twin of `update --normalize`, covering every
+// mechanical row-shape repair (key aliases, string depends_on -> array,
+// alias statuses) in one classified pass. Dry-run by default: nothing on
+// the board is written; the would-be bytes are staged at
+// <boarddir>/tasks.normalized.jsonl for review. --apply rewrites
+// tasks.jsonl in ONE guarded atomic pass. Exit stays 0 in both modes: the
+// report IS the product, and drift is a finding, not a failure (validate
+// owns exit semantics).
+func cmdNormalizeBoard(dir string, args []string) error {
+	fs := newFlagSet("normalize-board")
+	args = reorderArgs(args, valueFlags("C"))
+	apply := fs.Bool("apply", false, "rewrite tasks.jsonl with every mechanical repair in one atomic pass (default: dry-run, stages tasks.normalized.jsonl only)")
+	asJSON := fs.Bool("json", false, "emit the report as JSON")
+	skipBad := useSkipBad(fs)
+	var cdir string
+	addCFlag(fs, &cdir)
+	fs.Usage = func() {
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl normalize-board [--apply] [--json] [--skip-bad-lines] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "\nmechanical repairs (applied together on --apply):\n")
+		_, _ = fmt.Fprintf(fs.Output(), "  key aliases  -> canonical keys via the BT-056 table (why -> reasoning, acceptance -> acceptance_criteria, ...)\n")
+		_, _ = fmt.Fprintf(fs.Output(), "  depends_on   -> array from a string value when unambiguous: \"[]\" and \"\" -> [], '[\"A\"]' -> the array, one bare id -> [id]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "  status       -> canonical form of a known read alias (open -> pending, done -> complete)\n")
+		_, _ = fmt.Fprintf(fs.Output(), "refused rows are reported, never mutated: an alias over a key the row already carries, an unconvertible\n")
+		_, _ = fmt.Fprintf(fs.Output(), "depends_on shape (number/object/malformed), a status that is absent, null, or unknown. Rows without\n")
+		_, _ = fmt.Fprintf(fs.Output(), "created_at are counted and reported — never fabricated. --apply rewrites tasks.jsonl in ONE guarded\n")
+		_, _ = fmt.Fprintf(fs.Output(), "atomic pass (all repairs or nothing); no audit event is appended (spelling/shape repair, not a transition).\n")
+	}
+	if err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("normalize-board takes no positional args (got %q)", fs.Arg(0))
+	}
+	if dir == "" {
+		dir = cdir
+	}
+	b, err := openBoard(dir)
+	if err != nil {
+		return err
+	}
+	armSkipBad(b, skipBad)
+	rep, err := b.NormalizeBoard(*apply)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(rep); err != nil {
+			return err
+		}
+		return exitError(reportSkipped(b))
+	}
+	_, _ = fmt.Fprint(os.Stdout, rep.RenderText())
+	if !*apply && len(rep.Changes) > 0 {
+		_, _ = fmt.Fprintln(os.Stdout, "DRY-RUN — no board file written (pass --apply to rewrite tasks.jsonl)")
 	}
 	return exitError(reportSkipped(b))
 }

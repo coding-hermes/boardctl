@@ -684,6 +684,52 @@ boardctl -C ~/myproject sweep-status --decide          # report the decisions, z
 boardctl -C ~/myproject sweep-status --decide --apply  # write decided values + duplicate closes
 ```
 
+## normalize-board — drifted row SHAPES, board-wide (DF-BOARDCTL-36)
+
+Boards also drift OUTSIDE the canon in ways `sweep-status` never looks at:
+key aliases (`acceptance` for `acceptance_criteria`), `depends_on` values
+stored as STRINGS (`"[]"`, `""`, `'["GAP-1","GAP-2"]'`, one bare id), and
+alias statuses. The measured case: a 377-row board with 83 distinct keys,
+38 null statuses, 27 string-valued `depends_on`, and 158 rows with no
+`created_at` — the report parser excluded most of it from time metrics.
+`normalize-board` is the board-wide twin of `update --normalize`: one
+classified pass over every row, every MECHANICAL repair applied together,
+every ambiguous row refused and reported.
+
+Mechanical repairs (applied together on `--apply`):
+
+- **key aliases** -> canonical keys via the BT-056 table (`why` ->
+  `reasoning`, `acceptance` -> `acceptance_criteria`, ...). The value bytes
+  move untouched with the rename.
+- **depends_on** -> array, from a string value, when the conversion is
+  unambiguous: `"[]"` and `""` -> `[]`, `'["A","B"]'` -> the real array,
+  one bare fleet-shaped id (`"GAP-077"`) -> `["GAP-077"]`.
+- **status** -> the canonical form of a known read alias (`open` ->
+  `pending`, `done` -> `complete`).
+
+Refused rows are reported, never mutated, and never block the repairs on
+other rows: an alias whose canonical key the row already carries, TWO
+aliases of the same canonical key on one row (two values, one slot), an
+unconvertible `depends_on` shape (number, object, boolean, prose, or a
+malformed string), and a status that is absent, null, or unknown. Rows
+without a parseable `created_at` are counted and reported — the repair
+NEVER fabricates a birth timestamp (the report parser, not the repair,
+owns that gap).
+
+Dry-run by default: nothing on the board is written; the would-be bytes
+are staged at `<boarddir>/tasks.normalized.jsonl` for review (diff it
+before trusting the report). `--apply` rewrites `tasks.jsonl` in ONE
+guarded atomic pass — all repairs or nothing, untouched lines
+byte-identical, no audit event (spelling/shape repair, not a state
+transition). Exit stays 0 in both modes: the report is the product,
+`validate` owns exit semantics.
+
+```bash
+boardctl -C ~/myproject normalize-board               # classify + stage, zero board writes
+boardctl -C ~/myproject normalize-board --json        # machine-readable census
+boardctl -C ~/myproject normalize-board --apply       # rewrite tasks.jsonl, one atomic pass
+```
+
 ## Title-priority cross-check (BT-060)
 
 Fleet rows are titled by hand — `[P1] real title` — and later re-priorities
