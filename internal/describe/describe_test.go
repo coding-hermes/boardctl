@@ -34,7 +34,7 @@ func TestDeriveCLI_RealMain(t *testing.T) {
 	}
 	want := []string{
 		"init", "list", "show", "create", "update", "event", "header",
-		"validate", "sweep-status", "doctor", "version", "stats",
+		"validate", "sweep-status", "normalize-board", "doctor", "version", "stats",
 		"render", "import", "serve", "install", "umbrella",
 	}
 	if len(verbs) != len(want) {
