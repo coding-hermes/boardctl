@@ -1,0 +1,8 @@
+{
+  "tick": "boardctl-foreman-2026-10-14-10-32-19",
+  "budget": 4,
+  "wave": [
+    {"task": "DF-BOARDCTL-32", "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-32", "branch": "wt/DF-BOARDCTL-32", "mode": "worker", "model": "glm-5.3-flash", "provider": "zai-glm"},
+    {"task": "DF-BOARDCTL-33", "worktree": null, "branch": null, "mode": "foreman-verify-already-fixed", "note": "text-mode refusal exits 2 at HEAD (verified live); row closes with evidence, no code change"}
+  ]
+}

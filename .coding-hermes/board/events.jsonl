@@ -440,3 +440,6 @@
 {"id":437,"timestamp":"2026-10-14 01:33:01","event_type":"task_completed","task_id":"DF-BOARDCTL-37","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":438,"timestamp":"2026-10-14 01:33:01","event_type":"task_completed","task_id":"DF-BOARDCTL-36","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":439,"timestamp":"2026-10-14 01:33:27","event_type":"task_completed","task_id":"DF-BOARDCTL-37","actor":"foreman","detail":"tick 117 wave of 2: DF-BOARDCTL-37 + DF-BOARDCTL-36 complete, judges PASS 4bc75574/739885d6","tick_number":null}
+{"id":440,"timestamp":"2026-10-14 10:40:59","event_type":"task_completed","task_id":"DF-BOARDCTL-33","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":441,"timestamp":"2026-10-14 10:59:46","event_type":"task_completed","task_id":"DF-BOARDCTL-32","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":442,"timestamp":"2026-10-14 06:00:12","event_type":"audit","task_id":null,"actor":"foreman","detail":"{\"summary\": \"Wave of 2: DF-BOARDCTL-32 (worker, worktree wt/DF-BOARDCTL-32, commit 14d7ab8, merged 42fc7b4) + DF-BOARDCTL-33 (already fixed at HEAD; regression test bd87fd1). Both judges PASS (3484fa59 / 7640f7a5), CI green, 0 unpushed.\"}","tick_number":118}

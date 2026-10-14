@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-36",
+  "task_title": "warpfs board canon drift",
+  "task_criteria": [
+    "warpfs board rows normalized into boardctl canon where safe (repair path or documented exclusion), evidence from live board"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "392f22b07718f5de1281937075729466b61012fd",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n8:30PM INF scanned ~3312731 bytes (3.31 MB) in 574ms\n8:30PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 228 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261014T012916.631628Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.885s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.115s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.015s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261014T012916.631628Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 warpfs board rows normalized into boardctl canon where safe (repair path or documented exclusion), evidence from live board: Repair path: internal/board/normalizeboard.go (564 lines) NormalizeBoard(apply) classifies every row \u2014 key aliases via BT-056 CanonicalKeyFor/RenameKey (keys.go:181-188), string depends_on -> array when unambiguous, alias statuses via BT-025 ResolveStatus; missing created_at reported only, never fabricated; dry-run default stages tasks.normalized.jsonl, --apply does ONE guarded atomic rewrite (withWriteLock+atomicRewrite) with untouched lines asserted byte-identical. CLI cmd/boardctl/main.go `normalize-board [--apply] [--json] [--skip-bad-lines]`; internal/describe/describe.go command map carries the verb. LIVE BOARD EVIDENCE (built binary run against a copy of /home/kara/warpfs/.coding-hermes/board, 381 rows): before apply validate reported 'key uniformity: 248/381 rows carry only canon keys; drift 133 row(s): _pass_criteria(31), acceptance(44), pass_criteria(10), added_by(22), project(22), cycle(19)...' RESULT FAIL (1 error, 626 warnings); normalize-board dry-run printed '105 mechanical repair(s) across 104 row(s); 38 row(s) refused (left untouched)' + missing_created_at note on 161 rows, exit 0, no board write; after --apply validate reported 'key uniformity: 278/381 rows carry only canon keys; drift 103 row(s)' with warnings 626 -> 527 \u2014 all alias keys repaired, 30 rows moved into canon. Documented exclusion: remaining drift keys (added_by, project, cycle, severity, verdict...) are absent from TaskKeyAliases (keys.go:181-188, 7 entries) and keys.go:164-178 documents the evidence-based exclusion discipline; README.md:693-737, docs/operations.md \u00a71b, skills/boardctl-usage/SKILL.md v1.17.0 document the repair path, refusals, and never-fabricate rule. Tests: go build ./... exit 0; go test -count=1 ./... => all 12 packages ok; DF36-specific 13/13 PASS (8 engine + 5 CLI); go vet clean; LSP diagnostics empty.\nnormalize-board provides a verified repair path that normalized the live warpfs board's alias keys/string depends_on/alias statuses into canon (drift 133->103 rows, warnings 626->527) with documented exclusions for non-alias keys and never-fabricated created_at, backed by 13 passing tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 warpfs board rows normalized into boardctl canon where safe (repair path or documented exclusion), evidence from live board: Repair path: internal/board/normalizeboard.go (564 lines) NormalizeBoard(apply) classifies every row \u2014 key aliases via BT-056 CanonicalKeyFor/RenameKey (keys.go:181-188), string depends_on -> array when unambiguous, alias statuses via BT-025 ResolveStatus; missing created_at reported only, never fabricated; dry-run default stages tasks.normalized.jsonl, --apply does ONE guarded atomic rewrite (withWriteLock+atomicRewrite) with untouched lines asserted byte-identical. CLI cmd/boardctl/main.go `normalize-board [--apply] [--json] [--skip-bad-lines]`; internal/describe/describe.go command map carries the verb. LIVE BOARD EVIDENCE (built binary run against a copy of /home/kara/warpfs/.coding-hermes/board, 381 rows): before apply validate reported 'key uniformity: 248/381 rows carry only canon keys; drift 133 row(s): _pass_criteria(31), acceptance(44), pass_criteria(10), added_by(22), project(22), cycle(19)...' RESULT FAIL (1 error, 626 warnings); normalize-board dry-run printed '105 mechanical repair(s) across 104 row(s); 38 row(s) refused (left untouched)' + missing_created_at note on 161 rows, exit 0, no board write; after --apply validate reported 'key uniformity: 278/381 rows carry only canon keys; drift 103 row(s)' with warnings 626 -> 527 \u2014 all alias keys repaired, 30 rows moved into canon. Documented exclusion: remaining drift keys (added_by, project, cycle, severity, verdict...) are absent from TaskKeyAliases (keys.go:181-188, 7 entries) and keys.go:164-178 documents the evidence-based exclusion discipline; README.md:693-737, docs/operations.md \u00a71b, skills/boardctl-usage/SKILL.md v1.17.0 document the repair path, refusals, and never-fabricate rule. Tests: go build ./... exit 0; go test -count=1 ./... => all 12 packages ok; DF36-specific 13/13 PASS (8 engine + 5 CLI); go vet clean; LSP diagnostics empty.\nnormalize-board provides a verified repair path that normalized the live warpfs board's alias keys/string depends_on/alias statuses into canon (drift 133->103 rows, warnings 626->527) with documented exclusions for non-alias keys and never-fabricated created_at, backed by 13 passing tests.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "warpfs board rows normalized into boardctl canon where safe (repair path or documented exclusion), evidence from live board",
+                "status": "PASS",
+                "detail": "Repair path: internal/board/normalizeboard.go (564 lines) NormalizeBoard(apply) classifies every row \u2014 key aliases via BT-056 CanonicalKeyFor/RenameKey (keys.go:181-188), string depends_on -> array when unambiguous, alias statuses via BT-025 ResolveStatus; missing created_at reported only, never fabricated; dry-run default stages tasks.normalized.jsonl, --apply does ONE guarded atomic rewrite (withWriteLock+atomicRewrite) with untouched lines asserted byte-identical. CLI cmd/boardctl/main.go `normalize-board [--apply] [--json] [--skip-bad-lines]`; internal/describe/describe.go command map carries the verb. LIVE BOARD EVIDENCE (built binary run against a copy of /home/kara/warpfs/.coding-hermes/board, 381 rows): before apply validate reported 'key uniformity: 248/381 rows carry only canon keys; drift 133 row(s): _pass_criteria(31), acceptance(44), pass_criteria(10), added_by(22), project(22), cycle(19)...' RESULT FAIL (1 error, 626 warnings); normalize-board dry-run printed '105 mechanical repair(s) across 104 row(s); 38 row(s) refused (left untouched)' + missing_created_at note on 161 rows, exit 0, no board write; after --apply validate reported 'key uniformity: 278/381 rows carry only canon keys; drift 103 row(s)' with warnings 626 -> 527 \u2014 all alias keys repaired, 30 rows moved into canon. Documented exclusion: remaining drift keys (added_by, project, cycle, severity, verdict...) are absent from TaskKeyAliases (keys.go:181-188, 7 entries) and keys.go:164-178 documents the evidence-based exclusion discipline; README.md:693-737, docs/operations.md \u00a71b, skills/boardctl-usage/SKILL.md v1.17.0 document the repair path, refusals, and never-fabricate rule. Tests: go build ./... exit 0; go test -count=1 ./... => all 12 packages ok; DF36-specific 13/13 PASS (8 engine + 5 CLI); go vet clean; LSP diagnostics empty."
+              }
+            ],
+            "summary": "normalize-board provides a verified repair path that normalized the live warpfs board's alias keys/string depends_on/alias statuses into canon (drift 133->103 rows, warnings 626->527) with documented exclusions for non-alias keys and never-fabricated created_at, backed by 13 passing tests."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-36\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 warpfs board rows normalized into boardctl canon where safe (repair path or documented exclusion), evidence from live board: Repair path: internal/board/normalizeboard.go (564 lines) NormalizeBoard(apply) classifies every row \u2014 key aliases via BT-056 CanonicalKeyFor/RenameKey (keys.go:181-188), string depends_on -> array when unambiguous, alias statuses via BT-025 ResolveStatus; missing created_at reported only, never fabricated; dry-run default stages tasks.normalized.jsonl, --apply does ONE guarded atomic rewrite (withWriteLock+atomicRewrite) with untouched lines asserted byte-identical. CLI cmd/boardctl/main.go `normalize-board [--apply] [--json] [--skip-bad-lines]`; internal/describe/describe.go command map carries the verb. LIVE BOARD EVIDENCE (built binary run against a copy of /home/kara/warpfs/.coding-hermes/board, 381 rows): before apply validate reported 'key uniformity: 248/381 rows carry only canon keys; drift 133 row(s): _pass_criteria(31), acceptance(44), pass_criteria(10), added_by(22), project(22), cycle(19)...' RESULT FAIL (1 error, 626 warnings); normalize-board dry-run printed '105 mechanical repair(s) across 104 row(s); 38 row(s) refused (left untouched)' + missing_created_at note on 161 rows, exit 0, no board write; after --apply validate reported 'key uniformity: 278/381 rows carry only canon keys; drift 103 row(s)' with warnings 626 -> 527 \u2014 all alias keys repaired, 30 rows moved into canon. Documented exclusion: remaining drift keys (added_by, project, cycle, severity, verdict...) are absent from TaskKeyAliases (keys.go:181-188, 7 entries) and keys.go:164-178 documents the evidence-based exclusion discipline; README.md:693-737, docs/operations.md \u00a71b, skills/boardctl-usage/SKILL.md v1.17.0 document the repair path, refusals, and never-fabricate rule. Tests: go build ./... exit 0; go test -count=1 ./... => all 12 packages ok; DF36-specific 13/13 PASS (8 engine + 5 CLI); go vet clean; LSP diagnostics empty.\nnormalize-board provides a verified repair path that normalized the live warpfs board's alias keys/string depends_on/alias statuses into canon (drift 133->103 rows, warnings 626->527) with documented exclusions for non-alias keys and never-fabricated created_at, backed by 13 passing tests.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-14T01:32:15.251121",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-14T01:32:15.272053+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 2414,
+        "truncated": false,
+        "source": "git show 392f22b07718"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-36"
+  }
+}

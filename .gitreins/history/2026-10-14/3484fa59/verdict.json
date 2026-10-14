@@ -1,0 +1,101 @@
+{
+  "task_id": "DF-BOARDCTL-32",
+  "task_title": "recycled-id census miscounts pre-repair boards",
+  "task_criteria": [
+    "On a board with recycled ids whose later lines are ALL already terminal, dedupe-board --by-id dry-run text output must say 'nothing to do \u2014 N recycled ids, all later lines already terminal' (not 'no recycled task ids on this board'); --json must carry per-id already_terminal_lines in groups (and/or a top-level field) so 4-1=3 is explainable"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "42fc7b4fca52836857021e65e4e24b44872fc762",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n5:58AM INF scanned ~3333130 bytes (3.33 MB) in 709ms\n5:58AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 231 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261014T105808.911596Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t6.012s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.187s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.009s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t2.865s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.128s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.015s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261014T105808.911596Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 On a board with recycled ids whose later lines are ALL already terminal, dedupe-board --by-id dry-run text output must say 'nothing to do \u2014 N recycled ids, all later lines already terminal' (not 'no recycled task ids on this board'); --json must carry per-id already_terminal_lines in groups (and/or a top-level field) so 4-1=3 is explainable: Live run on a board with 2 recycled ids whose later lines are all terminal: dry-run text printed exactly 'nothing to do \u2014 2 recycled id(s), all later lines already terminal (no files written)' (exit 0), NOT the old 'no recycled task ids on this board'. Implemented in cmd/dedupe-board/main.go nothingToDoLine(): RecycledIDs==0 keeps the old line verbatim, else emits the new line; called in both dry-run and applied branches. --json emitted {\"recycled_ids\":2,\"groups\":null,\"already_terminal_ids\":[\"QA-ASCE-1\",\"QA-TB-1\"]} \u2014 internal/board/iddupe.go adds AlreadyTerminalIDs []string `json:\"already_terminal_ids,omitempty\"`, populated in DedupeByID's else-branch when len(g.ClosedLines)==0. The 4-1=3 case is explainable: mixed board gave recycled_ids=4, groups=1, already_terminal_ids=['QA-B-1','QA-C-1','QA-D-1'] (4 = 1 + 3), with the invariant recycled_ids == len(Groups)+len(AlreadyTerminalIDs) asserted at internal/board/df_boardctl_32_test.go:40,115. Tests: `go test -count=1 ./...` exit 0 (all packages ok); the 7 DF-BOARDCTL-32 tests PASS (TestCLI_ByID32_AllTerminalRecycledIDs, _JSONExplainsAllTerminal, _NoRecycledIDsKeepsOldMessage, _MixedGroupPlusTerminalID; TestIDDupe32_AllTerminalRecycledIDsExplained, _AlreadyTerminalIDsOmittedUnlessTerminal, _MixedGroupPlusTerminalID). go build ./... exit 0, go vet exit 0, LSP diagnostics empty.\nThe dedupe-board --by-id census now correctly reports 'nothing to do \u2014 N recycled id(s), all later lines already terminal' for pre-repair boards and exposes already_terminal_ids in --json so recycled_ids is fully explainable, verified by live runs and a green full test suite.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 On a board with recycled ids whose later lines are ALL already terminal, dedupe-board --by-id dry-run text output must say 'nothing to do \u2014 N recycled ids, all later lines already terminal' (not 'no recycled task ids on this board'); --json must carry per-id already_terminal_lines in groups (and/or a top-level field) so 4-1=3 is explainable: Live run on a board with 2 recycled ids whose later lines are all terminal: dry-run text printed exactly 'nothing to do \u2014 2 recycled id(s), all later lines already terminal (no files written)' (exit 0), NOT the old 'no recycled task ids on this board'. Implemented in cmd/dedupe-board/main.go nothingToDoLine(): RecycledIDs==0 keeps the old line verbatim, else emits the new line; called in both dry-run and applied branches. --json emitted {\"recycled_ids\":2,\"groups\":null,\"already_terminal_ids\":[\"QA-ASCE-1\",\"QA-TB-1\"]} \u2014 internal/board/iddupe.go adds AlreadyTerminalIDs []string `json:\"already_terminal_ids,omitempty\"`, populated in DedupeByID's else-branch when len(g.ClosedLines)==0. The 4-1=3 case is explainable: mixed board gave recycled_ids=4, groups=1, already_terminal_ids=['QA-B-1','QA-C-1','QA-D-1'] (4 = 1 + 3), with the invariant recycled_ids == len(Groups)+len(AlreadyTerminalIDs) asserted at internal/board/df_boardctl_32_test.go:40,115. Tests: `go test -count=1 ./...` exit 0 (all packages ok); the 7 DF-BOARDCTL-32 tests PASS (TestCLI_ByID32_AllTerminalRecycledIDs, _JSONExplainsAllTerminal, _NoRecycledIDsKeepsOldMessage, _MixedGroupPlusTerminalID; TestIDDupe32_AllTerminalRecycledIDsExplained, _AlreadyTerminalIDsOmittedUnlessTerminal, _MixedGroupPlusTerminalID). go build ./... exit 0, go vet exit 0, LSP diagnostics empty.\nThe dedupe-board --by-id census now correctly reports 'nothing to do \u2014 N recycled id(s), all later lines already terminal' for pre-repair boards and exposes already_terminal_ids in --json so recycled_ids is fully explainable, verified by live runs and a green full test suite.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "On a board with recycled ids whose later lines are ALL already terminal, dedupe-board --by-id dry-run text output must say 'nothing to do \u2014 N recycled ids, all later lines already terminal' (not 'no recycled task ids on this board'); --json must carry per-id already_terminal_lines in groups (and/or a top-level field) so 4-1=3 is explainable",
+                "status": "PASS",
+                "detail": "Live run on a board with 2 recycled ids whose later lines are all terminal: dry-run text printed exactly 'nothing to do \u2014 2 recycled id(s), all later lines already terminal (no files written)' (exit 0), NOT the old 'no recycled task ids on this board'. Implemented in cmd/dedupe-board/main.go nothingToDoLine(): RecycledIDs==0 keeps the old line verbatim, else emits the new line; called in both dry-run and applied branches. --json emitted {\"recycled_ids\":2,\"groups\":null,\"already_terminal_ids\":[\"QA-ASCE-1\",\"QA-TB-1\"]} \u2014 internal/board/iddupe.go adds AlreadyTerminalIDs []string `json:\"already_terminal_ids,omitempty\"`, populated in DedupeByID's else-branch when len(g.ClosedLines)==0. The 4-1=3 case is explainable: mixed board gave recycled_ids=4, groups=1, already_terminal_ids=['QA-B-1','QA-C-1','QA-D-1'] (4 = 1 + 3), with the invariant recycled_ids == len(Groups)+len(AlreadyTerminalIDs) asserted at internal/board/df_boardctl_32_test.go:40,115. Tests: `go test -count=1 ./...` exit 0 (all packages ok); the 7 DF-BOARDCTL-32 tests PASS (TestCLI_ByID32_AllTerminalRecycledIDs, _JSONExplainsAllTerminal, _NoRecycledIDsKeepsOldMessage, _MixedGroupPlusTerminalID; TestIDDupe32_AllTerminalRecycledIDsExplained, _AlreadyTerminalIDsOmittedUnlessTerminal, _MixedGroupPlusTerminalID). go build ./... exit 0, go vet exit 0, LSP diagnostics empty."
+              }
+            ],
+            "summary": "The dedupe-board --by-id census now correctly reports 'nothing to do \u2014 N recycled id(s), all later lines already terminal' for pre-repair boards and exposes already_terminal_ids in --json so recycled_ids is fully explainable, verified by live runs and a green full test suite."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-32\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 On a board with recycled ids whose later lines are ALL already terminal, dedupe-board --by-id dry-run text output must say 'nothing to do \u2014 N recycled ids, all later lines already terminal' (not 'no recycled task ids on this board'); --json must carry per-id already_terminal_lines in groups (and/or a top-level field) so 4-1=3 is explainable: Live run on a board with 2 recycled ids whose later lines are all terminal: dry-run text printed exactly 'nothing to do \u2014 2 recycled id(s), all later lines already terminal (no files written)' (exit 0), NOT the old 'no recycled task ids on this board'. Implemented in cmd/dedupe-board/main.go nothingToDoLine(): RecycledIDs==0 keeps the old line verbatim, else emits the new line; called in both dry-run and applied branches. --json emitted {\"recycled_ids\":2,\"groups\":null,\"already_terminal_ids\":[\"QA-ASCE-1\",\"QA-TB-1\"]} \u2014 internal/board/iddupe.go adds AlreadyTerminalIDs []string `json:\"already_terminal_ids,omitempty\"`, populated in DedupeByID's else-branch when len(g.ClosedLines)==0. The 4-1=3 case is explainable: mixed board gave recycled_ids=4, groups=1, already_terminal_ids=['QA-B-1','QA-C-1','QA-D-1'] (4 = 1 + 3), with the invariant recycled_ids == len(Groups)+len(AlreadyTerminalIDs) asserted at internal/board/df_boardctl_32_test.go:40,115. Tests: `go test -count=1 ./...` exit 0 (all packages ok); the 7 DF-BOARDCTL-32 tests PASS (TestCLI_ByID32_AllTerminalRecycledIDs, _JSONExplainsAllTerminal, _NoRecycledIDsKeepsOldMessage, _MixedGroupPlusTerminalID; TestIDDupe32_AllTerminalRecycledIDsExplained, _AlreadyTerminalIDsOmittedUnlessTerminal, _MixedGroupPlusTerminalID). go build ./... exit 0, go vet exit 0, LSP diagnostics empty.\nThe dedupe-board --by-id census now correctly reports 'nothing to do \u2014 N recycled id(s), all later lines already terminal' for pre-repair boards and exposes already_terminal_ids in --json so recycled_ids is fully explainable, verified by live runs and a green full test suite.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-14T10:59:21.456517",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-14T10:59:21.474776+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 692,
+        "truncated": false,
+        "source": "git show 42fc7b4fca52"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 15311,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-32"
+  }
+}

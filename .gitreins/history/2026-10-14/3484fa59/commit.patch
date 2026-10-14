@@ -1,0 +1,14 @@
+commit 42fc7b4fca52836857021e65e4e24b44872fc762
+Merge: bd87fd1 14d7ab8
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Wed Oct 14 05:57:35 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Wed Oct 14 05:57:35 2026 -0500
+
+    merge: DF-BOARDCTL-32 — explain already-terminal recycled ids in dedupe census
+
+ cmd/dedupe-board/df_boardctl_32_test.go | 214 ++++++++++++++++++++++++++++++++
+ cmd/dedupe-board/main.go                |  17 ++-
+ internal/board/df_boardctl_32_test.go   | 118 ++++++++++++++++++
+ internal/board/iddupe.go                |  14 +++
+ 4 files changed, 361 insertions(+), 2 deletions(-)

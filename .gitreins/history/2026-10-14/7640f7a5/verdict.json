@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-33",
+  "task_title": "dedupe-board --by-id --lanes refusal exit-code unification",
+  "task_criteria": [
+    "dedupe-board --by-id --lanes <other> refusal must exit 2 in text mode (same as --json), proven by live CLI probe + regression test in cmd/dedupe-board"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "bd87fd1b9f236aa978fd3a995c180662067110bf",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n5:39AM INF scanned ~3315331 bytes (3.32 MB) in 933ms\n5:39AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 229 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261014T103927.111825Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t6.794s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.202s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.185s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.025s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261014T103927.111825Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 dedupe-board --by-id --lanes <other> refusal must exit 2 in text mode (same as --json), proven by live CLI probe + regression test in cmd/dedupe-board: Live CLI probe on a real board fixture: `/tmp/dedupe-board --board-dir /tmp/probe2 --by-id --lanes crier` printed `dedupe-board: refusing to touch board /tmp/probe2/tasks.jsonl (lane \"asce\") \u2014 it is not in --lanes crier` and exited 2; the same command with `--json` also exited 2 \u2014 text and JSON modes are unified. Code: cmd/dedupe-board/main.go:139-149 \u2014 the --lanes guard executes before the `if *byID` dispatch (line 152) and before any --json branch, returning 2 unconditionally, so the refusal is mode-independent by construction. Regression test: cmd/dedupe-board/main_test.go:414-444 `TestCLI_ByIDLanesRefusalExitsTwoTextMode` (added in HEAD bd87fd1, +34 lines) asserts code==2, stderr contains \"refusing to touch board\", and the board snapshot is unchanged (no write on refusal). Fresh test runs (-count=1): `go test -count=1 -run TestCLI_ByIDLanesRefusalExitsTwoTextMode ./cmd/dedupe-board/ -v` \u2192 `--- PASS: TestCLI_ByIDLanesRefusalExitsTwoTextMode (0.00s)` / `ok github.com/coding-hermes/boardctl/cmd/dedupe-board 0.003s`; `go test -count=1 ./cmd/dedupe-board/` \u2192 `ok ... 0.008s`; `go test -count=1 ./...` \u2192 all packages ok, exit 0.\nThe --by-id --lanes refusal exits 2 in text mode (verified by live CLI probe matching the --json exit code) and is pinned by a passing regression test in cmd/dedupe-board.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 dedupe-board --by-id --lanes <other> refusal must exit 2 in text mode (same as --json), proven by live CLI probe + regression test in cmd/dedupe-board: Live CLI probe on a real board fixture: `/tmp/dedupe-board --board-dir /tmp/probe2 --by-id --lanes crier` printed `dedupe-board: refusing to touch board /tmp/probe2/tasks.jsonl (lane \"asce\") \u2014 it is not in --lanes crier` and exited 2; the same command with `--json` also exited 2 \u2014 text and JSON modes are unified. Code: cmd/dedupe-board/main.go:139-149 \u2014 the --lanes guard executes before the `if *byID` dispatch (line 152) and before any --json branch, returning 2 unconditionally, so the refusal is mode-independent by construction. Regression test: cmd/dedupe-board/main_test.go:414-444 `TestCLI_ByIDLanesRefusalExitsTwoTextMode` (added in HEAD bd87fd1, +34 lines) asserts code==2, stderr contains \"refusing to touch board\", and the board snapshot is unchanged (no write on refusal). Fresh test runs (-count=1): `go test -count=1 -run TestCLI_ByIDLanesRefusalExitsTwoTextMode ./cmd/dedupe-board/ -v` \u2192 `--- PASS: TestCLI_ByIDLanesRefusalExitsTwoTextMode (0.00s)` / `ok github.com/coding-hermes/boardctl/cmd/dedupe-board 0.003s`; `go test -count=1 ./cmd/dedupe-board/` \u2192 `ok ... 0.008s`; `go test -count=1 ./...` \u2192 all packages ok, exit 0.\nThe --by-id --lanes refusal exits 2 in text mode (verified by live CLI probe matching the --json exit code) and is pinned by a passing regression test in cmd/dedupe-board.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "dedupe-board --by-id --lanes <other> refusal must exit 2 in text mode (same as --json), proven by live CLI probe + regression test in cmd/dedupe-board",
+                "status": "PASS",
+                "detail": "Live CLI probe on a real board fixture: `/tmp/dedupe-board --board-dir /tmp/probe2 --by-id --lanes crier` printed `dedupe-board: refusing to touch board /tmp/probe2/tasks.jsonl (lane \"asce\") \u2014 it is not in --lanes crier` and exited 2; the same command with `--json` also exited 2 \u2014 text and JSON modes are unified. Code: cmd/dedupe-board/main.go:139-149 \u2014 the --lanes guard executes before the `if *byID` dispatch (line 152) and before any --json branch, returning 2 unconditionally, so the refusal is mode-independent by construction. Regression test: cmd/dedupe-board/main_test.go:414-444 `TestCLI_ByIDLanesRefusalExitsTwoTextMode` (added in HEAD bd87fd1, +34 lines) asserts code==2, stderr contains \"refusing to touch board\", and the board snapshot is unchanged (no write on refusal). Fresh test runs (-count=1): `go test -count=1 -run TestCLI_ByIDLanesRefusalExitsTwoTextMode ./cmd/dedupe-board/ -v` \u2192 `--- PASS: TestCLI_ByIDLanesRefusalExitsTwoTextMode (0.00s)` / `ok github.com/coding-hermes/boardctl/cmd/dedupe-board 0.003s`; `go test -count=1 ./cmd/dedupe-board/` \u2192 `ok ... 0.008s`; `go test -count=1 ./...` \u2192 all packages ok, exit 0."
+              }
+            ],
+            "summary": "The --by-id --lanes refusal exits 2 in text mode (verified by live CLI probe matching the --json exit code) and is pinned by a passing regression test in cmd/dedupe-board."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-33\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 dedupe-board --by-id --lanes <other> refusal must exit 2 in text mode (same as --json), proven by live CLI probe + regression test in cmd/dedupe-board: Live CLI probe on a real board fixture: `/tmp/dedupe-board --board-dir /tmp/probe2 --by-id --lanes crier` printed `dedupe-board: refusing to touch board /tmp/probe2/tasks.jsonl (lane \"asce\") \u2014 it is not in --lanes crier` and exited 2; the same command with `--json` also exited 2 \u2014 text and JSON modes are unified. Code: cmd/dedupe-board/main.go:139-149 \u2014 the --lanes guard executes before the `if *byID` dispatch (line 152) and before any --json branch, returning 2 unconditionally, so the refusal is mode-independent by construction. Regression test: cmd/dedupe-board/main_test.go:414-444 `TestCLI_ByIDLanesRefusalExitsTwoTextMode` (added in HEAD bd87fd1, +34 lines) asserts code==2, stderr contains \"refusing to touch board\", and the board snapshot is unchanged (no write on refusal). Fresh test runs (-count=1): `go test -count=1 -run TestCLI_ByIDLanesRefusalExitsTwoTextMode ./cmd/dedupe-board/ -v` \u2192 `--- PASS: TestCLI_ByIDLanesRefusalExitsTwoTextMode (0.00s)` / `ok github.com/coding-hermes/boardctl/cmd/dedupe-board 0.003s`; `go test -count=1 ./cmd/dedupe-board/` \u2192 `ok ... 0.008s`; `go test -count=1 ./...` \u2192 all packages ok, exit 0.\nThe --by-id --lanes refusal exits 2 in text mode (verified by live CLI probe matching the --json exit code) and is pinned by a passing regression test in cmd/dedupe-board.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-14T10:40:38.491678",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-14T10:40:38.508226+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 2127,
+        "truncated": false,
+        "source": "git show bd87fd1b9f23"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-33"
+  }
+}

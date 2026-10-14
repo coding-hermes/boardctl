@@ -1,0 +1,93 @@
+{
+  "task_id": "GR-150",
+  "task_title": "Reject and prevent fused JSONL board records",
+  "task_criteria": [
+    "boardctl validate/list/show reject a physical line containing multiple JSON values (fused records), malformed trailing data, and unterminated tails with a file/line diagnostic \u2014 never silently skip; validate on a fused fixture exits non-zero, valid legacy boards still pass"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "64104dc9580c806b137f31a6328acee977af42b1",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n7:13PM INF scanned ~3194937 bytes (3.19 MB) in 697ms\n7:13PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 221 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261013T112606.745816Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.092s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.848s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.120s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.766s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.376s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261013T112606.745816Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 boardctl validate/list/show reject a physical line containing multiple JSON values (fused records), malformed trailing data, and unterminated tails with a file/line diagnostic \u2014 never silently skip; validate on a fused fixture exits non-zero, valid legacy boards still pass: Implementation in worktree /home/kara/worktrees/coding-hermes-boardctl-GR-150 (commit 0561f02): internal/board/jsonstyle.go adds ErrMultipleJSONValues/ErrTrailingData sentinels and checkOneValuePerLine() (jsonstyle.go:143-172) which rejects a second JSON value, a truncated second value, and arbitrary trailing bytes, naming the byte offset; ParseRow calls it. Strict reader IterParsed wraps with 'line %d' (board.go:402-419); validate.go:346-362 emits error findings; list/show route through TaskRows->IterParsed (read.go:214-243,270-289). Independent CLI run of the built binary on a fused fixture (two objects on line 2): validate exit=1 with '[error] tasks.jsonl: line 2: multiple JSON values on one physical line (a fused record \u2014 JSONL requires exactly one JSON object per line): a second JSON value starts at byte 67'; list exit=1 with the same file:line stderr and zero rows; show B exit=1 same diagnostic; show A exit=1 (not a silent not-found). Malformed trailing data ('{...}oops'): validate exit=1, 'line 2: trailing data after the JSON object ... oops at byte 67'. Unterminated tail ('{...}{\"id\":\"C\",\"title\":\"gam'): validate exit=1, 'line 2: multiple JSON values ... (a fused, damaged record ...) the value after the first object is incomplete at byte 67: unexpected EOF'. Never silently skip: list --skip-bad-lines exits 1 and prints the salvageable row plus 'SKIPPED-LINES: 1 line(s) ... tasks.jsonl line 2: multiple JSON values ...'. Valid legacy boards still pass: a board whose last line lacks its final newline validates exit=0 'rows: 2 tasks ... RESULT: OK', and the real repo board validates exit=0 'RESULT: OK (6 warning(s))'. Tests: `go test -count=1 -run GR150 ./internal/board/... ./cmd/boardctl/...` -> ok both packages (all 20 GR150 tests PASS); full suite `go test -count=1 ./...` -> all packages ok. Non-vacuous: the same test files copied onto pre-fix revision 64104dc FAIL (internal/board build failed; all 5 CLI tests FAIL).\nGR-150 is fully implemented and verified: validate/list/show reject fused, trailing-data, and unterminated-tail lines with file:line diagnostics and exit 1, never silently skip, while valid legacy boards still validate OK.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 boardctl validate/list/show reject a physical line containing multiple JSON values (fused records), malformed trailing data, and unterminated tails with a file/line diagnostic \u2014 never silently skip; validate on a fused fixture exits non-zero, valid legacy boards still pass: Implementation in worktree /home/kara/worktrees/coding-hermes-boardctl-GR-150 (commit 0561f02): internal/board/jsonstyle.go adds ErrMultipleJSONValues/ErrTrailingData sentinels and checkOneValuePerLine() (jsonstyle.go:143-172) which rejects a second JSON value, a truncated second value, and arbitrary trailing bytes, naming the byte offset; ParseRow calls it. Strict reader IterParsed wraps with 'line %d' (board.go:402-419); validate.go:346-362 emits error findings; list/show route through TaskRows->IterParsed (read.go:214-243,270-289). Independent CLI run of the built binary on a fused fixture (two objects on line 2): validate exit=1 with '[error] tasks.jsonl: line 2: multiple JSON values on one physical line (a fused record \u2014 JSONL requires exactly one JSON object per line): a second JSON value starts at byte 67'; list exit=1 with the same file:line stderr and zero rows; show B exit=1 same diagnostic; show A exit=1 (not a silent not-found). Malformed trailing data ('{...}oops'): validate exit=1, 'line 2: trailing data after the JSON object ... oops at byte 67'. Unterminated tail ('{...}{\"id\":\"C\",\"title\":\"gam'): validate exit=1, 'line 2: multiple JSON values ... (a fused, damaged record ...) the value after the first object is incomplete at byte 67: unexpected EOF'. Never silently skip: list --skip-bad-lines exits 1 and prints the salvageable row plus 'SKIPPED-LINES: 1 line(s) ... tasks.jsonl line 2: multiple JSON values ...'. Valid legacy boards still pass: a board whose last line lacks its final newline validates exit=0 'rows: 2 tasks ... RESULT: OK', and the real repo board validates exit=0 'RESULT: OK (6 warning(s))'. Tests: `go test -count=1 -run GR150 ./internal/board/... ./cmd/boardctl/...` -> ok both packages (all 20 GR150 tests PASS); full suite `go test -count=1 ./...` -> all packages ok. Non-vacuous: the same test files copied onto pre-fix revision 64104dc FAIL (internal/board build failed; all 5 CLI tests FAIL).\nGR-150 is fully implemented and verified: validate/list/show reject fused, trailing-data, and unterminated-tail lines with file:line diagnostics and exit 1, never silently skip, while valid legacy boards still validate OK.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "boardctl validate/list/show reject a physical line containing multiple JSON values (fused records), malformed trailing data, and unterminated tails with a file/line diagnostic \u2014 never silently skip; validate on a fused fixture exits non-zero, valid legacy boards still pass",
+                "status": "PASS",
+                "detail": "Implementation in worktree /home/kara/worktrees/coding-hermes-boardctl-GR-150 (commit 0561f02): internal/board/jsonstyle.go adds ErrMultipleJSONValues/ErrTrailingData sentinels and checkOneValuePerLine() (jsonstyle.go:143-172) which rejects a second JSON value, a truncated second value, and arbitrary trailing bytes, naming the byte offset; ParseRow calls it. Strict reader IterParsed wraps with 'line %d' (board.go:402-419); validate.go:346-362 emits error findings; list/show route through TaskRows->IterParsed (read.go:214-243,270-289). Independent CLI run of the built binary on a fused fixture (two objects on line 2): validate exit=1 with '[error] tasks.jsonl: line 2: multiple JSON values on one physical line (a fused record \u2014 JSONL requires exactly one JSON object per line): a second JSON value starts at byte 67'; list exit=1 with the same file:line stderr and zero rows; show B exit=1 same diagnostic; show A exit=1 (not a silent not-found). Malformed trailing data ('{...}oops'): validate exit=1, 'line 2: trailing data after the JSON object ... oops at byte 67'. Unterminated tail ('{...}{\"id\":\"C\",\"title\":\"gam'): validate exit=1, 'line 2: multiple JSON values ... (a fused, damaged record ...) the value after the first object is incomplete at byte 67: unexpected EOF'. Never silently skip: list --skip-bad-lines exits 1 and prints the salvageable row plus 'SKIPPED-LINES: 1 line(s) ... tasks.jsonl line 2: multiple JSON values ...'. Valid legacy boards still pass: a board whose last line lacks its final newline validates exit=0 'rows: 2 tasks ... RESULT: OK', and the real repo board validates exit=0 'RESULT: OK (6 warning(s))'. Tests: `go test -count=1 -run GR150 ./internal/board/... ./cmd/boardctl/...` -> ok both packages (all 20 GR150 tests PASS); full suite `go test -count=1 ./...` -> all packages ok. Non-vacuous: the same test files copied onto pre-fix revision 64104dc FAIL (internal/board build failed; all 5 CLI tests FAIL)."
+              }
+            ],
+            "summary": "GR-150 is fully implemented and verified: validate/list/show reject fused, trailing-data, and unterminated-tail lines with file:line diagnostics and exit 1, never silently skip, while valid legacy boards still validate OK."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: GR-150\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 boardctl validate/list/show reject a physical line containing multiple JSON values (fused records), malformed trailing data, and unterminated tails with a file/line diagnostic \u2014 never silently skip; validate on a fused fixture exits non-zero, valid legacy boards still pass: Implementation in worktree /home/kara/worktrees/coding-hermes-boardctl-GR-150 (commit 0561f02): internal/board/jsonstyle.go adds ErrMultipleJSONValues/ErrTrailingData sentinels and checkOneValuePerLine() (jsonstyle.go:143-172) which rejects a second JSON value, a truncated second value, and arbitrary trailing bytes, naming the byte offset; ParseRow calls it. Strict reader IterParsed wraps with 'line %d' (board.go:402-419); validate.go:346-362 emits error findings; list/show route through TaskRows->IterParsed (read.go:214-243,270-289). Independent CLI run of the built binary on a fused fixture (two objects on line 2): validate exit=1 with '[error] tasks.jsonl: line 2: multiple JSON values on one physical line (a fused record \u2014 JSONL requires exactly one JSON object per line): a second JSON value starts at byte 67'; list exit=1 with the same file:line stderr and zero rows; show B exit=1 same diagnostic; show A exit=1 (not a silent not-found). Malformed trailing data ('{...}oops'): validate exit=1, 'line 2: trailing data after the JSON object ... oops at byte 67'. Unterminated tail ('{...}{\"id\":\"C\",\"title\":\"gam'): validate exit=1, 'line 2: multiple JSON values ... (a fused, damaged record ...) the value after the first object is incomplete at byte 67: unexpected EOF'. Never silently skip: list --skip-bad-lines exits 1 and prints the salvageable row plus 'SKIPPED-LINES: 1 line(s) ... tasks.jsonl line 2: multiple JSON values ...'. Valid legacy boards still pass: a board whose last line lacks its final newline validates exit=0 'rows: 2 tasks ... RESULT: OK', and the real repo board validates exit=0 'RESULT: OK (6 warning(s))'. Tests: `go test -count=1 -run GR150 ./internal/board/... ./cmd/boardctl/...` -> ok both packages (all 20 GR150 tests PASS); full suite `go test -count=1 ./...` -> all packages ok. Non-vacuous: the same test files copied onto pre-fix revision 64104dc FAIL (internal/board build failed; all 5 CLI tests FAIL).\nGR-150 is fully implemented and verified: validate/list/show reject fused, trailing-data, and unterminated-tail lines with file:line diagnostics and exit 1, never silently skip, while valid legacy boards still validate OK.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-14T00:14:49.340665",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-14T00:14:49.365660+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 60928,
+        "truncated": false,
+        "source": "git show 64104dc9580c"
+      }
+    ],
+    "task_id": "GR-150"
+  }
+}

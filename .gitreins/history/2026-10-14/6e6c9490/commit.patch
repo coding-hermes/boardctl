@@ -1,0 +1,55 @@
+commit 392f22b07718f5de1281937075729466b61012fd
+Merge: 6928dc1 a660e50
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Tue Oct 13 20:29:09 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Tue Oct 13 20:29:09 2026 -0500
+
+    merge: DF-BOARDCTL-36 — normalize-board off-canon row repair
+    
+    # Conflicts:
+    #       docs/operations.md
+
+ README.md                               |  46 +++
+ cmd/boardctl/df15_skill_closure_test.go |   8 +-
+ cmd/boardctl/df_boardctl_36_cli_test.go | 213 ++++++++++++
+ cmd/boardctl/main.go                    |  86 ++++-
+ docs/operations.md                      |  17 +
+ internal/board/df_boardctl_36_test.go   | 498 ++++++++++++++++++++++++++++
+ internal/board/normalizeboard.go        | 564 ++++++++++++++++++++++++++++++++
+ internal/describe/describe.go           |  35 +-
+ internal/describe/describe_test.go      |   2 +-
+ skills/boardctl-usage/SKILL.md          |  22 +-
+ 10 files changed, 1464 insertions(+), 27 deletions(-)
+
+diff --cc docs/operations.md
+index e851b1d,add7f93..9a32045
+--- a/docs/operations.md
++++ b/docs/operations.md
+@@@ -28,9 -28,23 +28,26 @@@ review: diff it, validate it in a scrat
+  
+  README: "### render" → "Damaged-board salvage (DF-BOARDCTL-9)", lines ~301-329 (anchor `#render`).
+  
+ +Related: class 5 (fused lines) — a line carrying SEVERAL records is a
+ +different failure with a different repair path.
+ +
++ ### 1b. Drifted row shapes (keys/depends_on/status outside canon)
++ 
++ Symptom: `validate` census shows many rows off-canon ("drift N row(s)"),
++ `render` report excludes most rows from time metrics, or rows carry
++ `depends_on: "[]"` string shapes the cross-check cannot see through.
++ 
++ ```bash
++ boardctl -C ~/myproject normalize-board               # classify + stage tasks.normalized.jsonl
++ boardctl -C ~/myproject normalize-board --apply       # rewrite tasks.jsonl, one atomic pass
++ ```
++ 
++ Mechanical repairs only (key aliases, string `depends_on` -> array, alias
++ statuses); ambiguous rows are REFUSED and listed — decide those by hand.
++ Rows without `created_at` are reported, never fabricated.
++ 
++ README: "## normalize-board — drifted row SHAPES, board-wide (DF-BOARDCTL-36)".
++ 
+  ### 2. Header drift — ticks_total vs max event tick
+  
+  Symptom: `doctor` FAILS with `header ticks_total N < max events tick_number M —
