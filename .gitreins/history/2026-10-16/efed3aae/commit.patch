@@ -1,0 +1,377 @@
+commit af36041becebc0094f3943cdb13d708fb4af2432
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 16 09:42:46 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 16 09:42:46 2026 -0500
+
+    feat(board): DF-BOARDCTL-41 — closed -> complete read alias
+    
+    - StatusAliases gains closed -> complete: every live 'closed' row observed on
+      a real fleet board carried terminal-success evidence; the value is no
+      longer ambiguous in practice (decision recorded on row DF-BOARDCTL-41)
+    - write path unchanged: create/update still reject closed (write checks the
+      canonical vocabulary, not the alias table) — proven by test
+    - normalize-board / update --normalize / sweep-status now convert closed
+    - README + doc comments updated; full gate suite green
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ README.md                                  |  9 ++--
+ internal/board/iddupe_test.go              | 18 ++++++++
+ internal/board/normalize_test.go           | 71 +++++++++++++++++++++++++++++-
+ internal/board/normalizeboard.go           |  5 ++-
+ internal/board/read.go                     | 10 +++--
+ internal/board/review_status_vocab_test.go |  8 ++--
+ internal/board/sweep.go                    |  2 +-
+ internal/board/validate.go                 | 14 +++---
+ internal/board/validate_alias_test.go      | 21 ++++++---
+ internal/board/write.go                    |  5 ++-
+ 10 files changed, 135 insertions(+), 28 deletions(-)
+
+diff --git a/README.md b/README.md
+index 7b2ae49..cc8e34e 100644
+--- a/README.md
++++ b/README.md
+@@ -604,7 +604,7 @@ trimmed), because those spellings exist on live fleet boards and validate
+ would otherwise fail the very boards it exists to check:
+ 
+ ```
+-completed, done                     -> complete
++completed, done, closed             -> complete
+ todo, open, reopen, reopened        -> pending
+ in-progress, inprogress             -> in_progress
+ ```
+@@ -619,9 +619,12 @@ OPEN row (`internal/board/fingerprint.go`).
+ An alias status is a WARNING on `validate`/`doctor` naming the canonical
+ value — e.g. `status "todo" is a read alias for "pending"` — so a board full
+ of legacy spellings still validates OK while the drift stays visible.
+-Anything NOT canonical and NOT an alias (`retired`, `closed`, `wip`,
++Anything NOT canonical and NOT an alias (`retired`, `wip`,
+ malformed junk) remains an ERROR: ambiguous statuses need a human decision,
+-not a silent coercion.
++not a silent coercion. (`closed` was originally in that ambiguous bucket and
++joined the alias table instead — DF-BOARDCTL-41: every live 'closed' row
++observed on a real fleet board carried terminal-success evidence, so it
++unambiguously means `complete`.)
+ 
+ Aliases are read-only: every write surface (`create`, `update`, `import`)
+ still rejects them, and nothing is auto-fixed on read. The sanctioned fix
+diff --git a/internal/board/iddupe_test.go b/internal/board/iddupe_test.go
+index fad18df..90122d3 100644
+--- a/internal/board/iddupe_test.go
++++ b/internal/board/iddupe_test.go
+@@ -366,6 +366,24 @@ func TestIDDupe_RefusesUnknownStatusBeforeWriting(t *testing.T) {
+ 	}
+ }
+ 
++// DF-BOARDCTL-41: a later duplicate whose status is "closed" no longer
++// refuses the id-aware dedupe — closed joined the read-alias table, so it
++// resolves to complete (terminal) and lands on AlreadyTerminalIDs instead of
++// needing a human decision.
++func TestIDDupe_ClosedStatusIsTerminalNotRefused(t *testing.T) {
++	b := seedIDDupeBoard(t,
++		`{"id":"QA-ASCE-1","title":"[P2] header-frozen","reasoning":"cell: stuck","status":"pending","priority":"P2"}`,
++		`{"id":"QA-ASCE-1","title":"[P2] landed on main","reasoning":"cell: shipped","status":"closed","priority":"P2"}`,
++	)
++	rep := mustIDDupe(t, b, true)
++	if len(rep.Groups) != 0 {
++		t.Fatalf("closed later line produced a closure group %+v, want already-terminal only", rep.Groups)
++	}
++	if len(rep.AlreadyTerminalIDs) != 1 || rep.AlreadyTerminalIDs[0] != "QA-ASCE-1" {
++		t.Fatalf("AlreadyTerminalIDs = %+v, want [QA-ASCE-1]", rep.AlreadyTerminalIDs)
++	}
++}
++
+ // AC5 support: object-form reasoning (the qa-dagger shape) is quoted into the
+ // event on its human-readable "note" member, and HTML-significant characters
+ // in a title survive the event verbatim (SetEscapeHTML(false) contract).
+diff --git a/internal/board/normalize_test.go b/internal/board/normalize_test.go
+index 164c091..56dddc0 100644
+--- a/internal/board/normalize_test.go
++++ b/internal/board/normalize_test.go
+@@ -139,7 +139,9 @@ func TestNormalizeTaskNoopAndIdempotent(t *testing.T) {
+ func TestNormalizeTaskRefusesUnknownStatus(t *testing.T) {
+ 	// "\\\"pending" is the JSON-escaped on-disk spelling of the malformed
+ 	// junk status '"pending' (a leading quote) from the BT-025 spec.
+-	for _, st := range []string{"retired", "closed", "wip", "\\\"pending"} {
++	// closed left the unknown bucket in DF-BOARDCTL-41 (read alias for
++	// complete now) — retired/wip/junk still refuse.
++	for _, st := range []string{"retired", "wip", "\\\"pending"} {
+ 		b := seedAliasRowBoard(t, st, "null", "null")
+ 		before, err := os.ReadFile(b.tasksPath)
+ 		if err != nil {
+@@ -246,3 +248,70 @@ func TestNormalizeTaskWritesNoEvent(t *testing.T) {
+ 		t.Fatalf("normalize refreshed updated_at: %s", RowJSONCompact(rows[0]))
+ 	}
+ }
++
++// DF-BOARDCTL-41: a tasks.jsonl row with status "closed" is converted to
++// "complete" by NormalizeBoard --apply (closed joined the read-alias table),
++// while unknown junk statuses (wip) are still REFUSED and stay byte-identical.
++func TestNormalizeBoardClosedAliasConverts(t *testing.T) {
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl": `{"id":"DF41-CLOSED","title":"terminal success","status":"closed","priority":"P2"}` + "\n" +
++			`{"id":"DF41-WIP","title":"ambiguous junk","status":"wip","priority":"P3"}` + "\n",
++		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
++		"board.jsonl":  `{"project":"df41","namespace":"df41","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	before, err := os.ReadFile(b.tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++
++	// dry-run: the closed row is classified as a mechanical status change,
++	// the wip row is refused; nothing is written.
++	dry, err := b.NormalizeBoard(false)
++	if err != nil {
++		t.Fatalf("NormalizeBoard(dry-run): %v", err)
++	}
++	var closedChange, wipRefusal bool
++	for _, c := range dry.Changes {
++		if c.ID == "DF41-CLOSED" && c.Kind == "status" && c.From == "closed" && c.To == "complete" {
++			closedChange = true
++		}
++	}
++	for _, r := range dry.Refusals {
++		if r.ID == "DF41-WIP" && r.Kind == "status" {
++			wipRefusal = true
++		}
++	}
++	if !closedChange {
++		t.Fatalf("dry-run did not classify DF41-CLOSED closed->complete: %+v", dry.Changes)
++	}
++	if !wipRefusal {
++		t.Fatalf("dry-run did not refuse DF41-WIP: %+v", dry.Refusals)
++	}
++	mid, err := os.ReadFile(b.tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if string(before) != string(mid) {
++		t.Fatalf("dry-run rewrote tasks.jsonl:\nbefore %s\nafter  %s", before, mid)
++	}
++
++	// apply: the closed row becomes complete, the wip row stays byte-identical.
++	if _, err := b.NormalizeBoard(true); err != nil {
++		t.Fatalf("NormalizeBoard(apply): %v", err)
++	}
++	after, err := os.ReadFile(b.tasksPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !strings.Contains(string(after), `{"id":"DF41-CLOSED","title":"terminal success","status":"complete"`) {
++		t.Fatalf("closed row not converted to complete: %s", after)
++	}
++	if !strings.Contains(string(after), `{"id":"DF41-WIP","title":"ambiguous junk","status":"wip"`) {
++		t.Fatalf("wip row was mutated by apply: %s", after)
++	}
++}
+diff --git a/internal/board/normalizeboard.go b/internal/board/normalizeboard.go
+index f194863..6d1c856 100644
+--- a/internal/board/normalizeboard.go
++++ b/internal/board/normalizeboard.go
+@@ -18,8 +18,9 @@ package board
+ //     and a single bare id "GAP-077" becomes ["GAP-077"]. A number, object,
+ //     or unparseable value is ambiguous — reported, never guessed.
+ //   - STATUS ALIASES via BT-025 ResolveStatus: open -> pending,
+-//     done -> complete. An absent/null status or an unknown value
+-//     (retired, duplicate, wip) needs a human decision — never written.
++//     done -> complete, closed -> complete (DF-BOARDCTL-41). An
++//     absent/null status or an unknown value (retired, duplicate, wip)
++//     needs a human decision — never written.
+ //   - missing created_at is REPORTED ONLY (the task is explicit: tolerate,
+ //     do not fabricate a birth timestamp).
+ //
+diff --git a/internal/board/read.go b/internal/board/read.go
+index 886da07..9f10310 100644
+--- a/internal/board/read.go
++++ b/internal/board/read.go
+@@ -29,12 +29,16 @@ var StatusVocabulary = map[string]bool{
+ // error to a warning naming the canonical value so operators can see (and
+ // fix with `boardctl update <id> --normalize`) the drift instead of learning
+ // to ignore validate. Lookup keys are the trimmed, lower-cased spelling.
+-// Deliberately NOT aliases: ambiguous values such as retired, closed, wip,
+-// or malformed junk — those stay unknown and keep failing validate, because
+-// coercing them needs a human decision, not a table.
++// Deliberately NOT aliases: ambiguous values such as retired, wip, or
++// malformed junk — those stay unknown and keep failing validate, because
++// coercing them needs a human decision, not a table. (DF-BOARDCTL-41
++// reversed the original "closed is ambiguous" call: every live 'closed'
++// row observed on a real fleet board carried terminal-success evidence,
++// so closed -> complete joined the table as an evidence-based alias.)
+ var StatusAliases = map[string]string{
+ 	"completed":   "complete",
+ 	"done":        "complete",
++	"closed":      "complete",
+ 	"todo":        "pending",
+ 	"open":        "pending",
+ 	"in-progress": "in_progress",
+diff --git a/internal/board/review_status_vocab_test.go b/internal/board/review_status_vocab_test.go
+index 574d995..6d9be1e 100644
+--- a/internal/board/review_status_vocab_test.go
++++ b/internal/board/review_status_vocab_test.go
+@@ -9,10 +9,12 @@ import (
+ // (create/update — write.go rejects with "not in write vocabulary"), but the
+ // notorious fleet offenders had no table-driven proof at the library level.
+ // duplicate/parked/resolved/retired are statuses real boards drifted into; the
+-// aliases (done/open/completed/todo) must ALSO be refused on the write side —
+-// reads accept them, writes never do.
++// aliases (done/open/completed/todo/closed) must ALSO be refused on the write
++// side — reads accept them, writes never do. DF-BOARDCTL-41: closed joined
++// the READ alias table but the write path checks the canonical vocabulary,
++// not the alias table, so a closed write must still be refused.
+ func TestWriteRejectsOffVocabularyStatus(t *testing.T) {
+-	for _, st := range []string{"duplicate", "parked", "resolved", "retired", "done", "open", "completed", "todo"} {
++	for _, st := range []string{"duplicate", "parked", "resolved", "retired", "closed", "done", "open", "completed", "todo"} {
+ 		// create path: rejected, nothing appended, no event fired. The
+ 		// "completed" alias has its own dedicated refusal message (write.go
+ 		// names the singular 'complete'); everything else hits the generic
+diff --git a/internal/board/sweep.go b/internal/board/sweep.go
+index 9fdc8d1..bdfaf3c 100644
+--- a/internal/board/sweep.go
++++ b/internal/board/sweep.go
+@@ -15,7 +15,7 @@ import (
+ // board-wide driver for the same two outcomes:
+ //
+ //   - a status that is a KNOWN read alias (StatusAliases: todo, done, open,
+-//     completed, in-progress, ...) is "fixable by --normalize" — with --apply
++//     closed, completed, in-progress, ...) is "fixable by --normalize" — with --apply
+ //     the sweep canonicalizes it by calling NormalizeTask per row, so the
+ //     rewrite reuses the BT-025 machinery (only the status spelling changes,
+ //     every other byte of the row round-trips) instead of a hand-rolled JSON
+diff --git a/internal/board/validate.go b/internal/board/validate.go
+index a5d52d0..82e7974 100644
+--- a/internal/board/validate.go
++++ b/internal/board/validate.go
+@@ -66,10 +66,11 @@ func (r *Report) HasErrors() bool { return r.Errors() > 0 }
+ //   - board.jsonl header (topology A) parses with integer counters
+ //   - task status: canonical vocabulary {pending,in_progress,review,blocked,
+ //     complete,failed} passes; a known read alias (BT-025: completed, done,
+-//     todo, open, in-progress/inprogress/in_progress, reopen/reopened) is a
+-//     WARNING naming the canonical value — writes still reject aliases, and
+-//     `boardctl update <id> --normalize` is the sanctioned fix; anything else
+-//     (retired, closed, wip, malformed junk) is an ERROR
++//     closed, todo, open, in-progress/inprogress/in_progress, reopen/
++//     reopened) is a WARNING naming the canonical value — writes still
++//     reject aliases, and `boardctl update <id> --normalize` is the
++//     sanctioned fix; anything else (retired, wip, malformed junk) is an
++//     ERROR
+ //   - BT-007: guard_result/ci_result values on existing rows are itemized
+ //     warnings when free-form (legacy prose tolerated, not failed)
+ //   - BT-007: depends_on ids that reference no task row are itemized warnings
+@@ -143,8 +144,9 @@ func (b *Board) validateTasks(rep *Report) {
+ 			rep.Add("warn", "tasks.jsonl line %d (task %s): missing status", idx+1, id)
+ 		} else if canonical, ok, alias := ResolveStatus(st); !ok {
+ 			// BT-025: not canonical and not a known read alias — stay an
+-			// ERROR. Ambiguous spellings (retired, closed, wip, junk) need
+-			// a human decision; they are never silently coerced.
++			// ERROR. Ambiguous spellings (retired, wip, junk) need a human
++			// decision; they are never silently coerced. (closed joined the
++			// alias table per DF-BOARDCTL-41.)
+ 			rep.Add("error", "tasks.jsonl line %d (task %s): status %q not in vocabulary {%s} (accepted read aliases: %s)",
+ 				idx+1, id, st, strings.Join(sortedVocab(), ","), strings.Join(sortedAliases(), ", "))
+ 		} else if alias {
+diff --git a/internal/board/validate_alias_test.go b/internal/board/validate_alias_test.go
+index 7ba3e1b..6e5888d 100644
+--- a/internal/board/validate_alias_test.go
++++ b/internal/board/validate_alias_test.go
+@@ -36,6 +36,7 @@ func TestStatusAliasesTable(t *testing.T) {
+ 	}{
+ 		{"completed", "complete"},
+ 		{"done", "complete"},
++		{"closed", "complete"},
+ 		{"todo", "pending"},
+ 		{"open", "pending"},
+ 		{"in-progress", "in_progress"},
+@@ -52,6 +53,9 @@ func TestStatusAliasesTable(t *testing.T) {
+ 		{" In-Progress ", "in_progress"},
+ 		{"INPROGRESS", "in_progress"},
+ 		{"Reopened", "pending"},
++		// DF-BOARDCTL-41: closed -> complete, case/whitespace tolerant
++		{"CLOSED", "complete"},
++		{" closed ", "complete"},
+ 	}
+ 	for _, c := range cases {
+ 		got := NormalizeStatus(c.raw)
+@@ -65,7 +69,7 @@ func TestStatusAliasesTable(t *testing.T) {
+ 	}
+ 	// every spelling the policy names as an ALIAS (in_progress is canonical
+ 	// and therefore never drift) must classify as alias=true
+-	for _, alias := range []string{"completed", "done", "todo", "open", "in-progress", "inprogress", "reopen", "reopened"} {
++	for _, alias := range []string{"completed", "done", "closed", "todo", "open", "in-progress", "inprogress", "reopen", "reopened"} {
+ 		if _, _, isAlias := ResolveStatus(alias); !isAlias {
+ 			t.Errorf("ResolveStatus(%q).alias = false, want true (policy alias)", alias)
+ 		}
+@@ -73,8 +77,9 @@ func TestStatusAliasesTable(t *testing.T) {
+ }
+ 
+ // BT-025: canonical values resolve with alias=false; unknown values —
+-// explicitly retired, closed, wip, and malformed junk — stay unresolved and
+-// pass through NormalizeStatus unchanged.
++// explicitly retired, wip, and malformed junk — stay unresolved and
++// pass through NormalizeStatus unchanged. (closed left the unknown bucket
++// in DF-BOARDCTL-41: it is an alias for complete now.)
+ func TestStatusResolveCanonicalAndUnknown(t *testing.T) {
+ 	for _, st := range []string{"pending", "in_progress", "review", "blocked", "complete", "failed"} {
+ 		canonical, ok, alias := ResolveStatus(st)
+@@ -82,7 +87,7 @@ func TestStatusResolveCanonicalAndUnknown(t *testing.T) {
+ 			t.Errorf("canonical %q resolved to (%q,%v,%v), want itself with alias=false", st, canonical, ok, alias)
+ 		}
+ 	}
+-	for _, st := range []string{"retired", "closed", "wip", `"pending`, "shipped", "in progress", " " /* whitespace-only */, "pending-ish"} {
++	for _, st := range []string{"retired", "wip", `"pending`, "shipped", "in progress", " " /* whitespace-only */, "pending-ish"} {
+ 		if got := NormalizeStatus(st); got != st {
+ 			t.Errorf("NormalizeStatus(%q) = %q, want pass-through", st, got)
+ 		}
+@@ -100,7 +105,7 @@ func TestStatusResolveCanonicalAndUnknown(t *testing.T) {
+ // value and the normalize fix path — validate must exit OK (zero errors) on
+ // a board that only carries alias statuses.
+ func TestValidateAliasStatusesWarnNotError(t *testing.T) {
+-	b := seedAliasBoard(t, "completed", "done", "todo", "open", "in-progress", "inprogress", "reopen", "reopened")
++	b := seedAliasBoard(t, "completed", "done", "closed", "todo", "open", "in-progress", "inprogress", "reopen", "reopened")
+ 	rep, err := b.Validate()
+ 	if err != nil {
+ 		t.Fatal(err)
+@@ -108,7 +113,7 @@ func TestValidateAliasStatusesWarnNotError(t *testing.T) {
+ 	if rep.HasErrors() {
+ 		t.Fatalf("alias statuses must not error; findings: %+v", rep.Findings)
+ 	}
+-	for _, st := range []string{"completed", "done", "todo", "open", "in-progress", "inprogress", "reopen", "reopened"} {
++	for _, st := range []string{"completed", "done", "closed", "todo", "open", "in-progress", "inprogress", "reopen", "reopened"} {
+ 		found := false
+ 		for _, f := range rep.Findings {
+ 			if f.Level == "warn" && strings.Contains(f.Msg, `status "`+st+`"`) && strings.Contains(f.Msg, "read alias") && strings.Contains(f.Msg, "--normalize") {
+@@ -133,7 +138,9 @@ func TestValidateAliasStatusesWarnNotError(t *testing.T) {
+ func TestValidateUnknownStatusesStillError(t *testing.T) {
+ 	// "\\\"pending" is the JSON-escaped on-disk spelling of the malformed
+ 	// junk status '"pending' (a leading quote) from the BT-025 spec.
+-	for _, st := range []string{"retired", "closed", "wip", "\\\"pending"} {
++	// closed left the unknown bucket in DF-BOARDCTL-41 (read alias for
++	// complete now) — retired/wip/junk still error.
++	for _, st := range []string{"retired", "wip", "\\\"pending"} {
+ 		b := seedAliasBoard(t, st)
+ 		rep, err := b.Validate()
+ 		if err != nil {
+diff --git a/internal/board/write.go b/internal/board/write.go
+index 1b15c02..de07532 100644
+--- a/internal/board/write.go
++++ b/internal/board/write.go
+@@ -1169,10 +1169,11 @@ type fieldChange struct {
+ // no-op (idempotent).
+ //
+ // Refusal: if a present field's value cannot be resolved (an unknown status
+-// such as retired/closed/wip, or a guard/ci value outside its vocabulary),
++// such as retired/wip, or a guard/ci value outside its vocabulary),
+ // the whole normalize fails naming the field and offending value and NOTHING
+ // is written. The row keeps its dirty value: ambiguous statuses need a human
+-// decision, not a silent coercion.
++// decision, not a silent coercion. (closed no longer refuses: DF-BOARDCTL-41
++// added it to the read-alias table.)
+ //
+ // Unlike UpdateTask this does NOT append an audit event and does NOT refresh
+ // updated_at — normalize is a pure spelling repair of values already on the

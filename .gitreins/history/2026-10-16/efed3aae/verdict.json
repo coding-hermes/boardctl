@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-41",
+  "task_title": "P1 warpfs foreman appender writes status closed \u2014 alias closed->complete, repair live warpfs board, stop drift regrowth",
+  "task_criteria": [
+    "worker adds closed->complete to StatusAliases (read.go) with decision rationale; write-path still rejects closed; tests prove validate warning-not-error + normalize-board --apply converts closed rows + evidence-gate/dedupe ResolveStatus accept; go build/vet/test green; ch:trace resolves row DF-BOARDCTL-41 spec none:code-change test evidence commit"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "af36041becebc0094f3943cdb13d708fb4af2432",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n9:56AM INF scanned ~3393042 bytes (3.39 MB) in 833ms\n9:56AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 236 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261016T144252.629460Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t4.252s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.024s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.008s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.792s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.153s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.644s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.032s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.025s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.013s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.288s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.013s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261016T144252.629460Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 worker adds closed->complete to StatusAliases (read.go) with decision rationale; write-path still rejects closed; tests prove validate warning-not-error + normalize-board --apply converts closed rows + evidence-gate/dedupe ResolveStatus accept; go build/vet/test green; ch:trace resolves row DF-BOARDCTL-41 spec none:code-change test evidence commit: Most sub-claims PASS: read.go:38 adds \"closed\":\"complete\" to StatusAliases with rationale at read.go:29-37; write path rejects closed (TestWriteRejectsOffVocabularyStatus includes \"closed\", PASS); validate warns not errors (TestValidateAliasStatusesWarnNotError includes closed, PASS); normalize-board --apply converts closed (TestNormalizeBoardClosedAliasConverts PASS); dedupe accepts closed (TestIDDupe_ClosedStatusIsTerminalNotRefused PASS); evidence gate accepts closed (RowIsCompleteCanonical(closed)=true, verified via temp test PASS); go build exit 0, go vet exit 0, `go test -count=1 ./...` exit 0 (all 12 packages ok); live warpfs board repaired (../warpfs/.coding-hermes/board/tasks.jsonl closed rows 4->0, `boardctl validate -C ../warpfs/.coding-hermes/board` => RESULT: OK). HOWEVER the final sub-claim FAILS: 'ch:trace resolves row DF-BOARDCTL-41 spec none:code-change test evidence commit' is not satisfied \u2014 the live board row DF-BOARDCTL-41 (.coding-hermes/board/tasks.jsonl:171) is still status \"pending\" with keys [id,type,status,priority,title,reasoning,created_by] and NO ch:trace trailer; 0 events in .coding-hermes/board/events.jsonl reference DF-BOARDCTL-41; no .gitreins/history/2026-10-16 entry exists. The row was never updated with the required ch:trace trailer (row=... spec=none:code-change test=... evidence=... commit=...). Since the criterion is a conjunction, it fails.\nAll code changes and tests are green and the warpfs board was repaired, but the required ch:trace trailer for row DF-BOARDCTL-41 was never written (row still pending, no event/history entry), so the criterion fails.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 worker adds closed->complete to StatusAliases (read.go) with decision rationale; write-path still rejects closed; tests prove validate warning-not-error + normalize-board --apply converts closed rows + evidence-gate/dedupe ResolveStatus accept; go build/vet/test green; ch:trace resolves row DF-BOARDCTL-41 spec none:code-change test evidence commit: Most sub-claims PASS: read.go:38 adds \"closed\":\"complete\" to StatusAliases with rationale at read.go:29-37; write path rejects closed (TestWriteRejectsOffVocabularyStatus includes \"closed\", PASS); validate warns not errors (TestValidateAliasStatusesWarnNotError includes closed, PASS); normalize-board --apply converts closed (TestNormalizeBoardClosedAliasConverts PASS); dedupe accepts closed (TestIDDupe_ClosedStatusIsTerminalNotRefused PASS); evidence gate accepts closed (RowIsCompleteCanonical(closed)=true, verified via temp test PASS); go build exit 0, go vet exit 0, `go test -count=1 ./...` exit 0 (all 12 packages ok); live warpfs board repaired (../warpfs/.coding-hermes/board/tasks.jsonl closed rows 4->0, `boardctl validate -C ../warpfs/.coding-hermes/board` => RESULT: OK). HOWEVER the final sub-claim FAILS: 'ch:trace resolves row DF-BOARDCTL-41 spec none:code-change test evidence commit' is not satisfied \u2014 the live board row DF-BOARDCTL-41 (.coding-hermes/board/tasks.jsonl:171) is still status \"pending\" with keys [id,type,status,priority,title,reasoning,created_by] and NO ch:trace trailer; 0 events in .coding-hermes/board/events.jsonl reference DF-BOARDCTL-41; no .gitreins/history/2026-10-16 entry exists. The row was never updated with the required ch:trace trailer (row=... spec=none:code-change test=... evidence=... commit=...). Since the criterion is a conjunction, it fails.\nAll code changes and tests are green and the warpfs board was repaired, but the required ch:trace trailer for row DF-BOARDCTL-41 was never written (row still pending, no event/history entry), so the criterion fails.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "worker adds closed->complete to StatusAliases (read.go) with decision rationale; write-path still rejects closed; tests prove validate warning-not-error + normalize-board --apply converts closed rows + evidence-gate/dedupe ResolveStatus accept; go build/vet/test green; ch:trace resolves row DF-BOARDCTL-41 spec none:code-change test evidence commit",
+                "status": "FAIL",
+                "detail": "Most sub-claims PASS: read.go:38 adds \"closed\":\"complete\" to StatusAliases with rationale at read.go:29-37; write path rejects closed (TestWriteRejectsOffVocabularyStatus includes \"closed\", PASS); validate warns not errors (TestValidateAliasStatusesWarnNotError includes closed, PASS); normalize-board --apply converts closed (TestNormalizeBoardClosedAliasConverts PASS); dedupe accepts closed (TestIDDupe_ClosedStatusIsTerminalNotRefused PASS); evidence gate accepts closed (RowIsCompleteCanonical(closed)=true, verified via temp test PASS); go build exit 0, go vet exit 0, `go test -count=1 ./...` exit 0 (all 12 packages ok); live warpfs board repaired (../warpfs/.coding-hermes/board/tasks.jsonl closed rows 4->0, `boardctl validate -C ../warpfs/.coding-hermes/board` => RESULT: OK). HOWEVER the final sub-claim FAILS: 'ch:trace resolves row DF-BOARDCTL-41 spec none:code-change test evidence commit' is not satisfied \u2014 the live board row DF-BOARDCTL-41 (.coding-hermes/board/tasks.jsonl:171) is still status \"pending\" with keys [id,type,status,priority,title,reasoning,created_by] and NO ch:trace trailer; 0 events in .coding-hermes/board/events.jsonl reference DF-BOARDCTL-41; no .gitreins/history/2026-10-16 entry exists. The row was never updated with the required ch:trace trailer (row=... spec=none:code-change test=... evidence=... commit=...). Since the criterion is a conjunction, it fails."
+              }
+            ],
+            "summary": "All code changes and tests are green and the warpfs board was repaired, but the required ch:trace trailer for row DF-BOARDCTL-41 was never written (row still pending, no event/history entry), so the criterion fails."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-41\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 worker adds closed->complete to StatusAliases (read.go) with decision rationale; write-path still rejects closed; tests prove validate warning-not-error + normalize-board --apply converts closed rows + evidence-gate/dedupe ResolveStatus accept; go build/vet/test green; ch:trace resolves row DF-BOARDCTL-41 spec none:code-change test evidence commit: Most sub-claims PASS: read.go:38 adds \"closed\":\"complete\" to StatusAliases with rationale at read.go:29-37; write path rejects closed (TestWriteRejectsOffVocabularyStatus includes \"closed\", PASS); validate warns not errors (TestValidateAliasStatusesWarnNotError includes closed, PASS); normalize-board --apply converts closed (TestNormalizeBoardClosedAliasConverts PASS); dedupe accepts closed (TestIDDupe_ClosedStatusIsTerminalNotRefused PASS); evidence gate accepts closed (RowIsCompleteCanonical(closed)=true, verified via temp test PASS); go build exit 0, go vet exit 0, `go test -count=1 ./...` exit 0 (all 12 packages ok); live warpfs board repaired (../warpfs/.coding-hermes/board/tasks.jsonl closed rows 4->0, `boardctl validate -C ../warpfs/.coding-hermes/board` => RESULT: OK). HOWEVER the final sub-claim FAILS: 'ch:trace resolves row DF-BOARDCTL-41 spec none:code-change test evidence commit' is not satisfied \u2014 the live board row DF-BOARDCTL-41 (.coding-hermes/board/tasks.jsonl:171) is still status \"pending\" with keys [id,type,status,priority,title,reasoning,created_by] and NO ch:trace trailer; 0 events in .coding-hermes/board/events.jsonl reference DF-BOARDCTL-41; no .gitreins/history/2026-10-16 entry exists. The row was never updated with the required ch:trace trailer (row=... spec=none:code-change test=... evidence=... commit=...). Since the criterion is a conjunction, it fails.\nAll code changes and tests are green and the warpfs board was repaired, but the required ch:trace trailer for row DF-BOARDCTL-41 was never written (row still pending, no event/history entry), so the criterion fails.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-16T14:59:25.031553",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-16T14:59:25.051077+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 19786,
+        "truncated": false,
+        "source": "git show af36041beceb"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-41"
+  }
+}
