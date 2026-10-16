@@ -862,13 +862,17 @@ exit 2  duplicate-suppressed re-detection: DUPLICATE-SUPPRESSED on stderr
         usage/board-not-found code used elsewhere)
 ```
 
-Evidence the EXISTING row with `boardctl update <id>` — carry the run id in
-`--summary` or `--note`; `update` does not accept `--evidence-run-id`. That
-flag exists ONLY on `create`, stamping evidence on a NEW filing:
+Evidence the EXISTING row with `boardctl update <id> --evidence-run-id` — the
+flag is accepted on BOTH `create` and `update` (it stamps
+`detail.evidence[].run_id`). Since TR-251, `update --status complete` REQUIRES
+`--evidence-run-id`: a completion without a bound evidence run is refused with
+exit 1 naming the missing flag, and `doctor` reports the historic backlog as
+`verified_complete_share` plus the itemized complete rows lacking a run:
 
 ```bash
 boardctl -C ~/myproject update QA-X-3 --summary "re-detected on run qa-1"     # evidence on an existing row
 boardctl -C ~/myproject create --id QA-X-9 --title "…" --evidence-run-id qa-1 # new filing only
+boardctl -C ~/myproject update QA-X-3 --status complete --evidence-run-id qa-2 # REQUIRED for completions (TR-251)
 ```
 
 `--force` files a deliberate

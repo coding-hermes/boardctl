@@ -110,7 +110,8 @@ func TestUpdateWithoutTitleLeavesKeyUntouched(t *testing.T) {
 	b := seedBT060UpdateBoard(t)
 	lineBefore := taskLines(t, b)[0]
 	complete := "complete"
-	if _, err := b.UpdateTask("BT-1", UpdateSpec{Status: &complete}); err != nil {
+	// TR-251: completion binds a run; this test grades the title key.
+	if _, err := b.UpdateTask("BT-1", UpdateSpec{Status: &complete, EvidenceRunID: "run-tr251-bt060"}); err != nil {
 		t.Fatal(err)
 	}
 	line := taskLines(t, b)[0]

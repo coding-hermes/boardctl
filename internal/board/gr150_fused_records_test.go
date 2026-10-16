@@ -413,7 +413,8 @@ func TestGR150EventAppendOntoUnterminatedFile(t *testing.T) {
 func TestGR150UpdateKeepsOneObjectPerLineAndFinalNewline(t *testing.T) {
 	b := seedGR150Board(t, gr150RowA+"\n"+gr150RowB, gr150Ev1+"\n") // last line unterminated
 	status := "complete"
-	if _, err := b.UpdateTask("GR150-B", UpdateSpec{Status: &status}); err != nil {
+	// TR-251: completion binds a run; this test grades the newline invariants.
+	if _, err := b.UpdateTask("GR150-B", UpdateSpec{Status: &status, EvidenceRunID: "run-tr251-gr150"}); err != nil {
 		t.Fatalf("UpdateTask: %v", err)
 	}
 	assertJSONLInvariants(t, tasksPath(t, b), 2)

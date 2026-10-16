@@ -141,7 +141,7 @@ func TestCmdUpdateWorktreeBranchSessionsAnyOrder(t *testing.T) {
 	dir := seedCLIBoard(t)
 	code := run([]string{
 		"-C", dir, "update", "EXIST-1",
-		"--session", "s1", "--status", "complete",
+		"--session", "s1", "--status", "complete", "--evidence-run-id", "run-tr251-cli-bt037",
 		"--worktree", "/tmp/wt-1", "--branch", "wt/one", "--session=s2",
 	})
 	if code != 0 {

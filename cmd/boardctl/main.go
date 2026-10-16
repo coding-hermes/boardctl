@@ -62,6 +62,9 @@ commands:
           branches/worktrees dimension — existing elements, the other
           dimensions, and the singular worktree/branch fields survive)
           [--evidence-run-id RUN] [--deferred true|false] [--normalize] [--force]
+          (--status complete REQUIRES --evidence-run-id: a completion without a
+          bound run is REFUSED — TR-251; doctor reports the historic debt as
+          verified_complete_share)
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N] [--no-tick-write]

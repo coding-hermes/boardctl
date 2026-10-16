@@ -186,10 +186,11 @@ func TestUpdateWritesWorktreeBranchSessionsBytePreserving(t *testing.T) {
 	br := "wt/cht-031"
 	list := []string{"A", "B", "C"}
 	changed, err := b.UpdateTask("BT-1", UpdateSpec{
-		Status:   &complete,
-		Worktree: &wt,
-		Branch:   &br,
-		Sessions: &list,
+		Status:        &complete,
+		Worktree:      &wt,
+		Branch:        &br,
+		Sessions:      &list,
+		EvidenceRunID: "run-tr251-bt037b", // TR-251: completion binds a run
 	})
 	if err != nil {
 		t.Fatalf("update with worktree/branch/session rejected: %v", err)
@@ -222,7 +223,9 @@ func TestUpdateWritesWorktreeBranchSessionsBytePreserving(t *testing.T) {
 		t.Fatalf("existing field bytes/order changed: %s", lines[0])
 	}
 	keys := row.Keys
-	if n := len(keys); n < 3 || keys[n-3] != "worktree" || keys[n-2] != "branch" || keys[n-1] != "sessions" {
+	// TR-251: the completion's evidence envelope (detail) rides after the
+	// three appended keys — the append-at-end rule still holds for them.
+	if n := len(keys); n < 4 || keys[n-4] != "worktree" || keys[n-3] != "branch" || keys[n-2] != "sessions" || keys[n-1] != "detail" {
 		t.Fatalf("new keys must be appended at the end of the row, got key order %v", keys)
 	}
 }
@@ -233,7 +236,8 @@ func TestUpdateWritesWorktreeBranchSessionsBytePreserving(t *testing.T) {
 func TestUpdateWithoutWorktreeFieldsCreatesNoKeys(t *testing.T) {
 	b := seedBT037Board(t)
 	complete := "complete"
-	if _, err := b.UpdateTask("BT-1", UpdateSpec{Status: &complete}); err != nil {
+	// TR-251: completion binds a run; this test grades the absent keys.
+	if _, err := b.UpdateTask("BT-1", UpdateSpec{Status: &complete, EvidenceRunID: "run-tr251-bt037"}); err != nil {
 		t.Fatal(err)
 	}
 	row := taskRowByID(t, b, "BT-1")

@@ -421,6 +421,17 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	// row, then emit the same task_created event every create writes. The
 	// bytes are sanity-checked (parseable object, matching id) before the
 	// append so a mismatched line can never land behind this row's checks.
+	//
+	// TR-251 AC1 scope note: the completion gate deliberately does NOT run
+	// on this path. Import REHYDRATES historic rows verbatim (round-trip
+	// contract) — gating them would refuse a board migration for debt the
+	// gate did not create; the boundary gate (task-router) and the census
+	// grade imported history instead. The BUILT-row path below IS gated.
+	if spec.Raw == nil {
+		if err := gateCompletionEvidence(nil, status, spec.EvidenceRunID != ""); err != nil {
+			return "", err
+		}
+	}
 	if spec.Raw != nil {
 		raw := bytes.TrimSpace(spec.Raw)
 		if len(raw) == 0 {
@@ -884,6 +895,13 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		}
 		if !StatusVocabulary[s] {
 			return nil, fmt.Errorf("status %q not in write vocabulary {%s}", s, vocabList())
+		}
+		// TR-251 AC1: a completion transition requires an evidence run.
+		// Checked BEFORE any set() runs, so a refused update writes nothing
+		// and the changed list stays empty. target is still the pre-write
+		// row here (set() has not run for status yet).
+		if err := gateCompletionEvidence(target, s, spec.EvidenceRunID != ""); err != nil {
+			return nil, err
 		}
 		if err := set("status", s); err != nil {
 			return nil, err

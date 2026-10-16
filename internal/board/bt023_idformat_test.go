@@ -164,7 +164,8 @@ func TestUpdateJunkIDRequiresForce(t *testing.T) {
 
 	// With --force the legacy junk row stays updatable.
 	status := "complete"
-	if _, err := b.UpdateTask("bad id!", UpdateSpec{Status: &status, Force: true}); err != nil {
+	// TR-251: the forced update completes the row, so it binds a run too.
+	if _, err := b.UpdateTask("bad id!", UpdateSpec{Status: &status, Force: true, EvidenceRunID: "run-tr251-junk"}); err != nil {
 		t.Fatalf("update --force on junk-id row rejected: %v", err)
 	}
 	rows, err := b.TaskRows()

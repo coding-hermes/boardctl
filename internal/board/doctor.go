@@ -2,6 +2,7 @@ package board
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,6 +39,12 @@ import (
 //     corrupt line 1 as salvageable header corruption (an error naming the
 //     `boardctl validate --repair` salvage path) instead of letting a bare
 //     parse error read exactly like the healthy legacy board
+//   - TR-251 mechanism (5): verified_complete_share — of the rows that claim
+//     completion, the share carrying a bound evidence run — plus the
+//     itemized list of complete rows lacking one. The share itself is
+//     REPORTED (warn, never an error: it grades the HISTORIC backlog this
+//     board already carries, and the write gate stops new debt); the report
+//     makes the count queryable instead of a review opinion.
 func (b *Board) Doctor() (*Report, error) {
 	rep, err := b.Validate()
 	if err != nil {
@@ -49,6 +56,7 @@ func (b *Board) Doctor() (*Report, error) {
 	b.doctorHeaderVsEvents(rep)
 	b.doctorFixtureOrphans(rep)
 	b.doctorTaskIDFormat(rep)
+	b.doctorVerifiedComplete(rep)
 	return rep, nil
 }
 
@@ -386,4 +394,60 @@ func doctorTaskIDFormatRow(rep *Report, row *Row, idx int) {
 		rep.Add("warn", "tasks.jsonl line %d: task id %q does not match the fleet id format %s — downstream id parsing (task-router, board-scan) may wedge; writes now enforce this (rewrite via boardctl create --force or hand-edit the row)",
 			idx+1, id, FleetTaskIDPattern)
 	}
+}
+
+// verifiedCompleteCap bounds how many unverified ids one warn line quotes
+// before the rest collapse into "…and N more". A 200-row debt itemized in
+// full would bury the doctor report; the census numbers (share + count)
+// stay exact, the list stays representative. The full list is derivable:
+// `boardctl list --status complete` minus the rows the same check names as
+// verified.
+const verifiedCompleteCap = 20
+
+// doctorVerifiedComplete is TR-251 mechanism (5): report
+// verified_complete_share and itemize the complete rows lacking an evidence
+// run. Always a warning (never an error) — the historic backlog is graded,
+// not failed; the AC1 write gate is what makes new debt impossible. Zero
+// complete rows produces no finding at all (nothing to verify is not debt).
+func (b *Board) doctorVerifiedComplete(rep *Report) {
+	stats, err := b.VerifiedCompleteCensus()
+	if err != nil {
+		return // validate already itemized the tasks read failure
+	}
+	if stats.Total == 0 {
+		return
+	}
+	share := stats.Share()
+	unverified := len(stats.UnverifiedIDs)
+	switch {
+	case unverified == 0:
+		rep.Add("warn",
+			"verified_complete_share: %.4f (%d/%d complete rows carry an evidence run) — fully verified, no debt",
+			share, stats.Verified, stats.Total)
+	case stats.Verified == 0:
+		rep.Add("warn",
+			"verified_complete_share: %.4f (0/%d) — %d complete rows lack an evidence run (TR-251): %s%s",
+			share, stats.Total, unverified,
+			strings.Join(stats.UnverifiedIDs, ", "),
+			moreSuffix(unverified, unverified))
+	default:
+		shown := stats.UnverifiedIDs
+		if len(shown) > verifiedCompleteCap {
+			shown = shown[:verifiedCompleteCap]
+		}
+		rep.Add("warn",
+			"verified_complete_share: %.4f (%d/%d) — %d complete rows lack an evidence run (TR-251): %s%s",
+			share, stats.Verified, stats.Total, unverified,
+			strings.Join(shown, ", "),
+			moreSuffix(len(shown), unverified))
+	}
+}
+
+// moreSuffix renders the "…and N more" tail when the shown list is a prefix
+// of the full set.
+func moreSuffix(shown, total int) string {
+	if extra := total - shown; extra > 0 {
+		return fmt.Sprintf(" …and %d more", extra)
+	}
+	return ""
 }

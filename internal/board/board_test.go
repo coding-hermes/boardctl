@@ -119,7 +119,9 @@ func TestUpdateTaskRewritesOnlyTargetRow(t *testing.T) {
 	b := newTestBoard(t)
 	status := "complete"
 	commit := "deadbee"
-	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{Status: &status, CommitHash: &commit}); err != nil {
+	// TR-251: completions bind an evidence run — this test grades row-rewrite
+	// scoping, not the gate, so it binds a run and moves on.
+	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{Status: &status, CommitHash: &commit, EvidenceRunID: "run-tr251-scope"}); err != nil {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(b.tasksPath)
@@ -340,7 +342,8 @@ func TestCreateWritesTaskCreatedEvent(t *testing.T) {
 func TestUpdateToCompleteWritesCompletionEvent(t *testing.T) {
 	b := newTestBoard(t)
 	status := "complete"
-	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{Status: &status}); err != nil {
+	// TR-251: the completion gate requires a run; this test grades the EVENT.
+	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{Status: &status, EvidenceRunID: "run-tr251-event"}); err != nil {
 		t.Fatal(err)
 	}
 	var e map[string]any

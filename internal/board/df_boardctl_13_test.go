@@ -304,15 +304,19 @@ func TestUpdateWithoutPriorityEvidenceLeavesKeysUntouched(t *testing.T) {
 	detail3Before := df13DetailRaw(t, b, "DF13-3")
 
 	s := "complete"
-	if _, err := b.UpdateTask("DF13-1", UpdateSpec{Status: &s}); err != nil {
+	// TR-251: completion binds a run; this test grades the priority/detail keys.
+	if _, err := b.UpdateTask("DF13-1", UpdateSpec{Status: &s, EvidenceRunID: "run-tr251-df13"}); err != nil {
 		t.Fatal(err)
 	}
 	line := taskLines(t, b)[0]
 	if !strings.HasPrefix(line, `{"id": "DF13-1", "title": "first", "status": "complete", "priority": "P2"`) {
 		t.Fatalf("priority rewritten by a status-only update: %s", line)
 	}
-	if strings.Contains(line, `"detail"`) {
-		t.Fatalf("detail key created by a status-only update: %s", line)
+	// TR-251: the completion now carries a bound run, so the row legitimately
+	// grew a detail envelope — the assertion below pins that the detail holds
+	// EXACTLY that evidence (nothing else was smuggled in).
+	if !strings.Contains(line, `"evidence": [{"run_id":"run-tr251-df13"`) {
+		t.Fatalf("detail envelope wrong for the gated completion: %s", line)
 	}
 	if strings.Count(line, `"priority"`) != strings.Count(lineBefore, `"priority"`) {
 		t.Fatalf("priority key count changed: %s", line)

@@ -132,7 +132,7 @@ func TestDFBoardctl27CleanBoardValidatesQuiet(t *testing.T) {
 	if code := run([]string{"-C", dir, "create", "--id", "DF27-CLEAN-B", "--title", "clean two", "--priority", "P2"}); code != 0 {
 		t.Fatalf("create exit code = %d, want 0", code)
 	}
-	if code := run([]string{"-C", dir, "update", "DF27-CLEAN-A", "--status", "complete", "--completed-at", "2026-10-09T12:00:00Z"}); code != 0 {
+	if code := run([]string{"-C", dir, "update", "DF27-CLEAN-A", "--status", "complete", "--evidence-run-id", "run-tr251-df27", "--completed-at", "2026-10-09T12:00:00Z"}); code != 0 {
 		t.Fatalf("update exit code = %d, want 0", code)
 	}
 	code, out := qaRunCLI(t, dir, "validate")
