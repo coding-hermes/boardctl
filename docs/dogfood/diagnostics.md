@@ -627,3 +627,34 @@ Real view = boardctl's own board + warpfs's board via the links registry
    1s, checksum OK; HEAD b55d305 builds and validate/doctor green. las-02
    agent died mid-leg (network lost, destroy deadline-exceeded; TTL backstop
    armed) — first host-loss of the series, noted for the pitfall file.
+
+## Run-23 addendum (2026-10-16) — repair-chain composition on a foreign dialect board
+
+1. **The composition works, and the residual error set is now CLASSIFIED.** On a scratch
+   copy of qa9-frozen-after (real task-router board, 395 rows, 20 recycled ids — the
+   harshest live board found), dedupe --by-id --apply + normalize-board --apply ran
+   cleanly and validate's 33→31 error census decomposes into exactly three named
+   classes: 21 terminal duplicate-id lines (dedupe's scope is honest — it closes
+   actionable dups only), 5 "superseded" statuses normalize refuses BY DESIGN
+   (fail-closed beats guessed status), and 5 events.jsonl legacy id-descend errors
+   NOTHING repairs (DF-BOARDCTL-38). A red validate after a correct repair chain is
+   no longer "the tool failed" — each residual error has an owner and a reason.
+2. **Exit codes need single-command probes.** The run-23 leg capture of
+   `unknown command` on v0.1.10 read rc=0 while the flag-error path read rc=1 —
+   capture indirection (heredoc/sh -c leg scripts) makes exit-code evidence ambiguous.
+   DF-BOARDCTL-40 asks for the discriminating direct probe + a regression test pinning
+   the unknown-command path's place in the 0/1/2 contract.
+3. **The release boundary repeats (DF-BOARDCTL-39).** Same class as run 20's
+   DF-BOARDCTL-26: README presents verbs the latest release rejects. Six fix-merges
+   (BT-078 --status, normalize-board, dedupe census/refusal) have landed since v0.1.10
+   without a cut; every dogfood that re-proves HEAD work now widens the docs-vs-artifact
+   gap. The durable fix is cadence, not another docs pass.
+4. **Install leg evidence:** bunker-mvp agent bctl-df23 (TTL 2h): no preinstalled Go —
+   `go build` auto-downloaded go1.26.9; HEAD 4ad7543 from sha256-verified git-archive
+   transfer built in 46s; release v0.1.10 checksum-verified and both artifacts probed on
+   the SAME agent (normalize-board: HEAD ok / release unknown-command). Destroyed
+   cleanly, 90s residue recheck clean. las-03/bunker2/bunker4 offline or inactive;
+   bunker-mvp was the only live host — the one-host-is-enough rule held again.
+5. **Misseeded prompt config fact:** the stored `boardctl-dogfood` lane prompt names
+   warpfs as target (identical body to warpfs-dogfood). Lane name is authority — this
+   run targeted boardctl. Recorded for the config owner; not edited by this lane.

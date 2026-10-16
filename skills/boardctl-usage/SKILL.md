@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.17.0
-date: 2026-10-13
+version: 1.18.0
+date: 2026-10-16
 category: software-development
 ---
 
@@ -658,6 +658,35 @@ Boards are tiny; there is no need to batch or cache.
   the 4-vs-1 gap on lore (3 recycled ids invisible) is that omission
   (DF-BOARDCTL-32).
 - The `--lanes` refusal exits 0 in text mode, 2 in JSON mode (DF-BOARDCTL-33).
+
+### Run-23 lessons (2026-10-16, repair-chain re-proof at HEAD + composition)
+
+- The 10-14 fixes are all live and verified under real use: `--by-id` census now
+  says "20 recycled id(s), all later lines already terminal (no files written)"
+  after apply (DF-BOARDCTL-32); `--lanes` refusal exits 2 in BOTH modes
+  (DF-BOARDCTL-33); `superseded_by`-carrying later duplicates grade as WARN
+  naming the closed line, exit 0 — validate can confirm a by-id repair again
+  (DF-BOARDCTL-31); umbrella `--list --status a,b` works with aliases and exit 2
+  on unknown status (DF-BOARDCTL-37); umbrella --stats excludes off-vocabulary
+  embedded-JSON priorities (DF-BOARDCTL-34).
+- COMPOSITION recipe for a foreign dialect board (proven on a real 395-row
+  task-router board): `dedupe-board --by-id --apply` (closes actionable dup
+  lines) → `boardctl normalize-board` dry-run (10 mechanical repairs offered,
+  6 REFUSED with reasons — never guess a status) → `normalize-board --apply` →
+  `boardctl validate` and READ THE ERROR CLASSES: terminal duplicate-id lines
+  stay by scope, "superseded" statuses need a human decision, and legacy
+  events.jsonl id-descend errors have NO repair verb (DF-BOARDCTL-38) — a red
+  validate after a correct chain is classified, not a failure of the chain.
+- normalize-board scope: tasks.jsonl only. Event-id errors are out of scope for
+  every current verb — file them, don't fight them.
+- RELEASE TRAP (repeat of run 20): the latest release (v0.1.10, 09-29) rejects
+  normalize-board with `unknown command` while README presents it as current
+  (DF-BOARDCTL-39). Before driving a README-documented verb, check
+  `boardctl version` against the README's "current release" line; if the verb is
+  newer than the release, build HEAD from source instead.
+- Exit-code capture: probe exit codes with a single direct command and `$?` —
+  capture indirection through leg scripts has read rc=0 off an unknown-command
+  failure (DF-BOARDCTL-40, probe pending).
   In scripts, check output text, not exit code, for the refusal — or pass
   `--json`.
 - The audit event preserves title+reasoning verbatim; finding text stored in a
