@@ -139,7 +139,9 @@ func TestNormalizeTaskNoopAndIdempotent(t *testing.T) {
 func TestNormalizeTaskRefusesUnknownStatus(t *testing.T) {
 	// "\\\"pending" is the JSON-escaped on-disk spelling of the malformed
 	// junk status '"pending' (a leading quote) from the BT-025 spec.
-	for _, st := range []string{"retired", "closed", "wip", "\\\"pending"} {
+	// closed left the unknown bucket in DF-BOARDCTL-41 (read alias for
+	// complete now) — retired/wip/junk still refuse.
+	for _, st := range []string{"retired", "wip", "\\\"pending"} {
 		b := seedAliasRowBoard(t, st, "null", "null")
 		before, err := os.ReadFile(b.tasksPath)
 		if err != nil {
@@ -244,5 +246,72 @@ func TestNormalizeTaskWritesNoEvent(t *testing.T) {
 	}
 	if rows[0].Has("updated_at") {
 		t.Fatalf("normalize refreshed updated_at: %s", RowJSONCompact(rows[0]))
+	}
+}
+
+// DF-BOARDCTL-41: a tasks.jsonl row with status "closed" is converted to
+// "complete" by NormalizeBoard --apply (closed joined the read-alias table),
+// while unknown junk statuses (wip) are still REFUSED and stay byte-identical.
+func TestNormalizeBoardClosedAliasConverts(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl": `{"id":"DF41-CLOSED","title":"terminal success","status":"closed","priority":"P2"}` + "\n" +
+			`{"id":"DF41-WIP","title":"ambiguous junk","status":"wip","priority":"P3"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"df41","namespace":"df41","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// dry-run: the closed row is classified as a mechanical status change,
+	// the wip row is refused; nothing is written.
+	dry, err := b.NormalizeBoard(false)
+	if err != nil {
+		t.Fatalf("NormalizeBoard(dry-run): %v", err)
+	}
+	var closedChange, wipRefusal bool
+	for _, c := range dry.Changes {
+		if c.ID == "DF41-CLOSED" && c.Kind == "status" && c.From == "closed" && c.To == "complete" {
+			closedChange = true
+		}
+	}
+	for _, r := range dry.Refusals {
+		if r.ID == "DF41-WIP" && r.Kind == "status" {
+			wipRefusal = true
+		}
+	}
+	if !closedChange {
+		t.Fatalf("dry-run did not classify DF41-CLOSED closed->complete: %+v", dry.Changes)
+	}
+	if !wipRefusal {
+		t.Fatalf("dry-run did not refuse DF41-WIP: %+v", dry.Refusals)
+	}
+	mid, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(mid) {
+		t.Fatalf("dry-run rewrote tasks.jsonl:\nbefore %s\nafter  %s", before, mid)
+	}
+
+	// apply: the closed row becomes complete, the wip row stays byte-identical.
+	if _, err := b.NormalizeBoard(true); err != nil {
+		t.Fatalf("NormalizeBoard(apply): %v", err)
+	}
+	after, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(after), `{"id":"DF41-CLOSED","title":"terminal success","status":"complete"`) {
+		t.Fatalf("closed row not converted to complete: %s", after)
+	}
+	if !strings.Contains(string(after), `{"id":"DF41-WIP","title":"ambiguous junk","status":"wip"`) {
+		t.Fatalf("wip row was mutated by apply: %s", after)
 	}
 }

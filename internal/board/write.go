@@ -1169,10 +1169,11 @@ type fieldChange struct {
 // no-op (idempotent).
 //
 // Refusal: if a present field's value cannot be resolved (an unknown status
-// such as retired/closed/wip, or a guard/ci value outside its vocabulary),
+// such as retired/wip, or a guard/ci value outside its vocabulary),
 // the whole normalize fails naming the field and offending value and NOTHING
 // is written. The row keeps its dirty value: ambiguous statuses need a human
-// decision, not a silent coercion.
+// decision, not a silent coercion. (closed no longer refuses: DF-BOARDCTL-41
+// added it to the read-alias table.)
 //
 // Unlike UpdateTask this does NOT append an audit event and does NOT refresh
 // updated_at — normalize is a pure spelling repair of values already on the

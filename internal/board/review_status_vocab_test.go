@@ -9,10 +9,12 @@ import (
 // (create/update — write.go rejects with "not in write vocabulary"), but the
 // notorious fleet offenders had no table-driven proof at the library level.
 // duplicate/parked/resolved/retired are statuses real boards drifted into; the
-// aliases (done/open/completed/todo) must ALSO be refused on the write side —
-// reads accept them, writes never do.
+// aliases (done/open/completed/todo/closed) must ALSO be refused on the write
+// side — reads accept them, writes never do. DF-BOARDCTL-41: closed joined
+// the READ alias table but the write path checks the canonical vocabulary,
+// not the alias table, so a closed write must still be refused.
 func TestWriteRejectsOffVocabularyStatus(t *testing.T) {
-	for _, st := range []string{"duplicate", "parked", "resolved", "retired", "done", "open", "completed", "todo"} {
+	for _, st := range []string{"duplicate", "parked", "resolved", "retired", "closed", "done", "open", "completed", "todo"} {
 		// create path: rejected, nothing appended, no event fired. The
 		// "completed" alias has its own dedicated refusal message (write.go
 		// names the singular 'complete'); everything else hits the generic

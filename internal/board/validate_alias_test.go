@@ -36,6 +36,7 @@ func TestStatusAliasesTable(t *testing.T) {
 	}{
 		{"completed", "complete"},
 		{"done", "complete"},
+		{"closed", "complete"},
 		{"todo", "pending"},
 		{"open", "pending"},
 		{"in-progress", "in_progress"},
@@ -52,6 +53,9 @@ func TestStatusAliasesTable(t *testing.T) {
 		{" In-Progress ", "in_progress"},
 		{"INPROGRESS", "in_progress"},
 		{"Reopened", "pending"},
+		// DF-BOARDCTL-41: closed -> complete, case/whitespace tolerant
+		{"CLOSED", "complete"},
+		{" closed ", "complete"},
 	}
 	for _, c := range cases {
 		got := NormalizeStatus(c.raw)
@@ -65,7 +69,7 @@ func TestStatusAliasesTable(t *testing.T) {
 	}
 	// every spelling the policy names as an ALIAS (in_progress is canonical
 	// and therefore never drift) must classify as alias=true
-	for _, alias := range []string{"completed", "done", "todo", "open", "in-progress", "inprogress", "reopen", "reopened"} {
+	for _, alias := range []string{"completed", "done", "closed", "todo", "open", "in-progress", "inprogress", "reopen", "reopened"} {
 		if _, _, isAlias := ResolveStatus(alias); !isAlias {
 			t.Errorf("ResolveStatus(%q).alias = false, want true (policy alias)", alias)
 		}
@@ -73,8 +77,9 @@ func TestStatusAliasesTable(t *testing.T) {
 }
 
 // BT-025: canonical values resolve with alias=false; unknown values —
-// explicitly retired, closed, wip, and malformed junk — stay unresolved and
-// pass through NormalizeStatus unchanged.
+// explicitly retired, wip, and malformed junk — stay unresolved and
+// pass through NormalizeStatus unchanged. (closed left the unknown bucket
+// in DF-BOARDCTL-41: it is an alias for complete now.)
 func TestStatusResolveCanonicalAndUnknown(t *testing.T) {
 	for _, st := range []string{"pending", "in_progress", "review", "blocked", "complete", "failed"} {
 		canonical, ok, alias := ResolveStatus(st)
@@ -82,7 +87,7 @@ func TestStatusResolveCanonicalAndUnknown(t *testing.T) {
 			t.Errorf("canonical %q resolved to (%q,%v,%v), want itself with alias=false", st, canonical, ok, alias)
 		}
 	}
-	for _, st := range []string{"retired", "closed", "wip", `"pending`, "shipped", "in progress", " " /* whitespace-only */, "pending-ish"} {
+	for _, st := range []string{"retired", "wip", `"pending`, "shipped", "in progress", " " /* whitespace-only */, "pending-ish"} {
 		if got := NormalizeStatus(st); got != st {
 			t.Errorf("NormalizeStatus(%q) = %q, want pass-through", st, got)
 		}
@@ -100,7 +105,7 @@ func TestStatusResolveCanonicalAndUnknown(t *testing.T) {
 // value and the normalize fix path — validate must exit OK (zero errors) on
 // a board that only carries alias statuses.
 func TestValidateAliasStatusesWarnNotError(t *testing.T) {
-	b := seedAliasBoard(t, "completed", "done", "todo", "open", "in-progress", "inprogress", "reopen", "reopened")
+	b := seedAliasBoard(t, "completed", "done", "closed", "todo", "open", "in-progress", "inprogress", "reopen", "reopened")
 	rep, err := b.Validate()
 	if err != nil {
 		t.Fatal(err)
@@ -108,7 +113,7 @@ func TestValidateAliasStatusesWarnNotError(t *testing.T) {
 	if rep.HasErrors() {
 		t.Fatalf("alias statuses must not error; findings: %+v", rep.Findings)
 	}
-	for _, st := range []string{"completed", "done", "todo", "open", "in-progress", "inprogress", "reopen", "reopened"} {
+	for _, st := range []string{"completed", "done", "closed", "todo", "open", "in-progress", "inprogress", "reopen", "reopened"} {
 		found := false
 		for _, f := range rep.Findings {
 			if f.Level == "warn" && strings.Contains(f.Msg, `status "`+st+`"`) && strings.Contains(f.Msg, "read alias") && strings.Contains(f.Msg, "--normalize") {
@@ -133,7 +138,9 @@ func TestValidateAliasStatusesWarnNotError(t *testing.T) {
 func TestValidateUnknownStatusesStillError(t *testing.T) {
 	// "\\\"pending" is the JSON-escaped on-disk spelling of the malformed
 	// junk status '"pending' (a leading quote) from the BT-025 spec.
-	for _, st := range []string{"retired", "closed", "wip", "\\\"pending"} {
+	// closed left the unknown bucket in DF-BOARDCTL-41 (read alias for
+	// complete now) — retired/wip/junk still error.
+	for _, st := range []string{"retired", "wip", "\\\"pending"} {
 		b := seedAliasBoard(t, st)
 		rep, err := b.Validate()
 		if err != nil {

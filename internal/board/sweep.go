@@ -15,7 +15,7 @@ import (
 // board-wide driver for the same two outcomes:
 //
 //   - a status that is a KNOWN read alias (StatusAliases: todo, done, open,
-//     completed, in-progress, ...) is "fixable by --normalize" — with --apply
+//     closed, completed, in-progress, ...) is "fixable by --normalize" — with --apply
 //     the sweep canonicalizes it by calling NormalizeTask per row, so the
 //     rewrite reuses the BT-025 machinery (only the status spelling changes,
 //     every other byte of the row round-trips) instead of a hand-rolled JSON

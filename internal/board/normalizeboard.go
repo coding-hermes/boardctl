@@ -18,8 +18,9 @@ package board
 //     and a single bare id "GAP-077" becomes ["GAP-077"]. A number, object,
 //     or unparseable value is ambiguous — reported, never guessed.
 //   - STATUS ALIASES via BT-025 ResolveStatus: open -> pending,
-//     done -> complete. An absent/null status or an unknown value
-//     (retired, duplicate, wip) needs a human decision — never written.
+//     done -> complete, closed -> complete (DF-BOARDCTL-41). An
+//     absent/null status or an unknown value (retired, duplicate, wip)
+//     needs a human decision — never written.
 //   - missing created_at is REPORTED ONLY (the task is explicit: tolerate,
 //     do not fabricate a birth timestamp).
 //

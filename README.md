@@ -604,7 +604,7 @@ trimmed), because those spellings exist on live fleet boards and validate
 would otherwise fail the very boards it exists to check:
 
 ```
-completed, done                     -> complete
+completed, done, closed             -> complete
 todo, open, reopen, reopened        -> pending
 in-progress, inprogress             -> in_progress
 ```
@@ -619,9 +619,12 @@ OPEN row (`internal/board/fingerprint.go`).
 An alias status is a WARNING on `validate`/`doctor` naming the canonical
 value — e.g. `status "todo" is a read alias for "pending"` — so a board full
 of legacy spellings still validates OK while the drift stays visible.
-Anything NOT canonical and NOT an alias (`retired`, `closed`, `wip`,
+Anything NOT canonical and NOT an alias (`retired`, `wip`,
 malformed junk) remains an ERROR: ambiguous statuses need a human decision,
-not a silent coercion.
+not a silent coercion. (`closed` was originally in that ambiguous bucket and
+joined the alias table instead — DF-BOARDCTL-41: every live 'closed' row
+observed on a real fleet board carried terminal-success evidence, so it
+unambiguously means `complete`.)
 
 Aliases are read-only: every write surface (`create`, `update`, `import`)
 still rejects them, and nothing is auto-fixed on read. The sanctioned fix

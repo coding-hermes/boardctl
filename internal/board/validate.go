@@ -66,10 +66,11 @@ func (r *Report) HasErrors() bool { return r.Errors() > 0 }
 //   - board.jsonl header (topology A) parses with integer counters
 //   - task status: canonical vocabulary {pending,in_progress,review,blocked,
 //     complete,failed} passes; a known read alias (BT-025: completed, done,
-//     todo, open, in-progress/inprogress/in_progress, reopen/reopened) is a
-//     WARNING naming the canonical value — writes still reject aliases, and
-//     `boardctl update <id> --normalize` is the sanctioned fix; anything else
-//     (retired, closed, wip, malformed junk) is an ERROR
+//     closed, todo, open, in-progress/inprogress/in_progress, reopen/
+//     reopened) is a WARNING naming the canonical value — writes still
+//     reject aliases, and `boardctl update <id> --normalize` is the
+//     sanctioned fix; anything else (retired, wip, malformed junk) is an
+//     ERROR
 //   - BT-007: guard_result/ci_result values on existing rows are itemized
 //     warnings when free-form (legacy prose tolerated, not failed)
 //   - BT-007: depends_on ids that reference no task row are itemized warnings
@@ -143,8 +144,9 @@ func (b *Board) validateTasks(rep *Report) {
 			rep.Add("warn", "tasks.jsonl line %d (task %s): missing status", idx+1, id)
 		} else if canonical, ok, alias := ResolveStatus(st); !ok {
 			// BT-025: not canonical and not a known read alias — stay an
-			// ERROR. Ambiguous spellings (retired, closed, wip, junk) need
-			// a human decision; they are never silently coerced.
+			// ERROR. Ambiguous spellings (retired, wip, junk) need a human
+			// decision; they are never silently coerced. (closed joined the
+			// alias table per DF-BOARDCTL-41.)
 			rep.Add("error", "tasks.jsonl line %d (task %s): status %q not in vocabulary {%s} (accepted read aliases: %s)",
 				idx+1, id, st, strings.Join(sortedVocab(), ","), strings.Join(sortedAliases(), ", "))
 		} else if alias {

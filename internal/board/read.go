@@ -29,12 +29,16 @@ var StatusVocabulary = map[string]bool{
 // error to a warning naming the canonical value so operators can see (and
 // fix with `boardctl update <id> --normalize`) the drift instead of learning
 // to ignore validate. Lookup keys are the trimmed, lower-cased spelling.
-// Deliberately NOT aliases: ambiguous values such as retired, closed, wip,
-// or malformed junk — those stay unknown and keep failing validate, because
-// coercing them needs a human decision, not a table.
+// Deliberately NOT aliases: ambiguous values such as retired, wip, or
+// malformed junk — those stay unknown and keep failing validate, because
+// coercing them needs a human decision, not a table. (DF-BOARDCTL-41
+// reversed the original "closed is ambiguous" call: every live 'closed'
+// row observed on a real fleet board carried terminal-success evidence,
+// so closed -> complete joined the table as an evidence-based alias.)
 var StatusAliases = map[string]string{
 	"completed":   "complete",
 	"done":        "complete",
+	"closed":      "complete",
 	"todo":        "pending",
 	"open":        "pending",
 	"in-progress": "in_progress",

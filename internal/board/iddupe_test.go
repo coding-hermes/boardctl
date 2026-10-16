@@ -366,6 +366,24 @@ func TestIDDupe_RefusesUnknownStatusBeforeWriting(t *testing.T) {
 	}
 }
 
+// DF-BOARDCTL-41: a later duplicate whose status is "closed" no longer
+// refuses the id-aware dedupe — closed joined the read-alias table, so it
+// resolves to complete (terminal) and lands on AlreadyTerminalIDs instead of
+// needing a human decision.
+func TestIDDupe_ClosedStatusIsTerminalNotRefused(t *testing.T) {
+	b := seedIDDupeBoard(t,
+		`{"id":"QA-ASCE-1","title":"[P2] header-frozen","reasoning":"cell: stuck","status":"pending","priority":"P2"}`,
+		`{"id":"QA-ASCE-1","title":"[P2] landed on main","reasoning":"cell: shipped","status":"closed","priority":"P2"}`,
+	)
+	rep := mustIDDupe(t, b, true)
+	if len(rep.Groups) != 0 {
+		t.Fatalf("closed later line produced a closure group %+v, want already-terminal only", rep.Groups)
+	}
+	if len(rep.AlreadyTerminalIDs) != 1 || rep.AlreadyTerminalIDs[0] != "QA-ASCE-1" {
+		t.Fatalf("AlreadyTerminalIDs = %+v, want [QA-ASCE-1]", rep.AlreadyTerminalIDs)
+	}
+}
+
 // AC5 support: object-form reasoning (the qa-dagger shape) is quoted into the
 // event on its human-readable "note" member, and HTML-significant characters
 // in a title survive the event verbatim (SetEscapeHTML(false) contract).
