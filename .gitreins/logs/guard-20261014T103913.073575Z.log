@@ -1,0 +1,43 @@
+GitReins guard run log — full output (the console summary is bounded)
+run_utc: 2026-10-14T10:39:13Z
+workdir: /home/kara/coding-hermes-boardctl
+test_mode: full
+test_targets: all (full mode)
+overall: PASS
+guards: 4 (0 failed, 0 skipped)
+diagnostics:
+  first_failing_test: none detected
+  secrets_scanners: clean (gitleaks + builtin cross-check)
+  scanner_nice: scanners: nice=nice -n 10
+
+==============================================================================
+[PASS] secrets  passed=true  exit_code=n/a
+==============================================================================
+--- output (untruncated) ---
+gitleaks: clean
+
+==============================================================================
+[PASS] go_build  passed=true  exit_code=n/a
+==============================================================================
+--- output (untruncated) ---
+go build: ok
+
+==============================================================================
+[PASS] go_lint  passed=true  exit_code=n/a
+==============================================================================
+--- output (untruncated) ---
+golangci-lint: clean
+
+==============================================================================
+[PASS] go_tests  passed=true  exit_code=n/a
+==============================================================================
+--- output (untruncated) ---
+ok  	github.com/coding-hermes/boardctl/cmd/boardctl	4.754s
+ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.030s
+ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.019s
+ok  	github.com/coding-hermes/boardctl/internal/board	2.479s
+ok  	github.com/coding-hermes/boardctl/internal/describe	0.005s
+ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.501s
+ok  	github.com/coding-hermes/boardctl/internal/freshness	1.662s
+ok  	github.com/coding-hermes/boardctl/internal/render	0.247s
+ok  

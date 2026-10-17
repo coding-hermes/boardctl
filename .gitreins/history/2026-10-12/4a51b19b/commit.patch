@@ -1,0 +1,248 @@
+commit 1189a6451f1df72ba317cde5549cc7483f0e5246
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Mon Oct 12 18:00:16 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Mon Oct 12 18:00:16 2026 -0500
+
+    dogfood: run 22 — umbrella surface driven over boardctl+warpfs, 4 findings filed
+    
+    Real use of the BT-078 umbrella surface (runs 1-21 never drove it): links
+    registry over boardctl's own board + warpfs's board (529 tasks). Census,
+    --json, --list, --validate, --strict all as documented; read-only held.
+    
+    Findings filed on the board (DF-BOARDCTL-34..37, via boardctl create):
+    - 34 (P1) umbrella --stats tallies warpfs's embedded-JSON priority verbatim
+      into grand-total buckets (umbrella.go Stats() has no vocabulary gate)
+    - 35 (P2) doctor's tracked-set check misses UNTRACKED board.db fossils in
+      the board dir (untracked 12KB DuckDB regenerating here, mtime today)
+    - 36 (P2) warpfs's board is a second dialect (597 warnings) — cross-repo
+      views need an onboarding/remediation recipe
+    - 37 (P2) umbrella --list takes no --status
+    
+    Artifacts: docs/dogfood/2026-10-12-run22-umbrella-integration.md,
+    diagnostics.md Run-22 addendum, skills/boardctl-usage 1.15.0->1.16.0
+    (pitfalls 20-22), dogfood-log.md run-22 entry.
+    
+    Install leg: fresh bunker-mvp agent, README zero-dep path v0.1.10 in 1s,
+    checksum OK, validate/doctor/init->create->update smoke green; agent
+    destroyed, key removed. las-02 agent lost its network mid-leg (TTL backstop
+    armed; escalation note in the report).
+---
+ .coding-hermes/board/events.jsonl                  |  7 ++
+ .coding-hermes/board/tasks.jsonl                   |  4 +
+ .coding-hermes/dogfood-log.md                      |  1 +
+ .../2026-10-12-run22-umbrella-integration.md       | 91 ++++++++++++++++++++++
+ docs/dogfood/diagnostics.md                        | 25 ++++++
+ skills/boardctl-usage/SKILL.md                     | 21 ++++-
+ 6 files changed, 147 insertions(+), 2 deletions(-)
+
+diff --git a/.coding-hermes/board/events.jsonl b/.coding-hermes/board/events.jsonl
+index a0e6f20..cdc0bc3 100644
+--- a/.coding-hermes/board/events.jsonl
++++ b/.coding-hermes/board/events.jsonl
+@@ -425,3 +425,10 @@
+ {"id":422,"type":null,"task_id":"DOC-31","actor":"foreman","detail":"{\"status\":\"complete\"}","timestamp":"2026-10-12T04:15:03Z","event_type":"task_completed","tick_number":null}
+ {"id":423,"type":null,"task_id":"DOC-31","actor":"foreman","detail":"DOC-31 closed: README --by-id + --json documented, commit a379d51 pushed, judge PASS 74a2532c","timestamp":"2026-10-12T04:15:03Z","event_type":"task_completed","tick_number":113}
+ {"id":424,"timestamp":"2026-10-12 05:40:00","event_type":"audit","task_id":null,"actor":"foreman","detail":"{\"tick\": 114, \"task\": \"DOC-30\", \"worker\": \"glm-5.3-flash@zai-glm\", \"mode\": \"serial\", \"commit\": \"f87de04\", \"verdict\": \"PASS\", \"verdict_dir\": \".gitreins/history/2026-10-12/1a856186\", \"tier1\": \"PASS\", \"tier2\": \"PASS\", \"tests\": \"go build ./... && go vet ./... && go test ./... -count=1 -short: PASS; DOC30 assertions: PASS\", \"ci\": \"HEAD run observed in_progress at closeout; prior runs green\", \"summary\": \"README now documents the identical inline data SVG favicon on GET / and GET /ui, with no /favicon.ico request, seventh route, or external asset; six-route table preserved.\"}","tick_number":114}
++{"id":425,"timestamp":"2026-10-12 22:49:07","event_type":"task_created","task_id":"DF-BOARDCTL-31","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-31\",\"status\":\"pending\"}","tick_number":null}
++{"id":426,"timestamp":"2026-10-12 22:49:29","event_type":"task_created","task_id":"DF-BOARDCTL-32","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-32\",\"status\":\"pending\"}","tick_number":null}
++{"id":427,"timestamp":"2026-10-12 22:49:29","event_type":"task_created","task_id":"DF-BOARDCTL-33","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-33\",\"status\":\"pending\"}","tick_number":null}
++{"id":428,"timestamp":"2026-10-12 22:56:58","event_type":"task_created","task_id":"DF-BOARDCTL-34","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-34\",\"status\":\"pending\"}","tick_number":null}
++{"id":429,"timestamp":"2026-10-12 22:56:59","event_type":"task_created","task_id":"DF-BOARDCTL-35","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-35\",\"status\":\"pending\"}","tick_number":null}
++{"id":430,"timestamp":"2026-10-12 22:57:12","event_type":"task_created","task_id":"DF-BOARDCTL-36","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-36\",\"status\":\"pending\"}","tick_number":null}
++{"id":431,"timestamp":"2026-10-12 22:57:12","event_type":"task_created","task_id":"DF-BOARDCTL-37","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-37\",\"status\":\"pending\"}","tick_number":null}
+diff --git a/.coding-hermes/board/tasks.jsonl b/.coding-hermes/board/tasks.jsonl
+index f44322f..207d0b7 100644
+--- a/.coding-hermes/board/tasks.jsonl
++++ b/.coding-hermes/board/tasks.jsonl
+@@ -161,3 +161,7 @@
+ {"id": "DF-BOARDCTL-31", "title": "dedupe-board --by-id repair leaves validate permanently red: every later line closed as superseded still fails 'duplicate task id'", "status": "pending", "priority": "P2", "created_at": "2026-10-12 22:49:07+00:00", "worker_status": "pending", "guard_result": null, "ci_result": null, "completed_at": null, "updated_at": "2026-10-12 22:49:07+00:00", "worker_summary": null, "foreman_note": null, "reasoning": "Repro (dogfood tick 2026-10-12-22-27-24, scratch copy of the lore board): dedupe-board --board-dir <scratch> --by-id --apply closes RELEASE-LORE-003 line 72 (status=complete, superseded_by=RELEASE-LORE-003) — then boardctl validate on the SAME board still exits 1: '[error] tasks.jsonl line 72: duplicate task id \"RELEASE-LORE-003\" (also line 63)' plus 4 more duplicate-id errors, identical to the pre-repair board. iddupe.go:19-23 states the repair premise: 'validate permanently errors (exit 1) on every such board ... Nothing repaired the HYGIENE. This file is the missing repair tool' — but after the repair, validate is STILL permanently red, so any board-lint pre-commit hook (boardctl install --lint-mode enforce) permanently blocks commits on a correctly-repaired board, and the repair is undetectable to the validator that motivated it. Evidence of intent already on the row: superseded_by=<kept id> + worker_summary naming the kept line. Fix direction: validate's duplicate-id check should treat a later duplicate line carrying superseded_by as resolved (downgrade to info, or count it separately) — or gate it behind --fail-on dangling-dep-style opt-in. Verified the closure semantics themselves are correct (status/summary/superseded_by/completed_at all set, untouched lines byte-identical, idempotent re-run, fresh-box byte-identical result).", "complexity": 3, "detail": {"fingerprint": "109efee5bac81743b7a3f49bb72cbb4f6d80eb500f09659add0595aee365b10f", "evidence": [{"run_id":"dogfood-2026-10-12-22-27-24","ts":"2026-10-12 22:49:07+00:00"}]}}
+ {"id": "DF-BOARDCTL-32", "title": "recycled-id census miscounts pre-repair boards: recycled_ids counts ids with duplicate lines (pre-repair) instead of ids still carrying actionable duplicates (post-repair); boards with only already-terminal duplicates report 'nothing to do' with no explanation", "status": "pending", "priority": "P3", "created_at": "2026-10-12 22:49:29+00:00", "worker_status": "pending", "guard_result": null, "ci_result": null, "completed_at": null, "updated_at": "2026-10-12 22:49:29+00:00", "worker_summary": null, "foreman_note": null, "reasoning": "Repro (dogfood tick 2026-10-12-22-27-24, live fleet boards, read-only dry-runs): bunker board (722 rows) reports 'recycled ids: 4' then 'nothing to do — no recycled task ids on this board (no files written)' — self-contradictory on its face (4 recycled but none). Ground truth (independent census): all 4 recycled ids' later lines are already terminal (failed/complete), correctly untouched by contract, but the summary line does not say so. Same shape on lore: 4 recycled ids, 1 group, 3 unexplained. lore --json shows groups:[1] with no mention of QA-LORE-4/LORE-047/LORE-048 already-terminal lines (they are correctly omitted from groups but the report never says why 4-1=3). Fix direction: (a) summary line should read 'nothing to do — N recycled ids, all later lines already terminal' when recycled_ids>0 but ClosedAway is empty; (b) IDDupeReport should carry per-id already_terminal_lines in --json (the struct already has the field, it is just never populated for report-only runs — iddupe.go pass-1 fills it but the JSON for a dry-run with groups=[] hides it).", "complexity": 3, "detail": {"fingerprint": "e2fb93ed327ade87a29ff492456899579277c631e2f8ff272a40c8d12bd6c5b0", "evidence": [{"run_id":"dogfood-2026-10-12-22-27-24","ts":"2026-10-12 22:49:29+00:00"}]}}
+ {"id": "DF-BOARDCTL-33", "title": "dedupe-board --by-id --lanes refusal exits 0 in text mode (2 only under --json); the documented guard prints its refusal on stdout then exits 0", "status": "pending", "priority": "P3", "created_at": "2026-10-12 22:49:29+00:00", "worker_status": "pending", "guard_result": null, "ci_result": null, "completed_at": null, "updated_at": "2026-10-12 22:49:29+00:00", "worker_summary": null, "foreman_note": null, "reasoning": "Repro (dogfood tick 2026-10-12-22-27-24): dedupe-board --board-dir ~/lore --by-id --lanes crier prints 'refusing to touch board ... (lane \"lore\") — it is not in --lanes crier' and the process exit code is 0 (verified with $?); with --by-id --json the same refusal exits 2. A scripted caller checking exit codes (the README's own create/update contract elsewhere is 0/1/2) sees success on a refused write-mode run. Fix direction: unify the refusal exit code across text and JSON modes (2), or document the text-mode 0 as intentional.", "complexity": 3, "detail": {"fingerprint": "bfc1f1567dd7aada2670a387854fdfb38eedae70c47b1f79093de9d93cf188c9", "evidence": [{"run_id":"dogfood-2026-10-12-22-27-24","ts":"2026-10-12 22:49:29+00:00"}]}}
++{"id": "DF-BOARDCTL-34", "title": "P1 umbrella --stats grand-total priority map emits corrupt keys — warpfs's embedded-JSON priority ('P1\",\"source\":\"qa-dagger') is tallied verbatim into its own buckets", "status": "pending", "priority": "P1", "created_at": "2026-10-12 22:56:58+00:00", "worker_status": "pending", "guard_result": null, "ci_result": null, "completed_at": null, "updated_at": "2026-10-12 22:56:58+00:00", "worker_summary": null, "foreman_note": null, "reasoning": "Real use of the BT-078 umbrella surface over boardctl+warpfs (2026-10-12, run 21): 'umbrella --stats' prints priority buckets 'P1\",\"source\":\"qa-dagger 1' and 'P3\",\"source\":\"qa-dagger 1' in BOTH the per-repo and grand-total maps (internal/board/umbrella.go Stats() sums st.Priority verbatim ~line 428-438). The corrupt values come from warpfs rows QA-WARPFS-1/2 whose priority field contains embedded JSON — single-board validate flags them (writes reject the value) but the umbrella surface silently aggregates them as if they were priorities. Fix direction: skip/normalize non-vocabulary priority values in Stats() with a warn finding, matching the policy writes already enforce.", "complexity": 3, "detail": {"fingerprint": "63bea1b7061b4c1d325baab8d4939ac9077a71d7b5abcb602e2fe6dca23c8a30"}}
++{"id": "DF-BOARDCTL-35", "title": "P2 doctor git-tracked-set check only inspects git-TRACKED paths — an untracked DuckDB board.db sitting in the board dir goes unnoticed while README declares 'the JSONL files are the board'", "status": "pending", "priority": "P2", "created_at": "2026-10-12 22:56:59+00:00", "worker_status": "pending", "guard_result": null, "ci_result": null, "completed_at": null, "updated_at": "2026-10-12 22:56:59+00:00", "worker_summary": null, "foreman_note": null, "reasoning": "Real use 2026-10-12 run 21: .coding-hermes/board/board.db (DuckDB v1.5.5, 12KB, mtime 2026-10-12 05:43, untracked per git status + .gitignore rc=1) exists in the repo's own board dir, yet doctor exits 0 with no mention — doctor.go:15 states the tracked-set rule as 'no tracked path may carry .db/.parquet' and doctor.go:75-82 switches only over git ls-files output. README (line ~1073) says the db was removed 2026-09-03 and 'the JSONL files are the board'. The cache is regenerating from some local writer (no repo script references it). Fix direction: doctor should also warn (not error) on UNTRACKED db/parquet files present in the board dir, naming them as cache fossils; locate the writer separately.", "complexity": 3, "detail": {"fingerprint": "e55955e7887a22bb8bb1bf28713a7757f4fe5aa7d83e636e42b700bd94845e31"}}
++{"id": "DF-BOARDCTL-36", "title": "P2 warpfs's board drifts far outside boardctl's canon: 369 rows, 127 with non-canon keys, 38 '(none)' status, string (not array) depends_on, missing created_at — the report parser excludes most rows from time metrics", "status": "pending", "priority": "P2", "created_at": "2026-10-12 22:57:12+00:00", "worker_status": "pending", "guard_result": null, "ci_result": null, "completed_at": null, "updated_at": "2026-10-12 22:57:12+00:00", "worker_summary": null, "foreman_note": null, "reasoning": "Real use 2026-10-12 run 21 drove umbrella --validate over warpfs's board: OK exit but 597 warnings — 127/369 rows carry non-canon keys (_pass_criteria, acceptance, created, project...), 38 rows have empty status, ~10 use string depends_on ('treated as no dependencies'), dozens lack created_at (excluded from report time metrics), several use read-alias statuses (open) and free-form guard_result/ci_result. The fleet's biggest board is effectively a second dialect. Fix direction (boardctl side, warpfs is another foreman's project): a documented 'onboard legacy board' recipe (sweep-status + --normalize + --strict-keys report) or an umbrella-level dialect summary, so cross-repo views don't drown in 597 warnings with no prioritized remediation path.", "complexity": 3, "detail": {"fingerprint": "d9fa77fcda41bd4e29e6f822279228d87855caaaea9696ec634c7b81d4d103a9"}}
++{"id": "DF-BOARDCTL-37", "title": "P2 umbrella --list is unfiltered (no --status flag) and out of sync with skill docs claiming run-N coverage — a user filtering pending tasks falls back to jq", "status": "pending", "priority": "P2", "created_at": "2026-10-12 22:57:12+00:00", "worker_status": "pending", "guard_result": null, "ci_result": null, "completed_at": null, "updated_at": "2026-10-12 22:57:12+00:00", "worker_summary": null, "foreman_note": null, "reasoning": "Real use 2026-10-12 run 21: 'umbrella --list --status pending' errors 'flag provided but not defined: -status' — usage correctly prints the 3-verb contract, but the natural next question for a cross-repo operator (what's actionable across all my boards?) has no umbrella answer; single-board 'list --status pending' works. Fix direction: pass TaskFilter through Umbrella.List/--list (--status/--priority), or document the jq equivalent in README BT-078 section.", "complexity": 3, "detail": {"fingerprint": "f7083092ecc84228bdfcb7875dc935e2f512fcf6d44ced2a120049fd5b08bde5"}}
+diff --git a/.coding-hermes/dogfood-log.md b/.coding-hermes/dogfood-log.md
+index 113a31b..6db11cb 100644
+--- a/.coding-hermes/dogfood-log.md
++++ b/.coding-hermes/dogfood-log.md
+@@ -23,3 +23,4 @@
+ 2026-10-09 | run 20 | verdict=SHIPPABLE (CLI core incl. new BT-076/077 features verified live; PROMISING-BUT-ROUGH at the release boundary) | promise="A user can manage coding-hermes JSONL foreman boards with a fast, database-free CLI — deferred rows excluded from actionable, plural association fields merged per dimension, byte-stable diffs, 0/1/2 exit contract — plus a loopback serve /ui analytics surface" | install_seconds=2 (README quickstart verbatim on fresh Debian 13 bunker: checksum-verified v0.1.10, no Go, no sudo; las-03 offline → las-02) | bunker=las-bunker-02 agent=6416dcda (destroyed, key removed) | smoke=ok (v0.1.10 validate/stats/doctor on repo board OK; HEAD binary on same agent: deferred+assoc smoke green) | ttfs=2s install; ~0s first command | angle=BT-076 --deferred, BT-077 plural associations, BT-079 gendocs parity, BT-075 serve /ui in a real browser, zip upload (DF-BOARDCTL-6 closure) — all surfaces runs 1-19 skipped | friction=2 substantive + 1 nit | top findings: DF-BOARDCTL-26 (P1) README documents --deferred/--pull-request as current but Current-release v0.1.10 rejects both flags — docs a full release ahead of the artifact; DF-BOARDCTL-27 (P1) repo's own board carries unparseable created_at (2 double-dash dialect + 2 empty) that validate passes silently while the report parser flags them excluded-from-metrics — integrity surfaces disagree, proven on the repo's own 144-task board; DF-BOARDCTL-28 (P2) plural association fields undocumented in README, one-dimension-per-invocation rule discoverable only via error | VERIFIED CLEAN: BT-076 semantics end-to-end (actionable excludes deferred, separate stats line+JSON key, non-bool usage error, hand-edited warn, nil-untouched), BT-077 merge semantics (dup kept-once, singular+other dimensions survive), gendocs empty-diff parity at HEAD, browser /ui full pass (charts real data, filters, fixtures toggle, validation panel, 1 favicon 404), zip upload live, report counts cross-checked vs jq ground truth (141/143 complete, fixture excluded), read-only claim held | perf: NO PERF rows — validate 12.9ms, stats 7.5ms, render 30ms/626KB, upload page load 86ms, 0 longtasks; nothing a user feels | rows DF-BOARDCTL-26..30 appended via python line-wise script (148 tasks, 386 events, validate OK, 14 pre-existing warnings unchanged) | infra: las-03+bunker4 offline, las-02 spawn OK 0 500s, destroyed cleanly | left behind: docs/dogfood/2026-10-09-run20-bt076-077-ui-integration.md, diagnostics.md Run-20 addendum, skills/boardctl-usage 1.13.0->1.14.0 (run-20 lessons), this entry
+ 
+ 2026-10-12 | run 21 | verdict=SHIPPABLE for dedupe-board (per-surface: repair engine correct+deterministic+fast; validator integration and census reporting rough) | promise="A user with an id-recycled board can dry-run the repair (--by-id), read it as JSON (--json), apply it (--apply) — later lines closed as superseded-by-earliest with the finding text preserved in the audit log — after installing the source-only entrypoint per README (go install .../cmd/dedupe-board@latest shape)" | install_seconds=21.7 cold (Go 1.26.9 toolchain download + extract + go install ./cmd/dedupe-board on fresh bunker box, zero preinstalled Go, no sudo; go.mod/go.sum sha256-verified after per-file transfer) | bunker=bunker-mvp agent=boardctl-df1012 (destroyed, key removed, verified gone) | smoke=ok (fresh box: precise error on events.jsonl-missing; apply on original pre-apply lore board produced tasks.jsonl byte-identical to local applied copy modulo timestamps; audit event identical modulo ts) | ttfs=~22s toolchain-to-binary; first command instant | angle=dedupe-board --by-id/--json/--apply — the surface runs 1-20 never exercised beyond a default-mode dry-run (run 15); 8 live fleet boards dry-run read-only (asce/ai-plays-poke/heading/crier/warpfs/hivemind clean; bunker 4 recycled all-terminal; lore 1 actionable group applied on SCRATCH copy only) | friction=2 substantive + 1 exit-code | top findings: DF-BOARDCTL-31 (P2) --by-id repair leaves validate permanently red — the five duplicate-id errors are identical pre- and post-repair, so the tool's stated reason to exist ("nothing repaired the hygiene... this is the missing repair tool", iddupe.go:19-23) is not yet true and an enforce-mode lint hook stays uncommitable on a repaired board; DF-BOARDCTL-32 (P3) census self-contradiction: bunker reports "recycled ids: 4" then "nothing to do — no recycled task ids" (all later lines already terminal, correctly untouched but never explained); --json hides already-terminal ids entirely (4 recycled vs 1 group on lore, 3 unexplained); DF-BOARDCTL-33 (P3) --lanes refusal exits 0 in text mode, 2 in JSON mode — the 0/1/2 contract leaks exactly at a write guard | also: audit event preserves title+reasoning only — lore rows carry finding text in custom field releng_note, preserved on the closed ROW but not in the event log (scope note on DF-BOARDCTL-31) | VERIFIED CLEAN: closure semantics (exactly one line changed on lore scratch, byte-diff; status/superseded_by/worker_summary/completed_at all set; original title/reasoning bytes untouched), idempotent re-run writes nothing, dry-run zero-write contract, --lanes guard refuses (message correct), missing-events error message precise, fresh-box determinism | perf: NO PERF rows — dedupe dry-run 17.5ms ±0.9 on 566-row crier board (hyperfine 20 runs, release build); validate 42.0ms ±1.9 (hyperfine -i, exit 1 contractual there); nothing a user feels | rows DF-BOARDCTL-31..33 filed via boardctl create on its own board (20th consecutive self-hosting proof), committed b55d305, pushed, merge-base verified | infra: 1 spawn OK (bunker-mvp; las-01/03/04 offline), 0 500s, destroyed cleanly | left behind: docs/dogfood/2026-10-12-run21-dedupe-by-id-integration.md, diagnostics.md Run-21 addendum, skills/boardctl-usage 1.14.0->1.15.0 (run-21 lessons), this entry
++2026-10-12 | run 22 | verdict=PROMISING-BUT-ROUGH (umbrella surface; CLI/board core remains SHIPPABLE from runs 15-21) | promise="A user can point boardctl at an umbrella repo, symlink child boards under .coding-hermes/links/, and get a read-only unified view with repo-qualified ids, per-repo provenance stats, and unambiguous cross-board depends_on resolution — as documented in the BT-078 README section" | install_seconds=1 (README zero-dep path verbatim on fresh bunker-mvp Debian: checksum-verified v0.1.10 asset, no Go, no sudo; HEAD b55d305 also built from clone in 1s incremental) | bunker=bunker-mvp agent=d2ea6a81 (destroyed, key removed; las-03 ssh timeout, las-02 spawn retry OK but agent network died mid-leg — ssh+API unreachable, destroy deadline-exceeded, TTL 2h backstop armed, escalation noted; NOT a silent pass) | smoke=ok (v0.1.10 + HEAD binary: validate + doctor on cloned repo board OK (6 warnings); init->create->update->validate smoke 0 warnings) | ttfs=~1min (links setup + first census) | angle=the BT-078 umbrella surface no prior run drove — over the real fleet pairing boardctl(163)+warpfs(369)=529 tasks | friction=3 substantive + 1 UX | top findings: DF-BOARDCTL-34 (P1) umbrella --stats tallies warpfs's embedded-JSON priority ('P1","source":"qa-dagger') verbatim into per-repo AND grand-total buckets — umbrella.go Stats() sums st.Priority with no vocabulary gate while writes reject the same value; DF-BOARDCTL-35 (P2) doctor's git-tracked-set check only reads git ls-files — an UNTRACKED 12KB DuckDB board.db (mtime today, v1.5.5) sits in this repo's own board dir while README declares "the JSONL files are the board"; DF-BOARDCTL-36 (P2) warpfs's board is a second dialect (597 warnings: 127 rows off-canon keys, 38 empty statuses, string depends_on, missing created_at) — cross-repo views need an onboarding/remediation recipe; DF-BOARDCTL-37 (P2) umbrella --list takes no --status — "pending across all boards" has no first-class answer | VERIFIED CLEAN: census/--json/--list/--validate all as documented, repo-qualified ids, 17 local dep resolutions, broken-symlink error + exit 1, same-target link dedupe warn, --strict honest on healthy view, read-only held | perf: NO PERF rows — umbrella --stats 85.4ms ±38.2, census 73.9ms, validate 55.0ms (hyperfine 20 runs, HEAD binary, 529-row view); nothing a user feels | rows DF-BOARDCTL-34..37 filed via boardctl create (166 tasks, 0 dupes, validate OK 6 warnings) | infra: 1 spawn OK on mvp after las-02 loss, 0 500s, destroyed cleanly | left behind: docs/dogfood/2026-10-12-run22-umbrella-integration.md, diagnostics.md Run-22 addendum, skills/boardctl-usage 1.15.0->1.16.0 (pitfalls 20-22), this entry
+diff --git a/docs/dogfood/2026-10-12-run22-umbrella-integration.md b/docs/dogfood/2026-10-12-run22-umbrella-integration.md
+new file mode 100644
+index 0000000..6b7a82b
+--- /dev/null
++++ b/docs/dogfood/2026-10-12-run22-umbrella-integration.md
+@@ -0,0 +1,91 @@
++# Dogfood Run 22 — the umbrella surface (BT-078) over real fleet boards
++
++Date: 2026-10-12 · Verdict: PROMISING-BUT-ROUGH (umbrella surface; CLI/board core remains SHIPPABLE from runs 15-21)
++
++## Promise under test
++
++`boardctl umbrella` is a read-only unified view over one repo's board plus every
++child board symlinked under `.coding-hermes/links/`, with repo-qualified ids
++(`<repo>/<id>`), per-repo provenance, and unambiguous cross-board depends_on
++resolution (README §"Umbrella repos").
++
++## The real user's setup (verbatim)
++
++```bash
++mkdir -p /tmp/df-u/.coding-hermes/links
++ln -s /home/kara/coding-hermes-boardctl/.coding-hermes /tmp/df-u/.coding-hermes/links/boardctl
++ln -s /home/kara/warpfs/.coding-hermes          /tmp/df-u/.coding-hermes/links/warpfs
++/tmp/bc -C /tmp/df-u umbrella            # census
++/tmp/bc -C /tmp/df-u umbrella --stats    # per-repo + grand totals
++/tmp/bc -C /tmp/df-u umbrella --validate # per-board reports + dep resolution
++/tmp/bc -C /tmp/df-u umbrella --list     # unified table
++/tmp/bc -C /tmp/df-u umbrella --json     # machine census
++```
++
++This is the real fleet pairing: boardctl (163 tasks, clean canon) + warpfs (369
++tasks, its own dialect). First command to useful output: ~1 minute including
++reading the README section once.
++
++## What worked, exactly as documented
++
++- Census: `2 board(s) in view`, per-repo task counts, topology labels, exit 0.
++- `--json`: clean machine shape (`boards[].repo/tasks`, `findings: []`,
++  `total`), verified against the text census.
++- `--list`: full 529-row unified table with REPO column and repo-qualified ids.
++- `--validate`: per-board reports plus the cross-board depends_on resolution —
++  17 local resolutions printed, dedupe of same-target links warned correctly.
++- Safety contract: broken symlink → `[error]`, exit 1, nothing followed;
++  two links to one target → deduplicated with a warning; `--strict` on the
++  healthy view exits 0. All read-only (board files untouched).
++
++## What broke or bruised (rows filed)
++
++1. **DF-BOARDCTL-34 (P1)** `--stats` tallies warpfs's embedded-JSON priority
++   values (`P1","source":"qa-dagger`) verbatim into their own buckets in BOTH
++   the per-repo and grand-total maps — internal/board/umbrella.go `Stats()`
++   sums `st.Priority` with no vocabulary check, while writes reject the same
++   value. The summary the user reads first is lying by key.
++2. **DF-BOARDCTL-35 (P2)** doctor's git-tracked-set check only inspects
++   *tracked* paths; an untracked 12KB DuckDB `board.db` (mtime today, v1.5.5)
++   sits in this repo's own board dir while README line ~1073 declares "the
++   JSONL files **are** the board". Doctor exits 0; the fossil regenerates.
++3. **DF-BOARDCTL-36 (P2)** warpfs's board is a second dialect: 597 warnings —
++   127/369 rows with non-canon keys, 38 empty statuses, string depends_on,
++   missing created_at. Cross-repo views drown with no prioritized onboarding
++   recipe.
++4. **DF-BOARDCTL-37 (P2)** `--list` takes no `--status`; the natural next
++   question ("what's pending across all my boards?") has no umbrella answer.
++
++## Errors hit and their meaning
++
++- `flag provided but not defined: -status` → usage printed correctly (exit 2
++  contract held); the gap is the missing capability, not the message.
++
++## Install leg (ephemeral bunker, 2026-10-12)
++
++- las-bunker-03 ssh timeout; las-bunker-02 spawn failed once (slice-limits
++  containment, transient), retry spawned OK — but the agent's network then
++  died mid-leg (ssh + API both unreachable, destroy deadline-exceeded; TTL
++  backstop 2h; escalation note, host las-02 last-seen healthy).
++- Completing leg on bunker-mvp agent d2ea6a81: clone of HEAD b55d305
++  (network git fetch worked), README zero-dep path (v0.1.10 asset +
++  SHA256SUMS) **INSTALL_SECONDS=1**, checksum OK, version prints
++  `boardctl version v0.1.10`; `go build ./cmd/boardctl` at HEAD → `dev`
++  binary; validate + doctor on the cloned repo board both `RESULT: OK (6
++  warning(s))`; init→create→update→validate smoke green (0 warnings).
++  Agent destroyed, key removed. Toolchains found: go + pip only (documented
++  zero-dep path unaffected).
++
++## Perf (Step 2b)
++
++- `umbrella --stats` (2 boards, 529 rows): 85.4ms ± 38.2 (hyperfine, 20 runs)
++- `umbrella` census: 73.9ms ± 33.4
++- single-board `validate`: 55.0ms ± 18.3
++Nothing a user feels; no PERF rows filed.
++
++## Verdict reasoning
++
++The umbrella surface delivers its structural promises (provenance, read-only,
++refusal semantics) but its aggregate views are where un-vocabularied data
++leaks through — the exact composition trap the dogfood skill warns about.
++Core CLI remains SHIPPABLE; the cross-repo layer is PROMISING-BUT-ROUGH.
+diff --git a/docs/dogfood/diagnostics.md b/docs/dogfood/diagnostics.md
+index 0c8202c..902ca81 100644
+--- a/docs/dogfood/diagnostics.md
++++ b/docs/dogfood/diagnostics.md
+@@ -580,3 +580,28 @@ Where real use bit:
+    JSON mode (DF-BOARDCTL-33) — the 0/1/2 contract the CLI holds elsewhere
+    leaks exactly where a guard is refusing to write.
+ 
++
++## Run-22 addendum (2026-10-12) — the umbrella surface (BT-078)
++
++Real view = boardctl's own board + warpfs's board via the links registry
++(529 tasks). What the run taught about how the thing is built:
++
++1. **Umbrella aggregation is composition, and composition is where
++   validation stops.** `Stats()` sums whatever `ComputeStats` produced with
++   no re-check of the priority vocabulary (umbrella.go ~:428) — so a corrupt
++   embedded-JSON priority that writes would reject sails into a grand-total
++   bucket the user reads first (DF-BOARDCTL-34). Rule: every aggregate over
++   user-authored JSONL needs the same vocabulary gate the write path has.
++2. **Doctor's tracked-set rule guards git history, not disk truth.** The
++   check switches on `git ls-files` output (doctor.go:75-82); an untracked
++   DuckDB cache regenerated by some local writer sits invisible while README
++   says the JSONL are the board (DF-BOARDCTL-35). "Removed" claims need a
++   presence check, not just a tracking check.
++3. **The fleet's biggest board (warpfs, 369 rows) is a second dialect** —
++   597 validate warnings, 127 rows off-canon, empty statuses, string
++   depends_on. A cross-repo tool inherits all of it; an onboarding/remediation
++   recipe is part of the product, not the user's problem (DF-BOARDCTL-36).
++4. **Install leg evidence:** fresh bunker-mvp box, zero-dep path v0.1.10 in
++   1s, checksum OK; HEAD b55d305 builds and validate/doctor green. las-02
++   agent died mid-leg (network lost, destroy deadline-exceeded; TTL backstop
++   armed) — first host-loss of the series, noted for the pitfall file.
+diff --git a/skills/boardctl-usage/SKILL.md b/skills/boardctl-usage/SKILL.md
+index 5c149ca..d21fc57 100644
+--- a/skills/boardctl-usage/SKILL.md
++++ b/skills/boardctl-usage/SKILL.md
+@@ -4,7 +4,7 @@ description: >-
+   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
+   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
+   proven commands, error meanings, and pitfalls from a real-use dogfood run.
+-version: 1.15.0
++version: 1.16.0
+ date: 2026-10-12
+ category: software-development
+ ---
+@@ -458,12 +458,29 @@ v0.1.9 binary):
+     complete, double-booking workers on closed rows.
+ 19. **The vulncheck version pin has a banner-less blind spot (run 18,
+     DF-BOARDCTL-23).** `CheckVersion` (wt/BT-064) refuses a parseable wrong
+-    version (`Scanner: govulncheck@v0.0.9` → gate fails, message names
++    version (`Scanner: govulncheck@v0.0.9` -> gate fails, message names
+     expected/actual/fix) but SKIPS a binary whose `-version` output lacks the
+     `Scanner:` line — a stub or reimplementation defeats the pin by staying
+     silent. Real govulncheck prints the line; treat silent `-version` output
+     from any wrapper as unverified. (Applies once BT-064 merges; today even
+     the parseable case is unenforced on main.)
++20. **Umbrella aggregates trust per-board stats blindly (run 22,
++    DF-BOARDCTL-34).** `umbrella --stats` sums `st.Priority` with no
++    vocabulary re-check, so a corrupt embedded-JSON priority on any child
++    board becomes its own bucket in the per-repo AND grand-total maps
++    (`P1","source":"qa-dagger  1`). Read `--stats` buckets as advisory;
++    cross-check odd keys against `umbrella --validate` warnings.
++    `--list` takes no `--status` either (DF-BOARDCTL-37) — filter with jq
++    over `--json` when you need "pending across all boards".
++21. **Doctor's tracked-set check guards git history, not disk truth (run 22,
++    DF-BOARDCTL-35).** It switches over `git ls-files` output only; an
++    UNTRACKED `board.db` regenerated by a local writer sits invisible while
++    README says the JSONL are the board. Grep for cache fossils by hand
++    (`ls .coding-hermes/board/`) until the untracked-warning lands.
++22. **Expect the child board's dialect, not yours (run 22, DF-BOARDCTL-36).**
++    A 369-row board speaking its own key/status dialect yields ~600 validate
++    warnings under `umbrella --validate` — exit still OK, all warn-level.
++    Skim the summary line (`drift N row(s)`), don't read every warning.
+ 
+ ## Report surface — `render`, `serve`, `import`
+ 

@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-39",
+  "task_title": "Cut v0.1.11 \u2014 normalize-board and other shipped features not in v0.1.10 release artifact",
+  "task_criteria": [
+    "Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "3684847bd9a866416b5ce29b1fdd98b3d33cdaf6",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:30PM INF scanned ~3396078 bytes (3.40 MB) in 851ms\n6:30PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 236 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261016T232755.921389Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.412s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.002s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.176s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.933s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.024s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.782s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261016T232755.921389Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary.: Only the README pin bump was done (HEAD 3684847 diff: README.md:17,20,21,35,36,77,81 v0.1.10->v0.1.11). The actual release cut is missing: (1) No v0.1.11 tag exists \u2014 `git tag -l 'v0.1.11'` empty (local tags end at v0.1.10) and `git ls-remote origin | grep -i v0.1.11` returns grep_exit=1 (origin tags end at v0.1.10). (2) No CI multi-arch release ran \u2014 .github/workflows/multiarch.yml triggers on `push: tags: [\"v*\"]`, which never fired. (3) No release artifact \u2014 `curl -w %{http_code} .../releases/download/v0.1.11/SHA256SUMS` -> 404 (v0.1.10 -> 200); GitHub release API for tag v0.1.11 -> 404. (4) Consequently sha256sum -c verification, `version` printing v0.1.11, `go version -m` vcs.revision==tag commit / vcs.modified=false, and the `normalize-board --help` behavior probe on the downloaded binary are all impossible/unverifiable \u2014 no binary exists. Repo history corroborates the cut was never performed: commits c860e1e/d56ac80/9d3ba2c record v0.1.11 as BLOCKED pending authorization / NO-CUT, and docs/dogfood/2026-10-16-run23-repair-chain-reproof.md:35 notes the v0.1.10 release returns `unknown command \"normalize-board\"` and that DF-BOARDCTL-39 is the task to cut v0.1.11.\nREADME pins were bumped to v0.1.11, but no v0.1.11 tag was pushed, no CI release published, and no downloadable artifact exists (404), so the release cut and all artifact-verification steps are unfulfilled.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary.: Only the README pin bump was done (HEAD 3684847 diff: README.md:17,20,21,35,36,77,81 v0.1.10->v0.1.11). The actual release cut is missing: (1) No v0.1.11 tag exists \u2014 `git tag -l 'v0.1.11'` empty (local tags end at v0.1.10) and `git ls-remote origin | grep -i v0.1.11` returns grep_exit=1 (origin tags end at v0.1.10). (2) No CI multi-arch release ran \u2014 .github/workflows/multiarch.yml triggers on `push: tags: [\"v*\"]`, which never fired. (3) No release artifact \u2014 `curl -w %{http_code} .../releases/download/v0.1.11/SHA256SUMS` -> 404 (v0.1.10 -> 200); GitHub release API for tag v0.1.11 -> 404. (4) Consequently sha256sum -c verification, `version` printing v0.1.11, `go version -m` vcs.revision==tag commit / vcs.modified=false, and the `normalize-board --help` behavior probe on the downloaded binary are all impossible/unverifiable \u2014 no binary exists. Repo history corroborates the cut was never performed: commits c860e1e/d56ac80/9d3ba2c record v0.1.11 as BLOCKED pending authorization / NO-CUT, and docs/dogfood/2026-10-16-run23-repair-chain-reproof.md:35 notes the v0.1.10 release returns `unknown command \"normalize-board\"` and that DF-BOARDCTL-39 is the task to cut v0.1.11.\nREADME pins were bumped to v0.1.11, but no v0.1.11 tag was pushed, no CI release published, and no downloadable artifact exists (404), so the release cut and all artifact-verification steps are unfulfilled.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary.",
+                "status": "FAIL",
+                "detail": "Only the README pin bump was done (HEAD 3684847 diff: README.md:17,20,21,35,36,77,81 v0.1.10->v0.1.11). The actual release cut is missing: (1) No v0.1.11 tag exists \u2014 `git tag -l 'v0.1.11'` empty (local tags end at v0.1.10) and `git ls-remote origin | grep -i v0.1.11` returns grep_exit=1 (origin tags end at v0.1.10). (2) No CI multi-arch release ran \u2014 .github/workflows/multiarch.yml triggers on `push: tags: [\"v*\"]`, which never fired. (3) No release artifact \u2014 `curl -w %{http_code} .../releases/download/v0.1.11/SHA256SUMS` -> 404 (v0.1.10 -> 200); GitHub release API for tag v0.1.11 -> 404. (4) Consequently sha256sum -c verification, `version` printing v0.1.11, `go version -m` vcs.revision==tag commit / vcs.modified=false, and the `normalize-board --help` behavior probe on the downloaded binary are all impossible/unverifiable \u2014 no binary exists. Repo history corroborates the cut was never performed: commits c860e1e/d56ac80/9d3ba2c record v0.1.11 as BLOCKED pending authorization / NO-CUT, and docs/dogfood/2026-10-16-run23-repair-chain-reproof.md:35 notes the v0.1.10 release returns `unknown command \"normalize-board\"` and that DF-BOARDCTL-39 is the task to cut v0.1.11."
+              }
+            ],
+            "summary": "README pins were bumped to v0.1.11, but no v0.1.11 tag was pushed, no CI release published, and no downloadable artifact exists (404), so the release cut and all artifact-verification steps are unfulfilled."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-39\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary.: Only the README pin bump was done (HEAD 3684847 diff: README.md:17,20,21,35,36,77,81 v0.1.10->v0.1.11). The actual release cut is missing: (1) No v0.1.11 tag exists \u2014 `git tag -l 'v0.1.11'` empty (local tags end at v0.1.10) and `git ls-remote origin | grep -i v0.1.11` returns grep_exit=1 (origin tags end at v0.1.10). (2) No CI multi-arch release ran \u2014 .github/workflows/multiarch.yml triggers on `push: tags: [\"v*\"]`, which never fired. (3) No release artifact \u2014 `curl -w %{http_code} .../releases/download/v0.1.11/SHA256SUMS` -> 404 (v0.1.10 -> 200); GitHub release API for tag v0.1.11 -> 404. (4) Consequently sha256sum -c verification, `version` printing v0.1.11, `go version -m` vcs.revision==tag commit / vcs.modified=false, and the `normalize-board --help` behavior probe on the downloaded binary are all impossible/unverifiable \u2014 no binary exists. Repo history corroborates the cut was never performed: commits c860e1e/d56ac80/9d3ba2c record v0.1.11 as BLOCKED pending authorization / NO-CUT, and docs/dogfood/2026-10-16-run23-repair-chain-reproof.md:35 notes the v0.1.10 release returns `unknown command \"normalize-board\"` and that DF-BOARDCTL-39 is the task to cut v0.1.11.\nREADME pins were bumped to v0.1.11, but no v0.1.11 tag was pushed, no CI release published, and no downloadable artifact exists (404), so the release cut and all artifact-verification steps are unfulfilled.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-16T23:31:09.341942",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-16T23:31:09.357700+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3128,
+        "truncated": false,
+        "source": "git show 3684847bd9a8"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-39"
+  }
+}

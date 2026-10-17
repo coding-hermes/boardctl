@@ -1,0 +1,93 @@
+{
+  "task_id": "DF-BOARDCTL-39",
+  "task_title": "Cut v0.1.11 \u2014 normalize-board and other shipped features not in v0.1.10 release artifact",
+  "task_criteria": [
+    "Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "3684847bd9a866416b5ce29b1fdd98b3d33cdaf6",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:34PM INF scanned ~3396078 bytes (3.40 MB) in 648ms\n6:34PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 236 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261016T232755.921389Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t4.559s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.122s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261016T232755.921389Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary.: Only the README pin bump was done (commit 3684847: 7 lines v0.1.10->v0.1.11). The actual release cut was never performed. (1) Tag pushed: FAIL \u2014 `git tag -l 'v0.1.11'` returns empty and `git ls-remote --tags origin refs/tags/v0.1.11` returns empty; origin's newest tag is v0.1.10. (2) CI multi-arch release job publishes: FAIL \u2014 .github/workflows/multiarch.yml release job only runs on a tag ref, and no v0.1.11 tag was pushed, so nothing published. (3) Downloaded asset sha256sum -c verified: FAIL \u2014 `curl -sL -o /dev/null -w '%{http_code}' https://github.com/coding-hermes/boardctl/releases/download/v0.1.11/SHA256SUMS` -> 404, and .../v0.1.11/boardctl_linux_amd64 -> 404 (control: v0.1.10/SHA256SUMS -> 200, proving the URL pattern is valid and the v0.1.11 release is genuinely absent). (4) version prints v0.1.11: FAIL \u2014 `./bin/boardctl version` -> 'boardctl version dev' (unstamped local build, not a v0.1.11 release asset). (5) go version -m vcs.revision==tag commit, vcs.modified=false: FAIL \u2014 no v0.1.11 tag commit exists to compare against and no downloaded release binary is available. (6) Behavior probe normalize-board --help: only works on the LOCAL ./bin/boardctl (prints usage), not on a downloaded v0.1.11 binary, which does not exist. Note: `go test -short -count=1 ./...` passes (all 12 packages ok), but that does not satisfy any part of this release-cut criterion.\nREADME pins were bumped to v0.1.11, but the v0.1.11 tag was never created or pushed, no CI release was published (asset URLs return 404), and the local binary still reports 'dev' \u2014 the release cut itself is entirely missing.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary.: Only the README pin bump was done (commit 3684847: 7 lines v0.1.10->v0.1.11). The actual release cut was never performed. (1) Tag pushed: FAIL \u2014 `git tag -l 'v0.1.11'` returns empty and `git ls-remote --tags origin refs/tags/v0.1.11` returns empty; origin's newest tag is v0.1.10. (2) CI multi-arch release job publishes: FAIL \u2014 .github/workflows/multiarch.yml release job only runs on a tag ref, and no v0.1.11 tag was pushed, so nothing published. (3) Downloaded asset sha256sum -c verified: FAIL \u2014 `curl -sL -o /dev/null -w '%{http_code}' https://github.com/coding-hermes/boardctl/releases/download/v0.1.11/SHA256SUMS` -> 404, and .../v0.1.11/boardctl_linux_amd64 -> 404 (control: v0.1.10/SHA256SUMS -> 200, proving the URL pattern is valid and the v0.1.11 release is genuinely absent). (4) version prints v0.1.11: FAIL \u2014 `./bin/boardctl version` -> 'boardctl version dev' (unstamped local build, not a v0.1.11 release asset). (5) go version -m vcs.revision==tag commit, vcs.modified=false: FAIL \u2014 no v0.1.11 tag commit exists to compare against and no downloaded release binary is available. (6) Behavior probe normalize-board --help: only works on the LOCAL ./bin/boardctl (prints usage), not on a downloaded v0.1.11 binary, which does not exist. Note: `go test -short -count=1 ./...` passes (all 12 packages ok), but that does not satisfy any part of this release-cut criterion.\nREADME pins were bumped to v0.1.11, but the v0.1.11 tag was never created or pushed, no CI release was published (asset URLs return 404), and the local binary still reports 'dev' \u2014 the release cut itself is entirely missing.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary.",
+                "status": "FAIL",
+                "detail": "Only the README pin bump was done (commit 3684847: 7 lines v0.1.10->v0.1.11). The actual release cut was never performed. (1) Tag pushed: FAIL \u2014 `git tag -l 'v0.1.11'` returns empty and `git ls-remote --tags origin refs/tags/v0.1.11` returns empty; origin's newest tag is v0.1.10. (2) CI multi-arch release job publishes: FAIL \u2014 .github/workflows/multiarch.yml release job only runs on a tag ref, and no v0.1.11 tag was pushed, so nothing published. (3) Downloaded asset sha256sum -c verified: FAIL \u2014 `curl -sL -o /dev/null -w '%{http_code}' https://github.com/coding-hermes/boardctl/releases/download/v0.1.11/SHA256SUMS` -> 404, and .../v0.1.11/boardctl_linux_amd64 -> 404 (control: v0.1.10/SHA256SUMS -> 200, proving the URL pattern is valid and the v0.1.11 release is genuinely absent). (4) version prints v0.1.11: FAIL \u2014 `./bin/boardctl version` -> 'boardctl version dev' (unstamped local build, not a v0.1.11 release asset). (5) go version -m vcs.revision==tag commit, vcs.modified=false: FAIL \u2014 no v0.1.11 tag commit exists to compare against and no downloaded release binary is available. (6) Behavior probe normalize-board --help: only works on the LOCAL ./bin/boardctl (prints usage), not on a downloaded v0.1.11 binary, which does not exist. Note: `go test -short -count=1 ./...` passes (all 12 packages ok), but that does not satisfy any part of this release-cut criterion."
+              }
+            ],
+            "summary": "README pins were bumped to v0.1.11, but the v0.1.11 tag was never created or pushed, no CI release was published (asset URLs return 404), and the local binary still reports 'dev' \u2014 the release cut itself is entirely missing."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-39\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 Cut v0.1.11 from origin/main. README pins moved to v0.1.11. Tag pushed. CI multi-arch release job publishes. Downloaded asset sha256sum -c verified, version prints v0.1.11, go version -m reports vcs.revision==tag commit, vcs.modified=false. Behavior probe: normalize-board --help works on downloaded binary.: Only the README pin bump was done (commit 3684847: 7 lines v0.1.10->v0.1.11). The actual release cut was never performed. (1) Tag pushed: FAIL \u2014 `git tag -l 'v0.1.11'` returns empty and `git ls-remote --tags origin refs/tags/v0.1.11` returns empty; origin's newest tag is v0.1.10. (2) CI multi-arch release job publishes: FAIL \u2014 .github/workflows/multiarch.yml release job only runs on a tag ref, and no v0.1.11 tag was pushed, so nothing published. (3) Downloaded asset sha256sum -c verified: FAIL \u2014 `curl -sL -o /dev/null -w '%{http_code}' https://github.com/coding-hermes/boardctl/releases/download/v0.1.11/SHA256SUMS` -> 404, and .../v0.1.11/boardctl_linux_amd64 -> 404 (control: v0.1.10/SHA256SUMS -> 200, proving the URL pattern is valid and the v0.1.11 release is genuinely absent). (4) version prints v0.1.11: FAIL \u2014 `./bin/boardctl version` -> 'boardctl version dev' (unstamped local build, not a v0.1.11 release asset). (5) go version -m vcs.revision==tag commit, vcs.modified=false: FAIL \u2014 no v0.1.11 tag commit exists to compare against and no downloaded release binary is available. (6) Behavior probe normalize-board --help: only works on the LOCAL ./bin/boardctl (prints usage), not on a downloaded v0.1.11 binary, which does not exist. Note: `go test -short -count=1 ./...` passes (all 12 packages ok), but that does not satisfy any part of this release-cut criterion.\nREADME pins were bumped to v0.1.11, but the v0.1.11 tag was never created or pushed, no CI release was published (asset URLs return 404), and the local binary still reports 'dev' \u2014 the release cut itself is entirely missing.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-16T23:35:08.765952",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-16T23:35:08.790792+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3128,
+        "truncated": false,
+        "source": "git show 3684847bd9a8"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-39"
+  }
+}

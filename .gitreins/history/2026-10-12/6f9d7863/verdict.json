@@ -1,0 +1,93 @@
+{
+  "task_id": "DOC-31",
+  "task_title": "document dedupe-board --by-id and --json flag",
+  "task_criteria": [
+    "README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "28a6d493b1f8872e3386caa78c737f17560ae7fb",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n11:06PM INF scanned ~3094644 bytes (3.09 MB) in 775ms\n11:06PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 211 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261012T040647.853681Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.863s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.303s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.135s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.035s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261012T040647.853681Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both: No documentation was added. README.md:820-850 (the dedupe-board section) still shows only the default fingerprint mode (`dedupe-board --board-dir ~/myproject` / `--apply`, lines 828-829) plus the source-only install note (840-850). `grep -n \"by-id\" README.md` -> exit 1 (ZERO matches); `grep -n \"by-id\" docs/board-fingerprint-rules.md` -> exit 1 (ZERO matches); no `--json` in the dedupe-board section (README.md:80/634/933 --json hits are version/sweep-status/render). The flags exist in code (cmd/dedupe-board/main.go:75 --by-id, :77 --json, :101 usage, :124-125 --json requires --by-id, :206 runByID) but are undocumented. No commit anywhere adds the docs: `git log --all --grep=\"by-id\"` returns only c4d56a0 (the audit that FILED DOC-31) and 1ff31cc (the feature commit, which touched only cmd/dedupe-board/main.go, main_test.go, internal/board/iddupe.go, iddupe_test.go \u2014 no README). Working tree is clean, no stash, no uncommitted README diff; board row .coding-hermes/board/tasks.jsonl:158 is still status=pending/worker_status=pending with commit_hash=null. Guard log .gitreins/logs/guard-20261012T040647.853681Z.log shows go_build/go_lint/go_tests SKIPPED (\"No Go files staged\"), i.e. no change was staged at all.\nThe README dedupe-board section still documents only the default fingerprint mode \u2014 neither --by-id (DF-BOARDCTL-10) nor --json appears anywhere in README.md or docs/board-fingerprint-rules.md, and no commit or working-tree change adds them.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both: No documentation was added. README.md:820-850 (the dedupe-board section) still shows only the default fingerprint mode (`dedupe-board --board-dir ~/myproject` / `--apply`, lines 828-829) plus the source-only install note (840-850). `grep -n \"by-id\" README.md` -> exit 1 (ZERO matches); `grep -n \"by-id\" docs/board-fingerprint-rules.md` -> exit 1 (ZERO matches); no `--json` in the dedupe-board section (README.md:80/634/933 --json hits are version/sweep-status/render). The flags exist in code (cmd/dedupe-board/main.go:75 --by-id, :77 --json, :101 usage, :124-125 --json requires --by-id, :206 runByID) but are undocumented. No commit anywhere adds the docs: `git log --all --grep=\"by-id\"` returns only c4d56a0 (the audit that FILED DOC-31) and 1ff31cc (the feature commit, which touched only cmd/dedupe-board/main.go, main_test.go, internal/board/iddupe.go, iddupe_test.go \u2014 no README). Working tree is clean, no stash, no uncommitted README diff; board row .coding-hermes/board/tasks.jsonl:158 is still status=pending/worker_status=pending with commit_hash=null. Guard log .gitreins/logs/guard-20261012T040647.853681Z.log shows go_build/go_lint/go_tests SKIPPED (\"No Go files staged\"), i.e. no change was staged at all.\nThe README dedupe-board section still documents only the default fingerprint mode \u2014 neither --by-id (DF-BOARDCTL-10) nor --json appears anywhere in README.md or docs/board-fingerprint-rules.md, and no commit or working-tree change adds them.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both",
+                "status": "FAIL",
+                "detail": "No documentation was added. README.md:820-850 (the dedupe-board section) still shows only the default fingerprint mode (`dedupe-board --board-dir ~/myproject` / `--apply`, lines 828-829) plus the source-only install note (840-850). `grep -n \"by-id\" README.md` -> exit 1 (ZERO matches); `grep -n \"by-id\" docs/board-fingerprint-rules.md` -> exit 1 (ZERO matches); no `--json` in the dedupe-board section (README.md:80/634/933 --json hits are version/sweep-status/render). The flags exist in code (cmd/dedupe-board/main.go:75 --by-id, :77 --json, :101 usage, :124-125 --json requires --by-id, :206 runByID) but are undocumented. No commit anywhere adds the docs: `git log --all --grep=\"by-id\"` returns only c4d56a0 (the audit that FILED DOC-31) and 1ff31cc (the feature commit, which touched only cmd/dedupe-board/main.go, main_test.go, internal/board/iddupe.go, iddupe_test.go \u2014 no README). Working tree is clean, no stash, no uncommitted README diff; board row .coding-hermes/board/tasks.jsonl:158 is still status=pending/worker_status=pending with commit_hash=null. Guard log .gitreins/logs/guard-20261012T040647.853681Z.log shows go_build/go_lint/go_tests SKIPPED (\"No Go files staged\"), i.e. no change was staged at all."
+              }
+            ],
+            "summary": "The README dedupe-board section still documents only the default fingerprint mode \u2014 neither --by-id (DF-BOARDCTL-10) nor --json appears anywhere in README.md or docs/board-fingerprint-rules.md, and no commit or working-tree change adds them."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-31\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both: No documentation was added. README.md:820-850 (the dedupe-board section) still shows only the default fingerprint mode (`dedupe-board --board-dir ~/myproject` / `--apply`, lines 828-829) plus the source-only install note (840-850). `grep -n \"by-id\" README.md` -> exit 1 (ZERO matches); `grep -n \"by-id\" docs/board-fingerprint-rules.md` -> exit 1 (ZERO matches); no `--json` in the dedupe-board section (README.md:80/634/933 --json hits are version/sweep-status/render). The flags exist in code (cmd/dedupe-board/main.go:75 --by-id, :77 --json, :101 usage, :124-125 --json requires --by-id, :206 runByID) but are undocumented. No commit anywhere adds the docs: `git log --all --grep=\"by-id\"` returns only c4d56a0 (the audit that FILED DOC-31) and 1ff31cc (the feature commit, which touched only cmd/dedupe-board/main.go, main_test.go, internal/board/iddupe.go, iddupe_test.go \u2014 no README). Working tree is clean, no stash, no uncommitted README diff; board row .coding-hermes/board/tasks.jsonl:158 is still status=pending/worker_status=pending with commit_hash=null. Guard log .gitreins/logs/guard-20261012T040647.853681Z.log shows go_build/go_lint/go_tests SKIPPED (\"No Go files staged\"), i.e. no change was staged at all.\nThe README dedupe-board section still documents only the default fingerprint mode \u2014 neither --by-id (DF-BOARDCTL-10) nor --json appears anywhere in README.md or docs/board-fingerprint-rules.md, and no commit or working-tree change adds them.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-12T04:07:58.854038",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-12T04:07:58.871958+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 24804,
+        "truncated": false,
+        "source": "git show 28a6d493b1f8"
+      }
+    ],
+    "task_id": "DOC-31"
+  }
+}

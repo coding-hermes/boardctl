@@ -1356,14 +1356,16 @@ func cmdNormalizeBoard(dir string, args []string) error {
 	apply := fs.Bool("apply", false, "rewrite tasks.jsonl with every mechanical repair in one atomic pass (default: dry-run, stages tasks.normalized.jsonl only)")
 	asJSON := fs.Bool("json", false, "emit the report as JSON")
 	skipBad := useSkipBad(fs)
+	repairEvents := fs.Bool("repair-events", false, "repair descending event ids in events.jsonl (extends NormalizeBoard)")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl normalize-board [--apply] [--json] [--skip-bad-lines] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\nmechanical repairs (applied together on --apply):\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  key aliases  -> canonical keys via the BT-056 table (why -> reasoning, acceptance -> acceptance_criteria, ...)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  depends_on   -> array from a string value when unambiguous: \"[]\" and \"\" -> [], '[\"A\"]' -> the array, one bare id -> [id]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  status       -> canonical form of a known read alias (open -> pending, done -> complete)\n")
+		_, _ = fmt.Fprintf(fs.Output(), "  event ids    -> renumber descending ids to ascending order (DF-BOARDCTL-38)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "refused rows are reported, never mutated: an alias over a key the row already carries, an unconvertible\n")
 		_, _ = fmt.Fprintf(fs.Output(), "depends_on shape (number/object/malformed), a status that is absent, null, or unknown. Rows without\n")
 		_, _ = fmt.Fprintf(fs.Output(), "created_at are counted and reported — never fabricated. --apply rewrites tasks.jsonl in ONE guarded\n")
@@ -1386,6 +1388,36 @@ func cmdNormalizeBoard(dir string, args []string) error {
 	rep, err := b.NormalizeBoard(*apply)
 	if err != nil {
 		return err
+	}
+	// Apply events repair: --repair-events is the switch; --apply controls dry-run vs write.
+	// When --apply is set, we actually rewrite events.jsonl. When unset, dry-run only.
+	if *repairEvents {
+		eventRep, err := b.RepairEvents(!*apply)
+		if err != nil {
+			return err
+		}
+		// Merge event repair info into the task report for --json output.
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(rep); err != nil {
+				return err
+			}
+			_, _ = fmt.Fprintf(os.Stdout, "\n=== events.jsonl repair ===\n")
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(eventRep); err != nil {
+				return err
+			}
+			return exitError(reportSkipped(b))
+		}
+		// For text output, print both reports.
+		_, _ = fmt.Fprint(os.Stdout, rep.RenderText())
+		if !*apply && len(rep.Changes) > 0 {
+			_, _ = fmt.Fprintln(os.Stdout, "DRY-RUN — no board file written (pass --apply to rewrite tasks.jsonl)")
+		}
+		_, _ = fmt.Fprintln(os.Stdout)
+		_, _ = fmt.Fprint(os.Stdout, eventRep.RenderText())
+		return exitError(reportSkipped(b))
 	}
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)

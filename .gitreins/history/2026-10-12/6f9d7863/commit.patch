@@ -1,0 +1,435 @@
+commit 28a6d493b1f8872e3386caa78c737f17560ae7fb
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Oct 11 16:44:19 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Oct 11 16:44:19 2026 -0500
+
+    chore: close boardctl recovery and environment tick
+---
+ .coding-hermes/board/tasks.jsonl                   |   2 +-
+ .../my-project-foreman-2026-10-11-11-09-45.json    |  19 ++
+ .gitreins/history/2026-10-11/4eedee51/commit.patch | 278 +++++++++++++++++++++
+ .gitreins/history/2026-10-11/4eedee51/summary.md   |  21 ++
+ .gitreins/history/2026-10-11/4eedee51/verdict.json |  67 +++++
+ 5 files changed, 386 insertions(+), 1 deletion(-)
+
+diff --git a/.coding-hermes/board/tasks.jsonl b/.coding-hermes/board/tasks.jsonl
+index 35303f4..def3cd3 100644
+--- a/.coding-hermes/board/tasks.jsonl
++++ b/.coding-hermes/board/tasks.jsonl
+@@ -157,4 +157,4 @@
+ {"id": "DOC-30", "type": null, "status": "pending", "priority": "P5", "title": "P5 — polish: mention inline-data-favicon posture (DF-BOARDCTL-30) alongside the serve route table", "reasoning": "serve's route table (README.md:253-256) says the complete route set is exactly GET /, POST /, GET /api/boards, GET /ui, GET /api/board/{slug}, GET /api/events/{slug} — verified against cmd/boardctl/serve.go:396-401 (exact match, no drift). However the serve/UI docs never mention the favicon behavior added by DF-BOARDCTL-30 (commit ea1cf8a, 2026-10-09): both pages now serve an inline data: SVG icon and any <link> referencing an origin is banned by the ui head checks (cmd/boardctl/ui.go). This is polish-level completeness, not wrongness — the route table itself is accurate. Combine with the next serve docs touch rather than a standalone page.", "created_by": null, "created_at": "2026-10-10T19:02:22Z", "worker_status": "pending", "guard_result": null, "ci_result": null, "worker_summary": null, "foreman_note": null, "completed_at": null, "capability_tags": ["docs", "polish"], "complexity": 3, "updated_at": "2026-10-10T19:02:22Z", "detail": {"fingerprint": "a702e0fcdb5203340fc4af086b9a9730db3b050e5225513efb279f149add1c12"}}
+ {"id": "DOC-31", "type": null, "status": "pending", "priority": "P4", "title": "P4 — document dedupe-board --by-id (DF-BOARDCTL-10 recycled-id mode) and --json flag", "reasoning": "docs audit 2026-10-10: cmd/dedupe-board/main.go usage text (go run ./cmd/dedupe-board --help) exposes --by-id (recycled-id repair, DF-BOARDCTL-10: group rows by id, keep earliest, close later as superseded-by-earliest) and --json (JSON report, only with --by-id). grep -rn 'by-id' README.md docs/board-fingerprint-rules.md skills/boardctl-usage/SKILL.md returns ZERO matches — both flags are undocumented for the operator; README.md:678-681 and docs/board-fingerprint-rules.md:104-117 describe only the default fingerprint-collapse mode and --lanes guard. Operator following docs cannot repair a recycled-id board.", "created_by": null, "created_at": "2026-10-10T19:04:05Z", "worker_status": "pending", "guard_result": null, "ci_result": null, "worker_summary": null, "foreman_note": null, "completed_at": null, "capability_tags": [], "complexity": 3, "updated_at": "2026-10-10T19:04:05Z", "detail": {"fingerprint": "1721fa02377f9fa034a9e132c34ec30d7cc2eac533b621201e96afab51667c2d"}}
+ {"id": "DOC-32", "type": null, "status": "complete", "priority": "P4", "title": "P4 — rot: skills/boardctl-usage/SKILL.md Run-20 lessons contradict DF-BOARDCTL-29 (--deferred false now REMOVES the key)", "reasoning": "docs audit 2026-10-10: skills/boardctl-usage/SKILL.md:535-536 says 'update --deferred false stores an explicit \"deferred\":false key (does not remove it)'. README.md:775 and commit 4ab5527 (DF-BOARDCTL-29, merged in cfd0cee wave) say the opposite and the code implements removal (internal/board/write.go:1037 DF-BOARDCTL-29 comment). Live-verified at HEAD 9ba0b61 on a fresh temp board: boardctl update DOC-TEST --deferred false leaves the row with NO deferred key (keys list via jq has no 'deferred'). The skill's wrong-reference predates the DF-BOARDCTL-29 doc wave; a worker reading Run-20 lessons will report a false bug. Doc severity P4 per 2026-09-30 ruling.", "created_by": null, "created_at": "2026-10-10T19:04:05Z", "worker_status": "complete", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "SKILL.md Run-20 lesson corrected: --deferred false REMOVES the key (matching code write.go:967-969 and README:876-878). Foreman-direct 2-line patch after worker died. Tier-2 judge PASS (verdict .gitreins/history/2026-10-11/09b2a9af); tier-1 FAIL is the docs-only DEGRADED pattern (no Go files staged).", "foreman_note": "Tick 110. Worker glm-5.3-flash@zai-glm died silently (1-line log, no commit). Foreman-direct patch: SKILL.md:547-548 rewritten. CI 2/2 green at a3a6dff.", "completed_at": "2026-10-11T05:03:13Z", "capability_tags": [], "complexity": 3, "updated_at": "2026-10-11T05:03:13Z", "detail": {"fingerprint": "24fc19d4616d9610f2d588eb65e09b34545492af856d6f27be2f54d3f7ea403b"}, "commit_hash": "a3a6dff"}
+-{"id": "INT-ENV-001", "title": "vulncheck test fails: host govulncheck v1.8.0 vs repo pin v1.7.0", "status": "pending", "priority": "P3", "note": "environmental drift — TestVulncheck refuses because /home/kara/go/bin/govulncheck is v1.8.0 but Makefile/CI pin v1.7.0. Not caused by DOC-28/29. Fix: either downgrade host binary (go install golang.org/x/vuln/cmd/govulncheck@v1.7.0) or bump the repo pin to v1.8.0 and update CI.", "created_at": "2026-10-11 07:50:00"}
++{"id": "INT-ENV-001", "title": "vulncheck test fails: host govulncheck v1.8.0 vs repo pin v1.7.0", "status": "complete", "priority": "P3", "note": "environmental drift — TestVulncheck refuses because /home/kara/go/bin/govulncheck is v1.8.0 but Makefile/CI pin v1.7.0. Not caused by DOC-28/29. Fix: either downgrade host binary (go install golang.org/x/vuln/cmd/govulncheck@v1.7.0) or bump the repo pin to v1.8.0 and update CI.", "created_at": "2026-10-11 07:50:00", "worker_status": "complete", "guard_result": "PASS", "ci_result": "GREEN", "completed_at": "2026-10-11 16:36:00 -0500", "updated_at": "2026-10-11 16:36:00 -0500", "worker_summary": "Host govulncheck pinned to v1.7.0 with go install golang.org/x/vuln/cmd/govulncheck@v1.7.0; command -v resolves /home/kara/go/bin/govulncheck; go test ./... -count=1 -short PASS. GitReins Tier-1 PASS recorded in .gitreins history.", "foreman_note": "ch:trace row=INT-ENV-001 spec=Makefile#vuln-check wave=boardctl-foreman-2026-10-11-21-31-49#serial test=go-test:./...:-count=1:-short evidence=.gitreins/history/2026-10-11/4eedee51 witness=path@origin:/home/kara/go/bin/govulncheck verdict=none:environment-only commit=none memory=none"}
+diff --git a/.coding-hermes/waves/my-project-foreman-2026-10-11-11-09-45.json b/.coding-hermes/waves/my-project-foreman-2026-10-11-11-09-45.json
+new file mode 100644
+index 0000000..6b38c46
+--- /dev/null
++++ b/.coding-hermes/waves/my-project-foreman-2026-10-11-11-09-45.json
+@@ -0,0 +1,19 @@
++{
++  "tick_id": "my-project-foreman-2026-10-11-11-09-45",
++  "project": "my-project",
++  "wave_budget": 1,
++  "mode": "serial-fallback",
++  "tasks": [
++    {
++      "task_id": "MP-GAP-027",
++      "execution_repo": "/home/kara/coding-hermes-boardctl",
++      "worktree": "/home/kara/worktrees/boardctl-MP-GAP-027",
++      "branch": "wt/MP-GAP-027",
++      "base": "origin/main",
++      "base_sha": "ce8401d",
++      "recovery": "Already landed on main as an ancestor of HEAD; main advanced afterward. No merge required; branch delta is empty."
++    }
++  ],
++  "recovery_completed_at": "2026-10-11T21:31:49-05:00",
++  "finished_at": "2026-10-11T21:31:49-05:00"
++}
+diff --git a/.gitreins/history/2026-10-11/4eedee51/commit.patch b/.gitreins/history/2026-10-11/4eedee51/commit.patch
+new file mode 100644
+index 0000000..d6144aa
+--- /dev/null
++++ b/.gitreins/history/2026-10-11/4eedee51/commit.patch
+@@ -0,0 +1,278 @@
++commit 1b1da024704d68e876731a5b2239bb1f9384c1c0
++Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
++AuthorDate: Sun Oct 11 06:49:26 2026 -0500
++Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
++CommitDate: Sun Oct 11 06:49:26 2026 -0500
++
++    fix: stamp board last_tick on tick events. Addresses MP-GAP-027.
++    
++    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
++---
++ cmd/boardctl/main.go         | 12 ++++--
++ cmd/boardctl/vocab_test.go   | 31 +++++++++++++++
++ internal/board/write.go      | 24 ++++++++----
++ internal/board/write_test.go | 89 ++++++++++++++++++++++++++++++++++++++++++++
++ 4 files changed, 145 insertions(+), 11 deletions(-)
++
++diff --git a/cmd/boardctl/main.go b/cmd/boardctl/main.go
++index f14c11f..7dc546c 100644
++--- a/cmd/boardctl/main.go
+++++ b/cmd/boardctl/main.go
++@@ -65,7 +65,7 @@ commands:
++   event   --type task_created|task_dispatched|task_completed|audit|...
++           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
++           [--tick N] [--no-tick-write]
++-  header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA]
+++  header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [--set-last-tick TIMESTAMP]
++   validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep]
++   sweep-status [--apply] [--decide] [--json] [--skip-bad-lines]
++            report (and with --apply fix) off-vocabulary task statuses on ONE
++@@ -1086,15 +1086,16 @@ func cmdEvent(dir string, args []string) error {
++ 
++ func cmdHeader(dir string, args []string) error {
++ 	fs := newFlagSet("header")
++-	args = reorderArgs(args, valueFlags("C", "set-ticks-total", "set-ticks-idle", "set-last-commit"))
+++	args = reorderArgs(args, valueFlags("C", "set-ticks-total", "set-ticks-idle", "set-last-commit", "set-last-tick"))
++ 	asJSON := fs.Bool("json", false, "emit header as JSON")
++ 	setTotal := fs.String("set-ticks-total", "", "set ticks_total counter")
++ 	setIdle := fs.String("set-ticks-idle", "", "set ticks_idle counter")
++ 	setCommit := fs.String("set-last-commit", "", "set last_commit sha")
+++	setLastTick := fs.String("set-last-tick", "", "set last_tick timestamp")
++ 	var cdir string
++ 	addCFlag(fs, &cdir)
++ 	fs.Usage = func() {
++-		fmt.Fprintf(fs.Output(), "boardctl header [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [-C dir]\n")
+++		_, _ = fmt.Fprintf(fs.Output(), "boardctl header [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [--set-last-tick TIMESTAMP] [-C dir]\n")
++ 	}
++ 	if err := parseFlags(fs, args); err != nil {
++ 		return err
++@@ -1109,7 +1110,7 @@ func cmdHeader(dir string, args []string) error {
++ 	if err != nil {
++ 		return err
++ 	}
++-	writing := *setTotal != "" || *setIdle != "" || *setCommit != ""
+++	writing := *setTotal != "" || *setIdle != "" || *setCommit != "" || *setLastTick != ""
++ 	// BT-010: no topology special case — HeaderRow reads board.jsonl (A) or
++ 	// line 1 of tasks.jsonl (B), and SetHeader rewrites whichever carries
++ 	// the header. Both read and write work identically on either topology.
++@@ -1149,6 +1150,9 @@ func cmdHeader(dir string, args []string) error {
++ 	if *setCommit != "" {
++ 		u.LastCommit = setCommit
++ 	}
+++	if *setLastTick != "" {
+++		u.LastTick = setLastTick
+++	}
++ 	changed, err := b.SetHeader(u)
++ 	if err != nil {
++ 		return err
++diff --git a/cmd/boardctl/vocab_test.go b/cmd/boardctl/vocab_test.go
++index af6b5f8..368ad47 100644
++--- a/cmd/boardctl/vocab_test.go
+++++ b/cmd/boardctl/vocab_test.go
++@@ -138,6 +138,37 @@ func TestCmdHeaderRejectsNegativeTicks(t *testing.T) {
++ 	}
++ }
++ 
+++func TestCmdHeaderSetsExactLastTick(t *testing.T) {
+++	dir := seedCLIBoard(t)
+++	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+++	tasksPath := filepath.Join(boardDir, "tasks.jsonl")
+++	beforeTasks, err := os.ReadFile(tasksPath)
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	want := "2026-09-10 11:12:13.000000"
+++	if code := run([]string{"-C", dir, "header", "--set-last-tick", want}); code != 0 {
+++		t.Fatalf("header --set-last-tick exit code = %d, want 0", code)
+++	}
+++	raw, err := os.ReadFile(filepath.Join(boardDir, "board.jsonl"))
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	if !strings.Contains(string(raw), `"last_tick":"`+want+`"`) {
+++		t.Fatalf("header --set-last-tick did not preserve the exact value %q: %s", want, raw)
+++	}
+++	if !strings.Contains(string(raw), `"last_commit":null`) || !strings.Contains(string(raw), `"project":"demo"`) {
+++		t.Fatalf("explicit last_tick update disturbed unrelated header fields: %s", raw)
+++	}
+++	afterTasks, err := os.ReadFile(tasksPath)
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	if string(beforeTasks) != string(afterTasks) {
+++		t.Fatalf("header --set-last-tick changed task rows:\nbefore %s\nafter  %s", beforeTasks, afterTasks)
+++	}
+++}
+++
++ // BT-007 CLI: validate flags the junk row (warn) while staying exit 0, and
++ // the exact dogfood scenario (free-form guard) is visible in the report.
++ func TestCmdValidateFlagsJunkRow(t *testing.T) {
++diff --git a/internal/board/write.go b/internal/board/write.go
++index f26ba03..53338af 100644
++--- a/internal/board/write.go
+++++ b/internal/board/write.go
++@@ -1572,14 +1572,18 @@ func (b *Board) bumpHeaderTicksTotal(n int64, report func(TickWriteNotice)) erro
++ 	if err != nil {
++ 		return err
++ 	}
++-	if cur, ok := hdr.Int("ticks_total"); ok && cur >= n {
++-		return nil
++-	}
++ 	old := int64(0)
++ 	if cur, ok := hdr.Int("ticks_total"); ok {
++ 		old = cur
++ 	}
++-	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &n}); err != nil {
+++	if old >= n {
+++		return nil
+++	}
+++	// The counter bump is the actual tick-bearing header write. Stamp last_tick
+++	// in the header's detected timestamp dialect alongside it; an out-of-order
+++	// tick remains a no-op, preserving the existing no-rewrite contract.
+++	lastTick := b.headerTSFormat(hdr).Now()
+++	if _, err := b.SetHeader(HeaderUpdate{TicksTotal: &n, LastTick: &lastTick}); err != nil {
++ 		return err
++ 	}
++ 	if report != nil {
++@@ -1593,6 +1597,7 @@ type HeaderUpdate struct {
++ 	TicksTotal *int64
++ 	TicksIdle  *int64
++ 	LastCommit *string
+++	LastTick   *string
++ }
++ 
++ // SetHeader rewrites ONLY the header row — line 1 of board.jsonl (topology A)
++@@ -1659,11 +1664,11 @@ func (b *Board) setHeaderLocked(u HeaderUpdate) ([]string, error) {
++ 	// classified topology B because line 1 was unparseable at resolve time
++ 	// yet parses now as a task row, this still refuses before any mutation.
++ 	if rowIsTaskShape(header) {
++-		return nil, fmt.Errorf("%w: line %d of %s is the TASK row %q (it carries id/title/status) — refusing to write header keys (ticks_total/ticks_idle/last_commit/updated_at) into a task row",
+++		return nil, fmt.Errorf("%w: line %d of %s is the TASK row %q (it carries id/title/status) — refusing to write header keys (ticks_total/ticks_idle/last_commit/last_tick/updated_at) into a task row",
++ 			ErrNoHeader, headerIdx+1, filepath.Base(headerPath), header.String("id"))
++ 	}
++-	if u.TicksTotal == nil && u.TicksIdle == nil && u.LastCommit == nil {
++-		return nil, fmt.Errorf("header requires at least one --set flag (--set-ticks-total/--set-ticks-idle/--set-last-commit)")
+++	if u.TicksTotal == nil && u.TicksIdle == nil && u.LastCommit == nil && u.LastTick == nil {
+++		return nil, fmt.Errorf("header requires at least one --set flag (--set-ticks-total/--set-ticks-idle/--set-last-commit/--set-last-tick)")
++ 	}
++ 	style := DetectStyle(lines[headerIdx])
++ 	var changed []string
++@@ -1697,6 +1702,11 @@ func (b *Board) setHeaderLocked(u HeaderUpdate) ([]string, error) {
++ 			return nil, err
++ 		}
++ 	}
+++	if u.LastTick != nil {
+++		if err := set("last_tick", *u.LastTick); err != nil {
+++			return nil, err
+++		}
+++	}
++ 	// BT-024: every successful header mutation stamps updated_at (refreshing
++ 	// it, or adding it when the header never carried the key) so the header's
++ 	// own freshness never goes stale. The dialect is sampled from the header's
++diff --git a/internal/board/write_test.go b/internal/board/write_test.go
++index 8010629..e8076d9 100644
++--- a/internal/board/write_test.go
+++++ b/internal/board/write_test.go
++@@ -278,6 +278,57 @@ func TestAppendEventTickBumpsHeaderTicksTotal(t *testing.T) {
++ 	}
++ }
++ 
+++func TestAppendEventTickStampsLastTickAndRespectsNoTickOptions(t *testing.T) {
+++	dir := t.TempDir()
+++	writeBoardFiles(t, dir, map[string]string{
+++		"tasks.jsonl":  `{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}` + "\n",
+++		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+++		"board.jsonl":  `{"project":"test","namespace":"test","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234","updated_at":"2026-09-01 00:00:00.000000"}` + "\n",
+++	})
+++	b, err := Resolve(dir)
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	if _, err := b.AppendEvent(EventSpec{Type: "audit", Tick: i64Ptr(5)}); err != nil {
+++		t.Fatal(err)
+++	}
+++	hdr, err := b.HeaderRow()
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	lastTick := hdr.String("last_tick")
+++	if lastTick == "" || !ValidTimestamp(lastTick) {
+++		t.Fatalf("last_tick = %q, want a valid timestamp", lastTick)
+++	}
+++	if _, err := time.Parse("2006-01-02 15:04:05.000000", lastTick); err != nil {
+++		t.Fatalf("last_tick = %q does not preserve the header's space/fraction dialect: %v", lastTick, err)
+++	}
+++	if total, _ := hdr.Int("ticks_total"); total != 5 {
+++		t.Fatalf("ticks_total = %d, want 5", total)
+++	}
+++
+++	if _, err := b.AppendEvent(EventSpec{Type: "audit"}); err != nil {
+++		t.Fatal(err)
+++	}
+++	plainHdr, err := b.HeaderRow()
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	if got := plainHdr.String("last_tick"); got != lastTick {
+++		t.Fatalf("plain event changed last_tick from %q to %q", lastTick, got)
+++	}
+++	if _, err := b.AppendEvent(EventSpec{Type: "audit", Tick: i64Ptr(6), NoTickWrite: true}); err != nil {
+++		t.Fatal(err)
+++	}
+++	noWriteHdr, err := b.HeaderRow()
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	if got := noWriteHdr.String("last_tick"); got != lastTick {
+++		t.Fatalf("--no-tick-write changed last_tick from %q to %q", lastTick, got)
+++	}
+++}
+++
++ // BT-014: a tick-bearing event must never REGRESS the header counter — an
++ // out-of-order event (tick 2 on a board already at 5) leaves ticks_total 5.
++ func TestAppendEventTickNeverRegressesTicksTotal(t *testing.T) {
++@@ -342,6 +393,44 @@ func TestAppendEventTickBumpsHeaderOnTopologyB(t *testing.T) {
++ 	}
++ }
++ 
+++func TestAppendEventTickStampsLastTickOnTopologyB(t *testing.T) {
+++	dir := t.TempDir()
+++	taskLine := `{"id":"EXIST-1","title":"Existing","status":"complete","priority":"P1"}`
+++	writeBoardFiles(t, dir, map[string]string{
+++		"tasks.jsonl":  `{"project":"legacy","namespace":"legacy","version":3,"ticks_total":1,"ticks_idle":0,"last_commit":"abc1234","updated_at":"2026-09-01T00:00:00Z"}` + "\n" + taskLine + "\n",
+++		"events.jsonl": `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":"{}","tick_number":1}` + "\n",
+++	})
+++	b, err := Resolve(dir)
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	if _, err := b.AppendEvent(EventSpec{Type: "audit", Tick: i64Ptr(3)}); err != nil {
+++		t.Fatal(err)
+++	}
+++	hdr, err := b.HeaderRow()
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	lastTick := hdr.String("last_tick")
+++	if lastTick == "" || !strings.HasSuffix(lastTick, "Z") {
+++		t.Fatalf("topology-B last_tick = %q, want a Z-suffixed timestamp", lastTick)
+++	}
+++	if _, err := time.Parse(time.RFC3339, lastTick); err != nil {
+++		t.Fatalf("topology-B last_tick = %q does not parse as RFC3339: %v", lastTick, err)
+++	}
+++	if total, _ := hdr.Int("ticks_total"); total != 3 {
+++		t.Fatalf("topology-B ticks_total = %d, want 3", total)
+++	}
+++	lines, err := os.ReadFile(b.tasksPath)
+++	if err != nil {
+++		t.Fatal(err)
+++	}
+++	got := strings.SplitN(strings.TrimRight(string(lines), "\n"), "\n", 2)
+++	if len(got) != 2 || got[1] != taskLine {
+++		t.Fatalf("topology-B task row changed: %v", got)
+++	}
+++}
+++
++ // ---------- BT-024: SetHeader stamps header updated_at ----------
++ 
++ // seedStaleHeaderBoard builds a topology-A board whose header carries a STALE
+diff --git a/.gitreins/history/2026-10-11/4eedee51/summary.md b/.gitreins/history/2026-10-11/4eedee51/summary.md
+new file mode 100644
+index 0000000..2498a92
+--- /dev/null
++++ b/.gitreins/history/2026-10-11/4eedee51/summary.md
+@@ -0,0 +1,21 @@
++# Verdict: INT-ENV-001
++
++**Task:** Pin host govulncheck to repo version v1.7.0
++**Evaluated:** 2026-10-11T21:42:26.965810
++**Result:** ✓ PASS
++
++## Pipeline Stages
++
++- ✓ **tier1**
++  -   ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
++  ✓ tests: scanners: nice=nice -n 10
++
++## Summary
++
++Judge Result: INT-ENV-001
++
++Stage tier1: PASS
++    ✓ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
++  ✓ tests: scanners: nice=nice -n 10
++
++Overall: PASS ✓
+diff --git a/.gitreins/history/2026-10-11/4eedee51/verdict.json b/.gitreins/history/2026-10-11/4eedee51/verdict.json
+new file mode 100644
+index 0000000..d748e20
+--- /dev/null
++++ b/.gitreins/history/2026-10-11/4eedee51/verdict.json
+@@ -0,0 +1,67 @@
++{
++  "task_id": "INT-ENV-001",
++  "task_title": "Pin host govulncheck to repo version v1.7.0",
++  "task_criteria": [
++    "Install the repository-pinned govulncheck v1.7.0 on this host; verify govulncheck -version reports v1.7.0 and go test ./... -count=1 -short passes with the default environment."
++  ],
++  "passed": true,
++  "worktree": "/home/kara/coding-hermes-boardctl",
++  "branch": "main",
++  "commit": "1b1da024704d68e876731a5b2239bb1f9384c1c0",
++  "items": [],
++  "stages": {
++    "tier1": {
++      "id": "tier1",
++      "passed": true,
++      "any_failed": false,
++      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
++      "steps": [
++        {
++          "id": "secrets",
++          "type": "script",
++          "passed": true,
++          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n4:42PM INF scanned ~3093924 bytes (3.09 MB) in 606ms\n4:42PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 211 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
++          "error": "",
++          "data": {
++            "exit_code": 0,
++            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T114919.362302Z.log",
++            "secrets_scanners": [
++              "gitleaks",
++              "builtin"
++            ]
++          }
++        },
++        {
++          "id": "tests",
++          "type": "script",
++          "passed": true,
++          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t2.751s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.103s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.495s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
++          "error": "",
++          "data": {
++            "exit_code": 0,
++            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T114919.362302Z.log"
++          }
++        }
++      ],
++      "coverage": "secrets+tests"
++    }
++  },
++  "summary": "Judge Result: INT-ENV-001\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nOverall: PASS \u2713",
++  "evaluated_at": "2026-10-11T21:42:26.965810",
++  "supersedes": null,
++  "superseded_by": null,
++  "evidence": {
++    "collected_at": "2026-10-11T21:42:26.982710+00:00",
++    "items": [
++      {
++        "name": "patch",
++        "label": "Landed commit patch",
++        "file": "commit.patch",
++        "bytes": 12062,
++        "truncated": false,
++        "source": "git show 1b1da024704d"
++      }
++    ],
++    "task_id": "INT-ENV-001"
++  }
++}
+\ No newline at end of file

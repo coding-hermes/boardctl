@@ -1,0 +1,20 @@
+{
+  "tick": "boardctl-foreman-2026-10-13-23-57-31",
+  "wave_budget": 8,
+  "workers": [
+    {
+      "task": "DF-BOARDCTL-37",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-37",
+      "branch": "wt/DF-BOARDCTL-37",
+      "base_sha": "64104dc",
+      "gitreins_task": "DF-BOARDCTL-37"
+    },
+    {
+      "task": "DF-BOARDCTL-36",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-36",
+      "branch": "wt/DF-BOARDCTL-36",
+      "base_sha": "64104dc",
+      "gitreins_task": "DF-BOARDCTL-36"
+    }
+  ]
+}

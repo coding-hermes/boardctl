@@ -1,0 +1,45 @@
+commit 9bfb257970ebcd6c3c893aa659a88cb93961c195
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Oct 11 23:08:34 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Oct 11 23:08:34 2026 -0500
+
+    docs: document dedupe-board --by-id and --json flag (DOC-31)
+---
+ README.md | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/README.md b/README.md
+index 98212e4..024204c 100644
+--- a/README.md
++++ b/README.md
+@@ -829,6 +829,29 @@ dedupe-board --board-dir ~/myproject            # report only, zero writes
+ dedupe-board --board-dir ~/myproject --apply    # collapse the groups
+ ```
+ 
++**Recycled-id repair (`--by-id`)**: live boards also carry many DISTINCT
++findings filed under ONE recycled task id (e.g. six `QA-ASCE-1` rows, each a
++different finding: header-frozen, spawn-pool exhausted, port-range exhausted
++x2, bunker-dropped). The fingerprint mode correctly refuses to collapse them
++(their fingerprints differ). Use `--by-id` to repair this hygiene:
++
++```bash
++dedupe-board --board-dir ~/asce --by-id              # dry-run: show groups
++dedupe-board --board-dir ~/asce --by-id --apply      # close later lines
++dedupe-board --board-dir ~/asce --by-id --json       # machine-readable report
++```
++
++`--by-id` keeps the EARLIEST line per id, closes each later line as
++`superseded-by-earliest` (status=complete, worker_summary naming the kept
++line), and preserves the closed line's original title+reasoning in an audit
++event. Already-terminal later lines (complete/failed) are left untouched.
++`--json` emits the report as JSON (only supported with `--by-id`).
++
++**Fresh-id rule**: a lane must ALWAYS mint a fresh task id for a new finding.
++An id-recycled filing — a new finding under an old key — is never a
++re-observation of the same task; `--by-id` repairs boards where lanes re-used
++a cycle number instead of advancing the id.
++
+ `import --renumber` (BT-022) applies the same "never lose a finding" idea to
+ round-tripped exports: when an imported row shares an id with an existing row
+ but its content differs, plain `import` skips it, while

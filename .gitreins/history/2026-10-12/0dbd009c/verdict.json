@@ -1,0 +1,93 @@
+{
+  "task_id": "DOC-31",
+  "task_title": "document dedupe-board --by-id and --json flag",
+  "task_criteria": [
+    "README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "9bfb257970ebcd6c3c893aa659a88cb93961c195",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n11:08PM INF scanned ~3095890 bytes (3.10 MB) in 682ms\n11:08PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 211 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261012T040834.199618Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.710s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.128s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.022s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.006s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.291s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261012T040834.199618Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both: README.md:832-852 (commit 9bfb257) adds a '**Recycled-id repair (`--by-id`)**' subsection with three bash examples (dry-run, --apply, --json) plus prose covering earliest-line-kept, superseded-by-earliest closure, terminal lines untouched, and '--json emits the report as JSON (only supported with --by-id)'. All claims match the implementation: cmd/dedupe-board/main.go:75 (--by-id flag), :77 (--json flag), :124-125 (--json rejected without --by-id), internal/board/iddupe.go:189/287 (superseded-by-earliest), :155 (AlreadyTerminal left untouched), :225-247 (audit event preserves original title+reasoning). Tests: `go test -count=1 ./...` exit_code 0, 12 packages ok, no FAIL/panic.\nREADME dedupe-board section now documents both the --by-id recycled-id repair mode and the --json flag with examples, matching the verified implementation and passing test suite.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both: README.md:832-852 (commit 9bfb257) adds a '**Recycled-id repair (`--by-id`)**' subsection with three bash examples (dry-run, --apply, --json) plus prose covering earliest-line-kept, superseded-by-earliest closure, terminal lines untouched, and '--json emits the report as JSON (only supported with --by-id)'. All claims match the implementation: cmd/dedupe-board/main.go:75 (--by-id flag), :77 (--json flag), :124-125 (--json rejected without --by-id), internal/board/iddupe.go:189/287 (superseded-by-earliest), :155 (AlreadyTerminal left untouched), :225-247 (audit event preserves original title+reasoning). Tests: `go test -count=1 ./...` exit_code 0, 12 packages ok, no FAIL/panic.\nREADME dedupe-board section now documents both the --by-id recycled-id repair mode and the --json flag with examples, matching the verified implementation and passing test suite.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both",
+                "status": "PASS",
+                "detail": "README.md:832-852 (commit 9bfb257) adds a '**Recycled-id repair (`--by-id`)**' subsection with three bash examples (dry-run, --apply, --json) plus prose covering earliest-line-kept, superseded-by-earliest closure, terminal lines untouched, and '--json emits the report as JSON (only supported with --by-id)'. All claims match the implementation: cmd/dedupe-board/main.go:75 (--by-id flag), :77 (--json flag), :124-125 (--json rejected without --by-id), internal/board/iddupe.go:189/287 (superseded-by-earliest), :155 (AlreadyTerminal left untouched), :225-247 (audit event preserves original title+reasoning). Tests: `go test -count=1 ./...` exit_code 0, 12 packages ok, no FAIL/panic."
+              }
+            ],
+            "summary": "README dedupe-board section now documents both the --by-id recycled-id repair mode and the --json flag with examples, matching the verified implementation and passing test suite."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-31\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README dedupe-board section documents the default fingerprint mode but not the --by-id recycled-id repair mode (DF-BOARDCTL-10) or the --json flag; add a subsection or example showing both: README.md:832-852 (commit 9bfb257) adds a '**Recycled-id repair (`--by-id`)**' subsection with three bash examples (dry-run, --apply, --json) plus prose covering earliest-line-kept, superseded-by-earliest closure, terminal lines untouched, and '--json emits the report as JSON (only supported with --by-id)'. All claims match the implementation: cmd/dedupe-board/main.go:75 (--by-id flag), :77 (--json flag), :124-125 (--json rejected without --by-id), internal/board/iddupe.go:189/287 (superseded-by-earliest), :155 (AlreadyTerminal left untouched), :225-247 (audit event preserves original title+reasoning). Tests: `go test -count=1 ./...` exit_code 0, 12 packages ok, no FAIL/panic.\nREADME dedupe-board section now documents both the --by-id recycled-id repair mode and the --json flag with examples, matching the verified implementation and passing test suite.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-12T04:09:27.744918",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-12T04:09:27.758883+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 2181,
+        "truncated": false,
+        "source": "git show 9bfb257970eb"
+      }
+    ],
+    "task_id": "DOC-31"
+  }
+}

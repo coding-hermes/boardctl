@@ -1,0 +1,35 @@
+{
+  "tick_id": "boardctl-foreman-2026-10-11-07-28-31",
+  "project": "boardctl",
+  "workdir": "/home/kara/coding-hermes-boardctl",
+  "dispatched_at": "2026-10-11T07:29:57Z",
+  "wave_budget": 3,
+  "tasks": [
+    {
+      "id": "DOC-26",
+      "title": "P4 — mark post-v0.1.10 flags (--deferred, --pull-request/--assoc-*) in the README usage block with since-version annotations",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DOC-26",
+      "branch": "wt/DOC-26",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm"
+    },
+    {
+      "id": "DOC-28",
+      "title": "P4 — operator path has no single home: index the recovery/triage sections (corrupt board, header drift, vuln TOOL-ERROR, freshness skip)",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DOC-28",
+      "branch": "wt/DOC-28",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm"
+    },
+    {
+      "id": "DOC-29",
+      "title": "P4 — refresh skills/boardctl-usage/SKILL.md: install fleet flags, sweep-status --decide, --deferred",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DOC-29",
+      "branch": "wt/DOC-29",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm"
+    }
+  ],
+  "finished_at": "2026-10-11T11:30:40-05:00",
+  "recovery_note": "Recovery tick found the recorded wave manifest with 0 workers and no task/branch assignments to recover. All three listed tasks were verified against the live board as blocked or already reconciled; no merge, fixup, worktree removal, or branch deletion was applicable. Manifest closed before normal tick work."
+}

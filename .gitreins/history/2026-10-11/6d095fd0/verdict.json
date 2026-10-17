@@ -1,0 +1,93 @@
+{
+  "task_id": "DOC-26",
+  "task_title": "Annotate post-v0.1.10 flags in README usage block",
+  "task_criteria": [
+    "README usage examples for --deferred, --pull-request, --assoc-branch, and --assoc-worktree carry since-v0.1.11 annotations; documentation change is committed and the merged tree's direct tests pass aside from the pre-existing host govulncheck v1.8.0 versus repository pin v1.7.0 environment mismatch."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "1b1da024704d68e876731a5b2239bb1f9384c1c0",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:49AM INF scanned ~3093687 bytes (3.09 MB) in 814ms\n6:49AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 211 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T114919.362302Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t3.757s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.008s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.803s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.008s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.164s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.032s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.040s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.020s\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckWithFakeBinaryclean_scan_passes2656419487/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\n--- FAIL: TestVulncheck (0.25s)\n    vulncheck_test.go:449: dependency-vulnerability gate refused: govulncheck version mismatch: this repo's gates pin v1.7.0 but the resolved binary /home/kara/go/bin/govulncheck reports v1.8.0 \u2014 a scan by a different scanner rule set must not stand in for the pinned gate (fix: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0)\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an4221671278/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an4221671278/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nvulncheck: WARN: the resolved binary /var/tmp/hermes-go-tmp/TestCheckVersionOfflinestrict_env_parsing_accepts_1trueyes_an4221671278/001/govulncheck exited 0 from -version but printed no parsable 'Scanner: govulncheck@...' line \u2014 the version pin could not be verified; set VULNCHECK_STRICT_SCANNER=1 to fail the gate on this instead\nFAIL\nFAIL\tgithub.com/coding-hermes/boardctl/internal/vulncheck\t0.366s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\nFAIL\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261011T114919.362302Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README usage examples for --deferred, --pull-request, --assoc-branch, and --assoc-worktree carry since-v0.1.11 annotations; documentation change is committed and the merged tree's direct tests pass aside from the pre-existing host govulncheck v1.8.0 versus repository pin v1.7.0 environment mismatch.: README.md:941-942 show `--deferred` examples with `# (since v0.1.11)`; README.md:976 `--pull-request 42 --pull-request 43   # (since v0.1.11)`; README.md:977 `--assoc-branch wt/fix-a ...   # (since v0.1.11)`; README.md:978 `--assoc-worktree ~/worktrees/fix-a   # (since v0.1.11)`. Commit 5484722 'docs: annotate post-v0.1.10 flags in README usage block (DOC-26)' is an ancestor of HEAD (merged via ac608f9, `git merge-base --is-ancestor` confirmed). `go test -count=1 ./...` exit_code=1, but the sole failure is internal/vulncheck TestVulncheck at vulncheck_test.go:449: 'govulncheck version mismatch: this repo's gates pin v1.7.0 but the resolved binary /home/kara/go/bin/govulncheck reports v1.8.0' \u2014 exactly the pre-existing host environment mismatch the criterion excludes. All other packages pass: ok cmd/boardctl, cmd/dedupe-board, cmd/gendocs, internal/board, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/workflowcheck.\nAll four post-v0.1.10 flags carry since-v0.1.11 annotations in README, the doc commit is merged into HEAD, and the only test failure is the pre-existing govulncheck v1.8.0-vs-v1.7.0 environment mismatch.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README usage examples for --deferred, --pull-request, --assoc-branch, and --assoc-worktree carry since-v0.1.11 annotations; documentation change is committed and the merged tree's direct tests pass aside from the pre-existing host govulncheck v1.8.0 versus repository pin v1.7.0 environment mismatch.: README.md:941-942 show `--deferred` examples with `# (since v0.1.11)`; README.md:976 `--pull-request 42 --pull-request 43   # (since v0.1.11)`; README.md:977 `--assoc-branch wt/fix-a ...   # (since v0.1.11)`; README.md:978 `--assoc-worktree ~/worktrees/fix-a   # (since v0.1.11)`. Commit 5484722 'docs: annotate post-v0.1.10 flags in README usage block (DOC-26)' is an ancestor of HEAD (merged via ac608f9, `git merge-base --is-ancestor` confirmed). `go test -count=1 ./...` exit_code=1, but the sole failure is internal/vulncheck TestVulncheck at vulncheck_test.go:449: 'govulncheck version mismatch: this repo's gates pin v1.7.0 but the resolved binary /home/kara/go/bin/govulncheck reports v1.8.0' \u2014 exactly the pre-existing host environment mismatch the criterion excludes. All other packages pass: ok cmd/boardctl, cmd/dedupe-board, cmd/gendocs, internal/board, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/workflowcheck.\nAll four post-v0.1.10 flags carry since-v0.1.11 annotations in README, the doc commit is merged into HEAD, and the only test failure is the pre-existing govulncheck v1.8.0-vs-v1.7.0 environment mismatch.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README usage examples for --deferred, --pull-request, --assoc-branch, and --assoc-worktree carry since-v0.1.11 annotations; documentation change is committed and the merged tree's direct tests pass aside from the pre-existing host govulncheck v1.8.0 versus repository pin v1.7.0 environment mismatch.",
+                "status": "PASS",
+                "detail": "README.md:941-942 show `--deferred` examples with `# (since v0.1.11)`; README.md:976 `--pull-request 42 --pull-request 43   # (since v0.1.11)`; README.md:977 `--assoc-branch wt/fix-a ...   # (since v0.1.11)`; README.md:978 `--assoc-worktree ~/worktrees/fix-a   # (since v0.1.11)`. Commit 5484722 'docs: annotate post-v0.1.10 flags in README usage block (DOC-26)' is an ancestor of HEAD (merged via ac608f9, `git merge-base --is-ancestor` confirmed). `go test -count=1 ./...` exit_code=1, but the sole failure is internal/vulncheck TestVulncheck at vulncheck_test.go:449: 'govulncheck version mismatch: this repo's gates pin v1.7.0 but the resolved binary /home/kara/go/bin/govulncheck reports v1.8.0' \u2014 exactly the pre-existing host environment mismatch the criterion excludes. All other packages pass: ok cmd/boardctl, cmd/dedupe-board, cmd/gendocs, internal/board, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/workflowcheck."
+              }
+            ],
+            "summary": "All four post-v0.1.10 flags carry since-v0.1.11 annotations in README, the doc commit is merged into HEAD, and the only test failure is the pre-existing govulncheck v1.8.0-vs-v1.7.0 environment mismatch."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-26\n\nStage tier1: FAIL\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README usage examples for --deferred, --pull-request, --assoc-branch, and --assoc-worktree carry since-v0.1.11 annotations; documentation change is committed and the merged tree's direct tests pass aside from the pre-existing host govulncheck v1.8.0 versus repository pin v1.7.0 environment mismatch.: README.md:941-942 show `--deferred` examples with `# (since v0.1.11)`; README.md:976 `--pull-request 42 --pull-request 43   # (since v0.1.11)`; README.md:977 `--assoc-branch wt/fix-a ...   # (since v0.1.11)`; README.md:978 `--assoc-worktree ~/worktrees/fix-a   # (since v0.1.11)`. Commit 5484722 'docs: annotate post-v0.1.10 flags in README usage block (DOC-26)' is an ancestor of HEAD (merged via ac608f9, `git merge-base --is-ancestor` confirmed). `go test -count=1 ./...` exit_code=1, but the sole failure is internal/vulncheck TestVulncheck at vulncheck_test.go:449: 'govulncheck version mismatch: this repo's gates pin v1.7.0 but the resolved binary /home/kara/go/bin/govulncheck reports v1.8.0' \u2014 exactly the pre-existing host environment mismatch the criterion excludes. All other packages pass: ok cmd/boardctl, cmd/dedupe-board, cmd/gendocs, internal/board, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/workflowcheck.\nAll four post-v0.1.10 flags carry since-v0.1.11 annotations in README, the doc commit is merged into HEAD, and the only test failure is the pre-existing govulncheck v1.8.0-vs-v1.7.0 environment mismatch.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-11T11:49:56.567308",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-11T11:49:56.592021+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 12062,
+        "truncated": false,
+        "source": "git show 1b1da024704d"
+      }
+    ],
+    "task_id": "DOC-26"
+  }
+}
