@@ -1,0 +1,101 @@
+{
+  "task_id": "DF-BOARDCTL-42",
+  "task_title": "Document events.jsonl prerequisite for normalize-board --apply",
+  "task_criteria": [
+    "Normalize-board --apply fails with 'no JSONL foreman board found' on tasks.jsonl-only boards because board resolution requires events.jsonl. The README normalize-board section must document this prerequisite. Fix: add a note to README.md normalize-board section stating that events.jsonl must exist (even if empty) for --apply to succeed, and explain the board resolution path."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "82cf26c372db3dba2ae37a7276570fc136d9b735",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n5:37PM INF scanned ~3458657 bytes (3.46 MB) in 749ms\n5:37PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 239 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261017T223734.446036Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.382s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.019s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.009s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.120s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.168s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t1.055s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.027s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.025s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.011s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.399s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.012s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261017T223734.446036Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 Normalize-board --apply fails with 'no JSONL foreman board found' on tasks.jsonl-only boards because board resolution requires events.jsonl. The README normalize-board section must document this prerequisite. Fix: add a note to README.md normalize-board section stating that events.jsonl must exist (even if empty) for --apply to succeed, and explain the board resolution path.: The note was added (commit 82cf26c, README.md:736-750, inside the '## normalize-board' section at README.md:696) and the events.jsonl half is correct and verified empirically: a tasks.jsonl-only board gives `boardctl -C $D normalize-board --apply` -> EXIT=2 'no JSONL foreman board found: ... (a tasks.jsonl-only board: events.jsonl is missing)', and adding an empty events.jsonl makes it EXIT=0 'applied: ... rewritten in one atomic pass'. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/` -> exit 0, 'ok internal/board 0.974s', 'ok cmd/boardctl 4.900s'. HOWEVER the required 'explain the board resolution path' is documented INCORRECTLY. README.md:737-739 states normalize-board 'requires the board dir to contain `board.jsonl` (the header) AND `events.jsonl` (even if empty)'. That is false: internal/board/board.go:159-190 Resolve() checks only tasks.jsonl + events.jsonl, and boardFromDir (board.go:203-211) treats board.jsonl as optional (present -> Topology A, absent -> Topology B). Verified empirically: a board with tasks.jsonl + empty events.jsonl and NO board.jsonl runs `normalize-board --apply` successfully with EXIT=0 ('applied: ... rewritten in one atomic pass'). The README's follow-on sentence at :747-750 ('If you are repairing a legacy board that still uses topology B (header on line 1 of tasks.jsonl, no board.jsonl), create an empty events.jsonl first') compounds the error by implying topology-B boards need board.jsonl. The doc must be corrected to state that only tasks.jsonl + events.jsonl are required and that board.jsonl is optional (topology A vs B).\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 Normalize-board --apply fails with 'no JSONL foreman board found' on tasks.jsonl-only boards because board resolution requires events.jsonl. The README normalize-board section must document this prerequisite. Fix: add a note to README.md normalize-board section stating that events.jsonl must exist (even if empty) for --apply to succeed, and explain the board resolution path.: The note was added (commit 82cf26c, README.md:736-750, inside the '## normalize-board' section at README.md:696) and the events.jsonl half is correct and verified empirically: a tasks.jsonl-only board gives `boardctl -C $D normalize-board --apply` -> EXIT=2 'no JSONL foreman board found: ... (a tasks.jsonl-only board: events.jsonl is missing)', and adding an empty events.jsonl makes it EXIT=0 'applied: ... rewritten in one atomic pass'. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/` -> exit 0, 'ok internal/board 0.974s', 'ok cmd/boardctl 4.900s'. HOWEVER the required 'explain the board resolution path' is documented INCORRECTLY. README.md:737-739 states normalize-board 'requires the board dir to contain `board.jsonl` (the header) AND `events.jsonl` (even if empty)'. That is false: internal/board/board.go:159-190 Resolve() checks only tasks.jsonl + events.jsonl, and boardFromDir (board.go:203-211) treats board.jsonl as optional (present -> Topology A, absent -> Topology B). Verified empirically: a board with tasks.jsonl + empty events.jsonl and NO board.jsonl runs `normalize-board --apply` successfully with EXIT=0 ('applied: ... rewritten in one atomic pass'). The README's follow-on sentence at :747-750 ('If you are repairing a legacy board that still uses topology B (header on line 1 of tasks.jsonl, no board.jsonl), create an empty events.jsonl first') compounds the error by implying topology-B boards need board.jsonl. The doc must be corrected to state that only tasks.jsonl + events.jsonl are required and that board.jsonl is optional (topology A vs B).\n",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "Normalize-board --apply fails with 'no JSONL foreman board found' on tasks.jsonl-only boards because board resolution requires events.jsonl. The README normalize-board section must document this prerequisite. Fix: add a note to README.md normalize-board section stating that events.jsonl must exist (even if empty) for --apply to succeed, and explain the board resolution path.",
+                "status": "FAIL",
+                "detail": "The note was added (commit 82cf26c, README.md:736-750, inside the '## normalize-board' section at README.md:696) and the events.jsonl half is correct and verified empirically: a tasks.jsonl-only board gives `boardctl -C $D normalize-board --apply` -> EXIT=2 'no JSONL foreman board found: ... (a tasks.jsonl-only board: events.jsonl is missing)', and adding an empty events.jsonl makes it EXIT=0 'applied: ... rewritten in one atomic pass'. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/` -> exit 0, 'ok internal/board 0.974s', 'ok cmd/boardctl 4.900s'. HOWEVER the required 'explain the board resolution path' is documented INCORRECTLY. README.md:737-739 states normalize-board 'requires the board dir to contain `board.jsonl` (the header) AND `events.jsonl` (even if empty)'. That is false: internal/board/board.go:159-190 Resolve() checks only tasks.jsonl + events.jsonl, and boardFromDir (board.go:203-211) treats board.jsonl as optional (present -> Topology A, absent -> Topology B). Verified empirically: a board with tasks.jsonl + empty events.jsonl and NO board.jsonl runs `normalize-board --apply` successfully with EXIT=0 ('applied: ... rewritten in one atomic pass'). The README's follow-on sentence at :747-750 ('If you are repairing a legacy board that still uses topology B (header on line 1 of tasks.jsonl, no board.jsonl), create an empty events.jsonl first') compounds the error by implying topology-B boards need board.jsonl. The doc must be corrected to state that only tasks.jsonl + events.jsonl are required and that board.jsonl is optional (topology A vs B)."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-42\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 Normalize-board --apply fails with 'no JSONL foreman board found' on tasks.jsonl-only boards because board resolution requires events.jsonl. The README normalize-board section must document this prerequisite. Fix: add a note to README.md normalize-board section stating that events.jsonl must exist (even if empty) for --apply to succeed, and explain the board resolution path.: The note was added (commit 82cf26c, README.md:736-750, inside the '## normalize-board' section at README.md:696) and the events.jsonl half is correct and verified empirically: a tasks.jsonl-only board gives `boardctl -C $D normalize-board --apply` -> EXIT=2 'no JSONL foreman board found: ... (a tasks.jsonl-only board: events.jsonl is missing)', and adding an empty events.jsonl makes it EXIT=0 'applied: ... rewritten in one atomic pass'. Tests: `go test -count=1 ./internal/board/ ./cmd/boardctl/` -> exit 0, 'ok internal/board 0.974s', 'ok cmd/boardctl 4.900s'. HOWEVER the required 'explain the board resolution path' is documented INCORRECTLY. README.md:737-739 states normalize-board 'requires the board dir to contain `board.jsonl` (the header) AND `events.jsonl` (even if empty)'. That is false: internal/board/board.go:159-190 Resolve() checks only tasks.jsonl + events.jsonl, and boardFromDir (board.go:203-211) treats board.jsonl as optional (present -> Topology A, absent -> Topology B). Verified empirically: a board with tasks.jsonl + empty events.jsonl and NO board.jsonl runs `normalize-board --apply` successfully with EXIT=0 ('applied: ... rewritten in one atomic pass'). The README's follow-on sentence at :747-750 ('If you are repairing a legacy board that still uses topology B (header on line 1 of tasks.jsonl, no board.jsonl), create an empty events.jsonl first') compounds the error by implying topology-B boards need board.jsonl. The doc must be corrected to state that only tasks.jsonl + events.jsonl are required and that board.jsonl is optional (topology A vs B).\n\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-17T22:38:31.380117",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-17T22:38:31.401787+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1931,
+        "truncated": false,
+        "source": "git show 82cf26c372db"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 21580,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-42"
+  }
+}
