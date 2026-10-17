@@ -733,6 +733,22 @@ byte-identical, no audit event (spelling/shape repair, not a state
 transition). Exit stays 0 in both modes: the report is the product,
 `validate` owns exit semantics.
 
+**Board resolution prerequisite for `--apply`:** `normalize-board`
+(dry-run and `--apply` alike) resolves a board by looking for two files
+in the board directory: `tasks.jsonl` (the task rows) and
+`events.jsonl` (the event trail). If the dir contains only
+`tasks.jsonl` the command exits 2:
+
+```
+exit 2: no JSONL foreman board found: ... (a tasks.jsonl-only board:
+events.jsonl is missing)
+```
+
+`board.jsonl` (the topology-A header) is optional: boards that omit it
+use topology B (header on line 1 of `tasks.jsonl`) and are fully
+repairable — they just need an empty `events.jsonl` so the resolver can
+confirm the directory is a complete board.
+
 ```bash
 boardctl -C ~/myproject normalize-board               # classify + stage, zero board writes
 boardctl -C ~/myproject normalize-board --json        # machine-readable census
