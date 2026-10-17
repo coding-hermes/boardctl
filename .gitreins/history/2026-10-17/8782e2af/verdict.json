@@ -1,0 +1,101 @@
+{
+  "task_id": "DF-BOARDCTL-40",
+  "task_title": "P3 - verify unknown-command exit code claim",
+  "task_criteria": [
+    "Close row with the discrimination probe: download v0.1.10 binary and verify its exit code on an unknown command is 2, not 0, as the row claims. If exit code is 2, close the row as premise-false with the probe evidence."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "99a69d37e88abc0e6b837ae47779fdf829b92e9d",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n7:26AM INF scanned ~3417873 bytes (3.42 MB) in 3.18s\n7:26AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 239 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261017T003335.049655Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\ngo: downloading github.com/getkin/kin-openapi v0.149.0\ngo: downloading github.com/go-openapi/jsonpointer v0.22.5\ngo: downloading github.com/oasdiff/yaml v0.1.1\ngo: downloading golang.org/x/text v0.14.0\ngo: downloading github.com/go-openapi/swag/jsonname v0.25.5\ngo: downloading github.com/oasdiff/yaml3 v0.0.14\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t10.803s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t2.052s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.500s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.030s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261017T003335.049655Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Close row with the discrimination probe: download v0.1.10 binary and verify its exit code on an unknown command is 2, not 0, as the row claims. If exit code is 2, close the row as premise-false with the probe evidence.: Probe independently reproduced on the v0.1.10 asset at /tmp/boardctl-probe-v0110/boardctl_linux_amd64 (sha256 20ebddf6...f406ccc5). Identity confirmed genuine v0.1.10: `version` -> 'boardctl version v0.1.10' rc=0; `version --json` -> {\"version\":\"v0.1.10\",\"build\":\"v0.1.10\"}. Authenticity cross-check: the binary LACKS normalize-board ('unknown command') while HEAD cmd/boardctl/main.go:210 has `case \"normalize-board\":` \u2014 proving it is the old release asset, not a HEAD build. PROBE 1 (direct $?): `./boardctl_linux_amd64 bogus-cmd` -> unknown_cmd_rc=2 with stderr 'boardctl: unknown command \"bogus-cmd\"' + usage. PROBE 2 (the row's own AC, pipeline capture): `out=$(./boardctl_linux_amd64 normalize-board --help 2>&1); rc=$?` -> captured_rc=2. PROBE 3 (direct): normalize-board --help -> direct_rc=2. Exit code is 2, NOT 0, so the row premise is false and the criterion's conditional ('If exit code is 2, close the row as premise-false with the probe evidence') is satisfied. Row closed at .coding-hermes/board/tasks.jsonl:170: status=\"complete\", worker_status=\"complete\", completed_at=\"2026-10-17 08:42:00\", guard_result=\"PASS\", commit_hash=\"99a69d3\", worker_summary=\"Premise-false: discrimination probe confirms v0.1.10 exits 2 on unknown commands. Direct probe: exit 2. Pipeline capture probe (the row's own AC): exit 2...\", foreman_note records both probe commands and their exit 2, and detail.evidence carries the new run_id boardctl-foreman-2026-10-17-12-13-53 (ts 2026-10-17 12:18:23). Source contract corroborates: cmd/boardctl/main.go:231-232 `default: fmt.Fprintf(os.Stderr, \"boardctl: unknown command %q...\"); return 2`. Board validates clean with the closure: `boardctl validate` -> 'RESULT: OK (8 warning(s))' exit 0. Tests: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` TEST_EXIT=0 with 12 'ok' packages and 0 FAIL. Minor non-disqualifying caveat: the row closure is staged (git status 'M ') rather than yet in HEAD \u2014 `git show HEAD:.coding-hermes/board/tasks.jsonl` still shows status=pending \u2014 which matches this repo's tick-commit workflow (cf. DF-BOARDCTL-38 closed in a84f255/99a69d3); the criterion's requirement to close the row is met in the working-tree board.\nThe discrimination probe was genuinely run against the real v0.1.10 release binary and shows exit code 2 (not 0) on unknown commands both directly and via pipeline capture, and the row was closed as premise-false with that probe evidence recorded in the board.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Close row with the discrimination probe: download v0.1.10 binary and verify its exit code on an unknown command is 2, not 0, as the row claims. If exit code is 2, close the row as premise-false with the probe evidence.: Probe independently reproduced on the v0.1.10 asset at /tmp/boardctl-probe-v0110/boardctl_linux_amd64 (sha256 20ebddf6...f406ccc5). Identity confirmed genuine v0.1.10: `version` -> 'boardctl version v0.1.10' rc=0; `version --json` -> {\"version\":\"v0.1.10\",\"build\":\"v0.1.10\"}. Authenticity cross-check: the binary LACKS normalize-board ('unknown command') while HEAD cmd/boardctl/main.go:210 has `case \"normalize-board\":` \u2014 proving it is the old release asset, not a HEAD build. PROBE 1 (direct $?): `./boardctl_linux_amd64 bogus-cmd` -> unknown_cmd_rc=2 with stderr 'boardctl: unknown command \"bogus-cmd\"' + usage. PROBE 2 (the row's own AC, pipeline capture): `out=$(./boardctl_linux_amd64 normalize-board --help 2>&1); rc=$?` -> captured_rc=2. PROBE 3 (direct): normalize-board --help -> direct_rc=2. Exit code is 2, NOT 0, so the row premise is false and the criterion's conditional ('If exit code is 2, close the row as premise-false with the probe evidence') is satisfied. Row closed at .coding-hermes/board/tasks.jsonl:170: status=\"complete\", worker_status=\"complete\", completed_at=\"2026-10-17 08:42:00\", guard_result=\"PASS\", commit_hash=\"99a69d3\", worker_summary=\"Premise-false: discrimination probe confirms v0.1.10 exits 2 on unknown commands. Direct probe: exit 2. Pipeline capture probe (the row's own AC): exit 2...\", foreman_note records both probe commands and their exit 2, and detail.evidence carries the new run_id boardctl-foreman-2026-10-17-12-13-53 (ts 2026-10-17 12:18:23). Source contract corroborates: cmd/boardctl/main.go:231-232 `default: fmt.Fprintf(os.Stderr, \"boardctl: unknown command %q...\"); return 2`. Board validates clean with the closure: `boardctl validate` -> 'RESULT: OK (8 warning(s))' exit 0. Tests: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` TEST_EXIT=0 with 12 'ok' packages and 0 FAIL. Minor non-disqualifying caveat: the row closure is staged (git status 'M ') rather than yet in HEAD \u2014 `git show HEAD:.coding-hermes/board/tasks.jsonl` still shows status=pending \u2014 which matches this repo's tick-commit workflow (cf. DF-BOARDCTL-38 closed in a84f255/99a69d3); the criterion's requirement to close the row is met in the working-tree board.\nThe discrimination probe was genuinely run against the real v0.1.10 release binary and shows exit code 2 (not 0) on unknown commands both directly and via pipeline capture, and the row was closed as premise-false with that probe evidence recorded in the board.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Close row with the discrimination probe: download v0.1.10 binary and verify its exit code on an unknown command is 2, not 0, as the row claims. If exit code is 2, close the row as premise-false with the probe evidence.",
+                "status": "PASS",
+                "detail": "Probe independently reproduced on the v0.1.10 asset at /tmp/boardctl-probe-v0110/boardctl_linux_amd64 (sha256 20ebddf6...f406ccc5). Identity confirmed genuine v0.1.10: `version` -> 'boardctl version v0.1.10' rc=0; `version --json` -> {\"version\":\"v0.1.10\",\"build\":\"v0.1.10\"}. Authenticity cross-check: the binary LACKS normalize-board ('unknown command') while HEAD cmd/boardctl/main.go:210 has `case \"normalize-board\":` \u2014 proving it is the old release asset, not a HEAD build. PROBE 1 (direct $?): `./boardctl_linux_amd64 bogus-cmd` -> unknown_cmd_rc=2 with stderr 'boardctl: unknown command \"bogus-cmd\"' + usage. PROBE 2 (the row's own AC, pipeline capture): `out=$(./boardctl_linux_amd64 normalize-board --help 2>&1); rc=$?` -> captured_rc=2. PROBE 3 (direct): normalize-board --help -> direct_rc=2. Exit code is 2, NOT 0, so the row premise is false and the criterion's conditional ('If exit code is 2, close the row as premise-false with the probe evidence') is satisfied. Row closed at .coding-hermes/board/tasks.jsonl:170: status=\"complete\", worker_status=\"complete\", completed_at=\"2026-10-17 08:42:00\", guard_result=\"PASS\", commit_hash=\"99a69d3\", worker_summary=\"Premise-false: discrimination probe confirms v0.1.10 exits 2 on unknown commands. Direct probe: exit 2. Pipeline capture probe (the row's own AC): exit 2...\", foreman_note records both probe commands and their exit 2, and detail.evidence carries the new run_id boardctl-foreman-2026-10-17-12-13-53 (ts 2026-10-17 12:18:23). Source contract corroborates: cmd/boardctl/main.go:231-232 `default: fmt.Fprintf(os.Stderr, \"boardctl: unknown command %q...\"); return 2`. Board validates clean with the closure: `boardctl validate` -> 'RESULT: OK (8 warning(s))' exit 0. Tests: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` TEST_EXIT=0 with 12 'ok' packages and 0 FAIL. Minor non-disqualifying caveat: the row closure is staged (git status 'M ') rather than yet in HEAD \u2014 `git show HEAD:.coding-hermes/board/tasks.jsonl` still shows status=pending \u2014 which matches this repo's tick-commit workflow (cf. DF-BOARDCTL-38 closed in a84f255/99a69d3); the criterion's requirement to close the row is met in the working-tree board."
+              }
+            ],
+            "summary": "The discrimination probe was genuinely run against the real v0.1.10 release binary and shows exit code 2 (not 0) on unknown commands both directly and via pipeline capture, and the row was closed as premise-false with that probe evidence recorded in the board."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-40\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Close row with the discrimination probe: download v0.1.10 binary and verify its exit code on an unknown command is 2, not 0, as the row claims. If exit code is 2, close the row as premise-false with the probe evidence.: Probe independently reproduced on the v0.1.10 asset at /tmp/boardctl-probe-v0110/boardctl_linux_amd64 (sha256 20ebddf6...f406ccc5). Identity confirmed genuine v0.1.10: `version` -> 'boardctl version v0.1.10' rc=0; `version --json` -> {\"version\":\"v0.1.10\",\"build\":\"v0.1.10\"}. Authenticity cross-check: the binary LACKS normalize-board ('unknown command') while HEAD cmd/boardctl/main.go:210 has `case \"normalize-board\":` \u2014 proving it is the old release asset, not a HEAD build. PROBE 1 (direct $?): `./boardctl_linux_amd64 bogus-cmd` -> unknown_cmd_rc=2 with stderr 'boardctl: unknown command \"bogus-cmd\"' + usage. PROBE 2 (the row's own AC, pipeline capture): `out=$(./boardctl_linux_amd64 normalize-board --help 2>&1); rc=$?` -> captured_rc=2. PROBE 3 (direct): normalize-board --help -> direct_rc=2. Exit code is 2, NOT 0, so the row premise is false and the criterion's conditional ('If exit code is 2, close the row as premise-false with the probe evidence') is satisfied. Row closed at .coding-hermes/board/tasks.jsonl:170: status=\"complete\", worker_status=\"complete\", completed_at=\"2026-10-17 08:42:00\", guard_result=\"PASS\", commit_hash=\"99a69d3\", worker_summary=\"Premise-false: discrimination probe confirms v0.1.10 exits 2 on unknown commands. Direct probe: exit 2. Pipeline capture probe (the row's own AC): exit 2...\", foreman_note records both probe commands and their exit 2, and detail.evidence carries the new run_id boardctl-foreman-2026-10-17-12-13-53 (ts 2026-10-17 12:18:23). Source contract corroborates: cmd/boardctl/main.go:231-232 `default: fmt.Fprintf(os.Stderr, \"boardctl: unknown command %q...\"); return 2`. Board validates clean with the closure: `boardctl validate` -> 'RESULT: OK (8 warning(s))' exit 0. Tests: `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` TEST_EXIT=0 with 12 'ok' packages and 0 FAIL. Minor non-disqualifying caveat: the row closure is staged (git status 'M ') rather than yet in HEAD \u2014 `git show HEAD:.coding-hermes/board/tasks.jsonl` still shows status=pending \u2014 which matches this repo's tick-commit workflow (cf. DF-BOARDCTL-38 closed in a84f255/99a69d3); the criterion's requirement to close the row is met in the working-tree board.\nThe discrimination probe was genuinely run against the real v0.1.10 release binary and shows exit code 2 (not 0) on unknown commands both directly and via pipeline capture, and the row was closed as premise-false with that probe evidence recorded in the board.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-17T12:27:34.908313",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-17T12:27:34.959715+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 19037,
+        "truncated": false,
+        "source": "git show 99a69d37e88a"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 262176,
+        "truncated": true,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-40"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "task_id": "DF-BOARDCTL-38",
+  "task_title": "Repair descending event ids in events.jsonl via normalize-board",
+  "task_criteria": [
+    "Extend normalize-board to repair descending event ids in events.jsonl. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "80c6353489fbc37e2ad8ffc3cecafdc9571eba74",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n7:32PM INF scanned ~3416161 bytes (3.42 MB) in 638ms\n7:32PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 239 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261017T003152.151061Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t4.895s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.993s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.122s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.020s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.704s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261017T003152.151061Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Extend normalize-board to repair descending event ids in events.jsonl. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed.: (1) cmd/boardctl/main.go:1359 adds --repair-events flag; :1394-1395 calls b.RepairEvents(!*apply). Live e2e on /tmp/e2e (ids 1,5,3,10,7): `normalize-board --repair-events` printed 'descending ids: 2' and 'fixed: 2 event(s) renumbered to ascending order' with 'DRY-RUN \u2014 no file written'; events.jsonl unchanged, cache events.jsonl.renumbered.jsonl written. JSON path emits descending/fixed_count (verified on topology A: {\"fixed_count\":1,\"descending\":1,\"dry_run\":true}). (2) `--repair-events --apply` rewrote events.jsonl to ids 1,5,6,10,11 (ascending), printing 'applied: /tmp/e2e/events.jsonl rewritten'; atomic guarded rewrite at internal/board/repair_events.go:200-220. (3) validate BEFORE = 'RESULT: FAIL (2 error(s))' with '[error] events.jsonl line 3: event id 3 descends below earlier id 5' and 'line 5: event id 7 descends below earlier id 10'; validate AFTER = 'RESULT: OK (1 warning(s))' exit 0 \u2014 no descends errors. Topology A board (/tmp/e2ea) reproduced identically: before FAIL 1 error, after OK. (4) internal/board/repair_events_test.go: TestRepairEvents_topologyA (line 237, Topology:\"A\") and TestRepairEvents_descendingIds (line 13, Topology:\"B\") plus dryRunCache/legacyShape/alreadyCanonical; `go test -count=1 -run TestRepairEvents -v ./internal/board/` => all 5 PASS. (5) `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` TEST_EXIT=0 with 12 'ok' packages and 0 FAIL; HEAD 80c6353 == origin/main (pushed), branch main.\nnormalize-board --repair-events correctly reports and renumbers descending event ids on both topologies, validate passes after repair, regression tests cover A and B, and build/vet/test are green on pushed main.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Extend normalize-board to repair descending event ids in events.jsonl. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed.: (1) cmd/boardctl/main.go:1359 adds --repair-events flag; :1394-1395 calls b.RepairEvents(!*apply). Live e2e on /tmp/e2e (ids 1,5,3,10,7): `normalize-board --repair-events` printed 'descending ids: 2' and 'fixed: 2 event(s) renumbered to ascending order' with 'DRY-RUN \u2014 no file written'; events.jsonl unchanged, cache events.jsonl.renumbered.jsonl written. JSON path emits descending/fixed_count (verified on topology A: {\"fixed_count\":1,\"descending\":1,\"dry_run\":true}). (2) `--repair-events --apply` rewrote events.jsonl to ids 1,5,6,10,11 (ascending), printing 'applied: /tmp/e2e/events.jsonl rewritten'; atomic guarded rewrite at internal/board/repair_events.go:200-220. (3) validate BEFORE = 'RESULT: FAIL (2 error(s))' with '[error] events.jsonl line 3: event id 3 descends below earlier id 5' and 'line 5: event id 7 descends below earlier id 10'; validate AFTER = 'RESULT: OK (1 warning(s))' exit 0 \u2014 no descends errors. Topology A board (/tmp/e2ea) reproduced identically: before FAIL 1 error, after OK. (4) internal/board/repair_events_test.go: TestRepairEvents_topologyA (line 237, Topology:\"A\") and TestRepairEvents_descendingIds (line 13, Topology:\"B\") plus dryRunCache/legacyShape/alreadyCanonical; `go test -count=1 -run TestRepairEvents -v ./internal/board/` => all 5 PASS. (5) `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` TEST_EXIT=0 with 12 'ok' packages and 0 FAIL; HEAD 80c6353 == origin/main (pushed), branch main.\nnormalize-board --repair-events correctly reports and renumbers descending event ids on both topologies, validate passes after repair, regression tests cover A and B, and build/vet/test are green on pushed main.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Extend normalize-board to repair descending event ids in events.jsonl. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed.",
+                "status": "PASS",
+                "detail": "(1) cmd/boardctl/main.go:1359 adds --repair-events flag; :1394-1395 calls b.RepairEvents(!*apply). Live e2e on /tmp/e2e (ids 1,5,3,10,7): `normalize-board --repair-events` printed 'descending ids: 2' and 'fixed: 2 event(s) renumbered to ascending order' with 'DRY-RUN \u2014 no file written'; events.jsonl unchanged, cache events.jsonl.renumbered.jsonl written. JSON path emits descending/fixed_count (verified on topology A: {\"fixed_count\":1,\"descending\":1,\"dry_run\":true}). (2) `--repair-events --apply` rewrote events.jsonl to ids 1,5,6,10,11 (ascending), printing 'applied: /tmp/e2e/events.jsonl rewritten'; atomic guarded rewrite at internal/board/repair_events.go:200-220. (3) validate BEFORE = 'RESULT: FAIL (2 error(s))' with '[error] events.jsonl line 3: event id 3 descends below earlier id 5' and 'line 5: event id 7 descends below earlier id 10'; validate AFTER = 'RESULT: OK (1 warning(s))' exit 0 \u2014 no descends errors. Topology A board (/tmp/e2ea) reproduced identically: before FAIL 1 error, after OK. (4) internal/board/repair_events_test.go: TestRepairEvents_topologyA (line 237, Topology:\"A\") and TestRepairEvents_descendingIds (line 13, Topology:\"B\") plus dryRunCache/legacyShape/alreadyCanonical; `go test -count=1 -run TestRepairEvents -v ./internal/board/` => all 5 PASS. (5) `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` TEST_EXIT=0 with 12 'ok' packages and 0 FAIL; HEAD 80c6353 == origin/main (pushed), branch main."
+              }
+            ],
+            "summary": "normalize-board --repair-events correctly reports and renumbers descending event ids on both topologies, validate passes after repair, regression tests cover A and B, and build/vet/test are green on pushed main."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-38\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Extend normalize-board to repair descending event ids in events.jsonl. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed.: (1) cmd/boardctl/main.go:1359 adds --repair-events flag; :1394-1395 calls b.RepairEvents(!*apply). Live e2e on /tmp/e2e (ids 1,5,3,10,7): `normalize-board --repair-events` printed 'descending ids: 2' and 'fixed: 2 event(s) renumbered to ascending order' with 'DRY-RUN \u2014 no file written'; events.jsonl unchanged, cache events.jsonl.renumbered.jsonl written. JSON path emits descending/fixed_count (verified on topology A: {\"fixed_count\":1,\"descending\":1,\"dry_run\":true}). (2) `--repair-events --apply` rewrote events.jsonl to ids 1,5,6,10,11 (ascending), printing 'applied: /tmp/e2e/events.jsonl rewritten'; atomic guarded rewrite at internal/board/repair_events.go:200-220. (3) validate BEFORE = 'RESULT: FAIL (2 error(s))' with '[error] events.jsonl line 3: event id 3 descends below earlier id 5' and 'line 5: event id 7 descends below earlier id 10'; validate AFTER = 'RESULT: OK (1 warning(s))' exit 0 \u2014 no descends errors. Topology A board (/tmp/e2ea) reproduced identically: before FAIL 1 error, after OK. (4) internal/board/repair_events_test.go: TestRepairEvents_topologyA (line 237, Topology:\"A\") and TestRepairEvents_descendingIds (line 13, Topology:\"B\") plus dryRunCache/legacyShape/alreadyCanonical; `go test -count=1 -run TestRepairEvents -v ./internal/board/` => all 5 PASS. (5) `go build ./...` exit 0, `go vet ./...` exit 0, `go test -count=1 ./...` TEST_EXIT=0 with 12 'ok' packages and 0 FAIL; HEAD 80c6353 == origin/main (pushed), branch main.\nnormalize-board --repair-events correctly reports and renumbers descending event ids on both topologies, validate passes after repair, regression tests cover A and B, and build/vet/test are green on pushed main.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-17T00:33:13.635085",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-17T00:33:13.655973+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 4784,
+        "truncated": false,
+        "source": "git show 80c6353489fb"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 32541,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-38"
+  }
+}

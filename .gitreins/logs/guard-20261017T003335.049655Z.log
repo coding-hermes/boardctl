@@ -1,14 +1,18 @@
 GitReins guard run log — full output (the console summary is bounded)
-run_utc: 2026-10-13T11:22:16Z
+run_utc: 2026-10-17T00:33:35Z
 workdir: /home/kara/coding-hermes-boardctl
 test_mode: full
 test_targets: all (full mode)
-overall: PASS
-guards: 4 (0 failed, 0 skipped)
+overall: PASS (DEGRADED — skipped checks)
+guards: 4 (0 failed, 3 skipped)
 diagnostics:
   first_failing_test: none detected
   secrets_scanners: clean (gitleaks + builtin cross-check)
   scanner_nice: scanners: nice=nice -n 10
+skipped_steps:
+  - go_build: No Go files staged
+  - go_lint: No Go files staged
+  - go_tests: No Go files staged
 
 ==============================================================================
 [PASS] secrets  passed=true  exit_code=n/a
@@ -17,27 +21,19 @@ diagnostics:
 gitleaks: clean
 
 ==============================================================================
-[PASS] go_build  passed=true  exit_code=n/a
+[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
 ==============================================================================
 --- output (untruncated) ---
-go build: ok
+No Go files staged
 
 ==============================================================================
-[PASS] go_lint  passed=true  exit_code=n/a
+[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
 ==============================================================================
 --- output (untruncated) ---
-golangci-lint: clean
+No Go files staged
 
 ==============================================================================
-[PASS] go_tests  passed=true  exit_code=n/a
+[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
 ==============================================================================
 --- output (untruncated) ---
-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	4.272s
-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.348s
-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.162s
-ok  	github.com/coding-hermes/boardctl/internal/board	3.974s
-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.123s
-ok  	github.com/coding-hermes/boardctl/internal/freshness	2.872s
-ok  	github.com/coding-hermes/boardctl/internal/render	0.032s
-ok  
+No Go files staged

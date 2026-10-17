@@ -1,0 +1,101 @@
+{
+  "task_id": "DF-BOARDCTL-38",
+  "task_title": "events.jsonl id-descend: extend normalize-board to re-id legacy descending event ids",
+  "task_criteria": [
+    "extend normalize-board (or a sibling event-repair verb) to renumber/re-id descending legacy event ids mechanically, or document the sanctioned manual recipe. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "a84f2559a704f602506d98a9dc8a1980ff6f0160",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n7:17PM INF scanned ~3412880 bytes (3.41 MB) in 748ms\n7:17PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 238 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261017T001736.140781Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\n# github.com/coding-hermes/boardctl/internal/board [github.com/coding-hermes/boardctl/internal/board.test]\ninternal/board/repair_events_test.go:37:12: undefined: OpenBoard\ninternal/board/repair_events_test.go:101:10: undefined: NewRow\ninternal/board/repair_events_test.go:139:12: undefined: OpenBoard\ninternal/board/repair_events_test.go:174:12: undefined: OpenBoard\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t4.619s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.011s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nFAIL\tgithub.com/coding-hermes/boardctl/internal/board [build failed]\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.003s\n--- FAIL: TestGofmt (0.13s)\n    fmtcheck_test.go:29: found 1 file(s) not gofmt-clean \u2014 run `gofmt -w` (or `make fmt`) on:\n          internal/board/repair_events.go\nFAIL\nFAIL\tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.130s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.021s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.019s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\nFAIL\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261017T001736.140781Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 extend normalize-board (or a sibling event-repair verb) to renumber/re-id descending legacy event ids mechanically, or document the sanctioned manual recipe. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed.: Multiple hard failures. (2) FAILS: cmd/boardctl/main.go:1393 calls `b.RepairEvents(*apply)` but RepairEvents' parameter is `dryRun` (internal/board/repair_events.go:59) \u2014 the boolean is inverted. Live with /tmp/bc38 on a topology-A board (events ids 1,5,3): `normalize-board --repair-events --apply` printed 'DRY-RUN \u2014 no file written (pass --apply to rewrite events.jsonl)', left events.jsonl byte-unchanged, and validate still reported '[error] events.jsonl line 3: event id 3 descends below earlier id 5'. (1) PARTIAL/FAILS: `normalize-board --repair-events` (no --apply) does report 'descending ids: 2 / fixed: 2', but it is NOT a dry-run \u2014 it actually rewrote events.jsonl in place (ids 3->6, 4->7) and printed 'applied: ... rewritten', violating the dry-run contract. (3) FAILS via the sanctioned path: only the accidental dry-run write produced a clean board (validate -> RESULT: OK); after the documented `--apply` the descend error persists. (4) FAILS: the only test file, internal/board/repair_events_test.go, does not compile (undefined OpenBoard at :37,139,174; undefined NewRow at :101), contains zero topology A/B coverage (grep 'topology' -> 0 matches), and there is no CLI test for --repair-events (grep in cmd/boardctl/*_test.go -> 0 matches). (5) FAILS: `go build ./...` exit 0, but `go vet ./...` exit 1 ('internal/board/repair_events_test.go:37:12: undefined: OpenBoard') and `go test -count=1 ./...` exit 2 (FAIL internal/board [build failed]; FAIL internal/fmtcheck TestGofmt \u2014 internal/board/repair_events.go not gofmt-clean). Also NOT committed/pushed: HEAD==origin/main==a84f255, but repair_events.go/repair_events_test.go/main.go changes are only staged (git status 'A'/'M'); `git cat-file -e HEAD:internal/board/repair_events.go` -> MISSING, `git ls-tree HEAD internal/board/` shows only repair.go, `git log --all -- internal/board/repair_events.go` is empty, and the committed board row DF-BOARDCTL-38 is still status=pending. Commit a84f255 only closed the board row.\nThe event-id repair logic exists but is wired with an inverted dry-run/apply boolean (--apply does nothing, dry-run mutates the board), its tests don't compile, go vet/go test are red, and none of the code is committed to main.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 extend normalize-board (or a sibling event-repair verb) to renumber/re-id descending legacy event ids mechanically, or document the sanctioned manual recipe. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed.: Multiple hard failures. (2) FAILS: cmd/boardctl/main.go:1393 calls `b.RepairEvents(*apply)` but RepairEvents' parameter is `dryRun` (internal/board/repair_events.go:59) \u2014 the boolean is inverted. Live with /tmp/bc38 on a topology-A board (events ids 1,5,3): `normalize-board --repair-events --apply` printed 'DRY-RUN \u2014 no file written (pass --apply to rewrite events.jsonl)', left events.jsonl byte-unchanged, and validate still reported '[error] events.jsonl line 3: event id 3 descends below earlier id 5'. (1) PARTIAL/FAILS: `normalize-board --repair-events` (no --apply) does report 'descending ids: 2 / fixed: 2', but it is NOT a dry-run \u2014 it actually rewrote events.jsonl in place (ids 3->6, 4->7) and printed 'applied: ... rewritten', violating the dry-run contract. (3) FAILS via the sanctioned path: only the accidental dry-run write produced a clean board (validate -> RESULT: OK); after the documented `--apply` the descend error persists. (4) FAILS: the only test file, internal/board/repair_events_test.go, does not compile (undefined OpenBoard at :37,139,174; undefined NewRow at :101), contains zero topology A/B coverage (grep 'topology' -> 0 matches), and there is no CLI test for --repair-events (grep in cmd/boardctl/*_test.go -> 0 matches). (5) FAILS: `go build ./...` exit 0, but `go vet ./...` exit 1 ('internal/board/repair_events_test.go:37:12: undefined: OpenBoard') and `go test -count=1 ./...` exit 2 (FAIL internal/board [build failed]; FAIL internal/fmtcheck TestGofmt \u2014 internal/board/repair_events.go not gofmt-clean). Also NOT committed/pushed: HEAD==origin/main==a84f255, but repair_events.go/repair_events_test.go/main.go changes are only staged (git status 'A'/'M'); `git cat-file -e HEAD:internal/board/repair_events.go` -> MISSING, `git ls-tree HEAD internal/board/` shows only repair.go, `git log --all -- internal/board/repair_events.go` is empty, and the committed board row DF-BOARDCTL-38 is still status=pending. Commit a84f255 only closed the board row.\nThe event-id repair logic exists but is wired with an inverted dry-run/apply boolean (--apply does nothing, dry-run mutates the board), its tests don't compile, go vet/go test are red, and none of the code is committed to main.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "extend normalize-board (or a sibling event-repair verb) to renumber/re-id descending legacy event ids mechanically, or document the sanctioned manual recipe. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed.",
+                "status": "FAIL",
+                "detail": "Multiple hard failures. (2) FAILS: cmd/boardctl/main.go:1393 calls `b.RepairEvents(*apply)` but RepairEvents' parameter is `dryRun` (internal/board/repair_events.go:59) \u2014 the boolean is inverted. Live with /tmp/bc38 on a topology-A board (events ids 1,5,3): `normalize-board --repair-events --apply` printed 'DRY-RUN \u2014 no file written (pass --apply to rewrite events.jsonl)', left events.jsonl byte-unchanged, and validate still reported '[error] events.jsonl line 3: event id 3 descends below earlier id 5'. (1) PARTIAL/FAILS: `normalize-board --repair-events` (no --apply) does report 'descending ids: 2 / fixed: 2', but it is NOT a dry-run \u2014 it actually rewrote events.jsonl in place (ids 3->6, 4->7) and printed 'applied: ... rewritten', violating the dry-run contract. (3) FAILS via the sanctioned path: only the accidental dry-run write produced a clean board (validate -> RESULT: OK); after the documented `--apply` the descend error persists. (4) FAILS: the only test file, internal/board/repair_events_test.go, does not compile (undefined OpenBoard at :37,139,174; undefined NewRow at :101), contains zero topology A/B coverage (grep 'topology' -> 0 matches), and there is no CLI test for --repair-events (grep in cmd/boardctl/*_test.go -> 0 matches). (5) FAILS: `go build ./...` exit 0, but `go vet ./...` exit 1 ('internal/board/repair_events_test.go:37:12: undefined: OpenBoard') and `go test -count=1 ./...` exit 2 (FAIL internal/board [build failed]; FAIL internal/fmtcheck TestGofmt \u2014 internal/board/repair_events.go not gofmt-clean). Also NOT committed/pushed: HEAD==origin/main==a84f255, but repair_events.go/repair_events_test.go/main.go changes are only staged (git status 'A'/'M'); `git cat-file -e HEAD:internal/board/repair_events.go` -> MISSING, `git ls-tree HEAD internal/board/` shows only repair.go, `git log --all -- internal/board/repair_events.go` is empty, and the committed board row DF-BOARDCTL-38 is still status=pending. Commit a84f255 only closed the board row."
+              }
+            ],
+            "summary": "The event-id repair logic exists but is wired with an inverted dry-run/apply boolean (--apply does nothing, dry-run mutates the board), its tests don't compile, go vet/go test are red, and none of the code is committed to main."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-38\n\nStage tier1: FAIL\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 extend normalize-board (or a sibling event-repair verb) to renumber/re-id descending legacy event ids mechanically, or document the sanctioned manual recipe. Acceptance: (1) normalize-board --dry-run on a board with descending event ids reports how many would be renumbered, (2) normalize-board --apply renumbers descending event ids to ascending order, (3) validate on the repaired board no longer reports 'event id descends below earlier id' errors for those rows, (4) regression tests cover the fix on both topology A and B boards, (5) go build && go vet && go test ./... green; committed on main and pushed.: Multiple hard failures. (2) FAILS: cmd/boardctl/main.go:1393 calls `b.RepairEvents(*apply)` but RepairEvents' parameter is `dryRun` (internal/board/repair_events.go:59) \u2014 the boolean is inverted. Live with /tmp/bc38 on a topology-A board (events ids 1,5,3): `normalize-board --repair-events --apply` printed 'DRY-RUN \u2014 no file written (pass --apply to rewrite events.jsonl)', left events.jsonl byte-unchanged, and validate still reported '[error] events.jsonl line 3: event id 3 descends below earlier id 5'. (1) PARTIAL/FAILS: `normalize-board --repair-events` (no --apply) does report 'descending ids: 2 / fixed: 2', but it is NOT a dry-run \u2014 it actually rewrote events.jsonl in place (ids 3->6, 4->7) and printed 'applied: ... rewritten', violating the dry-run contract. (3) FAILS via the sanctioned path: only the accidental dry-run write produced a clean board (validate -> RESULT: OK); after the documented `--apply` the descend error persists. (4) FAILS: the only test file, internal/board/repair_events_test.go, does not compile (undefined OpenBoard at :37,139,174; undefined NewRow at :101), contains zero topology A/B coverage (grep 'topology' -> 0 matches), and there is no CLI test for --repair-events (grep in cmd/boardctl/*_test.go -> 0 matches). (5) FAILS: `go build ./...` exit 0, but `go vet ./...` exit 1 ('internal/board/repair_events_test.go:37:12: undefined: OpenBoard') and `go test -count=1 ./...` exit 2 (FAIL internal/board [build failed]; FAIL internal/fmtcheck TestGofmt \u2014 internal/board/repair_events.go not gofmt-clean). Also NOT committed/pushed: HEAD==origin/main==a84f255, but repair_events.go/repair_events_test.go/main.go changes are only staged (git status 'A'/'M'); `git cat-file -e HEAD:internal/board/repair_events.go` -> MISSING, `git ls-tree HEAD internal/board/` shows only repair.go, `git log --all -- internal/board/repair_events.go` is empty, and the committed board row DF-BOARDCTL-38 is still status=pending. Commit a84f255 only closed the board row.\nThe event-id repair logic exists but is wired with an inverted dry-run/apply boolean (--apply does nothing, dry-run mutates the board), its tests don't compile, go vet/go test are red, and none of the code is committed to main.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-17T00:19:13.703374",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-17T00:19:13.738714+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 17458,
+        "truncated": false,
+        "source": "git show a84f2559a704"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 262176,
+        "truncated": true,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-38"
+  }
+}
