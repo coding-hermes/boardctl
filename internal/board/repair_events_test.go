@@ -13,18 +13,6 @@ import (
 func TestRepairEvents_descendingIds(t *testing.T) {
 	dir := t.TempDir()
 	eventsPath := filepath.Join(dir, "events.jsonl")
-	// IDs: 1, 2, 5, 3, 4, 10, 7, 8, 9
-	// Running max:
-	//   Line 1 (id=1): runningMax=1
-	//   Line 2 (id=2): runningMax=2
-	//   Line 3 (id=5): runningMax=5
-	//   Line 4 (id=3 < 5): fix to 6, runningMax=6
-	//   Line 5 (id=4 < 6): fix to 7, runningMax=7
-	//   Line 6 (id=10): runningMax=10
-	//   Line 7 (id=7 < 10): fix to 11, runningMax=11
-	//   Line 8 (id=8 < 11): fix to 12, runningMax=12
-	//   Line 9 (id=9 < 12): fix to 13, runningMax=13
-	// 5 descending, 5 fixed. Expected after: 1,2,5,6,7,10,11,12,13
 	input := `{ "id": 1, "action": "create" }
 { "id": 2, "action": "update" }
 { "id": 5, "action": "assign" }
@@ -44,7 +32,6 @@ func TestRepairEvents_descendingIds(t *testing.T) {
 		eventsPath: eventsPath,
 	}
 
-	// Dry-run first.
 	rep, err := b.RepairEvents(true)
 	if err != nil {
 		t.Fatalf("RepairEvents(dry=true): %v", err)
@@ -65,7 +52,6 @@ func TestRepairEvents_descendingIds(t *testing.T) {
 		t.Error("dry-run should not mark applied")
 	}
 
-	// Apply.
 	rep2, err := b.RepairEvents(false)
 	if err != nil {
 		t.Fatalf("RepairEvents(apply): %v", err)
@@ -77,7 +63,6 @@ func TestRepairEvents_descendingIds(t *testing.T) {
 		t.Errorf("expected 5 fixed events on apply, got %d", rep2.FixedCount)
 	}
 
-	// Verify the file was renumbered correctly.
 	expectedIDs := []int64{1, 2, 5, 6, 7, 10, 11, 12, 13}
 	lines, err := ReadJSONLLines(eventsPath)
 	if err != nil {
@@ -102,7 +87,6 @@ func TestRepairEvents_descendingIds(t *testing.T) {
 		}
 	}
 
-	// After repair, running again should be clean.
 	rep3, err := b.RepairEvents(true)
 	if err != nil {
 		t.Fatalf("RepairEvents after repair: %v", err)
@@ -147,8 +131,6 @@ func TestRepairEvents_alreadyCanonical(t *testing.T) {
 func TestRepairEvents_legacyShape(t *testing.T) {
 	dir := t.TempDir()
 	eventsPath := filepath.Join(dir, "events.jsonl")
-	// 7 lines: id=1,5,3,10 are numeric; "legacy-ref" is string; line 5 has no id
-	// Descending: line 4 (id=3 < 5), line 7 (id=8 < 10) = 2 descending.
 	input := `{ "id": 1, "action": "create" }
 { "id": 5, "action": "assign" }
 { "id": "legacy-ref", "action": "legacy_event" }
@@ -174,13 +156,12 @@ func TestRepairEvents_legacyShape(t *testing.T) {
 		t.Fatal("expected descending ids")
 	}
 	if rep.NonNumeric != 2 {
-		t.Errorf("expected 2 non-numeric events (string id + missing id), got %d", rep.NonNumeric)
+		t.Errorf("expected 2 non-numeric events, got %d", rep.NonNumeric)
 	}
 	if rep.Descending != 2 {
-		t.Errorf("expected 2 descending ids (id=3 < 5, id=8 < 10), got %d", rep.Descending)
+		t.Errorf("expected 2 descending ids, got %d", rep.Descending)
 	}
 
-	// Apply and verify.
 	rep2, err := b.RepairEvents(false)
 	if err != nil {
 		t.Fatalf("RepairEvents apply: %v", err)
@@ -189,7 +170,6 @@ func TestRepairEvents_legacyShape(t *testing.T) {
 		t.Error("expected applied")
 	}
 
-	// Verify specific lines.
 	lines, err := ReadJSONLLines(eventsPath)
 	if err != nil {
 		t.Fatalf("read events: %v", err)
@@ -203,10 +183,10 @@ func TestRepairEvents_legacyShape(t *testing.T) {
 		{1, int64(1), "id"},
 		{2, int64(5), "id"},
 		{3, "legacy-ref", "id"},
-		{4, int64(6), "id"}, // 3->6 (descends below 5)
-		{5, nil, ""},        // no id
+		{4, int64(6), "id"},
+		{5, nil, ""},
 		{6, int64(10), "id"},
-		{7, int64(11), "id"}, // 8->11 (descends below 10)
+		{7, int64(11), "id"},
 	}
 	for _, tc := range testLines {
 		var m map[string]any
@@ -237,7 +217,7 @@ func TestRepairEvents_legacyShape(t *testing.T) {
 func TestRepairEvents_topologyA(t *testing.T) {
 	dir := t.TempDir()
 	eventsPath := filepath.Join(dir, "events.jsonl")
-	// IDs: 1, 5, 3, 10, 7 — 2 descending (3<5, 7<10)
+	// IDs: 1, 5, 3, 10, 7 — descending at line 3 (3<5) and line 5 (7<10)
 	// Running max: 1→1, 5→5, 3→6, 10→10, 7→11
 	input := `{ "id": 1, "action": "start" }
 { "id": 5, "action": "update" }
@@ -254,12 +234,10 @@ func TestRepairEvents_topologyA(t *testing.T) {
 		eventsPath: eventsPath,
 	}
 
-	// Verify topology A.
 	if b.Topology != "A" {
 		t.Fatalf("expected topology A, got %s", b.Topology)
 	}
 
-	// Dry-run.
 	rep, err := b.RepairEvents(true)
 	if err != nil {
 		t.Fatalf("RepairEvents: %v", err)
@@ -268,7 +246,6 @@ func TestRepairEvents_topologyA(t *testing.T) {
 		t.Errorf("expected 2 descending ids, got %d", rep.Descending)
 	}
 
-	// Apply.
 	rep2, err := b.RepairEvents(false)
 	if err != nil {
 		t.Fatalf("apply: %v", err)
@@ -277,7 +254,6 @@ func TestRepairEvents_topologyA(t *testing.T) {
 		t.Error("expected applied")
 	}
 
-	// Verify renumbered.
 	lines, err := ReadJSONLLines(eventsPath)
 	if err != nil {
 		t.Fatalf("read events: %v", err)
@@ -298,7 +274,6 @@ func TestRepairEvents_topologyA(t *testing.T) {
 		}
 	}
 
-	// Post-repair should be clean.
 	rep3, err := b.RepairEvents(true)
 	if err != nil {
 		t.Fatalf("post-repair: %v", err)
@@ -308,8 +283,7 @@ func TestRepairEvents_topologyA(t *testing.T) {
 	}
 }
 
-// TestRepairEvents_dryRunCache writes a review cache and verifies it matches
-// what --apply would produce.
+// TestRepairEvents_dryRunCache verifies dry-run cache matches applied output.
 func TestRepairEvents_dryRunCache(t *testing.T) {
 	dir := t.TempDir()
 	eventsPath := filepath.Join(dir, "events.jsonl")
@@ -326,7 +300,6 @@ func TestRepairEvents_dryRunCache(t *testing.T) {
 		eventsPath: eventsPath,
 	}
 
-	// Dry-run should write cache.
 	rep, err := b.RepairEvents(true)
 	if err != nil {
 		t.Fatalf("dry-run: %v", err)
@@ -340,7 +313,6 @@ func TestRepairEvents_dryRunCache(t *testing.T) {
 		t.Fatalf("read cache: %v", err)
 	}
 
-	// Apply and compare.
 	rep2, err := b.RepairEvents(false)
 	if err != nil {
 		t.Fatalf("apply: %v", err)

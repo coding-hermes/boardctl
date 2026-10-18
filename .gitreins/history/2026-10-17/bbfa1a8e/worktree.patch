@@ -1,0 +1,436 @@
+diff --git a/.gitreins/logs/guard-20261014T103718.722821Z.log b/.gitreins/logs/guard-20261014T103718.722821Z.log
+deleted file mode 100644
+index 5fa8067..0000000
+--- a/.gitreins/logs/guard-20261014T103718.722821Z.log
++++ /dev/null
+@@ -1,47 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-14T10:37:18Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (1 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_lint  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-cmd/dedupe-board/main_test.go:427:9: Error return value of `w.Close` is not checked (errcheck)
+-	w.Close()
+-	       ^
+-1 issues:
+-* errcheck: 1
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	1.987s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.010s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.009s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.744s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.009s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.136s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.664s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.037s
+-ok  
+diff --git a/.gitreins/logs/guard-20261014T103731.726446Z.log b/.gitreins/logs/guard-20261014T103731.726446Z.log
+deleted file mode 100644
+index e435608..0000000
+--- a/.gitreins/logs/guard-20261014T103731.726446Z.log
++++ /dev/null
+@@ -1,47 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-14T10:37:31Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (1 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_lint  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-cmd/dedupe-board/main_test.go:427:9: Error return value of `w.Close` is not checked (errcheck)
+-	w.Close()
+-	       ^
+-1 issues:
+-* errcheck: 1
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.170s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.013s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.768s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.122s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.682s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.032s
+-ok  
+diff --git a/.gitreins/logs/guard-20261014T103913.073575Z.log b/.gitreins/logs/guard-20261014T103913.073575Z.log
+deleted file mode 100644
+index f3ad5e5..0000000
+--- a/.gitreins/logs/guard-20261014T103913.073575Z.log
++++ /dev/null
+@@ -1,43 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-14T10:39:13Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-golangci-lint: clean
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	4.754s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.030s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.019s
+-ok  	github.com/coding-hermes/boardctl/internal/board	2.479s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.005s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.501s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	1.662s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.247s
+-ok  
+diff --git a/.gitreins/logs/guard-20261014T103927.111825Z.log b/.gitreins/logs/guard-20261014T103927.111825Z.log
+deleted file mode 100644
+index b6c06f7..0000000
+--- a/.gitreins/logs/guard-20261014T103927.111825Z.log
++++ /dev/null
+@@ -1,43 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-14T10:39:27Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-golangci-lint: clean
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	4.379s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.081s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.177s
+-ok  	github.com/coding-hermes/boardctl/internal/board	3.070s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.211s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	1.829s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.039s
+-ok  
+diff --git a/.gitreins/logs/guard-20261014T105808.911596Z.log b/.gitreins/logs/guard-20261014T105808.911596Z.log
+deleted file mode 100644
+index e9c81eb..0000000
+--- a/.gitreins/logs/guard-20261014T105808.911596Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-14T10:58:08Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/cmd/boardctl/board-report.html b/cmd/boardctl/board-report.html
+index 77393e3..57ce15d 100644
+--- a/cmd/boardctl/board-report.html
++++ b/cmd/boardctl/board-report.html
+@@ -111,7 +111,7 @@ footer ul{margin:4px 0;padding-left:18px}
+ <main id="view-compare" hidden></main>
+ <div id="errbox" hidden></div>
+ <footer id="foot"></footer>
+-<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-16T18:36:41-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
++<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-17T17:38:16-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
+ <script>
+ "use strict";
+ (function(){
+diff --git a/internal/board/repair_events_test.go b/internal/board/repair_events_test.go
+index 3b6b00a..569575a 100644
+--- a/internal/board/repair_events_test.go
++++ b/internal/board/repair_events_test.go
+@@ -13,18 +13,6 @@ import (
+ func TestRepairEvents_descendingIds(t *testing.T) {
+ 	dir := t.TempDir()
+ 	eventsPath := filepath.Join(dir, "events.jsonl")
+-	// IDs: 1, 2, 5, 3, 4, 10, 7, 8, 9
+-	// Running max:
+-	//   Line 1 (id=1): runningMax=1
+-	//   Line 2 (id=2): runningMax=2
+-	//   Line 3 (id=5): runningMax=5
+-	//   Line 4 (id=3 < 5): fix to 6, runningMax=6
+-	//   Line 5 (id=4 < 6): fix to 7, runningMax=7
+-	//   Line 6 (id=10): runningMax=10
+-	//   Line 7 (id=7 < 10): fix to 11, runningMax=11
+-	//   Line 8 (id=8 < 11): fix to 12, runningMax=12
+-	//   Line 9 (id=9 < 12): fix to 13, runningMax=13
+-	// 5 descending, 5 fixed. Expected after: 1,2,5,6,7,10,11,12,13
+ 	input := `{ "id": 1, "action": "create" }
+ { "id": 2, "action": "update" }
+ { "id": 5, "action": "assign" }
+@@ -44,7 +32,6 @@ func TestRepairEvents_descendingIds(t *testing.T) {
+ 		eventsPath: eventsPath,
+ 	}
+ 
+-	// Dry-run first.
+ 	rep, err := b.RepairEvents(true)
+ 	if err != nil {
+ 		t.Fatalf("RepairEvents(dry=true): %v", err)
+@@ -65,7 +52,6 @@ func TestRepairEvents_descendingIds(t *testing.T) {
+ 		t.Error("dry-run should not mark applied")
+ 	}
+ 
+-	// Apply.
+ 	rep2, err := b.RepairEvents(false)
+ 	if err != nil {
+ 		t.Fatalf("RepairEvents(apply): %v", err)
+@@ -77,7 +63,6 @@ func TestRepairEvents_descendingIds(t *testing.T) {
+ 		t.Errorf("expected 5 fixed events on apply, got %d", rep2.FixedCount)
+ 	}
+ 
+-	// Verify the file was renumbered correctly.
+ 	expectedIDs := []int64{1, 2, 5, 6, 7, 10, 11, 12, 13}
+ 	lines, err := ReadJSONLLines(eventsPath)
+ 	if err != nil {
+@@ -102,7 +87,6 @@ func TestRepairEvents_descendingIds(t *testing.T) {
+ 		}
+ 	}
+ 
+-	// After repair, running again should be clean.
+ 	rep3, err := b.RepairEvents(true)
+ 	if err != nil {
+ 		t.Fatalf("RepairEvents after repair: %v", err)
+@@ -147,8 +131,6 @@ func TestRepairEvents_alreadyCanonical(t *testing.T) {
+ func TestRepairEvents_legacyShape(t *testing.T) {
+ 	dir := t.TempDir()
+ 	eventsPath := filepath.Join(dir, "events.jsonl")
+-	// 7 lines: id=1,5,3,10 are numeric; "legacy-ref" is string; line 5 has no id
+-	// Descending: line 4 (id=3 < 5), line 7 (id=8 < 10) = 2 descending.
+ 	input := `{ "id": 1, "action": "create" }
+ { "id": 5, "action": "assign" }
+ { "id": "legacy-ref", "action": "legacy_event" }
+@@ -174,13 +156,12 @@ func TestRepairEvents_legacyShape(t *testing.T) {
+ 		t.Fatal("expected descending ids")
+ 	}
+ 	if rep.NonNumeric != 2 {
+-		t.Errorf("expected 2 non-numeric events (string id + missing id), got %d", rep.NonNumeric)
++		t.Errorf("expected 2 non-numeric events, got %d", rep.NonNumeric)
+ 	}
+ 	if rep.Descending != 2 {
+-		t.Errorf("expected 2 descending ids (id=3 < 5, id=8 < 10), got %d", rep.Descending)
++		t.Errorf("expected 2 descending ids, got %d", rep.Descending)
+ 	}
+ 
+-	// Apply and verify.
+ 	rep2, err := b.RepairEvents(false)
+ 	if err != nil {
+ 		t.Fatalf("RepairEvents apply: %v", err)
+@@ -189,7 +170,6 @@ func TestRepairEvents_legacyShape(t *testing.T) {
+ 		t.Error("expected applied")
+ 	}
+ 
+-	// Verify specific lines.
+ 	lines, err := ReadJSONLLines(eventsPath)
+ 	if err != nil {
+ 		t.Fatalf("read events: %v", err)
+@@ -203,10 +183,10 @@ func TestRepairEvents_legacyShape(t *testing.T) {
+ 		{1, int64(1), "id"},
+ 		{2, int64(5), "id"},
+ 		{3, "legacy-ref", "id"},
+-		{4, int64(6), "id"}, // 3->6 (descends below 5)
+-		{5, nil, ""},        // no id
++		{4, int64(6), "id"},
++		{5, nil, ""},
+ 		{6, int64(10), "id"},
+-		{7, int64(11), "id"}, // 8->11 (descends below 10)
++		{7, int64(11), "id"},
+ 	}
+ 	for _, tc := range testLines {
+ 		var m map[string]any
+@@ -237,7 +217,7 @@ func TestRepairEvents_legacyShape(t *testing.T) {
+ func TestRepairEvents_topologyA(t *testing.T) {
+ 	dir := t.TempDir()
+ 	eventsPath := filepath.Join(dir, "events.jsonl")
+-	// IDs: 1, 5, 3, 10, 7 — 2 descending (3<5, 7<10)
++	// IDs: 1, 5, 3, 10, 7 — descending at line 3 (3<5) and line 5 (7<10)
+ 	// Running max: 1→1, 5→5, 3→6, 10→10, 7→11
+ 	input := `{ "id": 1, "action": "start" }
+ { "id": 5, "action": "update" }
+@@ -254,12 +234,10 @@ func TestRepairEvents_topologyA(t *testing.T) {
+ 		eventsPath: eventsPath,
+ 	}
+ 
+-	// Verify topology A.
+ 	if b.Topology != "A" {
+ 		t.Fatalf("expected topology A, got %s", b.Topology)
+ 	}
+ 
+-	// Dry-run.
+ 	rep, err := b.RepairEvents(true)
+ 	if err != nil {
+ 		t.Fatalf("RepairEvents: %v", err)
+@@ -268,7 +246,6 @@ func TestRepairEvents_topologyA(t *testing.T) {
+ 		t.Errorf("expected 2 descending ids, got %d", rep.Descending)
+ 	}
+ 
+-	// Apply.
+ 	rep2, err := b.RepairEvents(false)
+ 	if err != nil {
+ 		t.Fatalf("apply: %v", err)
+@@ -277,7 +254,6 @@ func TestRepairEvents_topologyA(t *testing.T) {
+ 		t.Error("expected applied")
+ 	}
+ 
+-	// Verify renumbered.
+ 	lines, err := ReadJSONLLines(eventsPath)
+ 	if err != nil {
+ 		t.Fatalf("read events: %v", err)
+@@ -298,7 +274,6 @@ func TestRepairEvents_topologyA(t *testing.T) {
+ 		}
+ 	}
+ 
+-	// Post-repair should be clean.
+ 	rep3, err := b.RepairEvents(true)
+ 	if err != nil {
+ 		t.Fatalf("post-repair: %v", err)
+@@ -308,8 +283,7 @@ func TestRepairEvents_topologyA(t *testing.T) {
+ 	}
+ }
+ 
+-// TestRepairEvents_dryRunCache writes a review cache and verifies it matches
+-// what --apply would produce.
++// TestRepairEvents_dryRunCache verifies dry-run cache matches applied output.
+ func TestRepairEvents_dryRunCache(t *testing.T) {
+ 	dir := t.TempDir()
+ 	eventsPath := filepath.Join(dir, "events.jsonl")
+@@ -326,7 +300,6 @@ func TestRepairEvents_dryRunCache(t *testing.T) {
+ 		eventsPath: eventsPath,
+ 	}
+ 
+-	// Dry-run should write cache.
+ 	rep, err := b.RepairEvents(true)
+ 	if err != nil {
+ 		t.Fatalf("dry-run: %v", err)
+@@ -340,7 +313,6 @@ func TestRepairEvents_dryRunCache(t *testing.T) {
+ 		t.Fatalf("read cache: %v", err)
+ 	}
+ 
+-	// Apply and compare.
+ 	rep2, err := b.RepairEvents(false)
+ 	if err != nil {
+ 		t.Fatalf("apply: %v", err)
