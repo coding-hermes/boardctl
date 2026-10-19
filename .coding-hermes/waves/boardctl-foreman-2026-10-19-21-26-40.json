@@ -4,6 +4,8 @@
   "budget": 8,
   "mode": "serial",
   "reason": "Only one task selected per tick by project instruction; DOC-34 is the highest-priority actionable row.",
+  "finished_at": "2026-10-19T22:02:00-05:00",
+  "result": "recovered: DOC-34 implementation commit 58e11d2b4d50a73e6444c3e0574cebf142d33322 was already contained in main/origin/main; no merge or dispatch was needed; row is complete with Tier 2 PASS at .gitreins/history/2026-10-19/7f716998/verdict.json; original worktree is absent and remote evidence branch is retained.",
   "tasks": [
     {
       "id": "DOC-34",
@@ -12,7 +14,12 @@
       "base": "origin/main",
       "base_sha": "1dce8b6026dfc60350b32464b25cd7d0ee36b3ca",
       "model": "glm-5.3-flash",
-      "provider": "zai-glm"
+      "provider": "zai-glm",
+      "disposition": "already_landed",
+      "commit": "58e11d2b4d50a73e6444c3e0574cebf142d33322",
+      "merge": "not_needed_already_ancestor",
+      "gates": "build/vet/test/fmt-check/version-check PASS with GIT_CONFIG_GLOBAL=/dev/null; default-global test run was blocked by unrelated global commit-hook policy in temporary repos",
+      "verdict": ".gitreins/history/2026-10-19/7f716998/verdict.json"
     }
   ]
 }
