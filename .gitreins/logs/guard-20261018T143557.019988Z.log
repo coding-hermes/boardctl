@@ -1,5 +1,5 @@
 GitReins guard run log — full output (the console summary is bounded)
-run_utc: 2026-10-16T13:58:15Z
+run_utc: 2026-10-18T14:35:57Z
 workdir: /home/kara/coding-hermes-boardctl
 test_mode: full
 test_targets: all (full mode)
@@ -26,18 +26,18 @@ go build: ok
 [PASS] go_lint  passed=true  exit_code=n/a
 ==============================================================================
 --- output (untruncated) ---
-golangci-lint: clean (2 packages)
+golangci-lint: clean
 
 ==============================================================================
 [PASS] go_tests  passed=true  exit_code=n/a
 ==============================================================================
 --- output (untruncated) ---
-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	1.951s
-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.011s
+ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.034s
+ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.016s
 ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.005s
-ok  	github.com/coding-hermes/boardctl/internal/board	0.721s
-ok  	github.com/coding-hermes/boardctl/internal/describe	0.003s
-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.143s
-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.629s
-ok  	github.com/coding-hermes/boardctl/internal/render	0.026s
+ok  	github.com/coding-hermes/boardctl/internal/board	0.810s
+ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
+ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.154s
+ok  	github.com/coding-hermes/boardctl/internal/freshness	0.808s
+ok  	github.com/coding-hermes/boardctl/internal/render	0.030s
 ok  

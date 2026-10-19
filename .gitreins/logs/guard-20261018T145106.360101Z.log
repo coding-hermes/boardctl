@@ -1,5 +1,5 @@
 GitReins guard run log — full output (the console summary is bounded)
-run_utc: 2026-10-16T00:41:46Z
+run_utc: 2026-10-18T14:51:06Z
 workdir: /home/kara/coding-hermes-boardctl
 test_mode: full
 test_targets: all (full mode)
