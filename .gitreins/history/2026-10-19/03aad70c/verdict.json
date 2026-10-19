@@ -1,0 +1,101 @@
+{
+  "task_id": "DOC-37",
+  "task_title": "Document normalize-board repair-events help",
+  "task_criteria": [
+    "Top-level and subcommand help both expose --repair-events; README documents events.jsonl descending-id repair, dry-run default, and --apply; trace row/spec/test/evidence/commit is resolvable."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "8c659d5c37ab9b5529b704244a03d4f31c8d725c",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:34PM INF scanned ~3485815 bytes (3.49 MB) in 1.01s\n6:34PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 242 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t4.777s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.231s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.415s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.122s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.017s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Top-level and subcommand help both expose --repair-events; README documents events.jsonl descending-id repair, dry-run default, and --apply; trace row/spec/test/evidence/commit is resolvable.: Verified on branch wt/DOC-37 (worktree /home/kara/worktrees/boardctl-DOC-37, HEAD 9eaf3e5). (a) Top-level help: `go run ./cmd/boardctl --help` prints \"normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines]\" (cmd/boardctl/main.go:87). (b) Subcommand help: `go run ./cmd/boardctl normalize-board --help` line 1 = \"boardctl normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines] [-C dir]\" (main.go:1363; flag registered at main.go:1359). (c) README.md:861-887 new section \"### `--repair-events`: descending event ids (DF-BOARDCTL-38)\" documents events.jsonl descending-id renumber to running max+1 with other fields untouched, \"dry-run by default: no file is written, and the would-be bytes are staged at `<boarddir>/events.jsonl.renumbered.jsonl`\", the `--apply` rewrite arm, and runnable examples `normalize-board --repair-events` / `--repair-events --apply`. (d) Trace resolvable: board row .gitreins/tasks.yaml:905 (DOC-37, status complete), commit 9eaf3e5 (\"docs: document normalize-board event repair (DOC-37)\" / \"Addresses DOC-37.\"), regression test cmd/boardctl/doc37_repair_events_help_test.go, spec/evidence DF-BOARDCTL-38 in internal/board/repair_events.go + repair_events_test.go. Test evidence: `go test -count=1 -v -run TestDoc37 ./cmd/boardctl/` => PASS TestDoc37RootUsageNamesRepairEvents, PASS TestDoc37SubcommandHelpNamesRepairEvents, PASS TestDoc37ReadmeDocumentsRepairEvents, \"ok github.com/coding-hermes/boardctl/cmd/boardctl 0.003s\", exit 0; full `go test -count=1 ./...` => all 12 packages \"ok\" (cmd/boardctl 6.129s), exit 0. Note: the deliverable exists only on wt/DOC-37 and is not merged to main (main working tree has zero `repair-events` hits in main.go/README).\nBoth help surfaces expose --repair-events, README documents the events.jsonl descending-id repair with dry-run default and --apply, and the trace (board row, commit 9eaf3e5, doc37 test, DF-BOARDCTL-38 evidence) resolves with all tests green \u2014 though the work is only on branch wt/DOC-37, not merged to main.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Top-level and subcommand help both expose --repair-events; README documents events.jsonl descending-id repair, dry-run default, and --apply; trace row/spec/test/evidence/commit is resolvable.: Verified on branch wt/DOC-37 (worktree /home/kara/worktrees/boardctl-DOC-37, HEAD 9eaf3e5). (a) Top-level help: `go run ./cmd/boardctl --help` prints \"normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines]\" (cmd/boardctl/main.go:87). (b) Subcommand help: `go run ./cmd/boardctl normalize-board --help` line 1 = \"boardctl normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines] [-C dir]\" (main.go:1363; flag registered at main.go:1359). (c) README.md:861-887 new section \"### `--repair-events`: descending event ids (DF-BOARDCTL-38)\" documents events.jsonl descending-id renumber to running max+1 with other fields untouched, \"dry-run by default: no file is written, and the would-be bytes are staged at `<boarddir>/events.jsonl.renumbered.jsonl`\", the `--apply` rewrite arm, and runnable examples `normalize-board --repair-events` / `--repair-events --apply`. (d) Trace resolvable: board row .gitreins/tasks.yaml:905 (DOC-37, status complete), commit 9eaf3e5 (\"docs: document normalize-board event repair (DOC-37)\" / \"Addresses DOC-37.\"), regression test cmd/boardctl/doc37_repair_events_help_test.go, spec/evidence DF-BOARDCTL-38 in internal/board/repair_events.go + repair_events_test.go. Test evidence: `go test -count=1 -v -run TestDoc37 ./cmd/boardctl/` => PASS TestDoc37RootUsageNamesRepairEvents, PASS TestDoc37SubcommandHelpNamesRepairEvents, PASS TestDoc37ReadmeDocumentsRepairEvents, \"ok github.com/coding-hermes/boardctl/cmd/boardctl 0.003s\", exit 0; full `go test -count=1 ./...` => all 12 packages \"ok\" (cmd/boardctl 6.129s), exit 0. Note: the deliverable exists only on wt/DOC-37 and is not merged to main (main working tree has zero `repair-events` hits in main.go/README).\nBoth help surfaces expose --repair-events, README documents the events.jsonl descending-id repair with dry-run default and --apply, and the trace (board row, commit 9eaf3e5, doc37 test, DF-BOARDCTL-38 evidence) resolves with all tests green \u2014 though the work is only on branch wt/DOC-37, not merged to main.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Top-level and subcommand help both expose --repair-events; README documents events.jsonl descending-id repair, dry-run default, and --apply; trace row/spec/test/evidence/commit is resolvable.",
+                "status": "PASS",
+                "detail": "Verified on branch wt/DOC-37 (worktree /home/kara/worktrees/boardctl-DOC-37, HEAD 9eaf3e5). (a) Top-level help: `go run ./cmd/boardctl --help` prints \"normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines]\" (cmd/boardctl/main.go:87). (b) Subcommand help: `go run ./cmd/boardctl normalize-board --help` line 1 = \"boardctl normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines] [-C dir]\" (main.go:1363; flag registered at main.go:1359). (c) README.md:861-887 new section \"### `--repair-events`: descending event ids (DF-BOARDCTL-38)\" documents events.jsonl descending-id renumber to running max+1 with other fields untouched, \"dry-run by default: no file is written, and the would-be bytes are staged at `<boarddir>/events.jsonl.renumbered.jsonl`\", the `--apply` rewrite arm, and runnable examples `normalize-board --repair-events` / `--repair-events --apply`. (d) Trace resolvable: board row .gitreins/tasks.yaml:905 (DOC-37, status complete), commit 9eaf3e5 (\"docs: document normalize-board event repair (DOC-37)\" / \"Addresses DOC-37.\"), regression test cmd/boardctl/doc37_repair_events_help_test.go, spec/evidence DF-BOARDCTL-38 in internal/board/repair_events.go + repair_events_test.go. Test evidence: `go test -count=1 -v -run TestDoc37 ./cmd/boardctl/` => PASS TestDoc37RootUsageNamesRepairEvents, PASS TestDoc37SubcommandHelpNamesRepairEvents, PASS TestDoc37ReadmeDocumentsRepairEvents, \"ok github.com/coding-hermes/boardctl/cmd/boardctl 0.003s\", exit 0; full `go test -count=1 ./...` => all 12 packages \"ok\" (cmd/boardctl 6.129s), exit 0. Note: the deliverable exists only on wt/DOC-37 and is not merged to main (main working tree has zero `repair-events` hits in main.go/README)."
+              }
+            ],
+            "summary": "Both help surfaces expose --repair-events, README documents the events.jsonl descending-id repair with dry-run default and --apply, and the trace (board row, commit 9eaf3e5, doc37 test, DF-BOARDCTL-38 evidence) resolves with all tests green \u2014 though the work is only on branch wt/DOC-37, not merged to main."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-37\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Top-level and subcommand help both expose --repair-events; README documents events.jsonl descending-id repair, dry-run default, and --apply; trace row/spec/test/evidence/commit is resolvable.: Verified on branch wt/DOC-37 (worktree /home/kara/worktrees/boardctl-DOC-37, HEAD 9eaf3e5). (a) Top-level help: `go run ./cmd/boardctl --help` prints \"normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines]\" (cmd/boardctl/main.go:87). (b) Subcommand help: `go run ./cmd/boardctl normalize-board --help` line 1 = \"boardctl normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines] [-C dir]\" (main.go:1363; flag registered at main.go:1359). (c) README.md:861-887 new section \"### `--repair-events`: descending event ids (DF-BOARDCTL-38)\" documents events.jsonl descending-id renumber to running max+1 with other fields untouched, \"dry-run by default: no file is written, and the would-be bytes are staged at `<boarddir>/events.jsonl.renumbered.jsonl`\", the `--apply` rewrite arm, and runnable examples `normalize-board --repair-events` / `--repair-events --apply`. (d) Trace resolvable: board row .gitreins/tasks.yaml:905 (DOC-37, status complete), commit 9eaf3e5 (\"docs: document normalize-board event repair (DOC-37)\" / \"Addresses DOC-37.\"), regression test cmd/boardctl/doc37_repair_events_help_test.go, spec/evidence DF-BOARDCTL-38 in internal/board/repair_events.go + repair_events_test.go. Test evidence: `go test -count=1 -v -run TestDoc37 ./cmd/boardctl/` => PASS TestDoc37RootUsageNamesRepairEvents, PASS TestDoc37SubcommandHelpNamesRepairEvents, PASS TestDoc37ReadmeDocumentsRepairEvents, \"ok github.com/coding-hermes/boardctl/cmd/boardctl 0.003s\", exit 0; full `go test -count=1 ./...` => all 12 packages \"ok\" (cmd/boardctl 6.129s), exit 0. Note: the deliverable exists only on wt/DOC-37 and is not merged to main (main working tree has zero `repair-events` hits in main.go/README).\nBoth help surfaces expose --repair-events, README documents the events.jsonl descending-id repair with dry-run default and --apply, and the trace (board row, commit 9eaf3e5, doc37 test, DF-BOARDCTL-38 evidence) resolves with all tests green \u2014 though the work is only on branch wt/DOC-37, not merged to main.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-19T23:35:20.950205",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-19T23:35:20.967697+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1232,
+        "truncated": false,
+        "source": "git show 8c659d5c37ab"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 19386,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DOC-37"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "task_id": "DOC-33",
+  "task_title": "Document event --task-id, --actor and --detail @file flags",
+  "task_criteria": [
+    "README names all three flags with row keys; documented invocation runs against scratch board and events.jsonl row carries task_id/actor/detail keys"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "0b69cfeb9364a9475a455abef80f767a0bf3de98",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n2:58PM INF scanned ~3472072 bytes (3.47 MB) in 1.06s\n2:58PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 241 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\ninitialized board at /var/tmp/hermes-go-tmp/TestCmdPrettyPrintedTasksExit1AndMessage3065549749/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\ninitialized board at /var/tmp/hermes-go-tmp/TestCmdCorruptTasksKeepsPlainError545749028/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\ncreated task NEW-1 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWorktreeBranchSessions3745959153/001/.coding-hermes/board/tasks.jsonl)\ncreated task NEW-2 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWorktreeBranchSessions3745959153/001/.coding-hermes/board/tasks.jsonl)\ncreated task NEW-1 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWithoutWorktreeFlagsAddsNoKeys3094057933/001/.coding-hermes/board/tasks.jsonl)\nupdated task EXIST-1: status, worktree, branch, sessions, detail\nupdated task EXIST-1: status\nboardctl: --normalize cannot be combined with --worktree (it already canonicalizes status/guard_result/ci_result)\nboardctl: --normalize cannot be combined with --branch (it already canonicalizes status/guard_result/ci_result)\nboardctl: --normalize cannot be combined with --session (it already canonicalizes status/guard_result/ci_result)\nevent id 2 appended to /var/tmp/hermes-go-tmp/TestCmdHeaderlessEventTickUnchanged2198124067/001/.coding-hermes/board/events.jsonl\n{\n  \"id\": \"CHT-001\",\n  \"title\": \"Bootstrap\",\n  \"status\": \"complete\",\n  \"priority\": \"P1\",\n  \"created_at\": \"2026-09-17T01:20:00-05:00\",\n  \"reasoning\": \"First row.\",\n  \"updated_at\": \"2026-09-17T02:49:50-05:00\",\n  \"completed_at\": \"2026-09-17T02:49:50-05:00\",\n  \"attributes\": {\n    \"tick\": \"t1\"\n  }\n}\ncreated task CHT-003 (appended to /var/tmp/hermes-go-tmp/TestCmdHeaderlessArchiveWritesStillWork2327816857/001/.coding-hermes/board/tasks.jsonl)\ninitialized board at /var/tmp/hermes-go-tmp/TestEventRefusalRequiresType565564266/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\n\n\u2026 [82107 chars omitted \u2014 1258 line(s)] \u2026\n            gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent; board validation remains mandatory\n            gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestGitTrackedSetRealExecParityclean_board_real_exec_and_in-pr3634827051/001/scripts/check-board.sh is missing; EVERY commit requires board validation\n    --- FAIL: TestGitTrackedSetRealExecParity/tracked_board.db:_both_shapes_yield_exactly_the_git-tracked-set_error (0.02s)\n        doctor_test.go:503: git [-c user.name=boardctl test -c user.email=test@example.com commit -q -m seed board]: exit status 1\n            gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent; board validation remains mandatory\n            gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestGitTrackedSetRealExecParitytracked_board.db_both_shapes_yi1725750168/001/scripts/check-board.sh is missing; EVERY commit requires board validation\nFAIL\nFAIL\tgithub.com/coding-hermes/boardctl/internal/board\t0.904s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.153s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\nFAIL\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README names all three flags with row keys; documented invocation runs against scratch board and events.jsonl row carries task_id/actor/detail keys: README.md:551-568 '### Event flags (DOC-33)' names all three flags with their row keys: `--task-id ID` (sets `task_id`), `--actor NAME` (sets `actor`), `--detail @file` (sets `detail`, mutually exclusive with `--detail-text`); README.md:130-134 and 575-579 show the combined invocation. Verified by execution: `go build -o /tmp/doc33/boardctl ./cmd/boardctl` \u2192 BUILD_OK; `boardctl init --project demo --namespace demo` in /tmp/doc33; then the documented command `./boardctl -C /tmp/doc33 event --type audit --tick 44 --task-id BT-042 --actor foreman --detail @/tmp/detail.json` \u2192 exit=0, 'event id 1 appended'. Resulting .coding-hermes/board/events.jsonl row: {\"id\": 1, \"timestamp\": \"2026-10-19T19:58:41...\", \"event_type\": \"audit\", \"task_id\": \"BT-042\", \"actor\": \"foreman\", \"detail\": \"{\\\"note\\\":\\\"structured\\\",\\\"n\\\":1}\", \"tick_number\": 44} \u2014 all three keys present. Flag wiring confirmed at cmd/boardctl/main.go:1012-1016, 1063-1090. Test suite: `go test -count=1 ./...` exit_code=1, but all failures are pre-existing sandbox-environment failures unrelated to this doc change (e.g. internal/freshness TestAtHEADSilent: 'git commit --allow-empty -q -m c1: exit status 1 / gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent'; same for internal/board TestDoctorFossilWarnRealExecParity and cmd/boardctl TestBT057StaleBinaryForeignRepoSilent); packages internal/render, internal/speccheck, internal/vulncheck, internal/workflowcheck, internal/fmtcheck all report 'ok'. The only changed file in the diff is cmd/boardctl/board-report.html (rendered_at timestamp), which cannot affect these tests.\nREADME documents all three event flags with their row keys and the documented invocation was executed against a scratch board, producing an events.jsonl row carrying task_id, actor and detail.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README names all three flags with row keys; documented invocation runs against scratch board and events.jsonl row carries task_id/actor/detail keys: README.md:551-568 '### Event flags (DOC-33)' names all three flags with their row keys: `--task-id ID` (sets `task_id`), `--actor NAME` (sets `actor`), `--detail @file` (sets `detail`, mutually exclusive with `--detail-text`); README.md:130-134 and 575-579 show the combined invocation. Verified by execution: `go build -o /tmp/doc33/boardctl ./cmd/boardctl` \u2192 BUILD_OK; `boardctl init --project demo --namespace demo` in /tmp/doc33; then the documented command `./boardctl -C /tmp/doc33 event --type audit --tick 44 --task-id BT-042 --actor foreman --detail @/tmp/detail.json` \u2192 exit=0, 'event id 1 appended'. Resulting .coding-hermes/board/events.jsonl row: {\"id\": 1, \"timestamp\": \"2026-10-19T19:58:41...\", \"event_type\": \"audit\", \"task_id\": \"BT-042\", \"actor\": \"foreman\", \"detail\": \"{\\\"note\\\":\\\"structured\\\",\\\"n\\\":1}\", \"tick_number\": 44} \u2014 all three keys present. Flag wiring confirmed at cmd/boardctl/main.go:1012-1016, 1063-1090. Test suite: `go test -count=1 ./...` exit_code=1, but all failures are pre-existing sandbox-environment failures unrelated to this doc change (e.g. internal/freshness TestAtHEADSilent: 'git commit --allow-empty -q -m c1: exit status 1 / gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent'; same for internal/board TestDoctorFossilWarnRealExecParity and cmd/boardctl TestBT057StaleBinaryForeignRepoSilent); packages internal/render, internal/speccheck, internal/vulncheck, internal/workflowcheck, internal/fmtcheck all report 'ok'. The only changed file in the diff is cmd/boardctl/board-report.html (rendered_at timestamp), which cannot affect these tests.\nREADME documents all three event flags with their row keys and the documented invocation was executed against a scratch board, producing an events.jsonl row carrying task_id, actor and detail.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README names all three flags with row keys; documented invocation runs against scratch board and events.jsonl row carries task_id/actor/detail keys",
+                "status": "PASS",
+                "detail": "README.md:551-568 '### Event flags (DOC-33)' names all three flags with their row keys: `--task-id ID` (sets `task_id`), `--actor NAME` (sets `actor`), `--detail @file` (sets `detail`, mutually exclusive with `--detail-text`); README.md:130-134 and 575-579 show the combined invocation. Verified by execution: `go build -o /tmp/doc33/boardctl ./cmd/boardctl` \u2192 BUILD_OK; `boardctl init --project demo --namespace demo` in /tmp/doc33; then the documented command `./boardctl -C /tmp/doc33 event --type audit --tick 44 --task-id BT-042 --actor foreman --detail @/tmp/detail.json` \u2192 exit=0, 'event id 1 appended'. Resulting .coding-hermes/board/events.jsonl row: {\"id\": 1, \"timestamp\": \"2026-10-19T19:58:41...\", \"event_type\": \"audit\", \"task_id\": \"BT-042\", \"actor\": \"foreman\", \"detail\": \"{\\\"note\\\":\\\"structured\\\",\\\"n\\\":1}\", \"tick_number\": 44} \u2014 all three keys present. Flag wiring confirmed at cmd/boardctl/main.go:1012-1016, 1063-1090. Test suite: `go test -count=1 ./...` exit_code=1, but all failures are pre-existing sandbox-environment failures unrelated to this doc change (e.g. internal/freshness TestAtHEADSilent: 'git commit --allow-empty -q -m c1: exit status 1 / gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent'; same for internal/board TestDoctorFossilWarnRealExecParity and cmd/boardctl TestBT057StaleBinaryForeignRepoSilent); packages internal/render, internal/speccheck, internal/vulncheck, internal/workflowcheck, internal/fmtcheck all report 'ok'. The only changed file in the diff is cmd/boardctl/board-report.html (rendered_at timestamp), which cannot affect these tests."
+              }
+            ],
+            "summary": "README documents all three event flags with their row keys and the documented invocation was executed against a scratch board, producing an events.jsonl row carrying task_id, actor and detail."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-33\n\nStage tier1: FAIL\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README names all three flags with row keys; documented invocation runs against scratch board and events.jsonl row carries task_id/actor/detail keys: README.md:551-568 '### Event flags (DOC-33)' names all three flags with their row keys: `--task-id ID` (sets `task_id`), `--actor NAME` (sets `actor`), `--detail @file` (sets `detail`, mutually exclusive with `--detail-text`); README.md:130-134 and 575-579 show the combined invocation. Verified by execution: `go build -o /tmp/doc33/boardctl ./cmd/boardctl` \u2192 BUILD_OK; `boardctl init --project demo --namespace demo` in /tmp/doc33; then the documented command `./boardctl -C /tmp/doc33 event --type audit --tick 44 --task-id BT-042 --actor foreman --detail @/tmp/detail.json` \u2192 exit=0, 'event id 1 appended'. Resulting .coding-hermes/board/events.jsonl row: {\"id\": 1, \"timestamp\": \"2026-10-19T19:58:41...\", \"event_type\": \"audit\", \"task_id\": \"BT-042\", \"actor\": \"foreman\", \"detail\": \"{\\\"note\\\":\\\"structured\\\",\\\"n\\\":1}\", \"tick_number\": 44} \u2014 all three keys present. Flag wiring confirmed at cmd/boardctl/main.go:1012-1016, 1063-1090. Test suite: `go test -count=1 ./...` exit_code=1, but all failures are pre-existing sandbox-environment failures unrelated to this doc change (e.g. internal/freshness TestAtHEADSilent: 'git commit --allow-empty -q -m c1: exit status 1 / gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent'; same for internal/board TestDoctorFossilWarnRealExecParity and cmd/boardctl TestBT057StaleBinaryForeignRepoSilent); packages internal/render, internal/speccheck, internal/vulncheck, internal/workflowcheck, internal/fmtcheck all report 'ok'. The only changed file in the diff is cmd/boardctl/board-report.html (rendered_at timestamp), which cannot affect these tests.\nREADME documents all three event flags with their row keys and the documented invocation was executed against a scratch board, producing an events.jsonl row carrying task_id, actor and detail.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-19T19:59:11.479192",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-19T19:59:11.496109+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3456,
+        "truncated": false,
+        "source": "git show 0b69cfeb9364"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 19386,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DOC-33"
+  }
+}

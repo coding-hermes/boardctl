@@ -1,0 +1,22 @@
+commit 8c659d5c37ab9b5529b704244a03d4f31c8d725c
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Mon Oct 19 18:07:04 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Mon Oct 19 18:07:04 2026 -0500
+
+    chore: correct DOC-36 implementation pointer
+    
+    Addresses DOC-36.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ .coding-hermes/board/board.jsonl | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/.coding-hermes/board/board.jsonl b/.coding-hermes/board/board.jsonl
+index eb962ae..37c0cdf 100644
+--- a/.coding-hermes/board/board.jsonl
++++ b/.coding-hermes/board/board.jsonl
+@@ -1 +1 @@
+-{"project": "boardctl", "namespace": "coding-hermes", "version": 1, "ticks_total": 148, "ticks_idle": 0, "cooldown_s": 21600, "last_commit": "195eeba701d70f1e8a31cb42c172349c48db1b74", "last_tick": "2026-10-19 22:53:53", "updated_at": "2026-10-19 23:03:56"}
++{"project": "boardctl", "namespace": "coding-hermes", "version": 1, "ticks_total": 148, "ticks_idle": 0, "cooldown_s": 21600, "last_commit": "195eeba701d70f1e8a31cb42c172349c48db1b74", "last_tick": "2026-10-19 22:53:53", "updated_at": "2026-10-19 23:07:04"}
