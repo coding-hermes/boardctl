@@ -127,6 +127,12 @@ boardctl -C ~/myproject event --type audit --tick 43 --detail-text 'manual tick'
 # tick_number"). The default header bump is the safer choice; --no-tick-write
 # is an escape hatch for boards/tools that manage the header themselves.
 
+# DOC-33: --task-id, --actor and --detail shape the appended event row
+# (--detail @file reads the detail JSON from a file and is mutually
+# exclusive with --detail-text; see "Event flags" below for all three)
+boardctl -C ~/myproject event --type audit --tick 44 --task-id BT-042 \
+    --actor foreman --detail @/tmp/detail.json
+
 # read/patch the board.jsonl header
 boardctl -C ~/myproject header --json
 boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
@@ -541,6 +547,36 @@ tick_number N — header counter stale or an event tick never completed`,
 with the fix hint `boardctl header --set-ticks-total=N`). The default header
 bump is the safer choice; `--no-tick-write` is an escape hatch for boards
 and tools that manage the header themselves.
+
+### Event flags (DOC-33)
+
+`boardctl event` accepts three flags that shape the appended event row. All
+three are optional; when omitted the corresponding field is left empty on the
+event row.
+
+- `--task-id ID` — associate this event with a specific task row (sets the
+  `task_id` field on the event). Use a fleet-style id (e.g. `BT-042`); the
+  CLI does not verify existence, so a typo silently produces an orphan
+  reference.
+- `--actor NAME` — record who (or what) performed this action (sets the
+  `actor` field). Free-form string; convention is `foreman`, `worker`,
+  `reviewer`, or a session id.
+- `--detail @file` — read the event's `detail` JSON from a file path. The
+  file must contain valid JSON; it is parsed and stored verbatim as the
+  event's detail envelope. Mutually exclusive with `--detail-text` (passing
+  both exits 1). Use `@file` for structured detail larger than a single
+  line, or when the detail is produced by another tool.
+
+The inline `--detail-text '...'` form (shown in the examples above) is the
+simpler path for short unstructured notes; `--detail @file` is for
+structured JSON payloads.
+
+Example combining all three:
+
+```
+boardctl -C ~/myproject event --type audit --tick 44 --task-id BT-042 \
+    --actor foreman --detail @/tmp/detail.json
+```
 
 ## Event type vocabulary (DOC-27)
 
