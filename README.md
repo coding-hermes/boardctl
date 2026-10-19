@@ -78,8 +78,14 @@ boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
 
 # By default, list and stats exclude fixture rows registered in fixtures.jsonl.
 # Use --all when the census must include those rows; this can make the count
-# differ from the default actionable-task view.
+# differ from the default actionable-task view. For example, on an init board
+# with two real rows plus the NEVER-DONE fixture, `list` prints 2 rows while
+# `list --all` prints 3; `stats` reports total tasks: 2 while `stats --all`
+# reports total tasks: 3.
 boardctl -C ~/myproject stats --all
+
+# The fixture-inclusive count is explicit rather than inferred from
+# `wc -l tasks.jsonl`, because fixtures are intentionally hidden by default.
 boardctl version                   # prints e.g. "boardctl version v0.1.11"
                                    # (the release tag; a UTC date for release
                                    # builds from untagged checkouts, "dev" for
