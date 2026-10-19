@@ -98,7 +98,7 @@ boardctl -C ~/myproject create --id FEAT-2 --title "Add caching" \
 # update a task row (status flip + completion event; --commit-hash stays on
 # the task row — the header drift pointer only moves via `header --set-last-commit`)
 boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
-    --guard PASS --ci GREEN --summary "retry added (+80/-12)"
+    --guard PASS --ci GREEN --summary "retry added (+80/-12)" --evidence-run-id qa-run-1
 # BT-060: --title rewrites a row's title in place (with the task_updated event)
 boardctl -C ~/myproject update FEAT-1 --title "Add retry with backoff"
 boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
@@ -972,7 +972,7 @@ boardctl -C ~/myproject create --id FEAT-2 --title "Add caching" \
     --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
     --session 2f8c41a0 --session 91ab77c2
 boardctl -C ~/myproject update FEAT-2 --status complete \
-    --worktree /home/me/wt/ft-2 --branch wt/ft-2 --session 91ab77c2
+    --worktree /home/me/wt/ft-2 --branch wt/ft-2 --session 91ab77c2 --evidence-run-id qa-run-2
 ```
 
 > **Since v0.1.11: plural association flags.** On top of the three fields
