@@ -6,6 +6,8 @@ __pycache__/
 .gitreins/tasks.yaml.lock
 .gitreins/usage.jsonl
 .coding-hermes/board/.lock
+.coding-hermes/board/*.db
+.coding-hermes/board/*.parquet
 dagger.db
 dagger.db-shm
 dagger.db-wal
