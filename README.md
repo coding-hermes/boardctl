@@ -68,12 +68,18 @@ go build ./cmd/boardctl
 #   -C ~/myproject/.coding-hermes/board -> the board dir itself
 boardctl -C ~/myproject stats
 boardctl -C ~/myproject list --status pending
+boardctl -C ~/myproject list --all       # include fixture rows (hidden by default)
 boardctl -C ~/myproject show DF-MYPROJECT-1 --events
 boardctl -C ~/myproject validate
 boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
                                    # (no .db/.parquet; untracked ones warn as
                                    # cache fossils), header vs events ticks,
                                    # fixture orphans
+
+# By default, list and stats exclude fixture rows registered in fixtures.jsonl.
+# Use --all when the census must include those rows; this can make the count
+# differ from the default actionable-task view.
+boardctl -C ~/myproject stats --all
 boardctl version                   # prints e.g. "boardctl version v0.1.11"
                                    # (the release tag; a UTC date for release
                                    # builds from untagged checkouts, "dev" for
