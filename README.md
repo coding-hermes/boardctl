@@ -106,7 +106,18 @@ boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
 # worker and completion metadata (each flag updates only its named field)
 boardctl -C ~/myproject update FEAT-1 --worker-status complete \
     --completed-at "2026-10-10 19:30:00"
+# BT-68: --note targets foreman_note and APPENDS to a non-empty existing
+# note (existing note + blank line + new note), so a second note can never
+# silently destroy the first. An absent/empty note takes the new text
+# verbatim.
 boardctl -C ~/myproject update FEAT-1 --note "Verified on the staging board"
+boardctl -C ~/myproject update FEAT-1 --note "Second verification note"
+# --replace is a flag (takes no value) used together with --note: it
+# OVERWRITES foreman_note instead of appending — the only overwrite path
+# for that field.
+boardctl -C ~/myproject update FEAT-1 --replace --note "Replacement note"
+# Omitting --note leaves foreman_note untouched (--replace without --note
+# is a no-op too).
 boardctl -C ~/myproject update FEAT-1 --status blocked \
     --blocked-reason "Waiting for release authorization"
 
