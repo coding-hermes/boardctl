@@ -1,0 +1,187 @@
+diff --git a/.gitreins/logs/guard-20261016T232755.921389Z.log b/.gitreins/logs/guard-20261016T232755.921389Z.log
+deleted file mode 100644
+index 18a8d53..0000000
+--- a/.gitreins/logs/guard-20261016T232755.921389Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-16T23:27:55Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261016T234428.531068Z.log b/.gitreins/logs/guard-20261016T234428.531068Z.log
+deleted file mode 100644
+index 2d76b1f..0000000
+--- a/.gitreins/logs/guard-20261016T234428.531068Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-16T23:44:28Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/cmd/boardctl/board-report.html b/cmd/boardctl/board-report.html
+index 49fac83..bc0449d 100644
+--- a/cmd/boardctl/board-report.html
++++ b/cmd/boardctl/board-report.html
+@@ -111,7 +111,7 @@ footer ul{margin:4px 0;padding-left:18px}
+ <main id="view-compare" hidden></main>
+ <div id="errbox" hidden></div>
+ <footer id="foot"></footer>
+-<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-19T00:03:18-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
++<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-19T02:30:59-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
+ <script>
+ "use strict";
+ (function(){
+diff --git a/internal/board/doctor_test.go b/internal/board/doctor_test.go
+index abd09e9..0967e47 100644
+--- a/internal/board/doctor_test.go
++++ b/internal/board/doctor_test.go
+@@ -257,47 +257,46 @@ func TestDoctorCleanBoard(t *testing.T) {
+ 	}
+ }
+ 
+-// TestDoctorRepoBoardNoTrackedCaches: the repo's own live board
+-// (../../.coding-hermes/board) copied into a fresh git repo must not yield a
+-// git-tracked-set error — nothing under the board dir carries a .db/.parquet
+-// extension. Other findings (e.g. the NEVER-DONE fixture orphan on a board
+-// that predates doctor) are expected and tolerated here; this test pins the
+-// tracked-set property only.
++// TestDoctorRepoBoardNoTrackedCaches: this module's OWN git-tracked set must
++// never carry board-cache files (.db / .parquet) under .coding-hermes/board.
++// JSONL is the canonical board store; db/parquet artifacts are derived caches
++// that go stale on the first board write and bloat history, so the doctor
++// treats a tracked one as an ERROR (TestDoctorGitTrackedDBError pins that
++// verdict, TestGitTrackedSetRealExecParity pins real-exec agreement).
++//
++// DF-BOARDCTL-43: the previous shape of this test copied the live board into
++// a FRESH git repo while silently SKIPPING .db/.parquet entries — so when
++// commit 37ab3b1 accidentally tracked .coding-hermes/board/board.db, this
++// test stayed green and only `boardctl doctor -C .` caught the defect. The
++// assertion now reads the REAL tracked set via `git ls-files` from the module
++// root, so a repo that tracks a board cache fails this test directly.
+ func TestDoctorRepoBoardNoTrackedCaches(t *testing.T) {
+-	src := filepath.Join("..", "..", ".coding-hermes", "board")
+-	entries, err := os.ReadDir(src)
++	// Module root: this file lives at internal/board/.
++	root, err := filepath.Abs(filepath.Join("..", ".."))
+ 	if err != nil {
+-		t.Skipf("repo board not present at %s: %v", src, err)
++		t.Fatal(err)
+ 	}
+-	files := map[string]string{}
+-	for _, e := range entries {
+-		if e.IsDir() {
+-			continue
+-		}
+-		// Skip db/parquet cache fossils: the live board dir may carry an
+-		// UNTRACKED cache (board.db), but this test copies every file into a
+-		// FRESH git repo where it becomes tracked — a shape the real board
+-		// never has. This test pins the tracked-set property of the JSONL
+-		// board only; the fossil-warning path has its own test.
+-		if strings.HasSuffix(e.Name(), ".db") || strings.HasSuffix(e.Name(), ".parquet") {
+-			continue
+-		}
+-		data, err := os.ReadFile(filepath.Join(src, e.Name()))
+-		if err != nil {
+-			t.Fatal(err)
+-		}
+-		files[e.Name()] = string(data)
++	if _, err := os.Stat(filepath.Join(root, ".git")); err != nil {
++		t.Skipf("module root %s has no .git — not a live work tree: %v", root, err)
+ 	}
+-	b := newGitTestBoard(t, files)
+-	rep, err := b.Doctor()
++	out, err := exec.Command("git", "-C", root, "ls-files", ".coding-hermes/board/").CombinedOutput()
+ 	if err != nil {
+-		t.Fatal(err)
++		t.Fatalf("git ls-files in %s: %v\n%s", root, err, out)
+ 	}
+-	for _, f := range rep.Findings {
+-		if f.IsError() && strings.Contains(f.Msg, "git-tracked-set") {
+-			t.Fatalf("live board reported git-tracked-set error: %s", f.Msg)
++	var caches []string
++	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
++		name := strings.TrimSpace(line)
++		if name == "" {
++			continue
++		}
++		if strings.HasSuffix(name, ".db") || strings.HasSuffix(name, ".parquet") {
++			caches = append(caches, name)
+ 		}
+ 	}
++	if len(caches) > 0 {
++		t.Fatalf("git-tracked board caches under .coding-hermes/board — JSONL-canonical boards must not track db/parquet caches; untrack them (git rm --cached) and ignore the patterns:\n  %s",
++			strings.Join(caches, "\n  "))
++	}
+ }
+ 
+ // TestDoctorGitTrackedDBError: a board whose dir tracks a board.db cache

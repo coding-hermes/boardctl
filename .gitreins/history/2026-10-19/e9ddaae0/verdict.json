@@ -1,0 +1,101 @@
+{
+  "task_id": "DF-BOARDCTL-43",
+  "task_title": "repo-tracked-board.db makes doctor FAIL",
+  "task_criteria": [
+    "git rm --cached board.db + .gitignore *.db/*.parquet + test asserts no .db in git ls-files output; doctor -C . exits 0 with 0 errors; test FAILS on a repo that tracks a board.db (RED-proven)"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "1a890b27da674aa6ea47ff20aceee34e7e533737",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n2:30AM INF scanned ~3468573 bytes (3.47 MB) in 871ms\n2:30AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 240 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T072949.255202Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t4.547s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.760s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.149s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.225s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T072949.255202Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 git rm --cached board.db + .gitignore *.db/*.parquet + test asserts no .db in git ls-files output; doctor -C . exits 0 with 0 errors; test FAILS on a repo that tracks a board.db (RED-proven): (1) Untracked: HEAD commit 1a890b2 'fix: untrack board.db + gate tracked caches (DF-BOARDCTL-43)' shows `.coding-hermes/board/board.db | Bin 12288 -> 0 bytes`; `git ls-files | grep -E '\\.(db|parquet)$'` returns no output (exit 1). (2) .gitignore lines 9-10 add `.coding-hermes/board/*.db` and `.coding-hermes/board/*.parquet`. (3) internal/board/doctor_test.go:274-301 TestDoctorRepoBoardNoTrackedCaches now runs `git -C <module root> ls-files .coding-hermes/board/` and t.Fatalf's on any .db/.parquet entry (the old version copied the live board into a fresh repo while skipping .db/.parquet, which is why it stayed green). (4) `go build ./cmd/boardctl` exit 0; `/tmp/boardctl doctor -C .` -> 'RESULT: OK (11 warning(s))', exit 0, zero errors (only warnings, incl. the untracked-set fossil warn for the now-untracked board.db). (5) RED-proven: injected a synthetic '.coding-hermes/board/board.db' line into the ls-files output -> `go test -count=1 ./internal/board/ -run TestDoctorRepoBoardNoTrackedCaches` FAILED with 'git-tracked board caches under .coding-hermes/board ... .coding-hermes/board/board.db'; file restored (grep for injection marker = 0 matches). (6) Supporting tests: TestDoctorGitTrackedDBError and TestGitTrackedSetRealExecParity (both subtests) PASS; full `go test -count=1 ./...` -> all packages 'ok' (internal/board ok 0.787s).\nboard.db is untracked and gitignored, the test now asserts against the real `git ls-files` tracked set and was RED-proven to fail on a tracked board.db, and `boardctl doctor -C .` exits 0 with 0 errors while the full suite passes.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 git rm --cached board.db + .gitignore *.db/*.parquet + test asserts no .db in git ls-files output; doctor -C . exits 0 with 0 errors; test FAILS on a repo that tracks a board.db (RED-proven): (1) Untracked: HEAD commit 1a890b2 'fix: untrack board.db + gate tracked caches (DF-BOARDCTL-43)' shows `.coding-hermes/board/board.db | Bin 12288 -> 0 bytes`; `git ls-files | grep -E '\\.(db|parquet)$'` returns no output (exit 1). (2) .gitignore lines 9-10 add `.coding-hermes/board/*.db` and `.coding-hermes/board/*.parquet`. (3) internal/board/doctor_test.go:274-301 TestDoctorRepoBoardNoTrackedCaches now runs `git -C <module root> ls-files .coding-hermes/board/` and t.Fatalf's on any .db/.parquet entry (the old version copied the live board into a fresh repo while skipping .db/.parquet, which is why it stayed green). (4) `go build ./cmd/boardctl` exit 0; `/tmp/boardctl doctor -C .` -> 'RESULT: OK (11 warning(s))', exit 0, zero errors (only warnings, incl. the untracked-set fossil warn for the now-untracked board.db). (5) RED-proven: injected a synthetic '.coding-hermes/board/board.db' line into the ls-files output -> `go test -count=1 ./internal/board/ -run TestDoctorRepoBoardNoTrackedCaches` FAILED with 'git-tracked board caches under .coding-hermes/board ... .coding-hermes/board/board.db'; file restored (grep for injection marker = 0 matches). (6) Supporting tests: TestDoctorGitTrackedDBError and TestGitTrackedSetRealExecParity (both subtests) PASS; full `go test -count=1 ./...` -> all packages 'ok' (internal/board ok 0.787s).\nboard.db is untracked and gitignored, the test now asserts against the real `git ls-files` tracked set and was RED-proven to fail on a tracked board.db, and `boardctl doctor -C .` exits 0 with 0 errors while the full suite passes.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "git rm --cached board.db + .gitignore *.db/*.parquet + test asserts no .db in git ls-files output; doctor -C . exits 0 with 0 errors; test FAILS on a repo that tracks a board.db (RED-proven)",
+                "status": "PASS",
+                "detail": "(1) Untracked: HEAD commit 1a890b2 'fix: untrack board.db + gate tracked caches (DF-BOARDCTL-43)' shows `.coding-hermes/board/board.db | Bin 12288 -> 0 bytes`; `git ls-files | grep -E '\\.(db|parquet)$'` returns no output (exit 1). (2) .gitignore lines 9-10 add `.coding-hermes/board/*.db` and `.coding-hermes/board/*.parquet`. (3) internal/board/doctor_test.go:274-301 TestDoctorRepoBoardNoTrackedCaches now runs `git -C <module root> ls-files .coding-hermes/board/` and t.Fatalf's on any .db/.parquet entry (the old version copied the live board into a fresh repo while skipping .db/.parquet, which is why it stayed green). (4) `go build ./cmd/boardctl` exit 0; `/tmp/boardctl doctor -C .` -> 'RESULT: OK (11 warning(s))', exit 0, zero errors (only warnings, incl. the untracked-set fossil warn for the now-untracked board.db). (5) RED-proven: injected a synthetic '.coding-hermes/board/board.db' line into the ls-files output -> `go test -count=1 ./internal/board/ -run TestDoctorRepoBoardNoTrackedCaches` FAILED with 'git-tracked board caches under .coding-hermes/board ... .coding-hermes/board/board.db'; file restored (grep for injection marker = 0 matches). (6) Supporting tests: TestDoctorGitTrackedDBError and TestGitTrackedSetRealExecParity (both subtests) PASS; full `go test -count=1 ./...` -> all packages 'ok' (internal/board ok 0.787s)."
+              }
+            ],
+            "summary": "board.db is untracked and gitignored, the test now asserts against the real `git ls-files` tracked set and was RED-proven to fail on a tracked board.db, and `boardctl doctor -C .` exits 0 with 0 errors while the full suite passes."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-43\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 git rm --cached board.db + .gitignore *.db/*.parquet + test asserts no .db in git ls-files output; doctor -C . exits 0 with 0 errors; test FAILS on a repo that tracks a board.db (RED-proven): (1) Untracked: HEAD commit 1a890b2 'fix: untrack board.db + gate tracked caches (DF-BOARDCTL-43)' shows `.coding-hermes/board/board.db | Bin 12288 -> 0 bytes`; `git ls-files | grep -E '\\.(db|parquet)$'` returns no output (exit 1). (2) .gitignore lines 9-10 add `.coding-hermes/board/*.db` and `.coding-hermes/board/*.parquet`. (3) internal/board/doctor_test.go:274-301 TestDoctorRepoBoardNoTrackedCaches now runs `git -C <module root> ls-files .coding-hermes/board/` and t.Fatalf's on any .db/.parquet entry (the old version copied the live board into a fresh repo while skipping .db/.parquet, which is why it stayed green). (4) `go build ./cmd/boardctl` exit 0; `/tmp/boardctl doctor -C .` -> 'RESULT: OK (11 warning(s))', exit 0, zero errors (only warnings, incl. the untracked-set fossil warn for the now-untracked board.db). (5) RED-proven: injected a synthetic '.coding-hermes/board/board.db' line into the ls-files output -> `go test -count=1 ./internal/board/ -run TestDoctorRepoBoardNoTrackedCaches` FAILED with 'git-tracked board caches under .coding-hermes/board ... .coding-hermes/board/board.db'; file restored (grep for injection marker = 0 matches). (6) Supporting tests: TestDoctorGitTrackedDBError and TestGitTrackedSetRealExecParity (both subtests) PASS; full `go test -count=1 ./...` -> all packages 'ok' (internal/board ok 0.787s).\nboard.db is untracked and gitignored, the test now asserts against the real `git ls-files` tracked set and was RED-proven to fail on a tracked board.db, and `boardctl doctor -C .` exits 0 with 0 errors while the full suite passes.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-19T07:31:07.599183",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-19T07:31:07.614372+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 978,
+        "truncated": false,
+        "source": "git show 1a890b27da67"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 12437,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-43"
+  }
+}

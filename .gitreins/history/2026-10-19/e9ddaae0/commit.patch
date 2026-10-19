@@ -1,0 +1,29 @@
+commit 1a890b27da674aa6ea47ff20aceee34e7e533737
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Mon Oct 19 02:29:49 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Mon Oct 19 02:29:49 2026 -0500
+
+    fix: untrack board.db + gate tracked caches (DF-BOARDCTL-43)
+---
+ .coding-hermes/board/board.db | Bin 12288 -> 0 bytes
+ .gitignore                    |   2 ++
+ 2 files changed, 2 insertions(+)
+
+diff --git a/.coding-hermes/board/board.db b/.coding-hermes/board/board.db
+deleted file mode 100644
+index 20abae0..0000000
+Binary files a/.coding-hermes/board/board.db and /dev/null differ
+diff --git a/.gitignore b/.gitignore
+index be146b2..d1c49a6 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -6,6 +6,8 @@ __pycache__/
+ .gitreins/tasks.yaml.lock
+ .gitreins/usage.jsonl
+ .coding-hermes/board/.lock
++.coding-hermes/board/*.db
++.coding-hermes/board/*.parquet
+ dagger.db
+ dagger.db-shm
+ dagger.db-wal
