@@ -1,0 +1,38 @@
+commit c5734660be3d0addda7e4a87cf83e8ed71e7b984
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Mon Oct 19 17:57:51 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Mon Oct 19 17:57:51 2026 -0500
+
+    docs: document fixture-inclusive list and stats counts
+    
+    Addresses DOC-36.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ README.md | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/README.md b/README.md
+index afa0895..bc7563f 100644
+--- a/README.md
++++ b/README.md
+@@ -68,12 +68,18 @@ go build ./cmd/boardctl
+ #   -C ~/myproject/.coding-hermes/board -> the board dir itself
+ boardctl -C ~/myproject stats
+ boardctl -C ~/myproject list --status pending
++boardctl -C ~/myproject list --all       # include fixture rows (hidden by default)
+ boardctl -C ~/myproject show DF-MYPROJECT-1 --events
+ boardctl -C ~/myproject validate
+ boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
+                                    # (no .db/.parquet; untracked ones warn as
+                                    # cache fossils), header vs events ticks,
+                                    # fixture orphans
++
++# By default, list and stats exclude fixture rows registered in fixtures.jsonl.
++# Use --all when the census must include those rows; this can make the count
++# differ from the default actionable-task view.
++boardctl -C ~/myproject stats --all
+ boardctl version                   # prints e.g. "boardctl version v0.1.11"
+                                    # (the release tag; a UTC date for release
+                                    # builds from untagged checkouts, "dev" for

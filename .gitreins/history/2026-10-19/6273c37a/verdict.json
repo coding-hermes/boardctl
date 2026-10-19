@@ -1,0 +1,101 @@
+{
+  "task_id": "DOC-36",
+  "task_title": "Document list/stats fixture filtering",
+  "task_criteria": [
+    "Traceability: row=DOC-36; README documents list --all and stats --all, explaining default fixture exclusion and exact counts; test/evidence=README.md plus live scratch-board probe; commit resolves the row; witness=none:docs-only"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "c5734660be3d0addda7e4a87cf83e8ed71e7b984",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n5:58PM INF scanned ~3483213 bytes (3.48 MB) in 1.09s\n5:58PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 242 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.116s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.219s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t2.789s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.172s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.024s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.920s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 Traceability: row=DOC-36; README documents list --all and stats --all, explaining default fixture exclusion and exact counts; test/evidence=README.md plus live scratch-board probe; commit resolves the row; witness=none:docs-only: Partial. README.md:71 documents `list --all` (\"include fixture rows (hidden by default)\") and README.md:79-82 documents `stats --all` with the default-exclusion explanation (\"By default, list and stats exclude fixture rows registered in fixtures.jsonl... this can make the count differ\"). Commit c573466 (\"docs: document fixture-inclusive list and stats counts / Addresses DOC-36.\") touches only README.md (+6). Live scratch-board probe (/tmp/doc36probe with fixtures.jsonl registering NEVER-DONE) confirms behavior: `list` -> 2 rows (SCR-0, SCR-1) vs `list --all` -> 3 rows (NEVER-DONE, SCR-0, SCR-1); `stats` -> total tasks: 2 / pending 2 / P2 2 vs `stats --all` -> total tasks: 3 / pending 3 / P2 2 / P3 1. FAILURES: (1) \"exact counts\" not met \u2014 README never quotes the observed 2-vs-3 line difference that the task's ACCEPT clause explicitly requires; it only says counts \"can differ\". (2) \"commit resolves the row\" not met \u2014 .coding-hermes/board/tasks.jsonl:181 still shows DOC-36 status \"pending\" with no commit_hash/worker_summary/foreman_note, and .coding-hermes/board/events.jsonl contains only the task_created event (id 466) for DOC-36, no task_completed/closeout event. (3) No traceability marker: `grep ch:trace README.md` = 0 hits and DOC-36's row carries no ch:trace foreman_note (unlike DOC-34/DOC-35 rows). (4) Unrelated dirty file cmd/boardctl/board-report.html (rendered_at timestamp churn) left uncommitted.\nREADME gained the list/stats --all fixture-exclusion documentation and the behavior is confirmed by a live probe, but the required exact 2-vs-3 counts are absent and the DOC-36 board row/commit traceability (status, completion event, ch:trace marker) was never closed out.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 Traceability: row=DOC-36; README documents list --all and stats --all, explaining default fixture exclusion and exact counts; test/evidence=README.md plus live scratch-board probe; commit resolves the row; witness=none:docs-only: Partial. README.md:71 documents `list --all` (\"include fixture rows (hidden by default)\") and README.md:79-82 documents `stats --all` with the default-exclusion explanation (\"By default, list and stats exclude fixture rows registered in fixtures.jsonl... this can make the count differ\"). Commit c573466 (\"docs: document fixture-inclusive list and stats counts / Addresses DOC-36.\") touches only README.md (+6). Live scratch-board probe (/tmp/doc36probe with fixtures.jsonl registering NEVER-DONE) confirms behavior: `list` -> 2 rows (SCR-0, SCR-1) vs `list --all` -> 3 rows (NEVER-DONE, SCR-0, SCR-1); `stats` -> total tasks: 2 / pending 2 / P2 2 vs `stats --all` -> total tasks: 3 / pending 3 / P2 2 / P3 1. FAILURES: (1) \"exact counts\" not met \u2014 README never quotes the observed 2-vs-3 line difference that the task's ACCEPT clause explicitly requires; it only says counts \"can differ\". (2) \"commit resolves the row\" not met \u2014 .coding-hermes/board/tasks.jsonl:181 still shows DOC-36 status \"pending\" with no commit_hash/worker_summary/foreman_note, and .coding-hermes/board/events.jsonl contains only the task_created event (id 466) for DOC-36, no task_completed/closeout event. (3) No traceability marker: `grep ch:trace README.md` = 0 hits and DOC-36's row carries no ch:trace foreman_note (unlike DOC-34/DOC-35 rows). (4) Unrelated dirty file cmd/boardctl/board-report.html (rendered_at timestamp churn) left uncommitted.\nREADME gained the list/stats --all fixture-exclusion documentation and the behavior is confirmed by a live probe, but the required exact 2-vs-3 counts are absent and the DOC-36 board row/commit traceability (status, completion event, ch:trace marker) was never closed out.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "Traceability: row=DOC-36; README documents list --all and stats --all, explaining default fixture exclusion and exact counts; test/evidence=README.md plus live scratch-board probe; commit resolves the row; witness=none:docs-only",
+                "status": "FAIL",
+                "detail": "Partial. README.md:71 documents `list --all` (\"include fixture rows (hidden by default)\") and README.md:79-82 documents `stats --all` with the default-exclusion explanation (\"By default, list and stats exclude fixture rows registered in fixtures.jsonl... this can make the count differ\"). Commit c573466 (\"docs: document fixture-inclusive list and stats counts / Addresses DOC-36.\") touches only README.md (+6). Live scratch-board probe (/tmp/doc36probe with fixtures.jsonl registering NEVER-DONE) confirms behavior: `list` -> 2 rows (SCR-0, SCR-1) vs `list --all` -> 3 rows (NEVER-DONE, SCR-0, SCR-1); `stats` -> total tasks: 2 / pending 2 / P2 2 vs `stats --all` -> total tasks: 3 / pending 3 / P2 2 / P3 1. FAILURES: (1) \"exact counts\" not met \u2014 README never quotes the observed 2-vs-3 line difference that the task's ACCEPT clause explicitly requires; it only says counts \"can differ\". (2) \"commit resolves the row\" not met \u2014 .coding-hermes/board/tasks.jsonl:181 still shows DOC-36 status \"pending\" with no commit_hash/worker_summary/foreman_note, and .coding-hermes/board/events.jsonl contains only the task_created event (id 466) for DOC-36, no task_completed/closeout event. (3) No traceability marker: `grep ch:trace README.md` = 0 hits and DOC-36's row carries no ch:trace foreman_note (unlike DOC-34/DOC-35 rows). (4) Unrelated dirty file cmd/boardctl/board-report.html (rendered_at timestamp churn) left uncommitted."
+              }
+            ],
+            "summary": "README gained the list/stats --all fixture-exclusion documentation and the behavior is confirmed by a live probe, but the required exact 2-vs-3 counts are absent and the DOC-36 board row/commit traceability (status, completion event, ch:trace marker) was never closed out."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-36\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 Traceability: row=DOC-36; README documents list --all and stats --all, explaining default fixture exclusion and exact counts; test/evidence=README.md plus live scratch-board probe; commit resolves the row; witness=none:docs-only: Partial. README.md:71 documents `list --all` (\"include fixture rows (hidden by default)\") and README.md:79-82 documents `stats --all` with the default-exclusion explanation (\"By default, list and stats exclude fixture rows registered in fixtures.jsonl... this can make the count differ\"). Commit c573466 (\"docs: document fixture-inclusive list and stats counts / Addresses DOC-36.\") touches only README.md (+6). Live scratch-board probe (/tmp/doc36probe with fixtures.jsonl registering NEVER-DONE) confirms behavior: `list` -> 2 rows (SCR-0, SCR-1) vs `list --all` -> 3 rows (NEVER-DONE, SCR-0, SCR-1); `stats` -> total tasks: 2 / pending 2 / P2 2 vs `stats --all` -> total tasks: 3 / pending 3 / P2 2 / P3 1. FAILURES: (1) \"exact counts\" not met \u2014 README never quotes the observed 2-vs-3 line difference that the task's ACCEPT clause explicitly requires; it only says counts \"can differ\". (2) \"commit resolves the row\" not met \u2014 .coding-hermes/board/tasks.jsonl:181 still shows DOC-36 status \"pending\" with no commit_hash/worker_summary/foreman_note, and .coding-hermes/board/events.jsonl contains only the task_created event (id 466) for DOC-36, no task_completed/closeout event. (3) No traceability marker: `grep ch:trace README.md` = 0 hits and DOC-36's row carries no ch:trace foreman_note (unlike DOC-34/DOC-35 rows). (4) Unrelated dirty file cmd/boardctl/board-report.html (rendered_at timestamp churn) left uncommitted.\nREADME gained the list/stats --all fixture-exclusion documentation and the behavior is confirmed by a live probe, but the required exact 2-vs-3 counts are absent and the DOC-36 board row/commit traceability (status, completion event, ch:trace marker) was never closed out.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-19T22:58:33.345177",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-19T22:58:33.362667+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1719,
+        "truncated": false,
+        "source": "git show c5734660be3d"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 19386,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DOC-36"
+  }
+}

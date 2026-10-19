@@ -1,0 +1,35 @@
+commit 195eeba701d70f1e8a31cb42c172349c48db1b74
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Mon Oct 19 18:00:45 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Mon Oct 19 18:00:45 2026 -0500
+
+    docs: add fixture count example for DOC-36
+    
+    Addresses DOC-36.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ README.md | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/README.md b/README.md
+index bc7563f..748f0bd 100644
+--- a/README.md
++++ b/README.md
+@@ -78,8 +78,14 @@ boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
+ 
+ # By default, list and stats exclude fixture rows registered in fixtures.jsonl.
+ # Use --all when the census must include those rows; this can make the count
+-# differ from the default actionable-task view.
++# differ from the default actionable-task view. For example, on an init board
++# with two real rows plus the NEVER-DONE fixture, `list` prints 2 rows while
++# `list --all` prints 3; `stats` reports total tasks: 2 while `stats --all`
++# reports total tasks: 3.
+ boardctl -C ~/myproject stats --all
++
++# The fixture-inclusive count is explicit rather than inferred from
++# `wc -l tasks.jsonl`, because fixtures are intentionally hidden by default.
+ boardctl version                   # prints e.g. "boardctl version v0.1.11"
+                                    # (the release tag; a UTC date for release
+                                    # builds from untagged checkouts, "dev" for
