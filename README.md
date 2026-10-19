@@ -151,6 +151,10 @@ boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
 # task row) both forms refuse with "no header on this board" (exit 1) —
 # nothing is written, so a header write can never land in a task row
 
+# DOC-35: the header setters + header object contract are documented below —
+# all four --set-* flags (ticks-total, ticks-idle, last-commit, last-tick)
+# and the nine header keys `header --json` returns.
+
 # round-trip a report export into the board (BT-022): a board-report/v1
 # JSON from `render --json`. Identical rows are no-ops; same-id rows with
 # different content are SKIPPED — --renumber appends them under the next
