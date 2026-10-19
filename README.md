@@ -144,9 +144,49 @@ boardctl -C ~/myproject event --type audit --tick 43 --detail-text 'manual tick'
 boardctl -C ~/myproject event --type audit --tick 44 --task-id BT-042 \
     --actor foreman --detail @/tmp/detail.json
 
-# read/patch the board.jsonl header
-boardctl -C ~/myproject header --json
+# read/patch the board header (line 1 of board.jsonl; line 1 of tasks.jsonl
+# on a legacy topology-B board)
+boardctl -C ~/myproject header --json          # print the header (raw JSON)
+boardctl -C ~/myproject header                 # pretty-printed
+
+# four --set-* flags; combine any of them, at least one is required:
 boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
+boardctl -C ~/myproject header --set-ticks-idle 3
+boardctl -C ~/myproject header --set-last-tick "2026-10-19T21:53:25.000000-05:00"
+# counters must be >= 0 — --set-ticks-total / --set-ticks-idle reject a
+# negative value (exit 1, nothing written; BT-007). A successful write prints
+# the keys it changed, e.g.
+#   header updated (line 1 of board.jsonl): ticks_idle, last_tick, updated_at
+# (a topology-B board reports "line 1 of tasks.jsonl" instead)
+
+# the header object's keys (what `header --json` returns):
+#
+# | key          | type            | meaning / default                                  |
+# |--------------|-----------------|----------------------------------------------------|
+# | project      | string          | board identity — the lane name create's paperwork  |
+# |              |                 | priority default keys on; --project at init,       |
+# |              |                 | default the target directory's basename            |
+# | namespace    | string          | second identity layer; --namespace at init,        |
+# |              |                 | default = project                                  |
+# | version      | integer         | header schema version; init writes 1               |
+# | ticks_total  | integer         | last completed tick; init 0; also bumped to        |
+# |              |                 | max(old, N) by every `event --tick N`              |
+# | ticks_idle   | integer         | idle-tick counter; init 0; set via --set-ticks-idle|
+# | cooldown_s   | integer         | lane cooldown seconds; init 21600 (the 6h fleet    |
+# |              |                 | default); no CLI setter                            |
+# | last_commit  | string or null  | last landed commit; init null until the first      |
+# |              |                 | --set-last-commit (value stored verbatim)          |
+# | last_tick    | string or null  | last completed tick's timestamp; absent on a fresh |
+# |              |                 | init; written by `event --tick` (in the header's   |
+# |              |                 | own timestamp dialect) and --set-last-tick         |
+# | updated_at   | string          | last header write; absent on a fresh init, then    |
+# |              |                 | refreshed automatically on EVERY successful header |
+# |              |                 | mutation in the header's own dialect (BT-024)      |
+#
+# `version` and `cooldown_s` have no setter — they are written by `init` and
+# shape-checked by validate; edit board.jsonl by hand if one must change.
+# --set-last-commit / --set-last-tick store the given value verbatim.
+
 # on a board with NO header (no board.jsonl and line 1 of tasks.jsonl is a
 # task row) both forms refuse with "no header on this board" (exit 1) —
 # nothing is written, so a header write can never land in a task row
