@@ -257,46 +257,45 @@ func TestDoctorCleanBoard(t *testing.T) {
 	}
 }
 
-// TestDoctorRepoBoardNoTrackedCaches: the repo's own live board
-// (../../.coding-hermes/board) copied into a fresh git repo must not yield a
-// git-tracked-set error — nothing under the board dir carries a .db/.parquet
-// extension. Other findings (e.g. the NEVER-DONE fixture orphan on a board
-// that predates doctor) are expected and tolerated here; this test pins the
-// tracked-set property only.
+// TestDoctorRepoBoardNoTrackedCaches: this module's OWN git-tracked set must
+// never carry board-cache files (.db / .parquet) under .coding-hermes/board.
+// JSONL is the canonical board store; db/parquet artifacts are derived caches
+// that go stale on the first board write and bloat history, so the doctor
+// treats a tracked one as an ERROR (TestDoctorGitTrackedDBError pins that
+// verdict, TestGitTrackedSetRealExecParity pins real-exec agreement).
+//
+// DF-BOARDCTL-43: the previous shape of this test copied the live board into
+// a FRESH git repo while silently SKIPPING .db/.parquet entries — so when
+// commit 37ab3b1 accidentally tracked .coding-hermes/board/board.db, this
+// test stayed green and only `boardctl doctor -C .` caught the defect. The
+// assertion now reads the REAL tracked set via `git ls-files` from the module
+// root, so a repo that tracks a board cache fails this test directly.
 func TestDoctorRepoBoardNoTrackedCaches(t *testing.T) {
-	src := filepath.Join("..", "..", ".coding-hermes", "board")
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		t.Skipf("repo board not present at %s: %v", src, err)
-	}
-	files := map[string]string{}
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		// Skip db/parquet cache fossils: the live board dir may carry an
-		// UNTRACKED cache (board.db), but this test copies every file into a
-		// FRESH git repo where it becomes tracked — a shape the real board
-		// never has. This test pins the tracked-set property of the JSONL
-		// board only; the fossil-warning path has its own test.
-		if strings.HasSuffix(e.Name(), ".db") || strings.HasSuffix(e.Name(), ".parquet") {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(src, e.Name()))
-		if err != nil {
-			t.Fatal(err)
-		}
-		files[e.Name()] = string(data)
-	}
-	b := newGitTestBoard(t, files)
-	rep, err := b.Doctor()
+	// Module root: this file lives at internal/board/.
+	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range rep.Findings {
-		if f.IsError() && strings.Contains(f.Msg, "git-tracked-set") {
-			t.Fatalf("live board reported git-tracked-set error: %s", f.Msg)
+	if _, err := os.Stat(filepath.Join(root, ".git")); err != nil {
+		t.Skipf("module root %s has no .git — not a live work tree: %v", root, err)
+	}
+	out, err := exec.Command("git", "-C", root, "ls-files", ".coding-hermes/board/").CombinedOutput()
+	if err != nil {
+		t.Fatalf("git ls-files in %s: %v\n%s", root, err, out)
+	}
+	var caches []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		name := strings.TrimSpace(line)
+		if name == "" {
+			continue
 		}
+		if strings.HasSuffix(name, ".db") || strings.HasSuffix(name, ".parquet") {
+			caches = append(caches, name)
+		}
+	}
+	if len(caches) > 0 {
+		t.Fatalf("git-tracked board caches under .coding-hermes/board — JSONL-canonical boards must not track db/parquet caches; untrack them (git rm --cached) and ignore the patterns:\n  %s",
+			strings.Join(caches, "\n  "))
 	}
 }
 
