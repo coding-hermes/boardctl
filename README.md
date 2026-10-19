@@ -858,6 +858,34 @@ boardctl -C ~/myproject normalize-board --json        # machine-readable census
 boardctl -C ~/myproject normalize-board --apply       # rewrite tasks.jsonl, one atomic pass
 ```
 
+### `--repair-events`: descending event ids (DF-BOARDCTL-38)
+
+The row repairs above touch ONLY `tasks.jsonl`. The task trail is a separate
+file — `events.jsonl` — and it drifts in its own way: `validate` errors on an
+event id that descends below an earlier id (event ids must ascend; gaps are
+tolerated). `normalize-board --repair-events` extends the same command with a
+mechanical fix for exactly that: it renumbers each descending id to
+`running max + 1` (restoring ascending order) and leaves every other field on
+the event untouched. Legacy events with a missing or non-numeric id are
+skipped (reported as non-numeric), and duplicate ids are warned about but
+never rewritten (benign legacy duplicates exist on live boards).
+
+Like the row pass, `--repair-events` is a dry-run by default: no file is
+written, and the would-be bytes are staged at
+`<boarddir>/events.jsonl.renumbered.jsonl` for review. Pass `--apply` (alone
+or with the row repairs) to rewrite `events.jsonl` in place under the same
+guarded write path; the report says `DRY-RUN — no file written (pass --apply
+to rewrite events.jsonl)` until then. Keep the two arms distinct in your
+head: the row-shape pass repairs TASK rows in `tasks.jsonl` (keys,
+`depends_on` shapes, alias statuses); `--repair-events` repairs the EVENT
+id sequence in `events.jsonl` — different file, different defect, and the
+event pass runs only when the flag is present.
+
+```bash
+boardctl -C ~/myproject normalize-board --repair-events             # report event-id drift, no writes
+boardctl -C ~/myproject normalize-board --repair-events --apply     # rewrite events.jsonl, ids ascending
+```
+
 ## Title-priority cross-check (BT-060)
 
 Fleet rows are titled by hand — `[P1] real title` — and later re-priorities

@@ -84,7 +84,7 @@ commands:
            (--apply only; one audit event quotes the preserved text);
            a "duplicate" with no earlier twin is refused. --decide alone
            never writes; only --decide --apply does.
-  normalize-board [--apply] [--json] [--skip-bad-lines]
+  normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines]
            report (and with --apply fix) drifted row SHAPES on ONE board —
            the board-wide twin of 'update --normalize': renames known key
            aliases to their canonical keys, converts string depends_on
