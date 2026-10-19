@@ -1,0 +1,18 @@
+{
+  "tick_id": "boardctl-foreman-2026-10-19-21-26-40",
+  "project": "boardctl",
+  "budget": 8,
+  "mode": "serial",
+  "reason": "Only one task selected per tick by project instruction; DOC-34 is the highest-priority actionable row.",
+  "tasks": [
+    {
+      "id": "DOC-34",
+      "worktree": "/home/kara/worktrees/boardctl-DOC-34",
+      "branch": "wt/DOC-34",
+      "base": "origin/main",
+      "base_sha": "1dce8b6026dfc60350b32464b25cd7d0ee36b3ca",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "task_id": "DOC-34",
+  "task_title": "Document update --replace note semantics",
+  "task_criteria": [
+    "DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "75dfb456ebcb03948f88b50a68df7215ed1295c9",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n4:44PM INF scanned ~3476724 bytes (3.48 MB) in 877ms\n4:44PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 242 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\ninitialized board at /var/tmp/hermes-go-tmp/TestCmdPrettyPrintedTasksExit1AndMessage3241015153/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\ninitialized board at /var/tmp/hermes-go-tmp/TestCmdCorruptTasksKeepsPlainError1228727444/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\ncreated task NEW-1 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWorktreeBranchSessions2917513592/001/.coding-hermes/board/tasks.jsonl)\ncreated task NEW-2 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWorktreeBranchSessions2917513592/001/.coding-hermes/board/tasks.jsonl)\ncreated task NEW-1 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWithoutWorktreeFlagsAddsNoKeys1858371065/001/.coding-hermes/board/tasks.jsonl)\nupdated task EXIST-1: status, worktree, branch, sessions, detail\nupdated task EXIST-1: status\nboardctl: --normalize cannot be combined with --worktree (it already canonicalizes status/guard_result/ci_result)\nboardctl: --normalize cannot be combined with --branch (it already canonicalizes status/guard_result/ci_result)\nboardctl: --normalize cannot be combined with --session (it already canonicalizes status/guard_result/ci_result)\nevent id 2 appended to /var/tmp/hermes-go-tmp/TestCmdHeaderlessEventTickUnchanged927062923/001/.coding-hermes/board/events.jsonl\n{\n  \"id\": \"CHT-001\",\n  \"title\": \"Bootstrap\",\n  \"status\": \"complete\",\n  \"priority\": \"P1\",\n  \"created_at\": \"2026-09-17T01:20:00-05:00\",\n  \"reasoning\": \"First row.\",\n  \"updated_at\": \"2026-09-17T02:49:50-05:00\",\n  \"completed_at\": \"2026-09-17T02:49:50-05:00\",\n  \"attributes\": {\n    \"tick\": \"t1\"\n  }\n}\ncreated task CHT-003 (appended to /var/tmp/hermes-go-tmp/TestCmdHeaderlessArchiveWritesStillWork2171094628/001/.coding-hermes/board/tasks.jsonl)\ninitialized board at /var/tmp/hermes-go-tmp/TestEventRefusalRequiresType50833913/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\n\n\u2026 [87470 chars omitted \u2014 1307 line(s)] \u2026\n        gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestSkipVarVariants529366971/001/scripts/check-board.sh is missing; EVERY commit requires board validation\n--- FAIL: TestWarningShape (0.02s)\n    freshness_test.go:288: git commit --allow-empty -q -m c1 in /var/tmp/hermes-go-tmp/TestWarningShape2656697676/001: exit status 1\n        gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent; board validation remains mandatory\n        gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestWarningShape2656697676/001/scripts/check-board.sh is missing; EVERY commit requires board validation\n--- FAIL: TestResolveGitDirWorktreeGitfile (0.02s)\n    freshness_test.go:314: git commit --allow-empty -q -m c1 in /var/tmp/hermes-go-tmp/TestResolveGitDirWorktreeGitfile2803010932/001: exit status 1\n        gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent; board validation remains mandatory\n        gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestResolveGitDirWorktreeGitfile2803010932/001/scripts/check-board.sh is missing; EVERY commit requires board validation\nFAIL\nFAIL\tgithub.com/coding-hermes/boardctl/internal/freshness\t0.196s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.016s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\nFAIL\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior.: Commit 58e11d2b4d50a73e6444c3e0574cebf142d33322 exists and `git merge-base --is-ancestor 58e11d2 HEAD` succeeds; HEAD is 75dfb45 \"Merge branch 'wt/DOC-34'\". README.md:109-120 documents all three behaviors: (1) lines 109-112 \"--note targets foreman_note and APPENDS to a non-empty existing note (existing note + blank line + new note)\"; (2) lines 115-117 \"--replace is a flag (takes no value) used together with --note: it OVERWRITES foreman_note instead of appending\"; (3) lines 119-120 \"Omitting --note leaves foreman_note untouched\". Runnable examples present: README.md:113 `boardctl -C ~/myproject update FEAT-1 --note \"Verified on the staging board\"`, README.md:114 second-append form, README.md:118 `boardctl -C ~/myproject update FEAT-1 --replace --note \"Replacement note\"`. Trace marker present in the DOC-34 completion event at .coding-hermes/board/events.jsonl:483 (event id 480, event_type task_completed, task_id DOC-34, 2026-10-19 21:44:06): \"ch:trace row=DOC-34 spec=README.md#update-options ... doc=README.md ... evidence=README.md ... commit=58e11d2b4d50a73e6444c3e0574cebf142d33322\" \u2014 resolves README.md plus the exact commit. Tests run fresh: `go test -count=1 -run 'TestCmdUpdateNoteAppends|TestCmdUpdateNoteReplaceFlagOverwrites' -v ./cmd/boardctl/` exit_code 0, output `--- PASS: TestCmdUpdateNoteAppends (0.00s)`, `--- PASS: TestCmdUpdateNoteReplaceFlagOverwrites (0.00s)`, `ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s`. Test bodies at cmd/boardctl/bt068_cli_test.go:74 assert foreman_note == \"A\\n\\nB\" (blank-line append) and :115 assert \"Z\" (overwrite).\nCommit 58e11d2 is merged at HEAD, README.md documents all three note behaviors with runnable --note and --replace --note examples, the ch:trace marker in the DOC-34 task_completed event resolves README.md plus the exact commit, and both focused regression tests pass.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior.: Commit 58e11d2b4d50a73e6444c3e0574cebf142d33322 exists and `git merge-base --is-ancestor 58e11d2 HEAD` succeeds; HEAD is 75dfb45 \"Merge branch 'wt/DOC-34'\". README.md:109-120 documents all three behaviors: (1) lines 109-112 \"--note targets foreman_note and APPENDS to a non-empty existing note (existing note + blank line + new note)\"; (2) lines 115-117 \"--replace is a flag (takes no value) used together with --note: it OVERWRITES foreman_note instead of appending\"; (3) lines 119-120 \"Omitting --note leaves foreman_note untouched\". Runnable examples present: README.md:113 `boardctl -C ~/myproject update FEAT-1 --note \"Verified on the staging board\"`, README.md:114 second-append form, README.md:118 `boardctl -C ~/myproject update FEAT-1 --replace --note \"Replacement note\"`. Trace marker present in the DOC-34 completion event at .coding-hermes/board/events.jsonl:483 (event id 480, event_type task_completed, task_id DOC-34, 2026-10-19 21:44:06): \"ch:trace row=DOC-34 spec=README.md#update-options ... doc=README.md ... evidence=README.md ... commit=58e11d2b4d50a73e6444c3e0574cebf142d33322\" \u2014 resolves README.md plus the exact commit. Tests run fresh: `go test -count=1 -run 'TestCmdUpdateNoteAppends|TestCmdUpdateNoteReplaceFlagOverwrites' -v ./cmd/boardctl/` exit_code 0, output `--- PASS: TestCmdUpdateNoteAppends (0.00s)`, `--- PASS: TestCmdUpdateNoteReplaceFlagOverwrites (0.00s)`, `ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s`. Test bodies at cmd/boardctl/bt068_cli_test.go:74 assert foreman_note == \"A\\n\\nB\" (blank-line append) and :115 assert \"Z\" (overwrite).\nCommit 58e11d2 is merged at HEAD, README.md documents all three note behaviors with runnable --note and --replace --note examples, the ch:trace marker in the DOC-34 task_completed event resolves README.md plus the exact commit, and both focused regression tests pass.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior.",
+                "status": "PASS",
+                "detail": "Commit 58e11d2b4d50a73e6444c3e0574cebf142d33322 exists and `git merge-base --is-ancestor 58e11d2 HEAD` succeeds; HEAD is 75dfb45 \"Merge branch 'wt/DOC-34'\". README.md:109-120 documents all three behaviors: (1) lines 109-112 \"--note targets foreman_note and APPENDS to a non-empty existing note (existing note + blank line + new note)\"; (2) lines 115-117 \"--replace is a flag (takes no value) used together with --note: it OVERWRITES foreman_note instead of appending\"; (3) lines 119-120 \"Omitting --note leaves foreman_note untouched\". Runnable examples present: README.md:113 `boardctl -C ~/myproject update FEAT-1 --note \"Verified on the staging board\"`, README.md:114 second-append form, README.md:118 `boardctl -C ~/myproject update FEAT-1 --replace --note \"Replacement note\"`. Trace marker present in the DOC-34 completion event at .coding-hermes/board/events.jsonl:483 (event id 480, event_type task_completed, task_id DOC-34, 2026-10-19 21:44:06): \"ch:trace row=DOC-34 spec=README.md#update-options ... doc=README.md ... evidence=README.md ... commit=58e11d2b4d50a73e6444c3e0574cebf142d33322\" \u2014 resolves README.md plus the exact commit. Tests run fresh: `go test -count=1 -run 'TestCmdUpdateNoteAppends|TestCmdUpdateNoteReplaceFlagOverwrites' -v ./cmd/boardctl/` exit_code 0, output `--- PASS: TestCmdUpdateNoteAppends (0.00s)`, `--- PASS: TestCmdUpdateNoteReplaceFlagOverwrites (0.00s)`, `ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s`. Test bodies at cmd/boardctl/bt068_cli_test.go:74 assert foreman_note == \"A\\n\\nB\" (blank-line append) and :115 assert \"Z\" (overwrite)."
+              }
+            ],
+            "summary": "Commit 58e11d2 is merged at HEAD, README.md documents all three note behaviors with runnable --note and --replace --note examples, the ch:trace marker in the DOC-34 task_completed event resolves README.md plus the exact commit, and both focused regression tests pass."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-34\n\nStage tier1: FAIL\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior.: Commit 58e11d2b4d50a73e6444c3e0574cebf142d33322 exists and `git merge-base --is-ancestor 58e11d2 HEAD` succeeds; HEAD is 75dfb45 \"Merge branch 'wt/DOC-34'\". README.md:109-120 documents all three behaviors: (1) lines 109-112 \"--note targets foreman_note and APPENDS to a non-empty existing note (existing note + blank line + new note)\"; (2) lines 115-117 \"--replace is a flag (takes no value) used together with --note: it OVERWRITES foreman_note instead of appending\"; (3) lines 119-120 \"Omitting --note leaves foreman_note untouched\". Runnable examples present: README.md:113 `boardctl -C ~/myproject update FEAT-1 --note \"Verified on the staging board\"`, README.md:114 second-append form, README.md:118 `boardctl -C ~/myproject update FEAT-1 --replace --note \"Replacement note\"`. Trace marker present in the DOC-34 completion event at .coding-hermes/board/events.jsonl:483 (event id 480, event_type task_completed, task_id DOC-34, 2026-10-19 21:44:06): \"ch:trace row=DOC-34 spec=README.md#update-options ... doc=README.md ... evidence=README.md ... commit=58e11d2b4d50a73e6444c3e0574cebf142d33322\" \u2014 resolves README.md plus the exact commit. Tests run fresh: `go test -count=1 -run 'TestCmdUpdateNoteAppends|TestCmdUpdateNoteReplaceFlagOverwrites' -v ./cmd/boardctl/` exit_code 0, output `--- PASS: TestCmdUpdateNoteAppends (0.00s)`, `--- PASS: TestCmdUpdateNoteReplaceFlagOverwrites (0.00s)`, `ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s`. Test bodies at cmd/boardctl/bt068_cli_test.go:74 assert foreman_note == \"A\\n\\nB\" (blank-line append) and :115 assert \"Z\" (overwrite).\nCommit 58e11d2 is merged at HEAD, README.md documents all three note behaviors with runnable --note and --replace --note examples, the ch:trace marker in the DOC-34 task_completed event resolves README.md plus the exact commit, and both focused regression tests pass.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-19T21:44:54.056092",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-19T21:44:54.075421+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 398,
+        "truncated": false,
+        "source": "git show 75dfb456ebcb"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 52969,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DOC-34"
+  }
+}

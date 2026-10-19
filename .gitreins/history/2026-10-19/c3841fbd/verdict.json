@@ -1,0 +1,101 @@
+{
+  "task_id": "DOC-34",
+  "task_title": "Document update --replace note semantics",
+  "task_criteria": [
+    "DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "75dfb456ebcb03948f88b50a68df7215ed1295c9",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n4:40PM INF scanned ~3475313 bytes (3.48 MB) in 939ms\n4:40PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 242 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\ninitialized board at /var/tmp/hermes-go-tmp/TestCmdPrettyPrintedTasksExit1AndMessage4088522242/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\ninitialized board at /var/tmp/hermes-go-tmp/TestCmdCorruptTasksKeepsPlainError2388685287/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\ncreated task NEW-1 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWorktreeBranchSessions648448339/001/.coding-hermes/board/tasks.jsonl)\ncreated task NEW-2 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWorktreeBranchSessions648448339/001/.coding-hermes/board/tasks.jsonl)\ncreated task NEW-1 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWithoutWorktreeFlagsAddsNoKeys2125119598/001/.coding-hermes/board/tasks.jsonl)\nupdated task EXIST-1: status, worktree, branch, sessions, detail\nupdated task EXIST-1: status\nboardctl: --normalize cannot be combined with --worktree (it already canonicalizes status/guard_result/ci_result)\nboardctl: --normalize cannot be combined with --branch (it already canonicalizes status/guard_result/ci_result)\nboardctl: --normalize cannot be combined with --session (it already canonicalizes status/guard_result/ci_result)\nevent id 2 appended to /var/tmp/hermes-go-tmp/TestCmdHeaderlessEventTickUnchanged2152422228/001/.coding-hermes/board/events.jsonl\n{\n  \"id\": \"CHT-001\",\n  \"title\": \"Bootstrap\",\n  \"status\": \"complete\",\n  \"priority\": \"P1\",\n  \"created_at\": \"2026-09-17T01:20:00-05:00\",\n  \"reasoning\": \"First row.\",\n  \"updated_at\": \"2026-09-17T02:49:50-05:00\",\n  \"completed_at\": \"2026-09-17T02:49:50-05:00\",\n  \"attributes\": {\n    \"tick\": \"t1\"\n  }\n}\ncreated task CHT-003 (appended to /var/tmp/hermes-go-tmp/TestCmdHeaderlessArchiveWritesStillWork865844098/001/.coding-hermes/board/tasks.jsonl)\ninitialized board at /var/tmp/hermes-go-tmp/TestEventRefusalRequiresType302978302/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\n\n\u2026 [87480 chars omitted \u2014 1307 line(s)] \u2026\n        gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestSkipVarVariants1453315126/001/scripts/check-board.sh is missing; EVERY commit requires board validation\n--- FAIL: TestWarningShape (0.02s)\n    freshness_test.go:288: git commit --allow-empty -q -m c1 in /var/tmp/hermes-go-tmp/TestWarningShape2169298446/001: exit status 1\n        gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent; board validation remains mandatory\n        gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestWarningShape2169298446/001/scripts/check-board.sh is missing; EVERY commit requires board validation\n--- FAIL: TestResolveGitDirWorktreeGitfile (0.01s)\n    freshness_test.go:314: git commit --allow-empty -q -m c1 in /var/tmp/hermes-go-tmp/TestResolveGitDirWorktreeGitfile1917134759/001: exit status 1\n        gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent; board validation remains mandatory\n        gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestResolveGitDirWorktreeGitfile1917134759/001/scripts/check-board.sh is missing; EVERY commit requires board validation\nFAIL\nFAIL\tgithub.com/coding-hermes/boardctl/internal/freshness\t0.202s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.021s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.008s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.221s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\nFAIL\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior.: Commit/merge and README parts PASS: `git log` shows 58e11d2 'docs: document update --replace note semantics' merged at HEAD via 75dfb45 'Merge branch wt/DOC-34'; README.md at HEAD lines 109-121 document all three behaviors (append with blank line at 109-113, --replace overwrites at 115-118, omitting --note untouched at 119-120) and include runnable examples for --note (lines 114-115) and --replace --note (line 118). Tests pass: `go test -count=1 -v -run 'TestCmdUpdateNoteAppends|TestCmdUpdateNoteReplaceFlagOverwrites' ./cmd/boardctl/` -> '--- PASS: TestCmdUpdateNoteAppends', '--- PASS: TestCmdUpdateNoteReplaceFlagOverwrites', 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.007s' (exit 0). HOWEVER the trace-marker requirement FAILS: there is no ch:trace marker in any board row closeout or completion event for DOC-34. .coding-hermes/board/tasks.jsonl:179 still has DOC-34 \"status\": \"in_progress\" (no closeout), and .coding-hermes/board/events.jsonl contains only task_created (id 464) and two task_updated in_progress events (ids 477, 478) for DOC-34 \u2014 no completion event. The ch:trace string appears only inside the task's worker_summary field, not in a closeout/completion event, so the marker does not resolve README.md + commit 58e11d2 from the board event record.\nREADME documentation and the focused BT-068 regression tests pass, but the required ch:trace marker is absent from any DOC-34 board closeout/completion event (task still in_progress, no completion event exists).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior.: Commit/merge and README parts PASS: `git log` shows 58e11d2 'docs: document update --replace note semantics' merged at HEAD via 75dfb45 'Merge branch wt/DOC-34'; README.md at HEAD lines 109-121 document all three behaviors (append with blank line at 109-113, --replace overwrites at 115-118, omitting --note untouched at 119-120) and include runnable examples for --note (lines 114-115) and --replace --note (line 118). Tests pass: `go test -count=1 -v -run 'TestCmdUpdateNoteAppends|TestCmdUpdateNoteReplaceFlagOverwrites' ./cmd/boardctl/` -> '--- PASS: TestCmdUpdateNoteAppends', '--- PASS: TestCmdUpdateNoteReplaceFlagOverwrites', 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.007s' (exit 0). HOWEVER the trace-marker requirement FAILS: there is no ch:trace marker in any board row closeout or completion event for DOC-34. .coding-hermes/board/tasks.jsonl:179 still has DOC-34 \"status\": \"in_progress\" (no closeout), and .coding-hermes/board/events.jsonl contains only task_created (id 464) and two task_updated in_progress events (ids 477, 478) for DOC-34 \u2014 no completion event. The ch:trace string appears only inside the task's worker_summary field, not in a closeout/completion event, so the marker does not resolve README.md + commit 58e11d2 from the board event record.\nREADME documentation and the focused BT-068 regression tests pass, but the required ch:trace marker is absent from any DOC-34 board closeout/completion event (task still in_progress, no completion event exists).",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior.",
+                "status": "FAIL",
+                "detail": "Commit/merge and README parts PASS: `git log` shows 58e11d2 'docs: document update --replace note semantics' merged at HEAD via 75dfb45 'Merge branch wt/DOC-34'; README.md at HEAD lines 109-121 document all three behaviors (append with blank line at 109-113, --replace overwrites at 115-118, omitting --note untouched at 119-120) and include runnable examples for --note (lines 114-115) and --replace --note (line 118). Tests pass: `go test -count=1 -v -run 'TestCmdUpdateNoteAppends|TestCmdUpdateNoteReplaceFlagOverwrites' ./cmd/boardctl/` -> '--- PASS: TestCmdUpdateNoteAppends', '--- PASS: TestCmdUpdateNoteReplaceFlagOverwrites', 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.007s' (exit 0). HOWEVER the trace-marker requirement FAILS: there is no ch:trace marker in any board row closeout or completion event for DOC-34. .coding-hermes/board/tasks.jsonl:179 still has DOC-34 \"status\": \"in_progress\" (no closeout), and .coding-hermes/board/events.jsonl contains only task_created (id 464) and two task_updated in_progress events (ids 477, 478) for DOC-34 \u2014 no completion event. The ch:trace string appears only inside the task's worker_summary field, not in a closeout/completion event, so the marker does not resolve README.md + commit 58e11d2 from the board event record."
+              }
+            ],
+            "summary": "README documentation and the focused BT-068 regression tests pass, but the required ch:trace marker is absent from any DOC-34 board closeout/completion event (task still in_progress, no completion event exists)."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-34\n\nStage tier1: FAIL\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 DOC-34 implementation commit is 58e11d2b4d50a73e6444c3e0574cebf142d33322, merged at HEAD. Verify README.md documents all three update note behaviors: --note appends to an existing foreman_note with a blank line, --replace --note overwrites foreman_note, and omitting --note leaves foreman_note untouched; verify README contains runnable examples for both --note and --replace --note; verify the exact trace marker is present in the board row closeout or completion event for DOC-34 and resolves README.md plus commit 58e11d2b4d50a73e6444c3e0574cebf142d33322. The acceptance evidence is README.md and the focused regression tests cmd/boardctl/bt068_cli_test.go TestCmdUpdateNoteAppends and TestCmdUpdateNoteReplaceFlagOverwrites. Do not require a new source test because existing tests already cover the behavior.: Commit/merge and README parts PASS: `git log` shows 58e11d2 'docs: document update --replace note semantics' merged at HEAD via 75dfb45 'Merge branch wt/DOC-34'; README.md at HEAD lines 109-121 document all three behaviors (append with blank line at 109-113, --replace overwrites at 115-118, omitting --note untouched at 119-120) and include runnable examples for --note (lines 114-115) and --replace --note (line 118). Tests pass: `go test -count=1 -v -run 'TestCmdUpdateNoteAppends|TestCmdUpdateNoteReplaceFlagOverwrites' ./cmd/boardctl/` -> '--- PASS: TestCmdUpdateNoteAppends', '--- PASS: TestCmdUpdateNoteReplaceFlagOverwrites', 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.007s' (exit 0). HOWEVER the trace-marker requirement FAILS: there is no ch:trace marker in any board row closeout or completion event for DOC-34. .coding-hermes/board/tasks.jsonl:179 still has DOC-34 \"status\": \"in_progress\" (no closeout), and .coding-hermes/board/events.jsonl contains only task_created (id 464) and two task_updated in_progress events (ids 477, 478) for DOC-34 \u2014 no completion event. The ch:trace string appears only inside the task's worker_summary field, not in a closeout/completion event, so the marker does not resolve README.md + commit 58e11d2 from the board event record.\nREADME documentation and the focused BT-068 regression tests pass, but the required ch:trace marker is absent from any DOC-34 board closeout/completion event (task still in_progress, no completion event exists).\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-19T21:41:08.362111",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-19T21:41:08.383091+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 398,
+        "truncated": false,
+        "source": "git show 75dfb456ebcb"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 51556,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DOC-34"
+  }
+}

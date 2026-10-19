@@ -1,0 +1,101 @@
+{
+  "task_id": "DOC-34",
+  "task_title": "Document update --replace note semantics",
+  "task_criteria": [
+    "DOC-34 is satisfied only when README documents that update --note appends to an existing foreman_note by default and --replace overwrites it, with exact runnable examples; include ch:trace row=DOC-34 and a Tier 2 traceability check resolving the README evidence and commit."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "1dce8b6026dfc60350b32464b25cd7d0ee36b3ca",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n4:36PM INF scanned ~3473359 bytes (3.47 MB) in 1.06s\n4:36PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 242 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\ninitialized board at /var/tmp/hermes-go-tmp/TestCmdPrettyPrintedTasksExit1AndMessage2317288841/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\ninitialized board at /var/tmp/hermes-go-tmp/TestCmdCorruptTasksKeepsPlainError722442710/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\ncreated task NEW-1 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWorktreeBranchSessions878498839/001/.coding-hermes/board/tasks.jsonl)\ncreated task NEW-2 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWorktreeBranchSessions878498839/001/.coding-hermes/board/tasks.jsonl)\ncreated task NEW-1 (appended to /var/tmp/hermes-go-tmp/TestCmdCreateWithoutWorktreeFlagsAddsNoKeys2551401568/001/.coding-hermes/board/tasks.jsonl)\nupdated task EXIST-1: status, worktree, branch, sessions, detail\nupdated task EXIST-1: status\nboardctl: --normalize cannot be combined with --worktree (it already canonicalizes status/guard_result/ci_result)\nboardctl: --normalize cannot be combined with --branch (it already canonicalizes status/guard_result/ci_result)\nboardctl: --normalize cannot be combined with --session (it already canonicalizes status/guard_result/ci_result)\nevent id 2 appended to /var/tmp/hermes-go-tmp/TestCmdHeaderlessEventTickUnchanged2521951366/001/.coding-hermes/board/events.jsonl\n{\n  \"id\": \"CHT-001\",\n  \"title\": \"Bootstrap\",\n  \"status\": \"complete\",\n  \"priority\": \"P1\",\n  \"created_at\": \"2026-09-17T01:20:00-05:00\",\n  \"reasoning\": \"First row.\",\n  \"updated_at\": \"2026-09-17T02:49:50-05:00\",\n  \"completed_at\": \"2026-09-17T02:49:50-05:00\",\n  \"attributes\": {\n    \"tick\": \"t1\"\n  }\n}\ncreated task CHT-003 (appended to /var/tmp/hermes-go-tmp/TestCmdHeaderlessArchiveWritesStillWork3381571809/001/.coding-hermes/board/tasks.jsonl)\ninitialized board at /var/tmp/hermes-go-tmp/TestEventRefusalRequiresType1081038282/001/.coding-hermes/board\n  wrote tasks.jsonl\n  wrote events.jsonl\n  wrote board.jsonl\n  wrote fixtures.jsonl\nnext: boardctl create --id TASK-1 --title \"First task\"\n\n\u2026 [87481 chars omitted \u2014 1307 line(s)] \u2026\n        gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestSkipVarVariants1515476065/001/scripts/check-board.sh is missing; EVERY commit requires board validation\n--- FAIL: TestWarningShape (0.02s)\n    freshness_test.go:288: git commit --allow-empty -q -m c1 in /var/tmp/hermes-go-tmp/TestWarningShape4257420816/001: exit status 1\n        gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent; board validation remains mandatory\n        gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestWarningShape4257420816/001/scripts/check-board.sh is missing; EVERY commit requires board validation\n--- FAIL: TestResolveGitDirWorktreeGitfile (0.02s)\n    freshness_test.go:314: git commit --allow-empty -q -m c1 in /var/tmp/hermes-go-tmp/TestResolveGitDirWorktreeGitfile381868641/001: exit status 1\n        gate: GitReins NOT RUN \u2014 .gitreins/config.yaml is absent; board validation remains mandatory\n        gate: board arm UNAVAILABLE \u2014 /var/tmp/hermes-go-tmp/TestResolveGitDirWorktreeGitfile381868641/001/scripts/check-board.sh is missing; EVERY commit requires board validation\nFAIL\nFAIL\tgithub.com/coding-hermes/boardctl/internal/freshness\t0.280s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.037s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.177s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\nFAIL\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T195633.438816Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 DOC-34 is satisfied only when README documents that update --note appends to an existing foreman_note by default and --replace overwrites it, with exact runnable examples; include ch:trace row=DOC-34 and a Tier 2 traceability check resolving the README evidence and commit.: Nothing was documented. `grep -n 'replace' README.md` returns only unrelated hits (README.md:334, 445, 1031) and `grep -n 'foreman_note' README.md` returns 0 hits \u2014 README never mentions foreman_note, append-by-default, or --replace. README.md:109 still shows the bare `boardctl -C ~/myproject update FEAT-1 --note \"Verified on the staging board\"` with no semantics and no append/overwrite example pair. `git diff HEAD -- README.md` is empty and `git log --oneline -3 -- README.md` shows the newest README commit is 0b69cfe (DOC-33), i.e. no DOC-34 commit exists. No ch:trace row=DOC-34 exists anywhere: `grep -rn 'ch:trace'` matches only .gitreins/tasks.yaml:848 and :894, which are task-criteria prose, not a trace row. No Tier 2 traceability artifact for DOC-34: .gitreins/history/2026-10-19/ contains only 32d4752b (README-006), b34f4d06 (DOC-33), dd91d1ce and e9ddaae0 (DF-BOARDCTL-43). The only changed file in the diff is cmd/boardctl/board-report.html (a rendered_at timestamp bump), which is unrelated to the task. Test evidence: `go test -count=1 ./...` exit_code=1 with pre-existing environment failures (internal/freshness TestAtHEADSilent etc. 'git commit --allow-empty ... exit status 1 / gate: GitReins NOT RUN', internal/board TestDoctorFossilWarnRealExecParity, cmd/boardctl TestBT057StaleBinaryForeignRepoSilent); packages internal/render, speccheck, versioncheck, vulncheck, workflowcheck report ok. The underlying feature exists in code (cmd/boardctl/main.go:811,815 and internal/board/write.go:749-752, 962-968 implement append-by-default with --replace overwrite), but the required README documentation, ch:trace row, and Tier 2 check are entirely absent.\nDOC-34 was not implemented: README contains no --replace/foreman_note documentation, no ch:trace row=DOC-34, and no Tier 2 traceability artifact \u2014 the only diff is an unrelated board-report.html timestamp bump.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 DOC-34 is satisfied only when README documents that update --note appends to an existing foreman_note by default and --replace overwrites it, with exact runnable examples; include ch:trace row=DOC-34 and a Tier 2 traceability check resolving the README evidence and commit.: Nothing was documented. `grep -n 'replace' README.md` returns only unrelated hits (README.md:334, 445, 1031) and `grep -n 'foreman_note' README.md` returns 0 hits \u2014 README never mentions foreman_note, append-by-default, or --replace. README.md:109 still shows the bare `boardctl -C ~/myproject update FEAT-1 --note \"Verified on the staging board\"` with no semantics and no append/overwrite example pair. `git diff HEAD -- README.md` is empty and `git log --oneline -3 -- README.md` shows the newest README commit is 0b69cfe (DOC-33), i.e. no DOC-34 commit exists. No ch:trace row=DOC-34 exists anywhere: `grep -rn 'ch:trace'` matches only .gitreins/tasks.yaml:848 and :894, which are task-criteria prose, not a trace row. No Tier 2 traceability artifact for DOC-34: .gitreins/history/2026-10-19/ contains only 32d4752b (README-006), b34f4d06 (DOC-33), dd91d1ce and e9ddaae0 (DF-BOARDCTL-43). The only changed file in the diff is cmd/boardctl/board-report.html (a rendered_at timestamp bump), which is unrelated to the task. Test evidence: `go test -count=1 ./...` exit_code=1 with pre-existing environment failures (internal/freshness TestAtHEADSilent etc. 'git commit --allow-empty ... exit status 1 / gate: GitReins NOT RUN', internal/board TestDoctorFossilWarnRealExecParity, cmd/boardctl TestBT057StaleBinaryForeignRepoSilent); packages internal/render, speccheck, versioncheck, vulncheck, workflowcheck report ok. The underlying feature exists in code (cmd/boardctl/main.go:811,815 and internal/board/write.go:749-752, 962-968 implement append-by-default with --replace overwrite), but the required README documentation, ch:trace row, and Tier 2 check are entirely absent.\nDOC-34 was not implemented: README contains no --replace/foreman_note documentation, no ch:trace row=DOC-34, and no Tier 2 traceability artifact \u2014 the only diff is an unrelated board-report.html timestamp bump.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "DOC-34 is satisfied only when README documents that update --note appends to an existing foreman_note by default and --replace overwrites it, with exact runnable examples; include ch:trace row=DOC-34 and a Tier 2 traceability check resolving the README evidence and commit.",
+                "status": "FAIL",
+                "detail": "Nothing was documented. `grep -n 'replace' README.md` returns only unrelated hits (README.md:334, 445, 1031) and `grep -n 'foreman_note' README.md` returns 0 hits \u2014 README never mentions foreman_note, append-by-default, or --replace. README.md:109 still shows the bare `boardctl -C ~/myproject update FEAT-1 --note \"Verified on the staging board\"` with no semantics and no append/overwrite example pair. `git diff HEAD -- README.md` is empty and `git log --oneline -3 -- README.md` shows the newest README commit is 0b69cfe (DOC-33), i.e. no DOC-34 commit exists. No ch:trace row=DOC-34 exists anywhere: `grep -rn 'ch:trace'` matches only .gitreins/tasks.yaml:848 and :894, which are task-criteria prose, not a trace row. No Tier 2 traceability artifact for DOC-34: .gitreins/history/2026-10-19/ contains only 32d4752b (README-006), b34f4d06 (DOC-33), dd91d1ce and e9ddaae0 (DF-BOARDCTL-43). The only changed file in the diff is cmd/boardctl/board-report.html (a rendered_at timestamp bump), which is unrelated to the task. Test evidence: `go test -count=1 ./...` exit_code=1 with pre-existing environment failures (internal/freshness TestAtHEADSilent etc. 'git commit --allow-empty ... exit status 1 / gate: GitReins NOT RUN', internal/board TestDoctorFossilWarnRealExecParity, cmd/boardctl TestBT057StaleBinaryForeignRepoSilent); packages internal/render, speccheck, versioncheck, vulncheck, workflowcheck report ok. The underlying feature exists in code (cmd/boardctl/main.go:811,815 and internal/board/write.go:749-752, 962-968 implement append-by-default with --replace overwrite), but the required README documentation, ch:trace row, and Tier 2 check are entirely absent."
+              }
+            ],
+            "summary": "DOC-34 was not implemented: README contains no --replace/foreman_note documentation, no ch:trace row=DOC-34, and no Tier 2 traceability artifact \u2014 the only diff is an unrelated board-report.html timestamp bump."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: DOC-34\n\nStage tier1: FAIL\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2717 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 DOC-34 is satisfied only when README documents that update --note appends to an existing foreman_note by default and --replace overwrites it, with exact runnable examples; include ch:trace row=DOC-34 and a Tier 2 traceability check resolving the README evidence and commit.: Nothing was documented. `grep -n 'replace' README.md` returns only unrelated hits (README.md:334, 445, 1031) and `grep -n 'foreman_note' README.md` returns 0 hits \u2014 README never mentions foreman_note, append-by-default, or --replace. README.md:109 still shows the bare `boardctl -C ~/myproject update FEAT-1 --note \"Verified on the staging board\"` with no semantics and no append/overwrite example pair. `git diff HEAD -- README.md` is empty and `git log --oneline -3 -- README.md` shows the newest README commit is 0b69cfe (DOC-33), i.e. no DOC-34 commit exists. No ch:trace row=DOC-34 exists anywhere: `grep -rn 'ch:trace'` matches only .gitreins/tasks.yaml:848 and :894, which are task-criteria prose, not a trace row. No Tier 2 traceability artifact for DOC-34: .gitreins/history/2026-10-19/ contains only 32d4752b (README-006), b34f4d06 (DOC-33), dd91d1ce and e9ddaae0 (DF-BOARDCTL-43). The only changed file in the diff is cmd/boardctl/board-report.html (a rendered_at timestamp bump), which is unrelated to the task. Test evidence: `go test -count=1 ./...` exit_code=1 with pre-existing environment failures (internal/freshness TestAtHEADSilent etc. 'git commit --allow-empty ... exit status 1 / gate: GitReins NOT RUN', internal/board TestDoctorFossilWarnRealExecParity, cmd/boardctl TestBT057StaleBinaryForeignRepoSilent); packages internal/render, speccheck, versioncheck, vulncheck, workflowcheck report ok. The underlying feature exists in code (cmd/boardctl/main.go:811,815 and internal/board/write.go:749-752, 962-968 implement append-by-default with --replace overwrite), but the required README documentation, ch:trace row, and Tier 2 check are entirely absent.\nDOC-34 was not implemented: README contains no --replace/foreman_note documentation, no ch:trace row=DOC-34, and no Tier 2 traceability artifact \u2014 the only diff is an unrelated board-report.html timestamp bump.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-19T21:37:34.403179",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-19T21:37:34.433319+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 60505,
+        "truncated": false,
+        "source": "git show 1dce8b6026df"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 50232,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DOC-34"
+  }
+}

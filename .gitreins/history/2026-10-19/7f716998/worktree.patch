@@ -1,0 +1,363 @@
+diff --git a/.coding-hermes/board/events.jsonl b/.coding-hermes/board/events.jsonl
+index 0348b56..19bba47 100644
+--- a/.coding-hermes/board/events.jsonl
++++ b/.coding-hermes/board/events.jsonl
+@@ -476,3 +476,8 @@
+ {"id":473,"timestamp":"2026-10-19 05:08:54","event_type":"audit","task_id":"","actor":"foreman","detail":"{\n  \"tick\": 143,\n  \"tick_id\": \"boardctl-foreman-2026-10-19-04-45-20\",\n  \"summary\": \"SERIAL tick (WAVE_BUDGET 1). Two rows closed: README-006 (dispatched to worker glm-5.3-flash@zai-glm, commit f6d54e6, judge PASS .gitreins/history/2026-10-19/32d4752b) and README-005 (premise-stale — the v0.1.11 release it said was missing now exists: gh release view v0.1.11 isDraft=false, SHA256SUMS HTTP 200; commit ad951c3 had already moved the README pins).\",\n  \"readme_006\": {\n    \"row\": \"README-006\",\n    \"commit\": \"f6d54e6\",\n    \"files\": \"README.md only (2 insertions, 2 deletions)\",\n    \"fix\": \"README.md:100-101 and README.md:974-975 update examples gained the TR-251-required --evidence-run-id (qa-run-1, qa-run-2). The brief's second line number (958-959) had drifted; the worker located the real example at 974-975 and reported the deviation.\",\n    \"foreman_verification\": \"fresh build from HEAD; negative probe (same flags, no --evidence-run-id) exits 1 with the TR-251 refusal; both edited lines run verbatim against a scratch board and exit 0; commit identity totalwindupflightsystems + Alexis Okuwa co-author trailer; pushed (origin/main=f6d54e6); CI green.\",\n    \"verdict_dir\": \".gitreins/history/2026-10-19/32d4752b/verdict.json\",\n    \"judge\": \"PASS (printed id b2e840f2; on-disk dir 32d4752b)\"\n  },\n  \"readme_005\": {\n    \"row\": \"README-005\",\n    \"disposition\": \"closed premise-stale, no code change\",\n    \"evidence\": \"gh release view v0.1.11 -> isDraft=false tagName=v0.1.11; curl -o /dev/null -w '%{http_code}' -L .../download/v0.1.11/SHA256SUMS -> 200; commit ad951c3 already repointed README.md:17 + the install URLs.\"\n  },\n  \"open_rows_after\": \"README-007..README-009 (P5/P5/P5), DOC-33..DOC-38 (P4 x6), never-DONE fixture\",\n  \"ci\": \"green: f6d54e6 (2/2 runs success), 27cd7c7, ad951c3\"\n}","tick_number":143}
+ {"id":474,"timestamp":"2026-10-19 07:32:57","event_type":"task_completed","task_id":"DF-BOARDCTL-43","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+ {"id":475,"timestamp":"2026-10-19 07:53:40","event_type":"audit","task_id":null,"actor":"foreman","detail":"{\"tick\": 144, \"tick_id\": \"boardctl-foreman-2026-10-19-07-53-40\", \"summary\": \"SERIAL tick (WAVE_BUDGET 1). Close-out commit for DF-BOARDCTL-43: prior tick delivered the fix (commits 1a890b2 + 446baed, both pushed, CI green 3/3) and updated the board row, but the board commit itself was deferred. This tick stages the board close-out + verdict evidence + log sweep. Doctor now exits 0 with 0 errors (board.db untracked, .gitignore gates *.db/*.parquet). TestDoctorRepoBoardNoTrackedCaches asserts real git ls-files (RED-proven).\", \"df_boardctl_43\": {\"row\": \"DF-BOARDCTL-43\", \"commits\": \"1a890b2 (untrack + gate) + 446baed (test rewrite)\", \"verdict_dirs\": [\".gitreins/history/2026-10-19/dd91d1ce\", \".gitreins/history/2026-10-19/e9ddaae0\"], \"doctor\": \"RESULT: OK (10 warnings, 0 errors)\", \"ci\": \"green: 1a890b2 + 446baed (3/3 runs success)\"}, \"open_rows_after\": \"README-007..README-009 (P5 x3), DOC-33..DOC-38 (P4 x6), NEVER-DONE fixture\", \"ci\": \"green: 1a890b2, 446baed (3/3 success)\"}","tick_number":144}
++{"id":476,"timestamp":"2026-10-19 19:59:28","event_type":"task_completed","task_id":"DOC-33","actor":"foreman","detail":"DOC-33 closed: README Event flags section added; tier-2 judge verified documented invocation produces events.jsonl row with task_id/actor/detail keys (verdict 307adf1b, tier-2 PASS); tier-1 FAIL is pre-existing sandbox env (unrelated to doc change); CI green (3 success)","tick_number":null}
++{"id":477,"timestamp":"2026-10-19 21:30:10","event_type":"task_updated","task_id":"DOC-34","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
++{"id":478,"timestamp":"2026-10-19 21:40:32","event_type":"task_updated","task_id":"DOC-34","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
++{"id":479,"timestamp":"2026-10-19 21:44:06","event_type":"task_completed","task_id":"DOC-34","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
++{"id":480,"timestamp":"2026-10-19 21:44:06","event_type":"task_completed","task_id":"DOC-34","actor":"foreman","detail":"DOC-34 completion closeout: README.md documents --note append, --replace overwrite, and omitted-note no-op; focused BT-068 tests and README/version/vuln/build gates passed; implementation commit 58e11d2b4d50a73e6444c3e0574cebf142d33322 merged at 75dfb45; GitReins Tier 2 c3841fbd verified implementation but was INCOMPLETE only because the closeout event was absent. ch:trace row=DOC-34 spec=README.md#update-options wave=none:serial test=cmd/boardctl/bt068_cli_test.go::TestCmdUpdateNoteAppends doc=README.md prompt=/tmp/boardctl-foreman-2026-10-19-21-26-40-DOC-34-brief.txt evidence=README.md witness=none:not-external verdict=c3841fbd commit=58e11d2b4d50a73e6444c3e0574cebf142d33322 memory=none:not-written STATUS: complete TIER: T3 EVIDENCE: README.md@58e11d2b4d50a73e6444c3e0574cebf142d33322","tick_number":null}
+diff --git a/.coding-hermes/board/tasks.jsonl b/.coding-hermes/board/tasks.jsonl
+index 6761e0b..db0149b 100644
+--- a/.coding-hermes/board/tasks.jsonl
++++ b/.coding-hermes/board/tasks.jsonl
+@@ -176,7 +176,7 @@
+ {"id": "README-008", "type": null, "status": "pending", "priority": "P5", "title": "P5 \u2014 the Development block omits 'make spec-check' (a gate ci.yml runs), and the repo-layout table describes ci.yml as 'build, vet, test' only", "reasoning": "Doc severity P5 by Bane's 2026-09-30 ruling (coverage/polish; doc findings are P4/P5, never P1-P3) \u2014 policy, not a new assessment.\n\nTHE DEFECT: the Development block omits a gate CI actually runs, so a contributor cannot reproduce the CI gate set from the README \u2014 and a gate that lands without a README line stays invisible.\n\n.github/workflows/ci.yml steps, in order: Build (go build ./...), Vet (go vet ./...), Gofmt (go test -count=1 -run TestGofmt ./internal/fmtcheck), Version-check (internal/versioncheck), Spec-check (go test -count=1 ./internal/speccheck), Install govulncheck v1.7.0, Vulnerability-check (internal/vulncheck), Test (go test -short -count=1 ./...).\n\nREADME.md:1153-1160 lists: go build ./cmd/boardctl, go test ./..., make fmt-check, make version-check, make vuln-check, make release. grep -n 'spec-check' README.md -> no match. make spec-check (Makefile:78; runs go test -count=1 ./internal/speccheck) was executed in this sweep -> \"ok github.com/coding-hermes/boardctl/internal/speccheck\" (rc=0), so the target is real, green, and unmentioned.\nREADME.md:1127 describes the same workflow as \"CI (build, vet, test)\", under-describing its gate set.\n\nFIX: add a `make spec-check` line to the Development block (README.md:1153-1160) with the one-line purpose \u2014 the serve/OpenAPI parity gate CI enforces (docs/muster/openapi.yaml vs the serve wiring) \u2014 and update the ci.yml row at README.md:1127 to name the real steps.\nACCEPTANCE: every gate ci.yml runs is runnable from the Development block, and README.md:1127's description matches ci.yml's steps.\n\nVERIFIED THIS SWEEP (so the row does not overstate): make fmt-check rc=0, make version-check rc=0, make vuln-check rc=0 (govulncheck pin already installed), make spec-check rc=0, go test ./... all packages ok.\nRELATED ROWS: none open; README-005/006/007 filed the same tick.", "created_by": null, "capability_tags": ["docs", "readme"], "complexity": 3, "created_at": "2026-10-17T14:00:53.757742+00:00", "updated_at": "2026-10-17T14:00:53.815161+00:00", "detail": {"fingerprint": "eb647979931678aefe88e32441c92989359d0dadafa7c4800d5f26a59013f2de"}, "foreman_note": "README-health lane tick boardctl-readme-2026-10-17-13-47-37 (session filed 2026-10-17). Two-way coverage finding: the README never names a command the release binary carries. Probe log: /home/kara/.hermes/stand-in/readme/boardctl/probe-20261017.log"}
+ {"id": "README-009", "type": null, "status": "pending", "priority": "P5", "title": "P5 \u2014 README.md:1216 states the go.mod toolchain pin as \"go 1.26.6\"; go.mod:3 declares \"go 1.26.9\" (BT-080 bumped the directive 2026-10-09 and left the README sentence stale)", "reasoning": "Doc severity P5 by Bane's 2026-09-30 ruling (doc findings are P4/P5, never P1-P3) \u2014 that is policy, not a new assessment of this defect. Class: accuracy (a documented value that contradicts the file the README names as its source).\n\nTHE DEFECT\nREADME.md:1216-1219 (section \"Deployment freshness gate (BT-057)\") states the repo's toolchain pin and names the file that carries it, and the value it names is no longer in that file:\n\n  README.md:1216  \"The toolchain requirement: go.mod declares `go 1.26.6`. The Go 1.26.5 standard library shipped reachable advisories that 1.26.6 fixes \u2014 `net/http` (GO-2026-6089), `crypto/tls` (GO-2026-6090) and `encoding/asn1` (GO-2026-5972) \u2014 so a lower `go` directive, or a build with an older toolchain, fails this gate.\"\n\nEXACT COMMANDS AND OUTPUT (2026-10-17, HEAD 94e5b56, which is origin/main; probe log /home/kara/.hermes/stand-in/readme/boardctl/probe-go-version-20261017.log)\n  grep -n '1\\.26' README.md\n    -> 1216:The toolchain requirement: go.mod declares `go 1.26.6`. ...\n  sed -n '3p' go.mod\n    -> go 1.26.9\n  git log --format='%ad %h %s' --date=short -L 3,3:go.mod\n    -> 2026-10-09 3c83aa8 fix(vuln): bump go 1.26.6 -> 1.26.9 \u2014 7 reachable stdlib vulns (net/http, crypto/tls, net/textproto, mime/multipart)\n    -> 2026-09-17 08655c4 fix: pin the toolchain to go 1.26.6 and add the dependency-vulnerability gate. Addresses BT-033.\n\nCAUSE (both rows complete, so nothing is pending on the code side)\nThe paragraph was written for BT-033 (2026-09-18, commit 08655c4), when `go 1.26.6` really was the pin. BT-080 (P1, complete 2026-10-09, commit 3c83aa8) bumped the directive to 1.26.9 and left README.md:1216 alone. The sentence is now false in two ways: the value it names, and the advisory list behind it (the 1.26.9 bump cleared GO-2026-6603/6607/6608/6611/6612/6613/6617 \u2014 7 advisories \u2014 not the 3 named here).\n\nWHY NO GATE CATCHES IT\ninternal/versioncheck is the repo's README gate, but it compares only README release-tag surfaces (`Current release: **vX.Y.Z**` and every /releases/download/<tag>/ URL); it never reads the `go` directive, and there is no `make docs-check`/`docs-drift` target. Verified: `grep -rn '1\\.26' internal/versioncheck/` -> no match; `grep -n 'docs-check' Makefile` -> no match; `make version-check` -> \"ok github.com/coding-hermes/boardctl/internal/versioncheck\" (rc=0). So README-vs-go.mod drift is structurally unguarded while the gate is green.\n\nIMPACT\nA contributor who reads \"the requirement is 1.26.6\" and builds with GOTOOLCHAIN=local on a 1.26.6 toolchain meets the directive-mismatch the same paragraph tells them to respect; with the default GOTOOLCHAIN=auto the 1.26.9 toolchain is fetched silently, so the sentence misstates why their build behaves as it does.\n\nFIX (one line)\nREADME.md:1216 -> \"go.mod declares `go 1.26.9`\", and restate the following sentence for the current pin (the 1.26.9 bump cleared the 1.26.6-and-earlier reachable advisories). Keep the closing instruction (\"Do not lower the directive to silence the gate; raise it to the patched release instead\") unchanged.\n\nACCEPTANCE\n`grep -n '1\\.26' README.md` shows the value on README.md:1216 equal to the value on line 3 of go.mod, and the paragraph's advisory sentence no longer asserts a superseded patch level.\n\nUNVERIFIED\nThe GOTOOLCHAIN=local refusal on an actual 1.26.6 toolchain was NOT reproduced on this box (that toolchain is not installed); that sentence is read from README.md:1220-1222's own text, not measured here.\n\nRELATED ROWS\nBT-080 (complete \u2014 the bump that orphaned the sentence), BT-033 (complete \u2014 the bump the sentence was written for). No open README row covers this value; README-005..008 (filed by this lane earlier in the same tick) cover the release pin, two refusing examples, the install-check table and the Development-block gate list.\n\nch:trace row=README-009 spec=README.md#deployment-freshness-gate-bt-057 wave=none:serial-tick test=none:no-test-covers-readme-vs-go.mod doc=README.md prompt=~/.hermes/skills/coding-hermes/coding-hermes-readme/SKILL.md evidence=/home/kara/.hermes/stand-in/readme/boardctl/probe-go-version-20261017.log witness=path@origin:go.mod verdict=none:no-judge commit=none:not-yet-fixed memory=none:tick-local", "created_by": null, "capability_tags": ["docs", "readme"], "complexity": 1, "created_at": "2026-10-17T14:07:15.260944+00:00", "updated_at": "2026-10-17T14:07:15.289131+00:00", "detail": {"fingerprint": "9f5d32fedd07d5694a9bb9f9da5414db16c4079d00a7d708649fb60eccb4ce24"}, "foreman_note": "README-health lane tick boardctl-readme-2026-10-17-13-47-37 (session filed 2026-10-17). Cross-refs: BT-080 (complete, commit 3c83aa8 \u2014 the bump that orphaned the sentence), BT-033 (complete, commit 08655c4 \u2014 the bump the sentence was written for). No open row covers this value; the lane's earlier findings this tick are README-005..008. Probe log: /home/kara/.hermes/stand-in/readme/boardctl/probe-go-version-20261017.log"}
+ {"id": "DOC-33", "type": null, "status": "done", "priority": "P4", "title": "P4 \u2014 document `event --task-id`, `--actor` and `--detail @file` in the README event reference (the task_id/actor/detail row keys are undiscoverable from the docs)", "reasoning": "Doc severity P4 by Bane's 2026-09-30 ruling (missing reference; doc findings are P4/P5, never P1-P3) -- policy, not a new assessment.\n\nTHE DEFECT: the README event reference documents three of the command's seven flags. `--type`, `--tick`, `--detail-text` appear (README.md:117-127 and README.md:545-592); `--task-id`, `--actor` and `--detail @file` appear NOWHERE in README.md, docs/ or skills/boardctl-usage/SKILL.md. Registered surface, by file:line: cmd/boardctl/main.go:1013 (`--task-id ID`, \"task_id\"), :1014 (`--actor`, \"actor (default foreman)\"), :1015 (`--detail`, \"detail JSON payload: @/path/file.json\"). The subcommand's own usage text (cmd/boardctl/main.go:1023-1024) DOES list all three, so the CLI and the README disagree.\n\nEVIDENCE (T3; scratch board, target repo untouched):\n  $ grep -c -- '--task-id' README.md              ->  0\n  $ grep -c -- '--actor' README.md                ->  0\n  $ grep -c -- '--detail' README.md               ->  0   (only --detail-text matches the doc)\n  $ /tmp/boardctl-audit -C $S event --type audit --task-id SCR-1 --actor probe-bot --detail @$S/d.json\n  event id 2 appended to /tmp/bt-docs-scratch2/.coding-hermes/board/events.jsonl\n  resulting row: \"event_type\": \"audit\", \"task_id\": \"SCR-1\", \"actor\": \"probe-bot\", \"detail\": \"{\\\"why\\\":\\\"probe\\\"}\"\nArtifact: /home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md (full command list + raw output)\n\nARTIFACT TO WRITE: README.md, section \"## Event type vocabulary (DOC-27)\" (README.md:545) - three lines naming --task-id/--actor/--detail @file next to the existing --tick/--detail-text prose.\nREADER: integrator / foreman writing audit events (attribution - who and which task - is undiscoverable from the docs today).\nACCEPT: README names all three flags, each with the row key it writes (task_id / actor / detail); the documented invocation `boardctl event --type audit --task-id X --actor Y --detail @f.json` runs against a scratch board and the written events.jsonl row carries those three keys.\n\nNOT-A-DUPLICATE: DOC-26 (blocked) covers a different flag set (--deferred, --pull-request/--assoc-*); DOC-27 covers the --type vocabulary only; REVIEW-BOARDCTL-010 (closed) was about the subcommand's own --help text, which now lists the flags.\n\nch:trace row=DOC-33 spec=none:audit-lane-finding test=none:doc-gap doc=README.md#event-type-vocabulary evidence=/home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md witness=none:no-external-surface verdict=none:audit-lane commit=none:not-yet-fixed memory=none:audit-lane task=document the three undocumented `event` flags", "created_by": null, "capability_tags": ["docs"], "complexity": 3, "created_at": "2026-10-17T19:32:55.408667+00:00", "updated_at": "2026-10-19T19:59:00+00:00", "detail": {"fingerprint": "1c1a1cf25aad08c2d9a133dc0ac43e5d2668ae06ff15adcb14d3f2822b4e81c8"}, "foreman_note": null}
+-{"id": "DOC-34", "type": null, "status": "pending", "priority": "P4", "title": "P4 \u2014 document `update --replace`: `--note` APPENDS by default, `--replace` OVERWRITES foreman_note (the only overwrite path, in no repo doc)", "reasoning": "Doc severity P4 by Bane's 2026-09-30 ruling (missing reference; doc findings are P4/P5, never P1-P3) -- policy, not a new assessment.\n\nTHE DEFECT: `boardctl update --replace` is registered - cmd/boardctl/main.go:816, `replace := fs.Bool(\"replace\", false, \"with --note: overwrite foreman_note instead of appending\")` - and is listed in the subcommand's own usage text (cmd/boardctl/main.go:858, \"[--replace]\"); the --note registration itself already documents the pair at cmd/boardctl/main.go:811 (\"foreman_note (appends to the existing note; --replace overwrites)\") with the BT-68 rationale at :812, but it appears in NO repository doc: README.md has zero hits, docs/ has zero hits, skills/boardctl-usage/SKILL.md has zero hits. README's update block documents `--note` (README.md:106-112) without ever saying that the default is APPEND, and therefore never introduces the only flag that overwrites. A reader concludes notes are append-only and cannot erase a wrong note.\n\nEVIDENCE (T3; scratch board /tmp/bt-docs-scratch2, target repo untouched - the exact commands are in the artifact):\n  $ boardctl -C $S update SCR-0 --note \"note A\"       -> updated task SCR-0: foreman_note, updated_at\n  $ boardctl -C $S update SCR-0 --note \"note B\"       -> foreman_note = \"note A\\n\\nnote B\"        (APPEND, default)\n  $ boardctl -C $S update SCR-1 --note \"only note\" --replace -> foreman_note = \"only note\"        (OVERWRITE)\n  $ grep -c -- '--replace' README.md docs/** skills/boardctl-usage/SKILL.md  ->  0\nArtifact: /home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md\n\nARTIFACT TO WRITE: README.md, the update usage block (README.md:98-116) plus the \"Worktree, branch and session fields\" neighbourhood if a note paragraph lives there.\nREADER: operator / foreman - the flag is the only way to correct a row note.\nACCEPT: README states that `--note` APPENDS by default and that `--note X --replace` OVERWRITES `foreman_note`; both statements reproduce against a scratch board with the two-output diff above quoted in the row's close-out.\n\nch:trace row=DOC-34 spec=none:audit-lane-finding test=none:doc-gap doc=README.md#usage evidence=/home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md witness=none:no-external-surface verdict=none:audit-lane commit=none:not-yet-fixed memory=none:audit-lane task=document update --replace overwrite semantics", "created_by": null, "capability_tags": ["docs"], "complexity": 3, "created_at": "2026-10-17T19:32:55.434281+00:00", "updated_at": "2026-10-17T19:32:55.434281+00:00", "detail": {"fingerprint": "ee3f79d8979532569482e2f5f5eaa60e25477b6b56052904485ed8e50aaf52b1"}, "foreman_note": null}
++{"id": "DOC-34", "type": null, "status": "complete", "priority": "P4", "title": "P4 \u2014 document `update --replace`: `--note` APPENDS by default, `--replace` OVERWRITES foreman_note (the only overwrite path, in no repo doc)", "reasoning": "Doc severity P4 by Bane's 2026-09-30 ruling (missing reference; doc findings are P4/P5, never P1-P3) -- policy, not a new assessment.\n\nTHE DEFECT: `boardctl update --replace` is registered - cmd/boardctl/main.go:816, `replace := fs.Bool(\"replace\", false, \"with --note: overwrite foreman_note instead of appending\")` - and is listed in the subcommand's own usage text (cmd/boardctl/main.go:858, \"[--replace]\"); the --note registration itself already documents the pair at cmd/boardctl/main.go:811 (\"foreman_note (appends to the existing note; --replace overwrites)\") with the BT-68 rationale at :812, but it appears in NO repository doc: README.md has zero hits, docs/ has zero hits, skills/boardctl-usage/SKILL.md has zero hits. README's update block documents `--note` (README.md:106-112) without ever saying that the default is APPEND, and therefore never introduces the only flag that overwrites. A reader concludes notes are append-only and cannot erase a wrong note.\n\nEVIDENCE (T3; scratch board /tmp/bt-docs-scratch2, target repo untouched - the exact commands are in the artifact):\n  $ boardctl -C $S update SCR-0 --note \"note A\"       -> updated task SCR-0: foreman_note, updated_at\n  $ boardctl -C $S update SCR-0 --note \"note B\"       -> foreman_note = \"note A\\n\\nnote B\"        (APPEND, default)\n  $ boardctl -C $S update SCR-1 --note \"only note\" --replace -> foreman_note = \"only note\"        (OVERWRITE)\n  $ grep -c -- '--replace' README.md docs/** skills/boardctl-usage/SKILL.md  ->  0\nArtifact: /home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md\n\nARTIFACT TO WRITE: README.md, the update usage block (README.md:98-116) plus the \"Worktree, branch and session fields\" neighbourhood if a note paragraph lives there.\nREADER: operator / foreman - the flag is the only way to correct a row note.\nACCEPT: README states that `--note` APPENDS by default and that `--note X --replace` OVERWRITES `foreman_note`; both statements reproduce against a scratch board with the two-output diff above quoted in the row's close-out.\n\nch:trace row=DOC-34 spec=none:audit-lane-finding test=none:doc-gap doc=README.md#usage evidence=/home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md witness=none:no-external-surface verdict=none:audit-lane commit=none:not-yet-fixed memory=none:audit-lane task=document update --replace overwrite semantics", "created_by": null, "capability_tags": ["docs"], "complexity": 3, "created_at": "2026-10-17T19:32:55.434281+00:00", "updated_at": "2026-10-19T21:44:06.475571+00:00", "detail": {"fingerprint": "ee3f79d8979532569482e2f5f5eaa60e25477b6b56052904485ed8e50aaf52b1", "evidence": [{"run_id":"bbdc1c7a","ts":"2026-10-19T21:40:32.116331+00:00"},{"run_id":"c3841fbd","ts":"2026-10-19T21:44:06.475571+00:00"}]}, "foreman_note": "Tick boardctl-foreman-2026-10-19-21-26-40 dispatched to glm-5.3-flash@zai-glm\n\nWorker commit 58e11d2b4d50a73e6444c3e0574cebf142d33322; judge bbdc1c7a was a stale pre-merge false negative, so a fresh post-merge judge is required.\n\nFresh post-merge judge c3841fbd verified README, commit, and focused tests but returned INCOMPLETE because this completion event was not yet present; closeout event carries the required trace marker. Initial stale judge bbdc1c7a was a pre-merge false negative.", "worker_status": "complete", "worktree": "/home/kara/worktrees/boardctl-DOC-34", "branch": "wt/DOC-34", "commit_hash": "58e11d2b4d50a73e6444c3e0574cebf142d33322", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "README.md documents --note append semantics, --replace overwrite semantics, omitted-note no-op, and exact runnable examples. Focused BT-068 tests, README/version/vuln gates, build, validate, and doctor passed. ch:trace row=DOC-34 spec=README.md#update-options wave=none:serial test=cmd/boardctl/bt068_cli_test.go::TestCmdUpdateNoteAppends doc=README.md prompt=/tmp/boardctl-foreman-2026-10-19-21-26-40-DOC-34-brief.txt evidence=README.md witness=none:not-external verdict=none:tier2-incomplete-trace-event-required commit=58e11d2b4d50a73e6444c3e0574cebf142d33322 memory=none:not-written STATUS: complete TIER: T3 (focused tests, README gates, GitReins Tier 2 invoked and observed) EVIDENCE: README.md@58e11d2b4d50a73e6444c3e0574cebf142d33322", "completed_at": "2026-10-19 21:45:00"}
+ {"id": "DOC-35", "type": null, "status": "pending", "priority": "P4", "title": "P4 \u2014 document the two uncited `header` setters (--set-ticks-idle, --set-last-tick) and define the header object's keys in README", "reasoning": "Doc severity P4 by Bane's 2026-09-30 ruling (missing reference; doc findings are P4/P5, never P1-P3) -- policy, not a new assessment.\n\nTHE DEFECT: the `header` command registers four setters (cmd/boardctl/main.go:1114 --set-ticks-total, :1115 --set-ticks-idle, :1116 --set-last-commit, :1117 --set-last-tick) and its own usage text lists all four (cmd/boardctl/main.go:1121). The README documents only two: `header --set-ticks-total 42 --set-last-commit abc1234` (README.md:130-131). `--set-ticks-idle` and `--set-last-tick` appear in NO repo doc (README/docs/skills each 0 hits for --set-last-tick; --set-ticks-idle has 1 hit in skills/boardctl-usage/SKILL.md:266 only). Related and unfixed in the same file: the header OBJECT the docs keep referencing is never defined in README - `ticks_idle`, `cooldown_s` and `last_tick` have 0 hits in README.md while README's doctor section reasons about header counters (README.md:202-225 \"Headerless boards\").\n\nEVIDENCE (T3; scratch board /tmp/bt-docs-scratch2, target repo untouched):\n  $ boardctl -C $S header --set-ticks-idle 3 --set-last-tick \"2026-10-17 12:00:00\"\n  header updated (line 1 of board.jsonl): ticks_idle, last_tick, updated_at\n  $ boardctl -C $S header --json\n  {\"project\":\"scratch2\",\"namespace\":\"scratch2\",\"version\":1,\"ticks_total\":0,\"ticks_idle\":3,\"cooldown_s\":21600,\"last_commit\":null,\"last_tick\":\"2026-10-17 12:00:00\",\"updated_at\":\"...\"}\n  $ grep -c 'ticks_idle\\|cooldown_s\\|last_tick' README.md   ->  0\n  $ grep -c -- '--set-last-tick' README.md docs/ skills/    ->  0\nArtifact: /home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md\n\nARTIFACT TO WRITE: README.md - extend the header block (README.md:129-135) with the two missing setters, and add the header key list (project, namespace, version, ticks_total, ticks_idle, cooldown_s, last_commit, last_tick, updated_at) with the type/default of each, sourced from the `header --json` output above.\nREADER: operator (3am recovery of a stale counter, README.md doctor section sends them at the header) and integrator (the header object is the board's only non-row JSON).\nACCEPT: README names all four --set-* flags; the header object's keys are enumerated with the default of each; a reviewer re-runs `header --json` on a scratch board and finds exactly the documented key set.\n\nch:trace row=DOC-35 spec=none:audit-lane-finding test=none:doc-gap doc=README.md#usage evidence=/home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md witness=none:no-external-surface verdict=none:audit-lane commit=none:not-yet-fixed memory=none:audit-lane task=document header setters and the header object", "created_by": null, "capability_tags": ["docs"], "complexity": 3, "created_at": "2026-10-17T19:32:55.457592+00:00", "updated_at": "2026-10-17T19:32:55.457592+00:00", "detail": {"fingerprint": "a57f8b382e356b3b21945b530ace40ab78047cf5fa747636632dafc552f4edd6"}, "foreman_note": null}
+ {"id": "DOC-36", "type": null, "status": "pending", "priority": "P4", "title": "P4 \u2014 document `list --all` / `stats --all`: fixture rows are HIDDEN by default, so census counts do not match the file", "reasoning": "Doc severity P4 by Bane's 2026-09-30 ruling (missing reference; doc findings are P4/P5, never P1-P3) -- policy, not a new assessment.\n\nTHE DEFECT: `list --all` and `stats --all` are registered (cmd/boardctl/main.go:503 and :1558, both `\"include fixture rows (ids in fixtures.jsonl)\"` / `\"include fixture rows\"`) and both are listed in the subcommand usage text, but `--all` appears in NO README line: `grep -c -- '--all' README.md` = 0 (it is documented only in skills/boardctl-usage/SKILL.md:93-94 and docs/specs/board-analytics-report.md:209,547). The consequence is not cosmetic: the default read path SILENTLY EXCLUDES every fixture row, so an operator counting rows on a board whose fixtures.jsonl carries entries sees a total that does not match `wc -l tasks.jsonl`, with nothing in the reference explaining the gap. README discusses fixtures.jsonl and \"fixture orphans\" in the doctor section (README.md:69-76) but never connects it to the read filters.\n\nEVIDENCE (T3; scratch board /tmp/bt-docs-scratch2, target repo untouched - fixtures.jsonl there carries the NEVER-DONE fixture row):\n  $ boardctl -C $S list            -> 2 task lines (SCR-0, SCR-1)      [NEVER-DONE fixture hidden]\n  $ boardctl -C $S list --all      -> 3 task lines (NEVER-DONE, SCR-0, SCR-1)\n  $ boardctl -C $S stats           -> \"by status: pending 1\"\n  $ boardctl -C $S stats --all     -> \"by status: pending 2\", \"P3 1\" added\nArtifact: /home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md\n\nARTIFACT TO WRITE: README.md, the read/usage section for `list` and `stats` (README.md:62-84) plus the fixtures discussion it already carries.\nREADER: operator (row counts that disagree with the file) and integrator (the census API's default exclusion).\nACCEPT: README states that `list`/`stats` exclude fixtures.jsonl ids by default and that `--all` includes them, with the observed 2-vs-3 line difference quoted.\n\nch:trace row=DOC-36 spec=none:audit-lane-finding test=none:doc-gap doc=README.md#usage evidence=/home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md witness=none:no-external-surface verdict=none:audit-lane commit=none:not-yet-fixed memory=none:audit-lane task=document list/stats --all fixture inclusion", "created_by": null, "capability_tags": ["docs"], "complexity": 3, "created_at": "2026-10-17T19:32:55.482003+00:00", "updated_at": "2026-10-17T19:32:55.482003+00:00", "detail": {"fingerprint": "557c90311108aea2c236df993155cc2c169f1bd9f3f416ff2d591ffb46e0284f"}, "foreman_note": null}
+ {"id": "DOC-37", "type": null, "status": "pending", "priority": "P4", "title": "P4 \u2014 document `normalize-board --repair-events` in README and add it to the top-level `boardctl --help` usage block (in the subcommand help, absent from the top-level one)", "reasoning": "Doc severity P4 by Bane's 2026-09-30 ruling (missing reference / documented-surface rot; doc findings are P4/P5, never P1-P3) -- policy, not a new assessment.\n\nTHE DEFECT (two layers, one flag):\n (1) ROT inside the binary's own help: `normalize-board --repair-events` is registered at cmd/boardctl/main.go:1359 (`fs.Bool(\"repair-events\", false, \"repair descending event ids in events.jsonl (extends NormalizeBoard)\")`) and IS listed by the subcommand's own usage closure (cmd/boardctl/main.go:1363), but the TOP-LEVEL usage block (cmd/boardctl/main.go:48-190) omits it - `sed -n '1,190p' cmd/boardctl/main.go | grep -c -- '--repair-events'` = 0, while `boardctl normalize-board --help | grep -c -- '--repair-events'` = 1. The top-level help is what `boardctl --help` and the README Usage block mirror, so the flag is invisible at every entry point a reader uses.\n (2) MISSING REFERENCE: `--repair-events` appears in NO repo doc - README.md 0 hits, docs/ 0 hits, skills/boardctl-usage/SKILL.md 0 hits - while README's normalize-board section (README.md:696-740) describes the command's other repair arms in detail.\n\nEVIDENCE (T3; scratch board /tmp/bt-docs-scratch2, target repo untouched):\n  $ boardctl -C $S normalize-board --repair-events\n  non-numeric/missing ids: 0\n  duplicate ids: 0\n  no descending ids found - already canonical\n  DRY-RUN - no file written (pass --apply to rewrite events.jsonl)\n  $ /tmp/boardctl-audit --help | grep -c -- '--repair-events'            ->  0\n  $ /tmp/boardctl-audit normalize-board --help | grep -c -- '--repair-events'  ->  1\nArtifact: /home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md\n\nARTIFACT TO WRITE: (a) cmd/boardctl/main.go top-level usage block - add `[--repair-events]` to the normalize-board arm so `--help` matches the subcommand; (b) README.md normalize-board section (README.md:696) - one paragraph on the events.jsonl id repair, its dry-run default and the --apply write.\nREADER: developer (help text is the first surface read) and operator (events.jsonl ids are the join key for the event trail).\nACCEPT: `boardctl --help` and `boardctl normalize-board --help` both name `--repair-events`; README's normalize-board section documents the flag; a reviewer diffs the two help outputs and finds no other flag present in one and absent in the other.\n\nch:trace row=DOC-37 spec=none:audit-lane-finding test=none:doc-gap doc=README.md#normalize-board--drifted-row-shapes-board-wide-df-boardctl-36 evidence=/home/kara/.hermes/stand-in/docs/boardctl/2026-10-17-surface-diff.md witness=none:no-external-surface verdict=none:audit-lane commit=none:not-yet-fixed memory=none:audit-lane task=document normalize-board --repair-events and fix the top-level help drift", "created_by": null, "capability_tags": ["docs"], "complexity": 3, "created_at": "2026-10-17T19:32:55.506045+00:00", "updated_at": "2026-10-17T19:32:55.506045+00:00", "detail": {"fingerprint": "ea1db562a3e685407d9712cb436fdad469d3afb5cdb3c8c69a28b3136b53de14"}, "foreman_note": null}
+diff --git a/.gitreins/logs/guard-20261016T232755.921389Z.log b/.gitreins/logs/guard-20261016T232755.921389Z.log
+deleted file mode 100644
+index 18a8d53..0000000
+--- a/.gitreins/logs/guard-20261016T232755.921389Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-16T23:27:55Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261016T234428.531068Z.log b/.gitreins/logs/guard-20261016T234428.531068Z.log
+deleted file mode 100644
+index 2d76b1f..0000000
+--- a/.gitreins/logs/guard-20261016T234428.531068Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-16T23:44:28Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T001736.140781Z.log b/.gitreins/logs/guard-20261017T001736.140781Z.log
+deleted file mode 100644
+index 3c5b8bf..0000000
+--- a/.gitreins/logs/guard-20261017T001736.140781Z.log
++++ /dev/null
+@@ -1,69 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:17:36Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (2 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_lint  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-[cmd/boardctl] cmd/boardctl/main.go:1404:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+-			fmt.Fprintf(os.Stdout, "\n=== events.jsonl repair ===\n")
+-			           ^
+-1 issues:
+-* errcheck: 1
+-
+-[internal/board] internal/board/associations.go:1: : # github.com/coding-hermes/boardctl/internal/board [github.com/coding-hermes/boardctl/internal/board.test]
+-internal/board/repair_events_test.go:37:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:101:10: undefined: NewRow
+-internal/board/repair_events_test.go:139:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:174:12: undefined: OpenBoard (typecheck)
+-package board
+-1 issues:
+-* typecheck: 1
+-
+-==============================================================================
+-[FAIL] go_tests  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-# github.com/coding-hermes/boardctl/internal/board [github.com/coding-hermes/boardctl/internal/board.test]
+-internal/board/repair_events_test.go:37:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:101:10: undefined: NewRow
+-internal/board/repair_events_test.go:139:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:174:12: undefined: OpenBoard
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.132s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.019s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.005s
+-FAIL	github.com/coding-hermes/boardctl/internal/board [build failed]
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.008s
+---- FAIL: TestGofmt (0.18s)
+-    fmtcheck_test.go:29: found 1 file(s) not gofmt-clean — run `gofmt -w` (or `make fmt`) on:
+-          internal/board/repair_events.go
+-FAIL
+-FAIL	github.com/coding-hermes/boardctl/internal/fmtcheck	0.181s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.856s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.031s
+-ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.027s
+-ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.010s
+-ok  	github.com/coding-hermes/boardctl/internal/vulncheck	2.971s
+-ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.009s
+-FAIL
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+diff --git a/.gitreins/logs/guard-20261017T002616.180981Z.log b/.gitreins/logs/guard-20261017T002616.180981Z.log
+deleted file mode 100644
+index f9f53dc..0000000
+--- a/.gitreins/logs/guard-20261017T002616.180981Z.log
++++ /dev/null
+@@ -1,47 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:26:16Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (1 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_lint  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-[cmd/boardctl] cmd/boardctl/main.go:1406:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+-			fmt.Fprintf(os.Stdout, "\n=== events.jsonl repair ===\n")
+-			           ^
+-1 issues:
+-* errcheck: 1
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.309s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.014s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.903s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.137s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.926s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.027s
+-ok  
+diff --git a/.gitreins/logs/guard-20261017T002647.153571Z.log b/.gitreins/logs/guard-20261017T002647.153571Z.log
+deleted file mode 100644
+index 258f522..0000000
+--- a/.gitreins/logs/guard-20261017T002647.153571Z.log
++++ /dev/null
+@@ -1,43 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:26:47Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-golangci-lint: clean (2 packages)
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	5.307s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.077s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.011s
+-ok  	github.com/coding-hermes/boardctl/internal/board	4.352s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.012s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.179s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	1.731s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.078s
+-ok  
+diff --git a/.gitreins/logs/guard-20261017T003130.191139Z.log b/.gitreins/logs/guard-20261017T003130.191139Z.log
+deleted file mode 100644
+index 0f5f427..0000000
+--- a/.gitreins/logs/guard-20261017T003130.191139Z.log
++++ /dev/null
+@@ -1,51 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:31:30Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (1 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_tests  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.007s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.013s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.786s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.003s
+---- FAIL: TestGofmt (0.13s)
+-    fmtcheck_test.go:29: found 1 file(s) not gofmt-clean — run `gofmt -w` (or `make fmt`) on:
+-          internal/board/repair_events_test.go
+-FAIL
+-FAIL	github.com/coding-hermes/boardctl/internal/fmtcheck	0.128s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.777s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.023s
+-ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.021s
+-ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.009s
+-ok  	github.com/coding-hermes/boardctl/internal/vulncheck	3.356s
+-ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.008s
+-FAIL
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-golangci-lint: clean
+diff --git a/cmd/boardctl/board-report.html b/cmd/boardctl/board-report.html
+index 8bbac8b..e233f0f 100644
+--- a/cmd/boardctl/board-report.html
++++ b/cmd/boardctl/board-report.html
+@@ -111,7 +111,7 @@ footer ul{margin:4px 0;padding-left:18px}
+ <main id="view-compare" hidden></main>
+ <div id="errbox" hidden></div>
+ <footer id="foot"></footer>
+-<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-19T02:36:05-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
++<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-19T16:44:27-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
+ <script>
+ "use strict";
+ (function(){
