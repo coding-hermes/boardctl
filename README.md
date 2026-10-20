@@ -1366,10 +1366,12 @@ outside any checkout, a commit rebased away, or a missing git binary all mean
 silent skip. Set `BOARDCTL_SKIP_FRESHNESS=1` to suppress the warning (the
 warning line itself names this switch).
 
-The toolchain requirement: go.mod declares `go 1.26.6`. The Go 1.26.5 standard
-library shipped reachable advisories that 1.26.6 fixes — `net/http`
-(GO-2026-6089), `crypto/tls` (GO-2026-6090) and `encoding/asn1`
-(GO-2026-5972) — so a lower `go` directive, or a build with an older
+The toolchain requirement: go.mod declares `go 1.26.9`. The Go 1.26.5 standard
+library shipped reachable advisories (GO-2026-6089 `net/http`, GO-2026-6090
+`crypto/tls`, GO-2026-5972 `encoding/asn1`) that 1.26.6 fixed, and 1.26.9
+cleared the further advisories GO-2026-6603, GO-2026-6607, GO-2026-6608,
+GO-2026-6611, GO-2026-6612, GO-2026-6613 and GO-2026-6617 — so a lower `go`
+directive, or a build with an older
 toolchain, fails this gate. With `GOTOOLCHAIN=auto` (the default) the pinned
 patch toolchain is fetched automatically. Do not lower the directive to
 silence the gate; raise it to the patched release instead.
