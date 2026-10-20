@@ -1275,7 +1275,7 @@ that bypass is the known source of duplicate-id corruption on fleet boards.
 | `.coding-hermes/board/` | This repo's own dogfood board (`tasks.jsonl`, `events.jsonl`, `board.jsonl`, `fixtures.jsonl`) |
 | `docs/dogfood/` | Dogfood diagnostics and integration notes |
 | `skills/boardctl-usage/` | Fleet skill: how agents drive `boardctl` |
-| `.github/workflows/ci.yml` | CI (build, vet, test) |
+| `.github/workflows/ci.yml` | CI (build, vet, gofmt, version-check, spec-check, vuln-check, test) |
 | `.gitreins/` | GitReins config + `history/<date>/<hash>/` judge verdicts (tracked audit records — keep) |
 | `Makefile`, `go.mod` | Build/test/release targets (see [Development](#development)) |
 | `LICENSE`, `README.md`, `.gitleaks.toml`, `.gitignore` | Repo metadata and hygiene |
@@ -1303,10 +1303,12 @@ the fossil becomes visible (DF-BOARDCTL-35).
 
 ```bash
 go build ./cmd/boardctl
+go vet ./...
 go test ./...
 make fmt-check        # gofmt gate (CI enforces it too); `make fmt` fixes
 make version-check    # README release-pin gate (CI enforces it too)
 make vuln-check       # dependency-vulnerability gate (CI enforces it too)
+make spec-check       # serve/OpenAPI parity gate (CI enforces it too)
 make release          # cross-compile all targets into dist/ (same asset names + SHA256SUMS the CI cut publishes)
 ```
 
