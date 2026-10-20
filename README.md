@@ -101,6 +101,15 @@ boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
     --reasoning "Idempotent retry with backoff" --evidence-run-id qa-2026-09-18T04:11Z
 
+# size a row (--complexity, default 3) and declare dependencies.
+# --depends-on takes a comma-separated id list and becomes the row's
+# depends_on array; every id must already exist — an unknown id is
+# REFUSED at write time (exit 1, nothing written: create the
+# dependency first). The dangling-reference side of this gate is
+# `validate --fail-on dangling-dep`.
+boardctl -C ~/myproject create --id FEAT-3 --title "Add jitter" \
+    --complexity 2 --depends-on FEAT-1,FEAT-2
+
 # rows can carry WHERE the work happened and WHICH agent runs did it
 # (see "Worktree, branch and session fields" below)
 boardctl -C ~/myproject create --id FEAT-2 --title "Add caching" \
