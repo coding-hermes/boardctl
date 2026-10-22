@@ -491,3 +491,4 @@
 {"id":488,"timestamp":"2026-10-20 13:05:48","event_type":"task_completed","task_id":"DOC-26","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":489,"timestamp":"2026-10-20 13:06:09","event_type":"task_updated","task_id":"RELEASE-2026-10-01-01","actor":"foreman","detail":"{\"title\":\"[OWNER-GATED] release candidate: 33 commits past v0.1.11 at HEAD 6769850 — v0.1.11 itself SHIPPED 2026-10-18; awaiting explicit release authorization for the next cut\"}","tick_number":null}
 {"id":490,"timestamp":"2026-10-20 13:06:09","event_type":"task_completed","task_id":"RELEASE-2026-10-04-01","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":491,"timestamp":"2026-10-22 03:19:48","event_type":"task_created","task_id":"RELEASE-2026-10-22-01","actor":"foreman","detail":"{\"id\":\"RELEASE-2026-10-22-01\",\"status\":\"pending\"}","tick_number":null}
