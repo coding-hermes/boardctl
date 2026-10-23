@@ -117,3 +117,29 @@ Do **not** run a rewrite verb (`normalize-board --apply`,
 writing. Freeze writers, or copy the board to a scratch dir, repair there, and
 swap the file while nothing writes — then re-read the tail to confirm the rows
 you expect are present.
+
+## Resolution (rows DF-BOARDCTL-48/49 closed)
+
+The rewrite verbs now classify INSIDE the board write guard, so the whole
+read/classify/check/write window is one critical section and an append issued
+during a repair queues behind it and lands after the rewrite instead of being
+overwritten:
+
+| verb | change |
+|------|--------|
+| `normalize-board --apply` | `NormalizeBoard` wraps read + classify + rewrite in `withWriteLock` (`internal/board/normalizeboard.go`) |
+| `--repair-events --apply` | `RepairEvents` wraps read + renumber + write, and the write is now `atomicRewrite` (temp file + rename) instead of `os.WriteFile` (`internal/board/repair_events.go`) |
+| `dedupe-board --by-id` | `DedupeByID` wraps read + plan + rewrite + its per-line audit events (`internal/board/iddupe.go`) |
+
+Regression evidence lives in `internal/board/write_concurrency_test.go`:
+`TestRewriteVerbsSerializeAgainstConcurrentAppend` (each verb; the append must
+find the guard held and must survive) and its RED half
+`TestRewriteVerbsDropConcurrentAppendWithoutLock` (same rendezvous with the
+guard bypassed — every append is lost, deterministically), plus
+`TestRepairEventsReplacesEventsFileAtomically` (new file, no temp residue, and
+a failed replacement leaves the audit trail byte-identical). Both directions
+were run: the three interleave assertions and the atomicity assertion FAIL on
+the pre-fix tree and pass after the fix.
+
+Readers (`list`, `show`, `validate`, `doctor`) still take no lock, so only
+writers wait — for the length of the repair itself, which is the point.

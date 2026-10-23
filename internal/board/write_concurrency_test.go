@@ -270,6 +270,414 @@ func TestConcurrentWritersWithoutLockIsUnsafe(t *testing.T) {
 	t.Skipf("unlocked race not reproduced in 40 rounds this run (timing-dependent by nature) — RED evidence for BT-050 is quoted in the commit body")
 }
 
+// ---- (c) rewrite verbs serialize against appends (DF-BOARDCTL-48/49) -------
+
+// probeTaskID is the id the concurrent appender creates. It is a valid fleet id
+// (PREFIX-SEGMENT-N) and deliberately absent from every fixture.
+const probeTaskID = "PROBE-MID-1"
+
+// probeEventMarker is the detail marker of the event the concurrent appender
+// writes in the --repair-events case. The append path stores detail as an
+// escaped JSON STRING value, so the census counts the bare marker (the quoting
+// around it differs between a freshly appended row and a renumbered one).
+const probeEventMarker = `PROBE-EV-1`
+
+// rewriteAppendCase is one rewrite verb under test plus the concurrent append it
+// must not swallow: the fixture (which arms genuine work for the verb, so it
+// reaches its write point), the verb call, the append issued on its OWN Board
+// value (the shape two boardctl processes take), and the census that names the
+// damage when the append was overwritten.
+type rewriteAppendCase struct {
+	verb    string // tag the rewrite-window seam must report for this verb
+	fixture func(t *testing.T) *Board
+	rewrite func(b *Board) error
+	append  func(b *Board) error
+	inspect func(t *testing.T, b *Board) []string
+}
+
+// rewriteAppendInterleave runs ONE rewrite verb and ONE real append through a
+// deterministic rendezvous at the verb's read/classify→write boundary:
+//
+//   - the verb runs on this goroutine; the rewrite-window seam fires immediately
+//     after it has classified its snapshot and immediately before it writes;
+//   - a second goroutine then probes the board guard NONBLOCKING. blocked=true
+//     means the verb already holds the guard at that point — the whole
+//     read/classify/check/write window is one critical section, so the append
+//     queues behind it and lands after the rewrite;
+//   - blocked=false means the window is unguarded: the append lands INSIDE it,
+//     and the harness waits for it to complete before letting the rewrite write,
+//     so the clobber is deterministic instead of a timing race.
+//
+// No sleeps: the only timers are hang guards on a rendezvous that must complete.
+func rewriteAppendInterleave(t *testing.T, dir, verb string, rewrite func() error, appendFn func() error) (blocked bool, hookVerb string, appendErr, rewriteErr error) {
+	t.Helper()
+	probe := make(chan bool, 1)
+	appendDone := make(chan error, 1)
+	fired := false
+
+	rewriteWindowHook = func(name string) {
+		if fired {
+			return // one rendezvous per run
+		}
+		fired = true
+		hookVerb = name
+		if name != verb {
+			return // a different verb fired the seam; the caller reports it
+		}
+		go func() {
+			// "Is somebody holding the guard right now?" — the verb is the only
+			// candidate holder on this board dir, so a failed nonblocking
+			// acquire is exactly "the verb classified its snapshot locked".
+			held := false
+			if lk, ok, err := tryAcquireFileLock(filepath.Join(dir, boardLockFileName)); err == nil && ok {
+				lk.release()
+			} else if err == nil {
+				held = true
+			}
+			probe <- held
+			appendDone <- appendFn()
+		}()
+		blocked = <-probe
+		if blocked {
+			return // queued behind the guard: the append lands after the write
+		}
+		// Unguarded window: wait for the append to land in it, so the rewrite's
+		// write is guaranteed to happen AFTER the append.
+		select {
+		case appendErr = <-appendDone:
+		case <-time.After(30 * time.Second):
+			t.Errorf("%s: the concurrent append never finished in the unlocked window", verb)
+		}
+	}
+	defer func() { rewriteWindowHook = nil }()
+
+	rewriteErr = rewrite()
+	if blocked {
+		select {
+		case appendErr = <-appendDone:
+		case <-time.After(30 * time.Second):
+			t.Errorf("%s: the append queued behind the guard never completed", verb)
+		}
+	}
+	return blocked, hookVerb, appendErr, rewriteErr
+}
+
+// rewriteAppendCases builds the three rewrite verbs the DF-BOARDCTL-48/49 rows
+// name, each with a fixture carrying real work for that verb.
+func rewriteAppendCases() []rewriteAppendCase {
+	return []rewriteAppendCase{
+		{
+			verb: "normalize-board",
+			fixture: func(t *testing.T) *Board {
+				return seedFindingBoard(t,
+					`{"id":"DRIFT-1","title":"alias status + empty-string deps","status":"open","priority":"P2","depends_on":""}`,
+					`{"id":"DRIFT-2","title":"done alias","status":"done","priority":"P1"}`,
+					`{"id":"CLEAN-1","title":"already canonical","status":"pending","priority":"P2","depends_on":[],"created_at":"2026-10-01 00:00:00"}`,
+				)
+			},
+			rewrite: func(b *Board) error {
+				_, err := b.NormalizeBoard(true)
+				return err
+			},
+			append: func(b *Board) error {
+				_, err := b.Create(TaskRowSpec{ID: probeTaskID, Title: "created while normalize-board ran", Status: "pending"})
+				return err
+			},
+			inspect: func(t *testing.T, b *Board) []string { return probeTaskProblems(t, b, probeTaskID) },
+		},
+		{
+			verb:    "repair-events",
+			fixture: seedRewriteEventsBoard,
+			rewrite: func(b *Board) error {
+				_, err := b.RepairEvents(false)
+				return err
+			},
+			append: func(b *Board) error {
+				_, err := b.AppendEvent(EventSpec{
+					Type:   "audit",
+					Actor:  "probe",
+					Detail: []byte(`{"probe":"` + probeEventMarker + `"}`),
+				})
+				return err
+			},
+			inspect: probeEventProblems,
+		},
+		{
+			verb: "dedupe-by-id",
+			fixture: func(t *testing.T) *Board {
+				return seedFindingBoard(t,
+					`{"id":"QA-RECYCLE-1","title":"first finding","reasoning":"cell one","status":"complete","priority":"P2"}`,
+					`{"id":"QA-RECYCLE-1","title":"second finding","reasoning":"cell two","status":"pending","priority":"P2"}`,
+				)
+			},
+			rewrite: func(b *Board) error {
+				_, err := b.DedupeByID(true)
+				return err
+			},
+			append: func(b *Board) error {
+				_, err := b.Create(TaskRowSpec{ID: probeTaskID, Title: "created while dedupe-board ran", Status: "pending"})
+				return err
+			},
+			inspect: func(t *testing.T, b *Board) []string { return probeTaskProblems(t, b, probeTaskID) },
+		},
+	}
+}
+
+// seedRewriteEventsBoard seeds events.jsonl with descending ids (ids 1,2,5,3,4 —
+// four renumberings of real work) over a topology-A board.
+func seedRewriteEventsBoard(t *testing.T) *Board {
+	t.Helper()
+	b := seedFindingBoard(t, `{"id":"CLEAN-1","title":"canonical","status":"pending","priority":"P2","depends_on":[]}`)
+	events := `{"id":1,"timestamp":"2026-09-03 00:00:00.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n" +
+		`{"id":2,"timestamp":"2026-09-03 00:00:01.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n" +
+		`{"id":5,"timestamp":"2026-09-03 00:00:02.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n" +
+		`{"id":3,"timestamp":"2026-09-03 00:00:03.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n" +
+		`{"id":4,"timestamp":"2026-09-03 00:00:04.000000","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n"
+	if err := os.WriteFile(b.eventsPath, []byte(events), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+// probeTaskProblems is the damage census for a concurrent CREATE: the row must
+// still be on the board (AC1) and the event log must not carry an orphan
+// task_created for a row the rewrite dropped (AC3).
+func probeTaskProblems(t *testing.T, b *Board, id string) []string {
+	t.Helper()
+	tasksRaw, err := os.ReadFile(b.tasksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventsRaw, err := os.ReadFile(b.eventsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rowPresent := false
+	for _, l := range bytes.Split(tasksRaw, []byte("\n")) {
+		if len(bytes.TrimSpace(l)) == 0 {
+			continue
+		}
+		var row map[string]any
+		if err := json.Unmarshal(l, &row); err != nil {
+			return []string{fmt.Sprintf("tasks.jsonl holds an unparseable line (torn rewrite?): %v: %.90s", err, l)}
+		}
+		if row["id"] == id {
+			rowPresent = true
+		}
+	}
+	createdEvents := 0
+	for _, l := range bytes.Split(eventsRaw, []byte("\n")) {
+		if len(bytes.TrimSpace(l)) == 0 {
+			continue
+		}
+		var ev struct {
+			Type   string `json:"event_type"`
+			TaskID string `json:"task_id"`
+		}
+		if err := json.Unmarshal(l, &ev); err != nil {
+			return []string{fmt.Sprintf("events.jsonl holds an unparseable line (torn rewrite?): %v: %.90s", err, l)}
+		}
+		if ev.TaskID == id && ev.Type == "task_created" {
+			createdEvents++
+		}
+	}
+	var problems []string
+	if !rowPresent {
+		problems = append(problems, fmt.Sprintf("the task created while the rewrite ran (%s) is GONE from tasks.jsonl — the rewrite overwrote a completed append", id))
+	}
+	if createdEvents != 1 {
+		problems = append(problems, fmt.Sprintf("task_created events for %s: %d, want exactly 1", id, createdEvents))
+	} else if !rowPresent {
+		problems = append(problems, fmt.Sprintf("ORPHAN task_created event: events.jsonl carries an event for %s while tasks.jsonl carries no such row", id))
+	}
+	return problems
+}
+
+// probeEventProblems is the damage census for a concurrent EVENT append: the
+// appended record must survive the repair, and the repaired file must still be
+// a valid event log (every line parses, ids ascending — the repair's own job).
+func probeEventProblems(t *testing.T, b *Board) []string {
+	t.Helper()
+	raw, err := os.ReadFile(b.eventsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var problems []string
+	if n := strings.Count(string(raw), probeEventMarker); n != 1 {
+		problems = append(problems, fmt.Sprintf("the event appended while the repair ran is gone: %d record(s) carrying %s in events.jsonl, want 1 — the repair overwrote a completed append", n, probeEventMarker))
+	}
+	prev := int64(0)
+	for i, l := range bytes.Split(bytes.TrimRight(raw, "\n"), []byte("\n")) {
+		if len(bytes.TrimSpace(l)) == 0 {
+			problems = append(problems, fmt.Sprintf("events.jsonl line %d is blank (torn rewrite)", i+1))
+			continue
+		}
+		var ev struct {
+			ID int64 `json:"id"`
+		}
+		if err := json.Unmarshal(l, &ev); err != nil {
+			problems = append(problems, fmt.Sprintf("events.jsonl line %d does not parse (torn rewrite): %v", i+1, err))
+			continue
+		}
+		if i > 0 && ev.ID <= prev {
+			problems = append(problems, fmt.Sprintf("events.jsonl line %d: id %d not ascending after the repair (prev %d)", i+1, ev.ID, prev))
+		}
+		prev = ev.ID
+	}
+	return problems
+}
+
+// TestRewriteVerbsSerializeAgainstConcurrentAppend is the DF-BOARDCTL-48/49
+// acceptance: for each rewrite verb, an append issued at the verb's
+// read/classify→write boundary survives the rewrite (AC1) and leaves no orphan
+// task_created event (AC3). The append must find the guard ALREADY HELD at that
+// boundary — that is the whole-window lock the README documents, and the bug was
+// that the boundary sat outside it.
+func TestRewriteVerbsSerializeAgainstConcurrentAppend(t *testing.T) {
+	for _, c := range rewriteAppendCases() {
+		c := c
+		t.Run(c.verb, func(t *testing.T) {
+			b := c.fixture(t)
+			appender, err := Resolve(b.Dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			blocked, hookVerb, appendErr, rewriteErr := rewriteAppendInterleave(t, b.Dir, c.verb,
+				func() error { return c.rewrite(b) },
+				func() error { return c.append(appender) })
+			if hookVerb != c.verb {
+				t.Fatalf("the rewrite-window seam never fired for %s (reported %q): the verb never reached its write point, so this test measured nothing", c.verb, hookVerb)
+			}
+			if rewriteErr != nil {
+				t.Fatalf("%s: rewrite failed: %v", c.verb, rewriteErr)
+			}
+			if appendErr != nil {
+				t.Fatalf("%s: the concurrent append failed: %v", c.verb, appendErr)
+			}
+			if problems := c.inspect(t, b); len(problems) > 0 {
+				t.Fatalf("%s: the rewrite damaged the concurrent append:\n  %s", c.verb, strings.Join(problems, "\n  "))
+			}
+			if !blocked {
+				t.Fatalf("%s: the concurrent append found the board guard FREE at the verb's read/classify→write boundary — that window is outside the lock, so an append lands inside it and the rewrite's stale snapshot overwrites it", c.verb)
+			}
+			// The guard must still be fully released after the verb.
+			if b.lock != nil {
+				t.Fatalf("%s: write guard leaked after the rewrite", c.verb)
+			}
+		})
+	}
+}
+
+// TestRewriteVerbsDropConcurrentAppendWithoutLock is the RED half of AC2: the
+// identical rendezvous with the guard bypassed (the BT-050 RED seam). The append
+// now completes inside the unguarded window, and every rewrite overwrites it —
+// the exact dogfood-run-25 failure, reproduced deterministically.
+func TestRewriteVerbsDropConcurrentAppendWithoutLock(t *testing.T) {
+	writeLockBypass = true
+	defer func() { writeLockBypass = false }()
+
+	for _, c := range rewriteAppendCases() {
+		c := c
+		t.Run(c.verb, func(t *testing.T) {
+			b := c.fixture(t)
+			appender, err := Resolve(b.Dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			blocked, hookVerb, appendErr, rewriteErr := rewriteAppendInterleave(t, b.Dir, c.verb,
+				func() error { return c.rewrite(b) },
+				func() error { return c.append(appender) })
+			if hookVerb != c.verb {
+				t.Fatalf("the rewrite-window seam never fired for %s (reported %q)", c.verb, hookVerb)
+			}
+			if rewriteErr != nil {
+				t.Fatalf("%s: rewrite failed: %v", c.verb, rewriteErr)
+			}
+			if appendErr != nil {
+				t.Fatalf("%s: the concurrent append failed: %v", c.verb, appendErr)
+			}
+			if blocked {
+				t.Fatalf("%s: the guard was observed HELD with writeLockBypass on — the RED control is broken", c.verb)
+			}
+			problems := c.inspect(t, b)
+			if len(problems) == 0 {
+				t.Fatalf("%s: bypassing the guard did NOT lose the concurrent append — this control no longer demonstrates the rewrite race", c.verb)
+			}
+			t.Logf("RED %s (guard bypassed): %s", c.verb, strings.Join(problems, "; "))
+		})
+	}
+}
+
+// TestRepairEventsReplacesEventsFileAtomically proves the --repair-events write
+// is a same-directory temp file + rename rather than an in-place os.WriteFile
+// (DF-BOARDCTL-49 secondary finding):
+//
+//  1. the repaired file is a DIFFERENT file than the one before the run (a
+//     rename installs a new inode; an in-place write keeps the old one), and no
+//     .boardctl-rewrite-* temp file is left behind;
+//  2. when the directory refuses a new temp file the run FAILS and events.jsonl
+//     keeps its previous bytes — an in-place write would have truncated the
+//     audit trail first and only then failed (or silently succeeded).
+func TestRepairEventsReplacesEventsFileAtomically(t *testing.T) {
+	b := seedRewriteEventsBoard(t)
+	before, err := os.Stat(b.eventsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.RepairEvents(false); err != nil {
+		t.Fatalf("RepairEvents(apply): %v", err)
+	}
+	after, err := os.Stat(b.eventsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if os.SameFile(before, after) {
+		t.Fatal("events.jsonl was rewritten IN PLACE (same file) — the repair must replace it with a temp file + rename so a crash cannot truncate the audit trail")
+	}
+	entries, err := os.ReadDir(b.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".boardctl-rewrite-") {
+			t.Fatalf("atomic rewrite left temp file %q behind", e.Name())
+		}
+	}
+
+	// Arm 2: the directory cannot accept the temp file.
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: directory permissions cannot refuse the temp file")
+	}
+	b2 := seedRewriteEventsBoard(t)
+	// The guard's sidecar must be openable inside the read-only dir, or the
+	// failure would be "cannot take the lock" instead of "cannot replace the
+	// file atomically" — pre-create it while the dir is still writable.
+	if err := os.WriteFile(filepath.Join(b2.Dir, boardLockFileName), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pre, err := os.ReadFile(b2.eventsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(b2.Dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	_, repairErr := b2.RepairEvents(false)
+	if err := os.Chmod(b2.Dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if repairErr == nil {
+		t.Fatal("the repair reported success even though the directory refused a temp file — the write is not atomic (an in-place os.WriteFile truncates the audit trail instead of leaving it intact)")
+	}
+	post, err := os.ReadFile(b2.eventsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(pre, post) {
+		t.Fatalf("events.jsonl changed even though the atomic replacement failed (%v) — the audit trail is not protected", repairErr)
+	}
+}
+
 // ---- guard mechanics --------------------------------------------------------
 
 // TestWriteLockIsExclusive: while one holder owns the flock a second

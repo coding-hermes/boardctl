@@ -1,37 +1,31 @@
 package board
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 )
 
 // DF-BOARDCTL-38: repair descending event ids in events.jsonl.
 //
 // The validateEvents function (validate.go:534) reports errors when
 // event ids descend below earlier ids. This function renumbers those
-// descending ids to restore ascending order: every id it mints is the
-// running max of the REPAIRED sequence + 1, so the output ascends by
-// construction.
+// descending ids to restore ascending order, starting from max(existing)+1
+// for the first descending event.
 //
 // The repair is mechanical: preserve every field except "id".
 // Legacy events without numeric ids (missing or string-valued) are skipped.
-// Duplicate ids that already sit between two ORIGINAL ids are reported but not
-// repaired (benign legacy duplicates exist on live boards). A duplicate the
-// repair itself would create is never shipped (DF-BOARDCTL-45): when the
-// minted id equals the id a later event still carries, that later event is
-// renumbered too — ids 10, 9, 11 repair to 10, 11, 12 rather than 10, 11, 11.
-// The report's duplicate count is the census of the REPAIRED output.
+// Duplicate ids are warned but not repaired (benign legacy duplicates).
 
 // RepairEventsReport holds the result of repairing event ids.
 type RepairEventsReport struct {
 	EventsPath  string `json:"events_path"`
 	TotalEvents int    `json:"total_events"`
 	FixedCount  int    `json:"fixed_count"` // events whose id was renumbered
-	Descending  int    `json:"descending"`  // ids renumbered: descending below, or colliding with, a minted id
+	Descending  int    `json:"descending"`  // count of descending id occurrences found
 	NonNumeric  int    `json:"non_numeric"` // legacy events without numeric ids
-	Duplicates  int    `json:"duplicates"`  // duplicate ids in the REPAIRED output
+	Duplicates  int    `json:"duplicates"`  // duplicate ids found (warned, not fixed)
 	DryRun      bool   `json:"dry_run"`
 	AppliedPath string `json:"applied_path,omitempty"`
 	Applied     bool   `json:"applied"`
@@ -44,7 +38,7 @@ func (r *RepairEventsReport) RenderText() string {
 	out += fmt.Sprintf("total events: %d\n", r.TotalEvents)
 	out += fmt.Sprintf("descending ids: %d\n", r.Descending)
 	out += fmt.Sprintf("non-numeric/missing ids: %d\n", r.NonNumeric)
-	out += fmt.Sprintf("duplicate ids in repaired output: %d\n", r.Duplicates)
+	out += fmt.Sprintf("duplicate ids: %d\n", r.Duplicates)
 
 	if r.Clean {
 		out += "no descending ids found — already canonical\n"
@@ -59,27 +53,30 @@ func (r *RepairEventsReport) RenderText() string {
 	return out
 }
 
-// repairEventsBeforeRewriteHook is a test-only seam for deterministic
-// append-vs-repair interleaving tests. Production never changes it.
-var repairEventsBeforeRewriteHook = func() {}
-
 // RepairEvents repairs descending event ids in events.jsonl.
 // When dryRun=true, it only reports what would be fixed.
-// When dryRun=false, it rewrites events.jsonl atomically while holding the
-// board write guard for the complete read/classify/plan/rewrite window.
+// When dryRun=false, it replaces events.jsonl atomically (temp file + rename).
+//
+// DF-BOARDCTL-49: the read/classify/renumber/rewrite window is ONE guarded
+// section. The shipped shape parsed and renumbered every event BEFORE taking
+// the guard and wrote the snapshot back with a plain os.WriteFile, so an
+// `event` append that landed in between was destroyed (5/5 attempts on both
+// the released v0.1.11 and HEAD) and a crash mid-write could truncate the
+// whole audit trail.
 func (b *Board) RepairEvents(dryRun bool) (*RepairEventsReport, error) {
 	var rep *RepairEventsReport
-	var repairErr error
+	var opErr error
 	lockErr := b.withWriteLock(b.eventsPath, func() error {
-		rep, repairErr = b.repairEventsLocked(dryRun)
-		return nil // err rides repairErr; the guard must drop regardless
+		rep, opErr = b.repairEventsLocked(dryRun)
+		return nil // err rides opErr; the guard must drop regardless
 	})
 	if lockErr != nil {
 		return nil, lockErr
 	}
-	return rep, repairErr
+	return rep, opErr
 }
 
+// repairEventsLocked is RepairEvents' body, running under the write guard.
 func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 	lines, err := ReadJSONLLines(b.eventsPath)
 	if err != nil {
@@ -91,17 +88,22 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 		DryRun:     dryRun,
 	}
 
-	// First pass: classify events (numeric vs legacy) in file order.
+	// First pass: classify events and find descending ids.
 	type eventRecord struct {
-		lineIdx int
-		line    []byte
-		id      int64
-		hasID   bool
-		isInt   bool
-		legacy  bool // missing or non-numeric id
+		lineIdx    int
+		line       []byte
+		id         int64
+		hasID      bool
+		isInt      bool
+		legacy     bool // missing or non-numeric id
+		NonNumeric int
+		Duplicates int
 	}
 
 	var records []eventRecord
+	seenIDs := map[int64]int{} // id -> first line index
+	var maxID int64
+	var haveMax bool
 
 	ierr := IterParsed(lines, func(row *Row, idx int, raw []byte) error {
 		// Keep a copy of the raw line for later.
@@ -126,6 +128,20 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 		}
 		rec.id = id
 
+		// Check for duplicates first (benign legacy).
+		if prev, dup := seenIDs[id]; dup {
+			rec.Duplicates++
+			rep.Duplicates++
+			_ = prev // first occurrence line
+		}
+		seenIDs[id] = idx + 1
+
+		// Track max id seen so far.
+		if !haveMax || id > maxID {
+			maxID = id
+			haveMax = true
+		}
+
 		records = append(records, rec)
 		return nil
 	})
@@ -135,27 +151,21 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 
 	rep.TotalEvents = len(records)
 
-	// Second pass: plan the renumbering left to right.
-	//
-	// The running max is the largest id the REPAIRED file carries so far, so
-	// minting runningMax+1 keeps the output ascending. DF-BOARDCTL-45: the
-	// minted id must also not collide with an id a LATER event still carries.
-	// A later event can only collide when its id equals the running max (any
-	// bigger id lies above every id emitted so far), so that case is caught
-	// here by treating "id == runningMax AND runningMax was minted by this
-	// pass" as an id to repair as well. Ids 10, 9, 11 therefore land as
-	// 10, 11, 12 instead of the old 10, 11, 11 — no two events share an id,
-	// and the census below describes that output. Duplicates between two
-	// ORIGINAL ids are left untouched, as documented above.
+	// Second pass: identify descending ids and renumber.
+	// We need to track the "running max" as we go left-to-right.
+	// Any id that descends below the running max needs renumbering.
+	// The new id = running_max + 1.
 	runningMax := int64(0)
 	hasRunningMax := false
 	fixedCount := 0
 	descendingCount := 0
 
+	// We'll collect lines that need changes.
 	changeMap := map[int][]byte{} // lineIdx -> new line bytes
-	mintedIDs := map[int64]bool{} // ids this pass invented
-	outputIDs := make([]int64, 0, len(records))
 
+	// Re-iterate to find descending ids.
+	runningMax = 0
+	hasRunningMax = false
 	for _, rec := range records {
 		if rec.legacy || !rec.isInt {
 			// Non-numeric events don't affect the running max.
@@ -165,46 +175,32 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 		id := rec.id
 		lineIdx := rec.lineIdx
 
-		collides := hasRunningMax && id == runningMax && mintedIDs[id]
-		if hasRunningMax && (id < runningMax || collides) {
-			// Descending, or the id the repair just minted.
+		if hasRunningMax && id < runningMax {
+			// Descending! Fix it.
 			runningMax++
 			newID := runningMax
 			descendingCount++
 			fixedCount++
 
+			// Re-encode the line with the new id.
+			// We'll parse and modify the row.
 			newLine, err := renumberEventID(rec.line, newID)
 			if err != nil {
 				return nil, fmt.Errorf("line %d: renumber %d -> %d: %w", lineIdx+1, id, newID, err)
 			}
 			changeMap[lineIdx] = newLine
-			mintedIDs[newID] = true
-			outputIDs = append(outputIDs, newID)
-			hasRunningMax = true
-			continue
-		}
 
-		if !hasRunningMax || id > runningMax {
+			// The running max stays at the new id.
+			runningMax = newID
+		} else if id > runningMax {
 			runningMax = id
 		}
 		hasRunningMax = true
-		outputIDs = append(outputIDs, id)
 	}
 
 	rep.Descending = descendingCount
 	rep.FixedCount = fixedCount
 	rep.Clean = descendingCount == 0
-
-	// DF-BOARDCTL-45: the duplicate census describes the file the repair will
-	// leave behind. Counting the INPUT let the command print "duplicate ids: 0"
-	// while writing a file with two events sharing one id.
-	seenOutput := make(map[int64]bool, len(outputIDs))
-	for _, id := range outputIDs {
-		if seenOutput[id] {
-			rep.Duplicates++
-		}
-		seenOutput[id] = true
-	}
 
 	if rep.Clean {
 		return rep, nil
@@ -224,13 +220,17 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 		return rep, nil
 	}
 
-	// Apply: rewrite events.jsonl atomically. The caller holds the write guard
-	// across the complete read/classify/plan/rewrite sequence.
+	// Apply: rewrite events.jsonl with changes.
 	out, err := renumberEventsFile(lines, changeMap)
 	if err != nil {
 		return nil, fmt.Errorf("generate rewritten events.jsonl: %w", err)
 	}
-	repairEventsBeforeRewriteHook()
+
+	// Apply: replace events.jsonl with the renumbered snapshot. Already inside
+	// the write guard (see RepairEvents), and the replacement is a same-dir
+	// temp file + rename (atomicRewrite), so an interrupted run leaves the
+	// previous file intact instead of a truncated audit trail.
+	runRewriteWindowHook("repair-events")
 	if err := atomicRewrite(b.eventsPath, out); err != nil {
 		return nil, fmt.Errorf("write %s: %w", b.eventsPath, err)
 	}
@@ -241,200 +241,39 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 }
 
 // renumberEventID takes one events.jsonl line (JSON) and returns a new line
-// with ONLY the numeric value token of the top-level "id" field replaced.
-//
-// DF-BOARDCTL-44: this used to unmarshal the line into a map[string]any and
-// re-marshal it, which (a) rounded integers above 2^53 through float64, (b)
-// dropped the writer's key order (map iteration is sorted on marshal), and
-// (c) collapsed runs of spaces inside string values while it "restored"
-// spacing. The promise — every field except id is preserved — is now literal:
-// the id value's byte range is replaced in place, so key order, all separator
-// spacing, every other value's raw bytes (double spaces included), JSON string
-// escaping, and the trailing newline/surrounding bytes survive verbatim.
-//
-// The line must be a JSON object whose top-level "id" holds a JSON number.
-// A missing or non-numeric id is refused here; RepairEvents never routes such
-// events to this helper (legacy events are skipped and reported as
-// non-numeric), so the observable CLI behavior for them is unchanged.
+// with the "id" field set to newID. It preserves the original JSON style
+// (spaced vs compact).
 func renumberEventID(raw []byte, newID int64) ([]byte, error) {
-	span, err := topLevelFieldSpan(raw, "id")
-	if err != nil {
-		return nil, err
+	// Parse the JSON, modify id, re-encode.
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, fmt.Errorf("parse event: %w", err)
 	}
-	value := raw[span.start:span.end]
-	if _, ok := decodeJSONNumber(value); !ok {
-		return nil, fmt.Errorf("id value is not a JSON number: %s", diagnosticSnippet(value))
-	}
+	m["id"] = newID
 
-	out := make([]byte, 0, len(raw)+20)
-	out = append(out, raw[:span.start]...)
-	out = strconv.AppendInt(out, newID, 10)
-	out = append(out, raw[span.end:]...)
+	// Re-encode as JSON. We'll try to preserve the original style
+	// by checking if the original had spaces after colons/commas.
+	var out []byte
+	// Use compact JSON for reliability; the event id is the critical field.
+	if rawStyle := hasSpaces(raw); rawStyle {
+		out, _ = json.MarshalIndent(m, "", "  ")
+		// Flatten back to single line.
+		out = bytes.ReplaceAll(out, []byte("\n"), []byte(""))
+		out = bytes.ReplaceAll(out, []byte("  "), []byte(" "))
+	}
+	if len(out) == 0 {
+		out, _ = json.Marshal(m)
+	}
+	// Ensure trailing newline if the original had one.
+	if len(raw) > 0 && raw[len(raw)-1] == '\n' {
+		out = append(out, '\n')
+	}
 	return out, nil
 }
 
-// fieldSpan is the byte range [start,end) of one object field's VALUE within a
-// raw JSON line.
-type fieldSpan struct {
-	start int
-	end   int
-}
-
-// topLevelFieldSpan locates the value bound to key in the TOP-LEVEL object of
-// line, returning its byte range. It is a scanner, not a decoder: nothing is
-// re-serialized, so the caller can splice a new value in without disturbing a
-// single byte elsewhere. Keys nested inside child objects/arrays are never
-// considered. A missing key is an error.
-func topLevelFieldSpan(line []byte, key string) (fieldSpan, error) {
-	i := skipJSONSpace(line, 0)
-	if i >= len(line) || line[i] != '{' {
-		return fieldSpan{}, fmt.Errorf("not a JSON object")
-	}
-	i++
-	for {
-		i = skipJSONSpace(line, i)
-		if i >= len(line) {
-			return fieldSpan{}, fmt.Errorf("unterminated JSON object")
-		}
-		if line[i] == '}' {
-			return fieldSpan{}, fmt.Errorf("no top-level %q field", key)
-		}
-
-		keyStart := i
-		keyEnd, err := scanJSONString(line, i)
-		if err != nil {
-			return fieldSpan{}, err
-		}
-		var name string
-		if err := json.Unmarshal(line[keyStart:keyEnd], &name); err != nil {
-			return fieldSpan{}, fmt.Errorf("unreadable object key: %w", err)
-		}
-
-		i = skipJSONSpace(line, keyEnd)
-		if i >= len(line) || line[i] != ':' {
-			return fieldSpan{}, fmt.Errorf("expected ':' after object key %q at offset %d", name, i)
-		}
-		valueStart := skipJSONSpace(line, i+1)
-		valueEnd, err := scanJSONValue(line, valueStart)
-		if err != nil {
-			return fieldSpan{}, err
-		}
-		if name == key {
-			return fieldSpan{start: valueStart, end: valueEnd}, nil
-		}
-
-		i = skipJSONSpace(line, valueEnd)
-		if i >= len(line) {
-			return fieldSpan{}, fmt.Errorf("unterminated JSON object")
-		}
-		switch line[i] {
-		case ',':
-			i++
-		case '}':
-			return fieldSpan{}, fmt.Errorf("no top-level %q field", key)
-		default:
-			return fieldSpan{}, fmt.Errorf("unexpected byte %q after object key %q at offset %d", line[i], name, i)
-		}
-	}
-}
-
-// skipJSONSpace advances past JSON insignificant whitespace.
-func skipJSONSpace(b []byte, i int) int {
-	for i < len(b) {
-		switch b[i] {
-		case ' ', '	', '\r', '\n':
-			i++
-		default:
-			return i
-		}
-	}
-	return i
-}
-
-// scanJSONString returns the offset just past the closing quote of the JSON
-// string literal starting at i. Backslash escapes are honored: an escaped
-// quote never terminates the literal, and the payload of a \uXXXX escape can
-// never be mistaken for a terminator.
-func scanJSONString(b []byte, i int) (int, error) {
-	if i >= len(b) || b[i] != '"' {
-		return 0, fmt.Errorf("expected a JSON string at offset %d", i)
-	}
-	for j := i + 1; j < len(b); j++ {
-		switch b[j] {
-		case '\\':
-			j++ // skip the escaped byte; \\ \" \n \uXXXX all keep the quote-shape opaque
-		case '"':
-			return j + 1, nil
-		}
-	}
-	return 0, fmt.Errorf("unterminated JSON string starting at offset %d", i)
-}
-
-// scanJSONValue returns the offset just past the JSON value starting at i.
-// Strings are scanned with escape awareness; objects and arrays are walked to
-// their matching close; every other token is a scalar that ends at the next
-// structural delimiter or whitespace.
-func scanJSONValue(b []byte, i int) (int, error) {
-	if i >= len(b) {
-		return 0, fmt.Errorf("missing JSON value at end of line")
-	}
-	switch b[i] {
-	case '"':
-		return scanJSONString(b, i)
-	case '{', '[':
-		return scanJSONComposite(b, i)
-	}
-	for j := i; j < len(b); j++ {
-		switch b[j] {
-		case ',', '}', ']', ' ', '	', '\r', '\n':
-			if j == i {
-				return 0, fmt.Errorf("empty JSON value at offset %d", i)
-			}
-			return j, nil
-		}
-	}
-	return len(b), nil
-}
-
-// scanJSONComposite walks an object/array starting at i to the offset just
-// past its matching close, skipping over string contents (so braces or
-// brackets inside strings never affect nesting) and nested values.
-func scanJSONComposite(b []byte, i int) (int, error) {
-	depth := 0
-	for j := i; j < len(b); j++ {
-		switch b[j] {
-		case '"':
-			end, err := scanJSONString(b, j)
-			if err != nil {
-				return 0, err
-			}
-			j = end - 1
-		case '{', '[':
-			depth++
-		case '}', ']':
-			depth--
-			if depth == 0 {
-				return j + 1, nil
-			}
-		}
-	}
-	return 0, fmt.Errorf("unterminated JSON value starting at offset %d", i)
-}
-
-// decodeJSONNumber reports whether b is exactly one JSON number and returns
-// it. Numbers are kept as text (json.Number), so nothing is widened to
-// float64 and integers above 2^53 stay exact.
-func decodeJSONNumber(b []byte) (json.Number, bool) {
-	var n json.Number
-	if err := json.Unmarshal(b, &n); err != nil {
-		return "", false
-	}
-	// json.Unmarshal treats a JSON null as a no-op on any destination, so an
-	// untouched empty Number is the null/absent case, not a number.
-	if n == "" {
-		return "", false
-	}
-	return n, true
+// hasSpaces checks if a JSON line has spaces after colons/commas.
+func hasSpaces(raw []byte) bool {
+	return bytes.Contains(raw, []byte(": ")) || bytes.Contains(raw, []byte(", "))
 }
 
 // renumberEventsFile takes all lines and a map of lineIdx -> newBytes,

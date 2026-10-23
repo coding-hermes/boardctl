@@ -103,22 +103,30 @@ type idDupeRow struct {
 }
 
 // DedupeByID runs (or previews) the DF-BOARDCTL-10 id-aware collapse on this
-// board. See the package-file comment above for the exact contract. The write
-// guard covers the complete read/classify/plan/rewrite-and-audit sequence so a
-// concurrent writer cannot be lost between the snapshot and atomicRewrite.
+// board. See the package-file comment above for the exact contract.
+//
+// DF-BOARDCTL-48/49: the WHOLE read/classify/close-write window — and the
+// per-line audit events that follow it — runs inside ONE guarded section. The
+// shipped shape planned the collapse from an unlocked snapshot and called
+// atomicRewrite bare (no guard anywhere in the function), so a row created
+// while it ran was overwritten and left its task_created event orphaned. The
+// per-line AuditEvent appends below re-enter the same guard on this Board
+// value, so the rewrite and its events stay one atomic unit against sibling
+// writers.
 func (b *Board) DedupeByID(apply bool) (*IDDupeReport, error) {
 	var rep *IDDupeReport
-	var dedupeErr error
+	var opErr error
 	lockErr := b.withWriteLock(b.tasksPath, func() error {
-		rep, dedupeErr = b.dedupeByIDLocked(apply)
-		return nil // err rides dedupeErr; the guard must drop regardless
+		rep, opErr = b.dedupeByIDLocked(apply)
+		return nil // err rides opErr; the guard must drop regardless
 	})
 	if lockErr != nil {
 		return nil, lockErr
 	}
-	return rep, dedupeErr
+	return rep, opErr
 }
 
+// dedupeByIDLocked is DedupeByID's body, running under the write guard.
 func (b *Board) dedupeByIDLocked(apply bool) (*IDDupeReport, error) {
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
@@ -246,6 +254,7 @@ func (b *Board) dedupeByIDLocked(apply bool) (*IDDupeReport, error) {
 			return nil, fmt.Errorf("internal error: untouched line %d would change — id-aware dedupe aborted (nothing written)", i+1)
 		}
 	}
+	runRewriteWindowHook("dedupe-by-id")
 	if err := atomicRewrite(b.tasksPath, TerminateLines(newLines)); err != nil {
 		return nil, err
 	}
