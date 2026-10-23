@@ -55,8 +55,29 @@ func (r *RepairEventsReport) RenderText() string {
 
 // RepairEvents repairs descending event ids in events.jsonl.
 // When dryRun=true, it only reports what would be fixed.
-// When dryRun=false, it rewrites events.jsonl atomically.
+// When dryRun=false, it replaces events.jsonl atomically (temp file + rename).
+//
+// DF-BOARDCTL-49: the read/classify/renumber/rewrite window is ONE guarded
+// section. The shipped shape parsed and renumbered every event BEFORE taking
+// the guard and wrote the snapshot back with a plain os.WriteFile, so an
+// `event` append that landed in between was destroyed (5/5 attempts on both
+// the released v0.1.11 and HEAD) and a crash mid-write could truncate the
+// whole audit trail.
 func (b *Board) RepairEvents(dryRun bool) (*RepairEventsReport, error) {
+	var rep *RepairEventsReport
+	var opErr error
+	lockErr := b.withWriteLock(b.eventsPath, func() error {
+		rep, opErr = b.repairEventsLocked(dryRun)
+		return nil // err rides opErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	return rep, opErr
+}
+
+// repairEventsLocked is RepairEvents' body, running under the write guard.
+func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 	lines, err := ReadJSONLLines(b.eventsPath)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", b.eventsPath, err)
@@ -205,15 +226,13 @@ func (b *Board) RepairEvents(dryRun bool) (*RepairEventsReport, error) {
 		return nil, fmt.Errorf("generate rewritten events.jsonl: %w", err)
 	}
 
-	// Guarded atomic rewrite.
-	lockErr := b.withWriteLock(b.eventsPath, func() error {
-		if err := os.WriteFile(b.eventsPath, out, 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", b.eventsPath, err)
-		}
-		return nil
-	})
-	if lockErr != nil {
-		return nil, lockErr
+	// Apply: replace events.jsonl with the renumbered snapshot. Already inside
+	// the write guard (see RepairEvents), and the replacement is a same-dir
+	// temp file + rename (atomicRewrite), so an interrupted run leaves the
+	// previous file intact instead of a truncated audit trail.
+	runRewriteWindowHook("repair-events")
+	if err := atomicRewrite(b.eventsPath, out); err != nil {
+		return nil, fmt.Errorf("write %s: %w", b.eventsPath, err)
 	}
 
 	rep.Applied = true

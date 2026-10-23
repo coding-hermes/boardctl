@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.20.0
+version: 1.21.0
 date: 2026-10-23
 category: software-development
 ---
@@ -748,22 +748,28 @@ Boards are tiny; there is no need to batch or cache.
 
 ### Run-25b lessons (2026-10-23, rewrites vs a live board)
 
-- **Never run a rewrite verb on a board another process may be writing.**
+- **Rewrite verbs hold the write lock for their whole window (fixed).**
   `normalize-board --apply`, `normalize-board --repair-events --apply` and
-  `dedupe-board --apply` read and plan the whole file, then acquire the write
-  lock only for the final write — so anything appended in between is discarded
-  by the rewrite (DF-BOARDCTL-48/49: 160/160 concurrent creates lost, 5/5
-  appended events lost, both binaries). `create`/`update`/`event` are safe
-  (their whole check-then-act window is locked); the repairs are not.
-- **The loss is invisible.** `validate` and `doctor` return rc=0 after such a
-  loss — the vanished row leaves an orphan `task_created` event and nothing
-  reconciles it. If you repaired a board a lane was writing, reconcile the
-  event trail against the rows afterwards; a green validate proves nothing here.
-  The safe procedure until the rows close: copy the board to a scratch dir,
-  repair there, and swap the file while writers are frozen.
+  `dedupe-board --by-id` used to read and plan the whole file and take the
+  write lock only for the final write, so anything appended in between was
+  discarded by the rewrite (DF-BOARDCTL-48/49: 160/160 concurrent creates
+  lost, 5/5 appended events lost, both binaries). They now classify INSIDE
+  the guard, and `--repair-events` replaces `events.jsonl` atomically
+  (temp file + rename) instead of `os.WriteFile`. An append issued while a
+  repair runs queues on the guard and lands after the rewrite — it survives.
+  Binaries built before this fix (including v0.1.11) still lose it: check
+  `boardctl version` before repairing a board a lane is writing.
+- **The loss was invisible while it existed.** `validate` and `doctor` return
+  rc=0 even on a board a pre-fix rewrite damaged — the vanished row leaves an
+  orphan `task_created` event and nothing reconciles it. If you repaired a
+  board with a pre-fix binary while a lane was writing, reconcile the event
+  trail against the rows afterwards; a green validate proves nothing there.
+  Pre-fix fallback: copy the board to a scratch dir, repair there, and swap
+  the file while writers are frozen.
 - **The window is proportional to board size** (measured: 16 ms at 1k rows,
-  84 ms at 10k, 346 ms at 50k). "It's fast" is not a safety argument; a large
-  board widens the window.
+  84 ms at 10k, 346 ms at 50k). That is why a big board made the pre-fix race
+  easy to hit — and why the repair now holds the guard for that whole stretch
+  (writers wait; readers never do).
 - **You cannot author `acceptance_criteria` with the CLI** (DF-BOARDCTL-50): no
   `--acceptance-criteria` on `create`/`update`, so a dispatchable row is written
   by hand-editing `tasks.jsonl` — the bypass that produces duplicate ids. When

@@ -882,13 +882,16 @@ never rewritten (benign legacy duplicates exist on live boards).
 Like the row pass, `--repair-events` is a dry-run by default: no file is
 written, and the would-be bytes are staged at
 `<boarddir>/events.jsonl.renumbered.jsonl` for review. Pass `--apply` (alone
-or with the row repairs) to rewrite `events.jsonl` in place under the same
-guarded write path; the report says `DRY-RUN — no file written (pass --apply
-to rewrite events.jsonl)` until then. Keep the two arms distinct in your
-head: the row-shape pass repairs TASK rows in `tasks.jsonl` (keys,
-`depends_on` shapes, alias statuses); `--repair-events` repairs the EVENT
-id sequence in `events.jsonl` — different file, different defect, and the
-event pass runs only when the flag is present.
+or with the row repairs) to replace `events.jsonl` atomically — same-directory
+temp file + rename, so an interrupted run leaves the previous trail intact
+rather than truncating it — under the same guarded write path, and the guard
+covers the whole read/classify/rewrite window: an `event` appended while the
+repair runs queues behind it and survives (DF-BOARDCTL-49). The report says
+`DRY-RUN — no file written (pass --apply to rewrite events.jsonl)` until
+then. Keep the two arms distinct in your head: the row-shape pass repairs TASK
+rows in `tasks.jsonl` (keys, `depends_on` shapes, alias statuses);
+`--repair-events` repairs the EVENT id sequence in `events.jsonl` — different
+file, different defect, and the event pass runs only when the flag is present.
 
 ```bash
 boardctl -C ~/myproject normalize-board --repair-events             # report event-id drift, no writes
@@ -1258,8 +1261,13 @@ Concurrent writers must go through `boardctl create`/`update` (BT-050): every
 write verb takes an exclusive advisory flock on `.coding-hermes/board/.lock`
 for its whole check-then-act window, so simultaneous writers cannot interleave
 appends, mint duplicate event ids, or double-file the same task id — under the
-lock, exactly one concurrent create of a given id wins. The kernel releases the
-lock if a writer crashes, so there is no stale-lock cleanup, and readers
+lock, exactly one concurrent create of a given id wins. The rewrite verbs
+(`normalize-board --apply`, `--repair-events`, `dedupe-board --by-id`) hold the
+same guard across their whole read/classify/rewrite window, so a row or event
+appended while a repair runs is preserved: it queues behind the guard and
+appends after the rewrite instead of being overwritten by the repair's stale
+snapshot (DF-BOARDCTL-48). The kernel releases the lock if a writer crashes, so
+there is no stale-lock cleanup, and readers
 (`list`, `show`, `validate`, `doctor`) never take it. Appending rows with your
 own JSON serialization bypasses the id-refusal and shape guards AND this lock —
 that bypass is the known source of duplicate-id corruption on fleet boards.

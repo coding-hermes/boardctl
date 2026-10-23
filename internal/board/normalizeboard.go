@@ -28,10 +28,12 @@ package board
 // NOTHING. Only --apply mutates, through ONE guarded atomic rewrite of
 // tasks.jsonl (no per-row rewrite loop): every repair is classified first,
 // any surprise aborts before the file is touched, untouched lines are
-// asserted byte-identical, and the write guard serializes against sibling
-// writers. No audit event is appended — this is a spelling/shape repair of
-// values already on the board (the NormalizeTask discipline), and the
-// printed change list is the audit trail.
+// asserted byte-identical, and the read/classify/rewrite window is ONE
+// guarded section (DF-BOARDCTL-48: a sibling writer's append either lands
+// before the snapshot is read or after the rewrite, never inside it). No
+// audit event is appended — this is a spelling/shape repair of values already
+// on the board (the NormalizeTask discipline), and the printed change list is
+// the audit trail.
 //
 // Untracked repair CACHE files (tasks.normalized.jsonl) are written only in
 // dry-run, hold exactly the bytes --apply would write, and are validated
@@ -196,6 +198,29 @@ func mustJSONRaw(v any) json.RawMessage {
 // operator resolves it by hand without half-repaired rows. Rows with only
 // mechanical repairs convert together.
 func (b *Board) NormalizeBoard(apply bool) (*NormalizeBoardReport, error) {
+	// DF-BOARDCTL-48: the WHOLE check-then-act window — the read, the
+	// classification, the untouched-line byte assertion and the atomic
+	// rewrite — runs inside ONE guarded section. Taking the guard only around
+	// atomicRewrite (the shipped shape) left the read/classify pass open, so a
+	// create that landed in that window was reported as appended and then
+	// silently overwritten by the rewrite's stale snapshot (dogfood run 25:
+	// 160/160 concurrent creates lost, their task_created events orphaned).
+	// A dry-run takes the same guard so its classification is one consistent
+	// snapshot of the board rather than a torn one.
+	var rep *NormalizeBoardReport
+	var opErr error
+	lockErr := b.withWriteLock(b.tasksPath, func() error {
+		rep, opErr = b.normalizeBoardLocked(apply)
+		return nil // err rides opErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	return rep, opErr
+}
+
+// normalizeBoardLocked is NormalizeBoard's body, running under the write guard.
+func (b *Board) normalizeBoardLocked(apply bool) (*NormalizeBoardReport, error) {
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
 		return nil, err
@@ -412,18 +437,13 @@ func (b *Board) NormalizeBoard(apply bool) (*NormalizeBoardReport, error) {
 		return rep, nil
 	}
 
-	// Apply: one guarded atomic rewrite — the whole classified batch lands
-	// or nothing does (same discipline as normalizeTaskLocked, board-wide).
-	var applyErr error
-	lockErr := b.withWriteLock(b.tasksPath, func() error {
-		applyErr = atomicRewrite(b.tasksPath, rewritten)
-		return nil // err rides applyErr; the guard must drop regardless
-	})
-	if lockErr != nil {
-		return nil, lockErr
-	}
-	if applyErr != nil {
-		return nil, applyErr
+	// Apply: one atomic rewrite — the whole classified batch lands or nothing
+	// does (same discipline as normalizeTaskLocked, board-wide). We are
+	// already inside the write guard (see NormalizeBoard), so no sibling
+	// append can slip between this snapshot's read and this write.
+	runRewriteWindowHook("normalize-board")
+	if err := atomicRewrite(b.tasksPath, rewritten); err != nil {
+		return nil, err
 	}
 	rep.Applied = true
 	rep.AppliedPath = b.tasksPath

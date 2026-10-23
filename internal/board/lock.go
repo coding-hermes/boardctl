@@ -102,6 +102,30 @@ func (l *boardLock) release(b *Board) {
 // can actually observe an unserialized board; production code never sets it.
 var writeLockBypass = false
 
+// rewriteWindowHook is the second test-only seam, used by
+// write_concurrency_test.go to interleave a concurrent append with a REWRITE
+// verb (normalize-board, --repair-events, dedupe-board --by-id) at a
+// deterministic point: immediately after the verb has read and classified its
+// snapshot and immediately before it writes.
+//
+// DF-BOARDCTL-48 is the reason it exists. Those verbs used to classify OUTSIDE
+// the guard and take it only around the final write, so an append that landed
+// in between was silently overwritten — reproducible only by timing luck
+// without a seam like this. The hook runs INSIDE the verb's critical section
+// (the read/classify/write window is one guarded section), so an append issued
+// from it queues on the guard and lands after the rewrite; with the guard
+// bypassed it lands in the stale window and the rewrite swallows it.
+//
+// Production leaves it nil (the nil check costs nothing).
+var rewriteWindowHook func(verb string)
+
+// runRewriteWindowHook fires the interleave seam when a test armed it.
+func runRewriteWindowHook(verb string) {
+	if rewriteWindowHook != nil {
+		rewriteWindowHook(verb)
+	}
+}
+
 // withWriteLock runs fn while holding the board's write guard. Every
 // check-then-act write verb in this package wraps its whole body (validation
 // through final write) in this helper, so the guard's verdict and the write
