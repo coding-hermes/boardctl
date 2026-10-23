@@ -46,6 +46,12 @@ Mechanical repairs only (key aliases, string `depends_on` -> array, alias
 statuses); ambiguous rows are REFUSED and listed — decide those by hand.
 Rows without `created_at` are reported, never fabricated.
 
+`normalize-board` is FAIL-CLOSED on an unparseable `tasks.jsonl` line: it
+takes no `--skip-bad-lines`, names the file + line, writes nothing, and
+prints the remedy inline — `validate --repair` -> review
+`tasks.rewritten.jsonl` -> swap it in -> re-run `normalize-board` (see 1a).
+A writing repair must never rewrite a board it could not read in full.
+
 README: "## normalize-board — drifted row SHAPES, board-wide (DF-BOARDCTL-36)".
 
 ### 2. Header drift — ticks_total vs max event tick

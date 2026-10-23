@@ -84,7 +84,7 @@ commands:
            (--apply only; one audit event quotes the preserved text);
            a "duplicate" with no earlier twin is refused. --decide alone
            never writes; only --decide --apply does.
-  normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines]
+  normalize-board [--apply] [--repair-events] [--json]
            report (and with --apply fix) drifted row SHAPES on ONE board —
            the board-wide twin of 'update --normalize': renames known key
            aliases to their canonical keys, converts string depends_on
@@ -134,6 +134,10 @@ commands:
 keeping every line that parses; unparseable lines are reported on stderr as a
 SKIPPED-LINES evidence block and the command exits 1 even though it produced
 its normal output. Without the flag the first unparseable line aborts.
+normalize-board is fail-closed and takes NO --skip-bad-lines: a writing repair
+must never rewrite a board it could not read in full, so an unparseable line
+refuses the command (file + line number named) with the remedy printed inline:
+validate --repair -> review tasks.rewritten.jsonl -> swap it in -> re-run.
 validate --repair: salvage every parseable row into <boarddir>/tasks.rewritten.jsonl
 (manual review file — tasks.jsonl is never overwritten).
 validate --strict-keys: treat BT-056 key-uniformity drift as an error (exit 1).
@@ -1355,12 +1359,15 @@ func cmdNormalizeBoard(dir string, args []string) error {
 	args = reorderArgs(args, valueFlags("C"))
 	apply := fs.Bool("apply", false, "rewrite tasks.jsonl with every mechanical repair in one atomic pass (default: dry-run, stages tasks.normalized.jsonl only)")
 	asJSON := fs.Bool("json", false, "emit the report as JSON")
-	skipBad := useSkipBad(fs)
 	repairEvents := fs.Bool("repair-events", false, "repair descending event ids in events.jsonl (extends NormalizeBoard)")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines] [-C dir]\n")
+		// DF-BOARDCTL-46: --skip-bad-lines is deliberately ABSENT here. It
+		// promised a degraded read that normalize-board cannot honor without
+		// a lossy rewrite, so the command is fail-closed on an unparseable
+		// line and the help points at the salvage path instead.
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl normalize-board [--apply] [--repair-events] [--json] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\nmechanical repairs (applied together on --apply):\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  key aliases  -> canonical keys via the BT-056 table (why -> reasoning, acceptance -> acceptance_criteria, ...)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  depends_on   -> array from a string value when unambiguous: \"[]\" and \"\" -> [], '[\"A\"]' -> the array, one bare id -> [id]\n")
@@ -1370,6 +1377,10 @@ func cmdNormalizeBoard(dir string, args []string) error {
 		_, _ = fmt.Fprintf(fs.Output(), "depends_on shape (number/object/malformed), a status that is absent, null, or unknown. Rows without\n")
 		_, _ = fmt.Fprintf(fs.Output(), "created_at are counted and reported — never fabricated. --apply rewrites tasks.jsonl in ONE guarded\n")
 		_, _ = fmt.Fprintf(fs.Output(), "atomic pass (all repairs or nothing); no audit event is appended (spelling/shape repair, not a transition).\n")
+		_, _ = fmt.Fprintf(fs.Output(), "an UNPARSEABLE tasks.jsonl line REFUSES the whole command (file + line number named) and nothing is\n")
+		_, _ = fmt.Fprintf(fs.Output(), "written: this repair never degrades. The remedy is printed on the refusal itself:\n")
+		_, _ = fmt.Fprintf(fs.Output(), "  %s\n", board.NormalizeBoardRepairHint)
+		_, _ = fmt.Fprintf(fs.Output(), "\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -1384,7 +1395,9 @@ func cmdNormalizeBoard(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	armSkipBad(b, skipBad)
+	// DF-BOARDCTL-46: no armSkipBad here — normalize-board reads the board
+	// strictly. A degraded read would let --apply rewrite a board it could
+	// not classify in full, so an unparseable line refuses the command.
 	rep, err := b.NormalizeBoard(*apply)
 	if err != nil {
 		return err
