@@ -51,12 +51,13 @@ commands:
   show    <id> [--events]
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
-          [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
+          [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
           [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
           [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
           [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
+          [--acceptance-criteria TEXT]
           [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]...
           (repeatable; each merges one element into its pull_requests/
           branches/worktrees dimension — existing elements, the other
@@ -657,7 +658,7 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "evidence-run-id", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "evidence-run-id", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
@@ -668,6 +669,16 @@ func cmdCreate(dir string, args []string) error {
 	dependsOn := fs.String("depends-on", "", "comma-separated dependency ids")
 	reasoning := fs.String("reasoning", "", "reasoning note")
 	capTags := fs.String("capability-tags", "", "comma-separated capability tags")
+	// DF-BOARDCTL-50: the dispatchability field. Foremen refuse to dispatch
+	// a row without acceptance_criteria, and until now the only way to write
+	// one was a line-wise JSON edit of tasks.jsonl — the exact bypass that
+	// skips the id-refusal and shape guards (and the BT-050 write lock) and
+	// produced the duplicate-id corruption that lock exists to stop. Free
+	// text, written verbatim: embedded newlines are JSON-escaped, so the
+	// value stays one physical JSONL line. Omitted = the key is NOT written
+	// at all (no empty placeholder), and an empty value is treated as
+	// omitted, like every other string flag here.
+	acceptance := fs.String("acceptance-criteria", "", "acceptance criteria the row must satisfy before it can be dispatched (free text; multi-line allowed; omit = write no key)")
 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence (SG-126)")
 	// BT-037: build-location + session audit fields. Omitted flags write
 	// NOTHING (no empty worktree/branch, no empty sessions array) — a row
@@ -696,7 +707,12 @@ func cmdCreate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--acceptance-criteria TEXT] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "\n          --acceptance-criteria is free text and may span lines (embedded\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          newlines are JSON-escaped into the one physical row line). It is\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          the dispatchability field: a foreman will not dispatch a row\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          without it. Omit the flag and NO acceptance_criteria key is\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          written (never an empty placeholder).\n")
 		fmt.Fprintf(fs.Output(), "\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n")
 		fmt.Fprintf(fs.Output(), "          -review → P4, -docs/-readme → P5. An explicit --priority\n")
 		fmt.Fprintf(fs.Output(), "          always wins (BT-071).\n")
@@ -787,6 +803,12 @@ func cmdCreate(dir string, args []string) error {
 	if *deferred {
 		spec.Deferred = deferred
 	}
+	// DF-BOARDCTL-50: an empty --acceptance-criteria is the omitted sentinel
+	// (same discipline as --reasoning/--worktree above) — the row then
+	// carries no acceptance_criteria key at all rather than an empty one.
+	if *acceptance != "" {
+		spec.AcceptanceCriteria = acceptance
+	}
 	if *complexity != "" {
 		n, err := parseIntFlag("--complexity", *complexity)
 		if err != nil {
@@ -806,7 +828,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "pull-request", "assoc-branch", "assoc-worktree"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -825,6 +847,12 @@ func cmdUpdate(dir string, args []string) error {
 	replace := fs.Bool("replace", false, "with --note: overwrite foreman_note instead of appending")
 	blockedReason := fs.String("blocked-reason", "", "blocked_reason")
 	completedAt := fs.String("completed-at", "", "completed_at timestamp")
+	// DF-BOARDCTL-50: the update-side door for the dispatchability field
+	// (create's --acceptance-criteria twin). Omitting it leaves the row's
+	// key untouched and never creates one; naming it REPLACES the value,
+	// appending the key at the end of the row's order when absent. Free
+	// text: embedded newlines are JSON-escaped into the one physical line.
+	acceptance := fs.String("acceptance-criteria", "", "acceptance criteria (free text; multi-line allowed; REPLACES the value; omitted = leave untouched, never an empty key)")
 	// BT-037: build-location + session audit fields. An omitted flag leaves
 	// the row's key untouched (and never creates it); --session REPLACES the
 	// whole sessions array with the ids given here, in order.
@@ -864,9 +892,14 @@ func cmdUpdate(dir string, args []string) error {
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
-		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--worktree PATH] [--branch NAME]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--acceptance-criteria TEXT]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--worktree PATH] [--branch NAME]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... (repeatable; each MERGES one element into its dimension — pull_requests/branches/worktrees — never overwriting existing elements or the other dimensions)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "\n          --acceptance-criteria is free text and may span lines (embedded\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          newlines are JSON-escaped into the one physical row line). It\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          replaces the row's criteria, so a foreman can dispatch the row;\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          an omitted flag leaves the key untouched (never an empty one).\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -889,7 +922,7 @@ func cmdUpdate(dir string, args []string) error {
 	// --normalize alone satisfies the change-flag gate and needs no --force
 	// beyond the fleet-id escape hatch.
 	if *normalize {
-		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "worktree", "branch", "session", "priority", "evidence-run-id"} {
+		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id"} {
 			if fs.Lookup(f).Value.String() != "" {
 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
 			}
@@ -929,7 +962,11 @@ func cmdUpdate(dir string, args []string) error {
 		NoteReplace:   *replace,
 		BlockedReason: ptr(*blockedReason),
 		CompletedAt:   ptr(*completedAt),
-		Force:         *force,
+		// DF-BOARDCTL-50: empty value = flag omitted for every other string
+		// flag, and the same ptr() discipline applies here — an untouched
+		// row never gains an empty acceptance_criteria key.
+		AcceptanceCriteria: ptr(*acceptance),
+		Force:              *force,
 	}
 	if *priority != "" {
 		spec.Priority = priority

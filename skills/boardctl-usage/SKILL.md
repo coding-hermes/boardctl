@@ -293,6 +293,13 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
   disagrees with the row's `priority` field, the priority FIELD wins — fix
   with `update <id> --title ...` (or `--priority` if the field is the stale
   half) instead of hand-editing tasks.jsonl.
+- `--acceptance-criteria` (create and update, DF-BOARDCTL-50): the
+  dispatchability field — foremen will not dispatch a row without it. Free
+  text; multi-line values stay ONE JSON string on one physical row line.
+  Omitted = the key is NOT written (no empty/null placeholder, and `create`
+  never neutral-mirrors it from the preceding row); on `update` a named flag
+  REPLACES the row's criteria. This is the sanctioned path for the field —
+  do not hand-edit tasks.jsonl for it.
 - `event --type`: must be one of the 18 enumerated event types (DOC-27 —
   the complete vocabulary, alphabetical; the CLI refuses unknown values
   with `not in vocabulary {…}`):
@@ -419,7 +426,9 @@ v0.1.9 binary):
 6. **`create` mirrors the LAST row's schema.** On boards with legacy rows your
    new row inherits their key style — that's a feature (byte-stable diffs),
    but check `stats` output for `(none)` status groups after creating on
-   odd boards.
+   odd boards. Exception: `deferred` and `acceptance_criteria` are NEVER
+   neutral-mirrored — when the flag is omitted those keys are absent from the
+   new row, whatever the mirrored row carried.
 7. **Topology B (header on line 1 of tasks.jsonl) is fully writable
    (BT-010).** `create` appends after the header line, `update` rewrites the
    row and bumps the header's `last_commit`, events append normally. The

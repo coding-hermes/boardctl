@@ -250,6 +250,21 @@ type TaskRowSpec struct {
 	// from updated_at.
 	Deferred *bool
 
+	// DF-BOARDCTL-50: the row's acceptance criteria — the field every fleet
+	// foreman requires before it will dispatch a row, which until now had NO
+	// sanctioned write path (create could not author it at all, so every lane
+	// hand-edited tasks.jsonl line-wise in raw JSON — the exact bypass that
+	// produces duplicate-id corruption). Same nil-untouched discipline as the
+	// fields above: nil (flag omitted) writes NO acceptance_criteria key at
+	// all, and — like Deferred — the key is NEVER neutral-mirrored from the
+	// preceding row, so a board whose rows carry criteria cannot stamp a
+	// null placeholder onto a row that was created without them. A non-nil
+	// pointer is authoritative and IS written; the value is free text and
+	// rides the row's own serializer, so multi-line criteria (one string,
+	// embedded newlines) land as ONE physical JSONL line with the newlines
+	// JSON-escaped, byte-exact as value content.
+	AcceptanceCriteria *string
+
 	// BT-077: plural work-artifact associations — the raw CLI string for
 	// ONE element of ONE dimension (nil = flag absent, nothing written;
 	// the singular worktree/branch fields and sessions above are never
@@ -495,6 +510,16 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 			if k == "deferred" && spec.Deferred == nil {
 				continue
 			}
+			// DF-BOARDCTL-50: acceptance_criteria follows the same rule —
+			// never neutral-mirrored. A null placeholder would mean every
+			// create on a board whose rows carry criteria writes the key
+			// (with a null value) even when the caller never asked for it,
+			// which is exactly the "empty key on a row that has none"
+			// shape the flag's absence must not produce. Named explicitly?
+			// It is appended through the user-keys path below.
+			if k == "acceptance_criteria" && spec.AcceptanceCriteria == nil {
+				continue
+			}
 			row.Keys = append(row.Keys, k)
 			row.Vals[k] = neutral(k)
 		}
@@ -561,6 +586,12 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.Deferred != nil {
 		overrides["deferred"] = *spec.Deferred
 	}
+	// DF-BOARDCTL-50: free-text criteria, written verbatim through the row's
+	// own serializer (encodeValue's string branch JSON-escapes embedded
+	// newlines, so the whole value stays on one physical JSONL line).
+	if spec.AcceptanceCriteria != nil {
+		overrides["acceptance_criteria"] = *spec.AcceptanceCriteria
+	}
 	overrides["created_at"] = nowStr
 	overrides["updated_at"] = nowStr
 	for k, v := range overrides {
@@ -571,7 +602,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 	}
 	// Keys the user asked for but the mirrored schema lacks: append at end.
-	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred"} {
+	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "acceptance_criteria"} {
 		if v, ok := overrides[k]; ok && !row.Has(k) {
 			if err := set(k, v); err != nil {
 				return "", err
@@ -781,6 +812,13 @@ type UpdateSpec struct {
 	// key at all, byte-identical to a never-deferred row apart from
 	// updated_at.
 	Deferred *bool
+	// DF-BOARDCTL-50: the row's acceptance criteria, same nil-untouched
+	// discipline. nil leaves the key alone; a non-nil pointer REPLACES the
+	// value (the field is one prose blob, never merged) and APPENDS the key
+	// at the end of the row's key order when the row does not carry it yet.
+	// Multi-line text is written through the row's own serializer, so it
+	// stays one physical JSONL line with the newlines JSON-escaped.
+	AcceptanceCriteria *string
 	// BT-077: the update-path association elements, same nil-untouched
 	// discipline. AssocDim names the dimension (pull_requests, branches,
 	// worktrees); AssocValues carries ONE OR MORE raw CLI strings (one
@@ -1023,6 +1061,17 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			changed = append(changed, "deferred")
 		}
 	}
+	// DF-BOARDCTL-50: --acceptance-criteria replaces the row's criteria —
+	// the missing sanctioned door this field never had (foremen refuse to
+	// dispatch a row without it, so lanes hand-edited tasks.jsonl instead).
+	// set() appends the key at the end of the row's order when absent and
+	// encodes the free text through the row's own style, so a multi-line
+	// value stays ONE physical line with \n escapes inside the string.
+	if spec.AcceptanceCriteria != nil {
+		if err := set("acceptance_criteria", *spec.AcceptanceCriteria); err != nil {
+			return nil, err
+		}
+	}
 	// BT-077: --pull-request/--branch-assoc/--worktree-assoc MERGE one
 	// element into its dimension. Every other key on the row — including
 	// the other association dimensions and the other elements of this one —
@@ -1094,7 +1143,7 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	// no-change gate must not refuse it; anything else without a change
 	// flag still fails with the full flag list.
 	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--acceptance-criteria/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))

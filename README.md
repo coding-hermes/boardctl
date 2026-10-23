@@ -98,6 +98,14 @@ boardctl version --json            # {"version":"v0.1.11","build":"v0.1.11"}
 # "Finding fingerprints" below.
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
     --reasoning "Idempotent retry with backoff" --capability-tags go,net
+# --acceptance-criteria carries the row's dispatchability contract: the field
+# every fleet foreman requires before it will dispatch the row. Free text —
+# multi-line values are ONE JSON string, so the row stays one physical JSONL
+# line with the newlines JSON-escaped. Omitting the flag writes NO
+# acceptance_criteria key at all (never an empty placeholder). This is the
+# sanctioned write path for the field, so never hand-edit tasks.jsonl for it.
+boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
+    --acceptance-criteria "1) retry is idempotent; 2) full suite green"
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
     --reasoning "Idempotent retry with backoff" --evidence-run-id qa-2026-09-18T04:11Z
 
@@ -124,6 +132,14 @@ boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
 boardctl -C ~/myproject update FEAT-1 --title "Add retry with backoff"
 boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
     --branch wt/ft-1 --session 2f8c41a0
+# DF-BOARDCTL-50: --acceptance-criteria authors or repairs the dispatchability
+# field on a row that already exists (create's twin flag). The value REPLACES
+# the row's criteria, multi-line text included (one JSON string, one physical
+# row line); omitting the flag leaves the key untouched and never creates an
+# empty one. A row without criteria is exactly what foremen refuse to
+# dispatch — this flag is the sanctioned fix, not a tasks.jsonl hand edit.
+boardctl -C ~/myproject update FEAT-1 \
+    --acceptance-criteria "1) retry is idempotent; 2) full suite green"
 # worker and completion metadata (each flag updates only its named field)
 boardctl -C ~/myproject update FEAT-1 --worker-status complete \
     --completed-at "2026-10-10 19:30:00"
@@ -1280,6 +1296,47 @@ boardctl -C ~/myproject update FEAT-3 --assoc-worktree ~/worktrees/fix-a   # (si
 boardctl -C ~/myproject show FEAT-3   # pull_requests / branches / worktrees arrays on the row
 ```
 
+## Acceptance criteria (DF-BOARDCTL-50)
+
+`acceptance_criteria` is the row's dispatchability contract: the fleet's
+foremen will not dispatch a row that does not carry one. Until DF-BOARDCTL-50
+there was no sanctioned write path for the field at all — `create` could not
+author it and `update` had no flag for it — so every lane wrote it by editing
+`tasks.jsonl` line-wise in raw JSON, which bypasses the id-refusal and shape
+guards AND the BT-050 write lock (see [Board topology](#board-topology)). That
+bypass is the known source of duplicate-id corruption on fleet boards, so a
+required field with no sanctioned door guaranteed the unsanctioned one.
+
+Both verbs now take `--acceptance-criteria TEXT`:
+
+```bash
+boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
+    --acceptance-criteria "1) retry is idempotent; 2) full suite green"
+boardctl -C ~/myproject update FEAT-1 \
+    --acceptance-criteria "1) retry is idempotent; 2) full suite green; 3) no new deps"
+```
+
+- **Free text, multi-line allowed.** The value is one JSON string: embedded
+  newlines are JSON-escaped, so the row stays a single physical JSONL line
+  and the value reads back byte-exact (newlines included). The same holds for
+  quotes, tabs and non-ASCII bytes.
+- **Omitted flag = no key at all.** Neither verb writes an empty or `null`
+  placeholder: a row created without the flag carries no `acceptance_criteria`
+  key, and an `update` that does not name the flag leaves the key exactly as
+  it found it. `create` never neutral-mirrors the key from the preceding row
+  (the BT-076 `deferred` discipline), so a board whose rows all carry criteria
+  cannot stamp the key onto a row that was created without one.
+- **`update` replaces the value.** The field is one prose blob, never merged:
+  naming the flag overwrites the row's criteria (and appends the key at the
+  end of the row's key order when the row does not carry it yet). Every other
+  field and every other line of `tasks.jsonl` round-trips byte-identical.
+- **A row without criteria is not a validate error.** `validate` exits 0 and
+  reports `RESULT: OK`; missing criteria is a dispatchability gap for the
+  foreman, not board corruption.
+
+> **Not in the published v0.1.11 binary** — it rejects the flag with "flag
+> provided but not defined". It ships in the next release.
+
 ## Board topology
 
 ```
@@ -1327,6 +1384,9 @@ there is no stale-lock cleanup, and readers
 (`list`, `show`, `validate`, `doctor`) never take it. Appending rows with your
 own JSON serialization bypasses the id-refusal and shape guards AND this lock —
 that bypass is the known source of duplicate-id corruption on fleet boards.
+Every field a foreman consumes has a sanctioned flag on `create`/`update`,
+`acceptance_criteria` included (`--acceptance-criteria`, DF-BOARDCTL-50), so a
+raw JSONL edit is never the only way to write one.
 
 ## Repository layout
 
