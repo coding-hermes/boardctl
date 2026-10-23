@@ -707,3 +707,48 @@ Real view = boardctl's own board + warpfs's board via the links registry
    drove the same drifted boards, reproducing every defect — the findings are
    artifact-level, not checkout-level. `bunker exec` still expands `$HOME` on the
    controller, so stage scripts with `bunker cp` and invoke them by relative name.
+
+## Run-25b addendum (2026-10-23) — the write lock protects appends, not rewrites
+
+1. **Why this addendum exists.** Run 25 (same tick) closed the question "does the
+   repair work". It never asked "what if the board is being written while the
+   repair runs" — which is the normal state of a fleet board. Full note:
+   `docs/dogfood/2026-10-23-run25b-concurrent-rewrite.md`; rows DF-BOARDCTL-48..50.
+2. **The read is outside the guard, so the rewrite can only see a stale board.**
+   `NormalizeBoard` classifies every line first and acquires the write guard only
+   around the final `atomicRewrite` (`internal/board/normalizeboard.go:418-421`);
+   `RepairEvents` does the same around a plain `os.WriteFile`
+   (`internal/board/repair_events.go:209-214`); `DedupeByID` never takes the guard
+   at all (`internal/board/iddupe.go:107-236`). Measured consequence: a row created
+   while `normalize-board --apply` runs is present mid-run and gone afterwards
+   (160/160 concurrent creates lost across 8 rounds, every create rc=0), and an
+   event appended during `--repair-events --apply` is absent from the final file
+   in 5/5 attempts on HEAD and 5/5 on the released v0.1.11.
+3. **The loss is silent at every surface.** `validate` and `doctor` return rc=0 on
+   the damaged board (the vanished row's `task_created` event survives as an
+   orphan), so an operator who watched a create succeed has no signal that it was
+   reverted. `lock.go:17-19` says the guard exists to prevent exactly this, and
+   README:1256-1259 promises the guard covers "its whole check-then-act window":
+   for the rewrite verbs the documentation is ahead of the code.
+4. **Window size is a function of board size, and it is not small.** hyperfine,
+   warm, 5 runs, `--apply` re-armed each run: 1,000 rows 16.0 ms ± 5.8, 10,000
+   rows 84.3 ms ± 9.4, 50,000 rows 346.2 ms ± 25.6. That is why the repro used a
+   big board — and why "repair is fast" in run 25 is a comfort, not a safety
+   argument.
+5. **The concurrency test suite covers only the half that works.** All seven tests
+   in `internal/board/write_concurrency_test.go` are append-vs-append, same-id
+   racing, lock exclusivity/release, or reader isolation; none interleaves a
+   rewrite with an append. The fix's regression test has to fail on today's tree
+   (checks in the rows' acceptance criteria).
+6. **The sanctioned workflow forces the unsanctioned write path.** No `create`/
+   `update` flag can set `acceptance_criteria` (README mentions it only as a key
+   `normalize-board` repairs), so every lane that needs a dispatchable row edits
+   raw JSONL — the bypass README:1262-1264 names as the source of duplicate-id
+   corruption. This delivery's own three rows needed that hand edit (DF-BOARDCTL-50).
+7. **Verified clean in the same pass.** 61 documented commands driven on both the
+   v0.1.11 asset and a HEAD build: identical exit codes and output shapes, no drift;
+   `render -o html --json sidecar` → `import --renumber` round-trips as documented;
+   umbrella works over real git children; the write vocabularies, id law,
+   dangling-`depends_on` and negative-header refusals all fire precisely; read verbs
+   stay in the tens of milliseconds. Install leg inherited from run 25 (same HEAD,
+   same docs): agent `boardctl-df25`, 1.18 s, v0.1.11 verified, destroyed cleanly.

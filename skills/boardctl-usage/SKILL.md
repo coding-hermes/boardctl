@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.19.0
+version: 1.20.0
 date: 2026-10-23
 category: software-development
 ---
@@ -745,3 +745,32 @@ Boards are tiny; there is no need to batch or cache.
   tree (go.mod/go.sum + cmd/ + internal/), `go install ./cmd/dedupe-board`.
   Cold: 21.7s including a Go toolchain download; the binary alone is ~2MB of
   source, stdlib-only.
+
+### Run-25b lessons (2026-10-23, rewrites vs a live board)
+
+- **Never run a rewrite verb on a board another process may be writing.**
+  `normalize-board --apply`, `normalize-board --repair-events --apply` and
+  `dedupe-board --apply` read and plan the whole file, then acquire the write
+  lock only for the final write — so anything appended in between is discarded
+  by the rewrite (DF-BOARDCTL-48/49: 160/160 concurrent creates lost, 5/5
+  appended events lost, both binaries). `create`/`update`/`event` are safe
+  (their whole check-then-act window is locked); the repairs are not.
+- **The loss is invisible.** `validate` and `doctor` return rc=0 after such a
+  loss — the vanished row leaves an orphan `task_created` event and nothing
+  reconciles it. If you repaired a board a lane was writing, reconcile the
+  event trail against the rows afterwards; a green validate proves nothing here.
+  The safe procedure until the rows close: copy the board to a scratch dir,
+  repair there, and swap the file while writers are frozen.
+- **The window is proportional to board size** (measured: 16 ms at 1k rows,
+  84 ms at 10k, 346 ms at 50k). "It's fast" is not a safety argument; a large
+  board widens the window.
+- **You cannot author `acceptance_criteria` with the CLI** (DF-BOARDCTL-50): no
+  `--acceptance-criteria` on `create`/`update`, so a dispatchable row is written
+  by hand-editing `tasks.jsonl` — the bypass that produces duplicate ids. When
+  you do it, edit exactly the target line, keep every other line byte-identical,
+  and re-run `validate` + a duplicate-id census afterwards.
+- **Documented surface and release parity are clean as of v0.1.11**: 61
+  documented commands give identical exit codes/output on the released asset and
+  a HEAD build, and `render -o x.html --json x.json` + `import --renumber`
+  round-trips as written. Don't re-chase a docs-vs-artifact gap that this pass
+  closed — check the release tag first.
