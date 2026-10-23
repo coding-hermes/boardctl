@@ -214,13 +214,13 @@ boardctl -C R normalize-board --repair-events
                                            # dry-run; --apply rewrites the file.
                                            # PROVEN on a 700-event board: 473
                                            # fixed, validate 418 err -> 11, 0
-                                           # descend. CAVEAT (DF-BOARDCTL-44):
-                                           # renumbered lines are RE-SERIALIZED,
-                                           # so keep a backup and diff fields —
-                                           # ints >2^53 round, double spaces in
-                                           # string values collapse, keys re-sort.
-                                           # Also lacks duplicate lookahead
-                                           # (DF-BOARDCTL-45).
+                                           # descend. DF-BOARDCTL-44: the repair
+                                           # is now byte-level surgery — ONLY the
+                                           # id value token changes; key order,
+                                           # separator spacing, double spaces in
+                                           # string values and ints >2^53 stay
+                                           # verbatim (see README). Still lacks
+                                           # duplicate lookahead (DF-BOARDCTL-45).
 
 # pre-commit board lint (run 15, v0.1.8+, BT-054)
 boardctl -C R install [--hook-path P] [--timeout S] [--dry-run]

@@ -1,10 +1,10 @@
 package board
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 // DF-BOARDCTL-38: repair descending event ids in events.jsonl.
@@ -222,39 +222,200 @@ func (b *Board) RepairEvents(dryRun bool) (*RepairEventsReport, error) {
 }
 
 // renumberEventID takes one events.jsonl line (JSON) and returns a new line
-// with the "id" field set to newID. It preserves the original JSON style
-// (spaced vs compact).
+// with ONLY the numeric value token of the top-level "id" field replaced.
+//
+// DF-BOARDCTL-44: this used to unmarshal the line into a map[string]any and
+// re-marshal it, which (a) rounded integers above 2^53 through float64, (b)
+// dropped the writer's key order (map iteration is sorted on marshal), and
+// (c) collapsed runs of spaces inside string values while it "restored"
+// spacing. The promise — every field except id is preserved — is now literal:
+// the id value's byte range is replaced in place, so key order, all separator
+// spacing, every other value's raw bytes (double spaces included), JSON string
+// escaping, and the trailing newline/surrounding bytes survive verbatim.
+//
+// The line must be a JSON object whose top-level "id" holds a JSON number.
+// A missing or non-numeric id is refused here; RepairEvents never routes such
+// events to this helper (legacy events are skipped and reported as
+// non-numeric), so the observable CLI behavior for them is unchanged.
 func renumberEventID(raw []byte, newID int64) ([]byte, error) {
-	// Parse the JSON, modify id, re-encode.
-	var m map[string]any
-	if err := json.Unmarshal(raw, &m); err != nil {
-		return nil, fmt.Errorf("parse event: %w", err)
+	span, err := topLevelFieldSpan(raw, "id")
+	if err != nil {
+		return nil, err
 	}
-	m["id"] = newID
+	value := raw[span.start:span.end]
+	if _, ok := decodeJSONNumber(value); !ok {
+		return nil, fmt.Errorf("id value is not a JSON number: %s", diagnosticSnippet(value))
+	}
 
-	// Re-encode as JSON. We'll try to preserve the original style
-	// by checking if the original had spaces after colons/commas.
-	var out []byte
-	// Use compact JSON for reliability; the event id is the critical field.
-	if rawStyle := hasSpaces(raw); rawStyle {
-		out, _ = json.MarshalIndent(m, "", "  ")
-		// Flatten back to single line.
-		out = bytes.ReplaceAll(out, []byte("\n"), []byte(""))
-		out = bytes.ReplaceAll(out, []byte("  "), []byte(" "))
-	}
-	if len(out) == 0 {
-		out, _ = json.Marshal(m)
-	}
-	// Ensure trailing newline if the original had one.
-	if len(raw) > 0 && raw[len(raw)-1] == '\n' {
-		out = append(out, '\n')
-	}
+	out := make([]byte, 0, len(raw)+20)
+	out = append(out, raw[:span.start]...)
+	out = strconv.AppendInt(out, newID, 10)
+	out = append(out, raw[span.end:]...)
 	return out, nil
 }
 
-// hasSpaces checks if a JSON line has spaces after colons/commas.
-func hasSpaces(raw []byte) bool {
-	return bytes.Contains(raw, []byte(": ")) || bytes.Contains(raw, []byte(", "))
+// fieldSpan is the byte range [start,end) of one object field's VALUE within a
+// raw JSON line.
+type fieldSpan struct {
+	start int
+	end   int
+}
+
+// topLevelFieldSpan locates the value bound to key in the TOP-LEVEL object of
+// line, returning its byte range. It is a scanner, not a decoder: nothing is
+// re-serialized, so the caller can splice a new value in without disturbing a
+// single byte elsewhere. Keys nested inside child objects/arrays are never
+// considered. A missing key is an error.
+func topLevelFieldSpan(line []byte, key string) (fieldSpan, error) {
+	i := skipJSONSpace(line, 0)
+	if i >= len(line) || line[i] != '{' {
+		return fieldSpan{}, fmt.Errorf("not a JSON object")
+	}
+	i++
+	for {
+		i = skipJSONSpace(line, i)
+		if i >= len(line) {
+			return fieldSpan{}, fmt.Errorf("unterminated JSON object")
+		}
+		if line[i] == '}' {
+			return fieldSpan{}, fmt.Errorf("no top-level %q field", key)
+		}
+
+		keyStart := i
+		keyEnd, err := scanJSONString(line, i)
+		if err != nil {
+			return fieldSpan{}, err
+		}
+		var name string
+		if err := json.Unmarshal(line[keyStart:keyEnd], &name); err != nil {
+			return fieldSpan{}, fmt.Errorf("unreadable object key: %w", err)
+		}
+
+		i = skipJSONSpace(line, keyEnd)
+		if i >= len(line) || line[i] != ':' {
+			return fieldSpan{}, fmt.Errorf("expected ':' after object key %q at offset %d", name, i)
+		}
+		valueStart := skipJSONSpace(line, i+1)
+		valueEnd, err := scanJSONValue(line, valueStart)
+		if err != nil {
+			return fieldSpan{}, err
+		}
+		if name == key {
+			return fieldSpan{start: valueStart, end: valueEnd}, nil
+		}
+
+		i = skipJSONSpace(line, valueEnd)
+		if i >= len(line) {
+			return fieldSpan{}, fmt.Errorf("unterminated JSON object")
+		}
+		switch line[i] {
+		case ',':
+			i++
+		case '}':
+			return fieldSpan{}, fmt.Errorf("no top-level %q field", key)
+		default:
+			return fieldSpan{}, fmt.Errorf("unexpected byte %q after object key %q at offset %d", line[i], name, i)
+		}
+	}
+}
+
+// skipJSONSpace advances past JSON insignificant whitespace.
+func skipJSONSpace(b []byte, i int) int {
+	for i < len(b) {
+		switch b[i] {
+		case ' ', '	', '\r', '\n':
+			i++
+		default:
+			return i
+		}
+	}
+	return i
+}
+
+// scanJSONString returns the offset just past the closing quote of the JSON
+// string literal starting at i. Backslash escapes are honored: an escaped
+// quote never terminates the literal, and the payload of a \uXXXX escape can
+// never be mistaken for a terminator.
+func scanJSONString(b []byte, i int) (int, error) {
+	if i >= len(b) || b[i] != '"' {
+		return 0, fmt.Errorf("expected a JSON string at offset %d", i)
+	}
+	for j := i + 1; j < len(b); j++ {
+		switch b[j] {
+		case '\\':
+			j++ // skip the escaped byte; \\ \" \n \uXXXX all keep the quote-shape opaque
+		case '"':
+			return j + 1, nil
+		}
+	}
+	return 0, fmt.Errorf("unterminated JSON string starting at offset %d", i)
+}
+
+// scanJSONValue returns the offset just past the JSON value starting at i.
+// Strings are scanned with escape awareness; objects and arrays are walked to
+// their matching close; every other token is a scalar that ends at the next
+// structural delimiter or whitespace.
+func scanJSONValue(b []byte, i int) (int, error) {
+	if i >= len(b) {
+		return 0, fmt.Errorf("missing JSON value at end of line")
+	}
+	switch b[i] {
+	case '"':
+		return scanJSONString(b, i)
+	case '{', '[':
+		return scanJSONComposite(b, i)
+	}
+	for j := i; j < len(b); j++ {
+		switch b[j] {
+		case ',', '}', ']', ' ', '	', '\r', '\n':
+			if j == i {
+				return 0, fmt.Errorf("empty JSON value at offset %d", i)
+			}
+			return j, nil
+		}
+	}
+	return len(b), nil
+}
+
+// scanJSONComposite walks an object/array starting at i to the offset just
+// past its matching close, skipping over string contents (so braces or
+// brackets inside strings never affect nesting) and nested values.
+func scanJSONComposite(b []byte, i int) (int, error) {
+	depth := 0
+	for j := i; j < len(b); j++ {
+		switch b[j] {
+		case '"':
+			end, err := scanJSONString(b, j)
+			if err != nil {
+				return 0, err
+			}
+			j = end - 1
+		case '{', '[':
+			depth++
+		case '}', ']':
+			depth--
+			if depth == 0 {
+				return j + 1, nil
+			}
+		}
+	}
+	return 0, fmt.Errorf("unterminated JSON value starting at offset %d", i)
+}
+
+// decodeJSONNumber reports whether b is exactly one JSON number and returns
+// it. Numbers are kept as text (json.Number), so nothing is widened to
+// float64 and integers above 2^53 stay exact.
+func decodeJSONNumber(b []byte) (json.Number, bool) {
+	var n json.Number
+	if err := json.Unmarshal(b, &n); err != nil {
+		return "", false
+	}
+	// json.Unmarshal treats a JSON null as a no-op on any destination, so an
+	// untouched empty Number is the null/absent case, not a number.
+	if n == "" {
+		return "", false
+	}
+	return n, true
 }
 
 // renumberEventsFile takes all lines and a map of lineIdx -> newBytes,

@@ -875,7 +875,11 @@ event id that descends below an earlier id (event ids must ascend; gaps are
 tolerated). `normalize-board --repair-events` extends the same command with a
 mechanical fix for exactly that: it renumbers each descending id to
 `running max + 1` (restoring ascending order) and leaves every other field on
-the event untouched. Legacy events with a missing or non-numeric id are
+the event untouched — literally, byte for byte: only the digits of the `id`
+value token are replaced, so key order, the spacing around separators, runs of
+spaces inside string values, JSON string escaping, and integers above 2^53
+(`9007199254740993` stays itself) all survive the rewrite verbatim
+(DF-BOARDCTL-44). Legacy events with a missing or non-numeric id are
 skipped (reported as non-numeric), and duplicate ids are warned about but
 never rewritten (benign legacy duplicates exist on live boards).
 

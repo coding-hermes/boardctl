@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -328,5 +329,192 @@ func TestRepairEvents_dryRunCache(t *testing.T) {
 
 	if !bytes.Equal(cacheData, afterData) {
 		t.Errorf("dry-run cache != applied output:\ncache: %s\napplied: %s", cacheData, afterData)
+	}
+}
+
+// TestRepairEvents_preservesNonIDBytes pins DF-BOARDCTL-44 AC1/AC2: renumbering
+// replaces ONLY the raw byte range of the id token on the renumbered line.
+// Every other byte survives verbatim — key order (deliberately
+// non-alphabetical), separator spacing, double spaces inside string values,
+// escaped quotes, and an integer above 2^53 (which the old map[string]any
+// round-trip rounded through float64).
+func TestRepairEvents_preservesNonIDBytes(t *testing.T) {
+	dir := t.TempDir()
+	eventsPath := filepath.Join(dir, "events.jsonl")
+
+	const firstLine = `{ "id": 5, "action": "create", "note": "first  line" }`
+	const richLine = `{ "title": "fix  double  spaces", "detail": "cmd: rsync -a  /x  /y", "tick_number": 9007199254740993, "zeta": "last  alphabetically", "id": 2, "nested": { "id": 42, "note": "nested  spaces" }, "quote": "say \"id\": 9  now" }`
+	// The only difference: the renumbered line's id token 2 -> 6.
+	before := firstLine + "\n" + richLine + "\n"
+	after := firstLine + "\n" + strings.Replace(richLine, `"id": 2,`, `"id": 6,`, 1) + "\n"
+
+	if err := os.WriteFile(eventsPath, []byte(before), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	b := &Board{Dir: dir, Topology: "B", eventsPath: eventsPath}
+
+	rep, err := b.RepairEvents(false)
+	if err != nil {
+		t.Fatalf("RepairEvents(apply): %v", err)
+	}
+	if !rep.Applied {
+		t.Fatal("expected applied")
+	}
+	if rep.FixedCount != 1 {
+		t.Fatalf("expected exactly 1 renumbered event, got %d", rep.FixedCount)
+	}
+
+	got, err := os.ReadFile(eventsPath)
+	if err != nil {
+		t.Fatalf("read events: %v", err)
+	}
+
+	if string(got) != after {
+		t.Errorf("only the id token may change\nwant: %q\ngot:  %q", after, got)
+	}
+
+	// State the AC's bytes explicitly, so a future serializer change that
+	// happens to keep the golden above but mangles content still fails.
+	for _, want := range []string{
+		"fix  double  spaces",
+		"cmd: rsync -a  /x  /y",
+		"9007199254740993",
+		"nested  spaces",
+		`say \"id\": 9  now`,
+		`"nested": { "id": 42`,
+	} {
+		if !bytes.Contains(got, []byte(want)) {
+			t.Errorf("preserved bytes missing %q in:\n%s", want, got)
+		}
+	}
+	if bytes.Contains(got, []byte("9007199254740992")) {
+		t.Errorf("integer above 2^53 was rounded:\n%s", got)
+	}
+
+	// Key order is part of the contract: compare the ordered key lists of the
+	// renumbered line before and after.
+	beforeRow, err := ParseRow([]byte(richLine))
+	if err != nil {
+		t.Fatalf("parse fixture: %v", err)
+	}
+	gotLines, err := ReadJSONLLines(eventsPath)
+	if err != nil {
+		t.Fatalf("read lines: %v", err)
+	}
+	afterRow, err := ParseRow(gotLines[1])
+	if err != nil {
+		t.Fatalf("parse repaired line: %v", err)
+	}
+	if strings.Join(beforeRow.Keys, ",") != strings.Join(afterRow.Keys, ",") {
+		t.Errorf("key order changed: before %v, after %v", beforeRow.Keys, afterRow.Keys)
+	}
+	if id, ok := afterRow.Int("id"); !ok || id != 6 {
+		t.Errorf("expected renumbered id 6, got %d (ok=%v)", id, ok)
+	}
+	if id, ok := afterRow.Int("tick_number"); !ok || id != 9007199254740993 {
+		t.Errorf("expected tick_number 9007199254740993 intact, got %d (ok=%v)", id, ok)
+	}
+}
+
+// TestRepairEvents_largeIntBeyondFloatPrecision pins the >2^53 half of
+// DF-BOARDCTL-44: a renumbered line's integer fields (and the running-max id
+// itself) must survive float64-free, and running max + 1 must stay exact.
+func TestRepairEvents_largeIntBeyondFloatPrecision(t *testing.T) {
+	dir := t.TempDir()
+	eventsPath := filepath.Join(dir, "events.jsonl")
+
+	before := `{"id": 9007199254740993, "tick_number": 9007199254740993, "detail": "a  b"}
+{"id": 1, "tick_number": 9007199254740993, "detail": "c  d"}
+`
+	after := `{"id": 9007199254740993, "tick_number": 9007199254740993, "detail": "a  b"}
+{"id": 9007199254740994, "tick_number": 9007199254740993, "detail": "c  d"}
+`
+	if err := os.WriteFile(eventsPath, []byte(before), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	b := &Board{Dir: dir, Topology: "B", eventsPath: eventsPath}
+	if _, err := b.RepairEvents(false); err != nil {
+		t.Fatalf("RepairEvents(apply): %v", err)
+	}
+
+	got, err := os.ReadFile(eventsPath)
+	if err != nil {
+		t.Fatalf("read events: %v", err)
+	}
+	if string(got) != after {
+		t.Errorf("large-integer event bytes changed\nwant: %q\ngot:  %q", after, got)
+	}
+	if bytes.Contains(got, []byte("9007199254740992")) {
+		t.Errorf("value above 2^53 was rounded through float64:\n%s", got)
+	}
+}
+
+// TestRepairEvents_renumberEventIDSplicesOnlyID is the unit-level guard on the
+// raw-byte splice: compact and spaced lines, escaping, nested objects that
+// carry their own "id", and the refusal paths for missing/non-numeric ids.
+func TestRepairEvents_renumberEventIDSplicesOnlyID(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		id   int64
+		want string
+	}{
+		{
+			name: "compact",
+			in:   `{"id":1,"x":"y  z"}`,
+			id:   2,
+			want: `{"id":2,"x":"y  z"}`,
+		},
+		{
+			name: "spaced",
+			in:   `{ "zeta": 1, "id": 7, "alpha": 2 }`,
+			id:   8,
+			want: `{ "zeta": 1, "id": 8, "alpha": 2 }`,
+		},
+		{
+			name: "escaped quotes in preceding and following values",
+			in:   `{"a":"say \"id\": 4","id":4,"b":"x  y"}`,
+			id:   5,
+			want: `{"a":"say \"id\": 4","id":5,"b":"x  y"}`,
+		},
+		{
+			name: "nested id untouched",
+			in:   `{"nested":{"id":1,"k":[1,2]},"id":3}`,
+			id:   4,
+			want: `{"nested":{"id":1,"k":[1,2]},"id":4}`,
+		},
+		{
+			name: "brackets and braces inside strings",
+			in:   `{"note":"}{] id","id":9}`,
+			id:   10,
+			want: `{"note":"}{] id","id":10}`,
+		},
+		{
+			name: "id last field, no trailing newline",
+			in:   `{"tick_number":9007199254740993,"id":1}`,
+			id:   2,
+			want: `{"tick_number":9007199254740993,"id":2}`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := renumberEventID([]byte(tc.in), tc.id)
+			if err != nil {
+				t.Fatalf("renumberEventID: %v", err)
+			}
+			if string(got) != tc.want {
+				t.Errorf("want %q, got %q", tc.want, got)
+			}
+		})
+	}
+
+	// Legacy shapes are refused by the helper (RepairEvents itself skips them
+	// before reaching it, which the legacy-shape test above pins).
+	for _, in := range []string{`{"id":"legacy-ref"}`, `{"action":"no_id"}`, `{"id":null}`} {
+		if _, err := renumberEventID([]byte(in), 5); err == nil {
+			t.Errorf("expected an error for %s, got none", in)
+		}
 	}
 }
