@@ -103,8 +103,23 @@ type idDupeRow struct {
 }
 
 // DedupeByID runs (or previews) the DF-BOARDCTL-10 id-aware collapse on this
-// board. See the package-file comment above for the exact contract.
+// board. See the package-file comment above for the exact contract. The write
+// guard covers the complete read/classify/plan/rewrite-and-audit sequence so a
+// concurrent writer cannot be lost between the snapshot and atomicRewrite.
 func (b *Board) DedupeByID(apply bool) (*IDDupeReport, error) {
+	var rep *IDDupeReport
+	var dedupeErr error
+	lockErr := b.withWriteLock(b.tasksPath, func() error {
+		rep, dedupeErr = b.dedupeByIDLocked(apply)
+		return nil // err rides dedupeErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	return rep, dedupeErr
+}
+
+func (b *Board) dedupeByIDLocked(apply bool) (*IDDupeReport, error) {
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
 		return nil, err
