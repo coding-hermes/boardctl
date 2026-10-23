@@ -118,7 +118,8 @@ commands:
           same evidence behind a WARN-ONLY banner and allows it (a
           re-install flips the mode in place; --fleet carries the mode
           into every hook it writes)
-  umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict] [-C dir]
+  umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict]
+           [--skip-bad-lines] [-C dir]
           read-only unified view over this repo and every child board
           symlinked under .coding-hermes/links/ (one symlink per child
           repo, named after the repo, aimed at <child>/.coding-hermes).
@@ -128,12 +129,20 @@ commands:
           colliding ids stay distinct, and cross-board depends_on refs
           resolve only when unambiguous (AMBIGUOUS is reported, never
           guessed). Broken/looping/out-of-repo links are findings (exit 1),
-          never followed. NEVER writes — writes stay single-repo via -C
+          never followed. NEVER writes — writes stay single-repo via -C.
+          Line-level reads: by default the FIRST unparseable line in any
+          board aborts the whole view (exit 1, no partial output);
+          --skip-bad-lines degrades instead — every parseable row from
+          every healthy board is still counted/listed, each unparseable
+          line is reported on stderr as a SKIPPED-LINES block naming its
+          board and file:line, and the command exits 1
 
---skip-bad-lines (list/show/stats/validate/render): read the board tolerantly,
-keeping every line that parses; unparseable lines are reported on stderr as a
-SKIPPED-LINES evidence block and the command exits 1 even though it produced
-its normal output. Without the flag the first unparseable line aborts.
+--skip-bad-lines (list/show/stats/validate/render/umbrella): read the board
+tolerantly, keeping every line that parses; unparseable lines are reported on
+stderr as a SKIPPED-LINES evidence block and the command exits 1 even though it
+produced its normal output. Without the flag the first unparseable line aborts.
+For umbrella the block names each skipped line's board + file:line and the
+parseable rows of every healthy child board are still counted/listed.
 validate --repair: salvage every parseable row into <boarddir>/tasks.rewritten.jsonl
 (manual review file — tasks.jsonl is never overwritten).
 validate --strict-keys: treat BT-056 key-uniformity drift as an error (exit 1).

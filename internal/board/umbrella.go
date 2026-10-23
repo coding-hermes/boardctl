@@ -131,6 +131,76 @@ func (u *Umbrella) WarnCount() int {
 	return n
 }
 
+// QualifiedSkippedLine is one unparseable line a DEGRADED umbrella read
+// (DF-BOARDCTL-47 --skip-bad-lines) skipped, with the repo provenance that
+// names WHICH board it came from. Line.Path already carries that board's
+// file path (tasks.jsonl / events.jsonl / fixtures.jsonl), so the pair
+// renders as <repo>: <file> line <n> — file:line is never guessed.
+type QualifiedSkippedLine struct {
+	Repo     string      `json:"repo"`
+	BoardDir string      `json:"board_dir"`
+	Line     SkippedLine `json:"line"`
+}
+
+// SetSkipBad arms the DF-BOARDCTL-9 tolerant read mode on EVERY board in the
+// view (the umbrella's own board plus every child). Reads aggregated through
+// the umbrella then keep every line that parses and collect the failures as
+// skipped-line evidence instead of aborting on the first bad line. The
+// default (flag absent) stays fail-closed: this method is the ONLY way the
+// umbrella can flip the mode, so a plain `umbrella` read is byte-for-byte the
+// pre-DF-BOARDCTL-47 abort path.
+func (u *Umbrella) SetSkipBad() {
+	for i := range u.Boards {
+		u.Boards[i].Board.SkipBad = true
+	}
+}
+
+// SkippedLines returns every line a degraded read skipped, in view order
+// (umbrella's own board first, then children by qualifier), each carrying its
+// repo provenance. A board's evidence accumulates across every read the
+// command performed (e.g. --validate reads tasks.jsonl once per board during
+// validate AND again for the depends_on classification), so entries are
+// deduplicated on repo+file+line: one physical bad line is reported ONCE.
+// It is nil in the default fail-closed mode or when nothing was skipped.
+func (u *Umbrella) SkippedLines() []QualifiedSkippedLine {
+	var out []QualifiedSkippedLine
+	seen := map[string]bool{}
+	for _, qb := range u.Boards {
+		for _, s := range qb.Board.SkippedLines() {
+			key := qb.Repo + "\x00" + s.Path + "\x00" + fmt.Sprintf("%d", s.Line)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, QualifiedSkippedLine{Repo: qb.Repo, BoardDir: qb.BoardDir, Line: s})
+		}
+	}
+	return out
+}
+
+// HasSkipped reports whether any board in the view skipped at least one line
+// (a DEGRADED view — the command must exit 1).
+func (u *Umbrella) HasSkipped() bool { return len(u.SkippedLines()) > 0 }
+
+// RenderSkippedLines renders the umbrella SKIPPED-LINES evidence block: the
+// same wording as Board.RenderSkippedLines, with each entry prefixed by the
+// repo qualifier and naming the board dir so a multi-board view says exactly
+// WHICH board's file:line was dropped. Intended for stderr after the normal
+// output: degraded data must never read as a clean success.
+func (u *Umbrella) RenderSkippedLines() string {
+	skips := u.SkippedLines()
+	if len(skips) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "SKIPPED-LINES: %d line(s) could not be parsed and were skipped:\n", len(skips))
+	for _, s := range skips {
+		fmt.Fprintf(&sb, "  %s (%s): %s line %d: %s\n", s.Repo, s.BoardDir, s.Line.Path, s.Line.Line, s.Line.Err)
+		fmt.Fprintf(&sb, "    %s\n", s.Line.Snippet)
+	}
+	return sb.String()
+}
+
 // RenderFindings renders the itemized findings block (deterministic order).
 func (u *Umbrella) RenderFindings() string {
 	var sb strings.Builder

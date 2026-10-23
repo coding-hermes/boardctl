@@ -281,6 +281,33 @@ findings (exit 1) — never followed or repaired. Two links to the same target
 dedupe to one board with a warning. Writes stay single-repo: aim `-C` at the
 one owning repo. `--strict` additionally fails on warning-level findings.
 
+#### Degraded reads: `--skip-bad-lines` (DF-BOARDCTL-47)
+
+One unparseable line in one child board must not cost you the whole picture —
+but it must never look like a clean one either. The umbrella therefore has two
+explicit line-level modes:
+
+| mode | behaviour |
+|---|---|
+| default | **fail-closed.** The FIRST unparseable line in any board aborts the whole view: `<repo> (<board dir>): <file>: line N: <parse error>`, exit 1, no partial output. |
+| `--skip-bad-lines` | **degraded with evidence.** Every parseable row of every healthy board is still counted/listed; each skipped line is reported on stderr as a `SKIPPED-LINES` block naming the board, the file and the 1-based line, plus the offending snippet; the command exits 1. |
+
+```bash
+boardctl -C ~/myproduct umbrella --stats --skip-bad-lines
+# stdout: the healthy boards' per-repo stats and the grand totals
+# stderr:
+# SKIPPED-LINES: 1 line(s) could not be parsed and were skipped:
+#   warpfs (/…/warpfs/.coding-hermes/board): /…/tasks.jsonl line 412: duplicate key "worker_status" in row
+#     {"id": "…", "worker_status": "complete", "worker_status": "review"}
+
+boardctl -C ~/myproduct umbrella --list --skip-bad-lines   # same rows, same evidence
+```
+
+The block rides stderr, so `umbrella --json --skip-bad-lines` still emits
+parseable JSON on stdout. Exit 1 is the contract — a degraded view is never a
+clean success. Repair the named board (`validate --repair`, below) and the plain
+command returns to exit 0.
+
 ### Headerless boards
 
 A board can hold just `tasks.jsonl` + `events.jsonl` with no `board.jsonl` and

@@ -28,6 +28,14 @@ package main
 // report, or (under --strict) any warning-class finding; 2 usage /
 // board-not-found. Degraded but partially-successful discovery therefore
 // reads as a failure, never as a clean success.
+//
+// DF-BOARDCTL-47: --skip-bad-lines extends that same degrade-with-evidence
+// contract to the ROW level (the DF-BOARDCTL-9 mode the sibling verbs ship).
+// Armed, every board in the view is read tolerantly: parseable rows from every
+// healthy child board are still counted/listed, each unparseable line is
+// reported on stderr as a SKIPPED-LINES block naming its board and file:line,
+// and the command exits 1. Absent, the FIRST unparseable line aborts the view
+// exactly as before (fail-closed default: same message, same exit 1).
 
 import (
 	"bytes"
@@ -52,10 +60,12 @@ func cmdUmbrella(dir string, args []string) error {
 	// (completed/done -> complete, todo/open -> pending, ...); unknown
 	// spellings are a usage error, not a silent empty view.
 	statusFilter := fs.String("status", "", "with --list: filter by status (comma-separated list accepted; aliases like done/todo normalize)")
+	// DF-BOARDCTL-47: the row-level degrade mode the sibling verbs ship.
+	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict] [--skip-bad-lines] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\n  read-only unified view over one umbrella repo and every child board\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  symlinked under its .coding-hermes/links/ registry (one symlink per\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  child repo, named after the repo, aimed at <child>/.coding-hermes).\n")
@@ -63,6 +73,15 @@ func cmdUmbrella(dir string, args []string) error {
 		_, _ = fmt.Fprintf(fs.Output(), "  cross-board depends_on references resolve only when unambiguous.\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  NEVER writes: broken/looping/out-of-repo links are reported (exit 1),\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  never followed or repaired. Writes stay single-repo via -C.\n")
+		_, _ = fmt.Fprintf(fs.Output(), "\n  Line-level read modes (DF-BOARDCTL-47):\n")
+		_, _ = fmt.Fprintf(fs.Output(), "    (default)          fail-closed: the FIRST unparseable line in ANY board\n")
+		_, _ = fmt.Fprintf(fs.Output(), "                       aborts the whole view with that board's file and line\n")
+		_, _ = fmt.Fprintf(fs.Output(), "                       (exit 1, no partial output).\n")
+		_, _ = fmt.Fprintf(fs.Output(), "    --skip-bad-lines   degraded: every parseable row from every healthy board\n")
+		_, _ = fmt.Fprintf(fs.Output(), "                       is still counted/listed, each unparseable line is\n")
+		_, _ = fmt.Fprintf(fs.Output(), "                       reported on stderr as SKIPPED-LINES (<repo>, file, line,\n")
+		_, _ = fmt.Fprintf(fs.Output(), "                       parse error, snippet), and the command exits 1 — a\n")
+		_, _ = fmt.Fprintf(fs.Output(), "                       degraded view never reads as clean success.\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -103,6 +122,12 @@ func cmdUmbrella(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
+	// DF-BOARDCTL-47: arm the tolerant read on every board in the view only
+	// when the operator asked for it. Absent the flag, SkipBad stays false on
+	// every board and the first unparseable line aborts exactly as before.
+	if *skipBad {
+		um.SetSkipBad()
+	}
 	if *asJSON {
 		return umbrellaJSON(um, *strict)
 	}
@@ -122,6 +147,11 @@ func cmdUmbrella(dir string, args []string) error {
 // the command's exit error: any error-class finding (or, under --strict, any
 // warning) fails the command. stderr renders the findings block so a partial
 // view can never read as clean success.
+//
+// DF-BOARDCTL-47: skipped-line evidence from a --skip-bad-lines read is
+// rendered on stderr here (the one exit path every mode shares, so --json's
+// stdout stays parseable) and forces exit 1 on its own — a degraded view whose
+// healthy rows all tallied clean is still degraded.
 func umbrellaExit(um *board.Umbrella, strict bool, depFindings []board.UmbrellaFinding, validateErrs int) error {
 	nErr := 0
 	for _, f := range um.Findings {
@@ -140,6 +170,10 @@ func umbrellaExit(um *board.Umbrella, strict bool, depFindings []board.UmbrellaF
 	for _, f := range depFindings {
 		_, _ = fmt.Fprintf(os.Stderr, "[%s] %s\n", f.Level, f.Msg)
 	}
+	skipped := len(um.SkippedLines())
+	if skipped > 0 {
+		_, _ = fmt.Fprint(os.Stderr, um.RenderSkippedLines())
+	}
 	if strict {
 		nErr += um.WarnCount()
 		for _, f := range depFindings {
@@ -147,6 +181,12 @@ func umbrellaExit(um *board.Umbrella, strict bool, depFindings []board.UmbrellaF
 				nErr++
 			}
 		}
+	}
+	// The degraded-read clause appears ONLY when lines were actually
+	// skipped, so the default (fail-closed) finding message stays
+	// byte-identical to the pre-DF-BOARDCTL-47 wording.
+	if skipped > 0 {
+		return fmt.Errorf("umbrella view incomplete or invalid: %d finding(s), %d failing board(s), %d skipped line(s) (degraded read: --skip-bad-lines kept every parseable row)", nErr, validateErrs, skipped)
 	}
 	if nErr > 0 || validateErrs > 0 {
 		return fmt.Errorf("umbrella view incomplete or invalid: %d finding(s), %d failing board(s)", nErr, validateErrs)
