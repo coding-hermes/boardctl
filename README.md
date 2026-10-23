@@ -1366,7 +1366,7 @@ outside any checkout, a commit rebased away, or a missing git binary all mean
 silent skip. Set `BOARDCTL_SKIP_FRESHNESS=1` to suppress the warning (the
 warning line itself names this switch).
 
-The toolchain requirement: go.mod declares `go 1.26.9`. The Go 1.26.5 standard
+The toolchain requirement: go.mod declares `go 1.26.10`. The Go 1.26.5 standard
 library shipped reachable advisories (GO-2026-6089 `net/http`, GO-2026-6090
 `crypto/tls`, GO-2026-5972 `encoding/asn1`) that 1.26.6 fixed, and 1.26.9
 cleared the further advisories GO-2026-6603, GO-2026-6607, GO-2026-6608,
