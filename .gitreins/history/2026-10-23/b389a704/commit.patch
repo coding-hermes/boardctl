@@ -1,0 +1,419 @@
+commit 0c3ef824076a1e629afa2af615a49be1f01b5762
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 23 17:09:59 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 23 17:09:59 2026 -0500
+
+    fix(board): repair event ids against output. Addresses DF-BOARDCTL-45.
+    
+    --repair-events minted runningMax+1 without ever looking at the ids a LATER
+    event still carries: events 10, 9, 11 (file order) repaired to 10, 11, 11 —
+    two events sharing id 11 — and the census still printed "duplicate ids: 0"
+    because it counted the INPUT. Any consumer keyed on event id then sees an
+    ambiguous record.
+    
+    The plan now treats "id == runningMax AND runningMax was minted by this pass"
+    as an id to repair: a later event can only collide with a minted id when its
+    own id equals the running max (anything larger lies above every id emitted so
+    far), so 10, 9, 11 repairs to 10, 11, 12 — ascending, no shared ids — in one
+    converging pass. Duplicates that already sit between two ORIGINAL ids are left
+    untouched, so benign legacy duplicates are still not rewritten. The duplicate
+    count is now a census of the repaired output, and the report line says so
+    ("duplicate ids in repaired output: N").
+    
+    Regression coverage (internal/board/repair_events_test.go):
+    - TestRepairEvents_neverCreatesDuplicateID applies the 10,9,11 fixture and
+      asserts unique+ascending output ids (10, 11, 12), a 0 duplicate count,
+      preserved non-id bytes (DF-BOARDCTL-44's splice contract), validate with no
+      "duplicate event id" line, and a clean second pass.
+    - TestRepairEvents_duplicateCensusCountsOutput pins the output census both
+      ways: a clean board still reports its pre-existing duplicate (1), and a
+      duplicate the repair renumbers away reports 0.
+    Pre-fix both arm the bug: repaired ids = 10 11 11, duplicates = 1.
+    
+    Gates: gofmt clean; go build ./...; go vet ./...; go test ./... -count=1
+    -short all ok. Live probe: boardctl normalize-board --repair-events --apply on
+    ids 10,9,11 rewrote to 10,11,12 ("descending ids: 2", "duplicate ids in
+    repaired output: 0", "applied") and `boardctl validate` then printed RESULT: OK
+    with no duplicate event id warning (it FAILed before the repair).
+    
+    ch:trace row=DF-BOARDCTL-45 spec=.coding-hermes/board/tasks.jsonl#DF-BOARDCTL-45 wave=boardctl-foreman-2026-10-23-21-45-17#serial test=internal/board/repair_events_test.go::TestRepairEvents_neverCreatesDuplicateID doc=none:code-fix prompt=/tmp/boardctl-DF-BOARDCTL-45-brief.txt evidence=internal/board/repair_events_test.go witness=live-cli:boardctl-apply+validate verdict=none:foreman-will-run-gitreins commit=this-commit memory=none:tick-local
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ internal/board/repair_events.go      | 101 ++++++++++----------
+ internal/board/repair_events_test.go | 176 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 230 insertions(+), 47 deletions(-)
+
+diff --git a/internal/board/repair_events.go b/internal/board/repair_events.go
+index 3f177d8..9917347 100644
+--- a/internal/board/repair_events.go
++++ b/internal/board/repair_events.go
+@@ -11,21 +11,27 @@ import (
+ //
+ // The validateEvents function (validate.go:534) reports errors when
+ // event ids descend below earlier ids. This function renumbers those
+-// descending ids to restore ascending order, starting from max(existing)+1
+-// for the first descending event.
++// descending ids to restore ascending order: every id it mints is the
++// running max of the REPAIRED sequence + 1, so the output ascends by
++// construction.
+ //
+ // The repair is mechanical: preserve every field except "id".
+ // Legacy events without numeric ids (missing or string-valued) are skipped.
+-// Duplicate ids are warned but not repaired (benign legacy duplicates).
++// Duplicate ids that already sit between two ORIGINAL ids are reported but not
++// repaired (benign legacy duplicates exist on live boards). A duplicate the
++// repair itself would create is never shipped (DF-BOARDCTL-45): when the
++// minted id equals the id a later event still carries, that later event is
++// renumbered too — ids 10, 9, 11 repair to 10, 11, 12 rather than 10, 11, 11.
++// The report's duplicate count is the census of the REPAIRED output.
+ 
+ // RepairEventsReport holds the result of repairing event ids.
+ type RepairEventsReport struct {
+ 	EventsPath  string `json:"events_path"`
+ 	TotalEvents int    `json:"total_events"`
+ 	FixedCount  int    `json:"fixed_count"` // events whose id was renumbered
+-	Descending  int    `json:"descending"`  // count of descending id occurrences found
++	Descending  int    `json:"descending"`  // ids renumbered: descending below, or colliding with, a minted id
+ 	NonNumeric  int    `json:"non_numeric"` // legacy events without numeric ids
+-	Duplicates  int    `json:"duplicates"`  // duplicate ids found (warned, not fixed)
++	Duplicates  int    `json:"duplicates"`  // duplicate ids in the REPAIRED output
+ 	DryRun      bool   `json:"dry_run"`
+ 	AppliedPath string `json:"applied_path,omitempty"`
+ 	Applied     bool   `json:"applied"`
+@@ -38,7 +44,7 @@ func (r *RepairEventsReport) RenderText() string {
+ 	out += fmt.Sprintf("total events: %d\n", r.TotalEvents)
+ 	out += fmt.Sprintf("descending ids: %d\n", r.Descending)
+ 	out += fmt.Sprintf("non-numeric/missing ids: %d\n", r.NonNumeric)
+-	out += fmt.Sprintf("duplicate ids: %d\n", r.Duplicates)
++	out += fmt.Sprintf("duplicate ids in repaired output: %d\n", r.Duplicates)
+ 
+ 	if r.Clean {
+ 		out += "no descending ids found — already canonical\n"
+@@ -85,22 +91,17 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
+ 		DryRun:     dryRun,
+ 	}
+ 
+-	// First pass: classify events and find descending ids.
++	// First pass: classify events (numeric vs legacy) in file order.
+ 	type eventRecord struct {
+-		lineIdx    int
+-		line       []byte
+-		id         int64
+-		hasID      bool
+-		isInt      bool
+-		legacy     bool // missing or non-numeric id
+-		NonNumeric int
+-		Duplicates int
++		lineIdx int
++		line    []byte
++		id      int64
++		hasID   bool
++		isInt   bool
++		legacy  bool // missing or non-numeric id
+ 	}
+ 
+ 	var records []eventRecord
+-	seenIDs := map[int64]int{} // id -> first line index
+-	var maxID int64
+-	var haveMax bool
+ 
+ 	ierr := IterParsed(lines, func(row *Row, idx int, raw []byte) error {
+ 		// Keep a copy of the raw line for later.
+@@ -125,20 +126,6 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
+ 		}
+ 		rec.id = id
+ 
+-		// Check for duplicates first (benign legacy).
+-		if prev, dup := seenIDs[id]; dup {
+-			rec.Duplicates++
+-			rep.Duplicates++
+-			_ = prev // first occurrence line
+-		}
+-		seenIDs[id] = idx + 1
+-
+-		// Track max id seen so far.
+-		if !haveMax || id > maxID {
+-			maxID = id
+-			haveMax = true
+-		}
+-
+ 		records = append(records, rec)
+ 		return nil
+ 	})
+@@ -148,21 +135,27 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
+ 
+ 	rep.TotalEvents = len(records)
+ 
+-	// Second pass: identify descending ids and renumber.
+-	// We need to track the "running max" as we go left-to-right.
+-	// Any id that descends below the running max needs renumbering.
+-	// The new id = running_max + 1.
++	// Second pass: plan the renumbering left to right.
++	//
++	// The running max is the largest id the REPAIRED file carries so far, so
++	// minting runningMax+1 keeps the output ascending. DF-BOARDCTL-45: the
++	// minted id must also not collide with an id a LATER event still carries.
++	// A later event can only collide when its id equals the running max (any
++	// bigger id lies above every id emitted so far), so that case is caught
++	// here by treating "id == runningMax AND runningMax was minted by this
++	// pass" as an id to repair as well. Ids 10, 9, 11 therefore land as
++	// 10, 11, 12 instead of the old 10, 11, 11 — no two events share an id,
++	// and the census below describes that output. Duplicates between two
++	// ORIGINAL ids are left untouched, as documented above.
+ 	runningMax := int64(0)
+ 	hasRunningMax := false
+ 	fixedCount := 0
+ 	descendingCount := 0
+ 
+-	// We'll collect lines that need changes.
+ 	changeMap := map[int][]byte{} // lineIdx -> new line bytes
++	mintedIDs := map[int64]bool{} // ids this pass invented
++	outputIDs := make([]int64, 0, len(records))
+ 
+-	// Re-iterate to find descending ids.
+-	runningMax = 0
+-	hasRunningMax = false
+ 	for _, rec := range records {
+ 		if rec.legacy || !rec.isInt {
+ 			// Non-numeric events don't affect the running max.
+@@ -172,33 +165,47 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
+ 		id := rec.id
+ 		lineIdx := rec.lineIdx
+ 
+-		if hasRunningMax && id < runningMax {
+-			// Descending! Fix it.
++		collides := hasRunningMax && id == runningMax && mintedIDs[id]
++		if hasRunningMax && (id < runningMax || collides) {
++			// Descending, or the id the repair just minted.
+ 			runningMax++
+ 			newID := runningMax
+ 			descendingCount++
+ 			fixedCount++
+ 
+-			// Re-encode the line with the new id.
+-			// We'll parse and modify the row.
+ 			newLine, err := renumberEventID(rec.line, newID)
+ 			if err != nil {
+ 				return nil, fmt.Errorf("line %d: renumber %d -> %d: %w", lineIdx+1, id, newID, err)
+ 			}
+ 			changeMap[lineIdx] = newLine
++			mintedIDs[newID] = true
++			outputIDs = append(outputIDs, newID)
++			hasRunningMax = true
++			continue
++		}
+ 
+-			// The running max stays at the new id.
+-			runningMax = newID
+-		} else if id > runningMax {
++		if !hasRunningMax || id > runningMax {
+ 			runningMax = id
+ 		}
+ 		hasRunningMax = true
++		outputIDs = append(outputIDs, id)
+ 	}
+ 
+ 	rep.Descending = descendingCount
+ 	rep.FixedCount = fixedCount
+ 	rep.Clean = descendingCount == 0
+ 
++	// DF-BOARDCTL-45: the duplicate census describes the file the repair will
++	// leave behind. Counting the INPUT let the command print "duplicate ids: 0"
++	// while writing a file with two events sharing one id.
++	seenOutput := make(map[int64]bool, len(outputIDs))
++	for _, id := range outputIDs {
++		if seenOutput[id] {
++			rep.Duplicates++
++		}
++		seenOutput[id] = true
++	}
++
+ 	if rep.Clean {
+ 		return rep, nil
+ 	}
+diff --git a/internal/board/repair_events_test.go b/internal/board/repair_events_test.go
+index 0be978b..4d0191e 100644
+--- a/internal/board/repair_events_test.go
++++ b/internal/board/repair_events_test.go
+@@ -580,3 +580,179 @@ func TestRepairEvents_renumberEventIDSplicesOnlyID(t *testing.T) {
+ 		}
+ 	}
+ }
++
++// validRepairedBoard writes a topology-B board whose events.jsonl carries the
++// DF-BOARDCTL-45 fixture: numeric ids 10, 9, 11 in FILE ORDER. Line 2 descends
++// below 10, so the pre-fix repair renumbered it to runningMax+1 = 11 — the id
++// line 3 still carries — and the census reported "duplicate ids: 0" because it
++// counted only the INPUT.
++func validRepairedBoard(t *testing.T, events string) *Board {
++	t.Helper()
++	dir := t.TempDir()
++	writeBoardFiles(t, dir, map[string]string{
++		"tasks.jsonl": `{"project":"t","namespace":"t","version":3,"ticks_total":11,"ticks_idle":0,"last_commit":"abc1234"}` + "\n" +
++			`{"id":"DUP-1","title":"fixture task","status":"pending","priority":"P2"}` + "\n",
++		"events.jsonl": events,
++	})
++	b, err := Resolve(dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	return b
++}
++
++// eventIDsOf reads the repaired events.jsonl and returns its numeric ids in
++// file order, failing on any line whose id is not a number.
++func eventIDsOf(t *testing.T, b *Board) []int64 {
++	t.Helper()
++	lines, err := ReadJSONLLines(b.EventsPath())
++	if err != nil {
++		t.Fatalf("read events: %v", err)
++	}
++	ids := make([]int64, 0, len(lines))
++	for i, line := range lines {
++		if len(bytes.TrimSpace(line)) == 0 {
++			continue
++		}
++		row, err := ParseRow(line)
++		if err != nil {
++			t.Fatalf("line %d parse: %v", i+1, err)
++		}
++		id, ok := row.Int("id")
++		if !ok {
++			t.Fatalf("line %d: id is not a JSON number: %s", i+1, line)
++		}
++		ids = append(ids, id)
++	}
++	return ids
++}
++
++// TestRepairEvents_neverCreatesDuplicateID is the DF-BOARDCTL-45 regression:
++// the repair may not mint an id another event already carries, and its
++// duplicate count must describe the REPAIRED output. Pre-fix this fixture
++// repaired to 10, 11, 11 with a "duplicate ids: 0" census; post-fix it repairs
++// to 10, 11, 12 with a 0 census that is actually true, and validate carries no
++// duplicate event id line.
++func TestRepairEvents_neverCreatesDuplicateID(t *testing.T) {
++	b := validRepairedBoard(t, `{"id": 10, "event_type": "audit", "detail": "first"}`+"\n"+
++		`{"id": 9, "event_type": "audit", "detail": "second  spaced"}`+"\n"+
++		`{"id": 11, "event_type": "audit", "detail": "third"}`+"\n")
++
++	rep, err := b.RepairEvents(false)
++	if err != nil {
++		t.Fatalf("RepairEvents(apply): %v", err)
++	}
++	if !rep.Applied {
++		t.Fatal("expected the repair to be applied")
++	}
++	// Two events move: the descending 9, and the 11 it would have collided with.
++	if rep.Descending != 2 || rep.FixedCount != 2 {
++		t.Errorf("descending/fixed = %d/%d, want 2/2", rep.Descending, rep.FixedCount)
++	}
++	// The census is taken on the repaired output, which holds no duplicate.
++	if rep.Duplicates != 0 {
++		t.Errorf("reported duplicate count = %d, want 0 (census of the repaired output)", rep.Duplicates)
++	}
++
++	ids := eventIDsOf(t, b)
++	want := []int64{10, 11, 12}
++	if len(ids) != len(want) {
++		t.Fatalf("repaired ids = %v, want %v", ids, want)
++	}
++	for i := range want {
++		if ids[i] != want[i] {
++			t.Fatalf("repaired ids = %v, want %v", ids, want)
++		}
++	}
++	seen := make(map[int64]bool, len(ids))
++	for _, id := range ids {
++		if seen[id] {
++			t.Fatalf("repair left two events sharing id %d: %v", id, ids)
++		}
++		seen[id] = true
++	}
++
++	// DF-BOARDCTL-44's byte contract still holds for the renumbered lines.
++	raw, err := os.ReadFile(b.EventsPath())
++	if err != nil {
++		t.Fatalf("read events: %v", err)
++	}
++	if !bytes.Contains(raw, []byte("second  spaced")) {
++		t.Errorf("non-id bytes of the renumbered event were not preserved:\n%s", raw)
++	}
++
++	// AC2: validate must not report a duplicate event id on the repaired file.
++	vrep, err := b.Validate()
++	if err != nil {
++		t.Fatalf("validate: %v", err)
++	}
++	rendered := vrep.RenderText()
++	if strings.Contains(rendered, "duplicate event id") {
++		t.Fatalf("validate still reports a duplicate event id:\n%s", rendered)
++	}
++	if vrep.HasErrors() {
++		t.Fatalf("validate reports errors after repair:\n%s", rendered)
++	}
++
++	// The repair converges: a second pass has nothing left to do.
++	again, err := b.RepairEvents(true)
++	if err != nil {
++		t.Fatalf("RepairEvents after repair: %v", err)
++	}
++	if !again.Clean || again.Duplicates != 0 {
++		t.Errorf("second pass clean=%v duplicates=%d, want clean with 0 duplicates", again.Clean, again.Duplicates)
++	}
++}
++
++// TestRepairEvents_duplicateCensusCountsOutput pins the other half of
++// DF-BOARDCTL-45: the census is of the repaired file, not of the input. An
++// untouched pre-existing duplicate is still reported; a duplicate the repair
++// renumbers away is reported as 0 even though the input carried it.
++func TestRepairEvents_duplicateCensusCountsOutput(t *testing.T) {
++	cases := []struct {
++		name      string
++		events    string
++		wantDupes int
++		wantFixed int
++		wantIDs   []int64
++	}{
++		{
++			name:      "clean board still counts its pre-existing duplicates",
++			events:    `{"id": 3}` + "\n" + `{"id": 3}` + "\n" + `{"id": 5}` + "\n",
++			wantDupes: 1,
++			wantFixed: 0,
++			wantIDs:   []int64{3, 3, 5},
++		},
++		{
++			name:      "duplicate the repair renumbers away is not reported",
++			events:    `{"id": 3}` + "\n" + `{"id": 1}` + "\n" + `{"id": 3}` + "\n",
++			wantDupes: 0,
++			wantFixed: 2,
++			wantIDs:   []int64{3, 4, 5},
++		},
++	}
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			b := validRepairedBoard(t, tc.events)
++			rep, err := b.RepairEvents(false)
++			if err != nil {
++				t.Fatalf("RepairEvents: %v", err)
++			}
++			if rep.Duplicates != tc.wantDupes {
++				t.Errorf("duplicates = %d, want %d", rep.Duplicates, tc.wantDupes)
++			}
++			if rep.FixedCount != tc.wantFixed {
++				t.Errorf("fixed = %d, want %d", rep.FixedCount, tc.wantFixed)
++			}
++			ids := eventIDsOf(t, b)
++			if len(ids) != len(tc.wantIDs) {
++				t.Fatalf("ids = %v, want %v", ids, tc.wantIDs)
++			}
++			for i := range tc.wantIDs {
++				if ids[i] != tc.wantIDs[i] {
++					t.Fatalf("ids = %v, want %v", ids, tc.wantIDs)
++				}
++			}
++		})
++	}
++}
