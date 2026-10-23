@@ -1,0 +1,109 @@
+{
+  "task_id": "DF-BOARDCTL-44",
+  "task_title": "[P2] --repair-events re-encodes each renumbered event through map[string]any and silently mutates NON-id fields (ints >2^53 round, double spaces collapse inside string values, keys reorder) \u2014 README promises 'every other field untouched'",
+  "task_criteria": [
+    "1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "561f068457ba7798f75dd689ca3798dc2b521985",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n3:27PM INF scanned ~3586232 bytes (3.59 MB) in 1.09s\n3:27PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 246 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T114740.066431Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t9.018s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t2.494s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.197s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t1.934s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.034s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.608s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T114740.066431Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0.: The bug is NOT fixed. Built /tmp/boardctl from HEAD and ran `normalize-board --repair-events --apply` on a fixture with a descending event. Before: {\"tick_number\": 9007199254740993, \"title\": \"fix  double  spaces\", \"detail\": \"cmd: rsync -a  /x  /y\", \"id\": 3, \"event_type\": \"audit\"}  After: { \"detail\": \"cmd: rsync -a /x /y\", \"event_type\": \"audit\", \"id\": 6, \"tick_number\": 9007199254740992, \"title\": \"fix double spaces\"}. (a) double spaces collapsed \u2014 `grep -c 'double  spaces'` printed 0, expected 1; (b) 9007199254740993 rounded to 9007199254740992; (c) keys reordered alphabetically; (d) diff shows many changed tokens, not only `id`. Root cause unchanged: internal/board/repair_events.go renumberEventID() still does `json.Unmarshal(raw, &m)` into `map[string]any`, sets m[\"id\"], then `json.MarshalIndent`/`json.Marshal` (lines ~228-250). (2) No regression test for the three shapes exists \u2014 grep for 'double  spaces' and '9007199254740993' across all *_test.go returns zero hits; internal/board/repair_events_test.go contains only the 5 pre-existing tests (descendingIds, alreadyCanonical, legacyShape, topologyA, dryRunCache), all of which PASS on this unfixed tree (`go test ./internal/board -run RepairEvents` exit=0), so the required 'exit 1 pre-fix / exit 0 post-fix' evidence is absent. (3) Not satisfied \u2014 the same re-encoding path mutates non-id fields, so a task-router board diff would show non-id changes. (4) `go test ./...` exit=0 (all packages ok), but that only reflects the absence of a failing regression test, not a fix. The only changed file in the diff is cmd/boardctl/board-report.html (a regenerated timestamp), i.e. no source fix was made.\nThe --repair-events re-encoding bug is fully reproducible on the current tree (double spaces collapsed, 9007199254740993 rounded, keys reordered) and no regression test for the three shapes was added, so the task is not complete despite the full suite passing.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0.: The bug is NOT fixed. Built /tmp/boardctl from HEAD and ran `normalize-board --repair-events --apply` on a fixture with a descending event. Before: {\"tick_number\": 9007199254740993, \"title\": \"fix  double  spaces\", \"detail\": \"cmd: rsync -a  /x  /y\", \"id\": 3, \"event_type\": \"audit\"}  After: { \"detail\": \"cmd: rsync -a /x /y\", \"event_type\": \"audit\", \"id\": 6, \"tick_number\": 9007199254740992, \"title\": \"fix double spaces\"}. (a) double spaces collapsed \u2014 `grep -c 'double  spaces'` printed 0, expected 1; (b) 9007199254740993 rounded to 9007199254740992; (c) keys reordered alphabetically; (d) diff shows many changed tokens, not only `id`. Root cause unchanged: internal/board/repair_events.go renumberEventID() still does `json.Unmarshal(raw, &m)` into `map[string]any`, sets m[\"id\"], then `json.MarshalIndent`/`json.Marshal` (lines ~228-250). (2) No regression test for the three shapes exists \u2014 grep for 'double  spaces' and '9007199254740993' across all *_test.go returns zero hits; internal/board/repair_events_test.go contains only the 5 pre-existing tests (descendingIds, alreadyCanonical, legacyShape, topologyA, dryRunCache), all of which PASS on this unfixed tree (`go test ./internal/board -run RepairEvents` exit=0), so the required 'exit 1 pre-fix / exit 0 post-fix' evidence is absent. (3) Not satisfied \u2014 the same re-encoding path mutates non-id fields, so a task-router board diff would show non-id changes. (4) `go test ./...` exit=0 (all packages ok), but that only reflects the absence of a failing regression test, not a fix. The only changed file in the diff is cmd/boardctl/board-report.html (a regenerated timestamp), i.e. no source fix was made.\nThe --repair-events re-encoding bug is fully reproducible on the current tree (double spaces collapsed, 9007199254740993 rounded, keys reordered) and no regression test for the three shapes was added, so the task is not complete despite the full suite passing.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0.",
+                "status": "FAIL",
+                "detail": "The bug is NOT fixed. Built /tmp/boardctl from HEAD and ran `normalize-board --repair-events --apply` on a fixture with a descending event. Before: {\"tick_number\": 9007199254740993, \"title\": \"fix  double  spaces\", \"detail\": \"cmd: rsync -a  /x  /y\", \"id\": 3, \"event_type\": \"audit\"}  After: { \"detail\": \"cmd: rsync -a /x /y\", \"event_type\": \"audit\", \"id\": 6, \"tick_number\": 9007199254740992, \"title\": \"fix double spaces\"}. (a) double spaces collapsed \u2014 `grep -c 'double  spaces'` printed 0, expected 1; (b) 9007199254740993 rounded to 9007199254740992; (c) keys reordered alphabetically; (d) diff shows many changed tokens, not only `id`. Root cause unchanged: internal/board/repair_events.go renumberEventID() still does `json.Unmarshal(raw, &m)` into `map[string]any`, sets m[\"id\"], then `json.MarshalIndent`/`json.Marshal` (lines ~228-250). (2) No regression test for the three shapes exists \u2014 grep for 'double  spaces' and '9007199254740993' across all *_test.go returns zero hits; internal/board/repair_events_test.go contains only the 5 pre-existing tests (descendingIds, alreadyCanonical, legacyShape, topologyA, dryRunCache), all of which PASS on this unfixed tree (`go test ./internal/board -run RepairEvents` exit=0), so the required 'exit 1 pre-fix / exit 0 post-fix' evidence is absent. (3) Not satisfied \u2014 the same re-encoding path mutates non-id fields, so a task-router board diff would show non-id changes. (4) `go test ./...` exit=0 (all packages ok), but that only reflects the absence of a failing regression test, not a fix. The only changed file in the diff is cmd/boardctl/board-report.html (a regenerated timestamp), i.e. no source fix was made."
+              }
+            ],
+            "summary": "The --repair-events re-encoding bug is fully reproducible on the current tree (double spaces collapsed, 9007199254740993 rounded, keys reordered) and no regression test for the three shapes was added, so the task is not complete despite the full suite passing.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-44\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0.: The bug is NOT fixed. Built /tmp/boardctl from HEAD and ran `normalize-board --repair-events --apply` on a fixture with a descending event. Before: {\"tick_number\": 9007199254740993, \"title\": \"fix  double  spaces\", \"detail\": \"cmd: rsync -a  /x  /y\", \"id\": 3, \"event_type\": \"audit\"}  After: { \"detail\": \"cmd: rsync -a /x /y\", \"event_type\": \"audit\", \"id\": 6, \"tick_number\": 9007199254740992, \"title\": \"fix double spaces\"}. (a) double spaces collapsed \u2014 `grep -c 'double  spaces'` printed 0, expected 1; (b) 9007199254740993 rounded to 9007199254740992; (c) keys reordered alphabetically; (d) diff shows many changed tokens, not only `id`. Root cause unchanged: internal/board/repair_events.go renumberEventID() still does `json.Unmarshal(raw, &m)` into `map[string]any`, sets m[\"id\"], then `json.MarshalIndent`/`json.Marshal` (lines ~228-250). (2) No regression test for the three shapes exists \u2014 grep for 'double  spaces' and '9007199254740993' across all *_test.go returns zero hits; internal/board/repair_events_test.go contains only the 5 pre-existing tests (descendingIds, alreadyCanonical, legacyShape, topologyA, dryRunCache), all of which PASS on this unfixed tree (`go test ./internal/board -run RepairEvents` exit=0), so the required 'exit 1 pre-fix / exit 0 post-fix' evidence is absent. (3) Not satisfied \u2014 the same re-encoding path mutates non-id fields, so a task-router board diff would show non-id changes. (4) `go test ./...` exit=0 (all packages ok), but that only reflects the absence of a failing regression test, not a fix. The only changed file in the diff is cmd/boardctl/board-report.html (a regenerated timestamp), i.e. no source fix was made.\nThe --repair-events re-encoding bug is fully reproducible on the current tree (double spaces collapsed, 9007199254740993 rounded, keys reordered) and no regression test for the three shapes was added, so the task is not complete despite the full suite passing.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-23T20:27:47.626758",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-23T20:27:47.656304+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 42345,
+        "truncated": false,
+        "source": "git show 561f068457ba"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 74873,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-44"
+  }
+}

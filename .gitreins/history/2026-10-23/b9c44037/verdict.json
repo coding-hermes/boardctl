@@ -1,0 +1,109 @@
+{
+  "task_id": "DF-BOARDCTL-46",
+  "task_title": "[P3] normalize-board hard-fails on ONE unparseable line and names no remedy \u2014 and --skip-bad-lines on the same command is a dead end (refuses to write), so 400+ rows of drift stay unrepaired",
+  "task_criteria": [
+    "1) The unparseable-line refusal from normalize-board names the remedy inline (line number + `validate --repair` \u2192 review tasks.rewritten.jsonl \u2192 swap \u2192 re-run normalize-board). 2) Either `--skip-bad-lines` on normalize-board becomes a usable degraded path that writes the repaired tasks.jsonl and preserves the dropped lines in a sidecar (e.g. tasks.skipped-lines.jsonl) with an explicit exit code, or the flag is removed from that command's help and the help points at validate --repair. 3) A fixture reproducing the duplicate-key line asserts the remedy text (grep for 'validate --repair' in the error output). 4) `go test ./...` exits 0."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "e9d50f313cb20b0169857ec0243c65aa2ab77934",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n3:56PM INF scanned ~3640786 bytes (3.64 MB) in 1.91s\n3:56PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 250 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T204452.957338Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t12.803s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.006s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t3.744s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.077s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T204452.957338Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 1) The unparseable-line refusal from normalize-board names the remedy inline (line number + `validate --repair` \u2192 review tasks.rewritten.jsonl \u2192 swap \u2192 re-run normalize-board). 2) Either `--skip-bad-lines` on normalize-board becomes a usable degraded path that writes the repaired tasks.jsonl and preserves the dropped lines in a sidecar (e.g. tasks.skipped-lines.jsonl) with an explicit exit code, or the flag is removed from that command's help and the help points at validate --repair. 3) A fixture reproducing the duplicate-key line asserts the remedy text (grep for 'validate --repair' in the error output). 4) `go test ./...` exits 0.: (1) internal/board/normalizeboard.go:189 defines NormalizeBoardRepairHint and :323 wraps the parse error as fmt.Errorf(\"%s: %w \u2014 %s\", b.tasksPath, err, NormalizeBoardRepairHint). Live CLI run on a duplicate-key fixture printed: `boardctl: /tmp/.../tasks.jsonl: line 2: duplicate key \"status\" in row \u2014 remedy: run 'boardctl validate --repair' (salvages every parseable row into tasks.rewritten.jsonl), review tasks.rewritten.jsonl, swap the reviewed file into tasks.jsonl, then re-run 'boardctl normalize-board'` with EXIT=1 \u2014 file + 1-based line number + all four ordered steps. (2) Flag removed: cmd/boardctl/main.go:1363-1368 registers only --apply/--json/--repair-events/-C (no useSkipBad); live `normalize-board --skip-bad-lines` -> `flag provided but not defined: -skip-bad-lines` EXIT=1. Help at main.go:1380-1381 prints 'an UNPARSEABLE tasks.jsonl line REFUSES the whole command ... this repair never degrades. The remedy is printed on the refusal itself:' followed by NormalizeBoardRepairHint (validate --repair path); top-level usageText main.go:87 lists no --skip-bad-lines for normalize-board. (3) internal/board/df_boardctl_46_test.go:29 df46DupKeyRow is the duplicate-key line; TestDF46NormalizeBoardRefusalCarriesRemedy asserts strings.Contains(err.Error(), \"validate --repair\") (line 105) plus tasks.rewritten.jsonl/swap/re-run (line 74), and TestDF46RepairHintNamesEveryStep (line 117) pins every step; `go test -count=1 -run DF46 -v ./internal/board/` -> 3x PASS, ok github.com/coding-hermes/boardctl/internal/board. (4) `go test -count=1 ./...` -> all 12 packages `ok`, EXIT=0.\nnormalize-board now fails closed with an inline, ordered validate --repair remedy naming the file and line, the dead-end --skip-bad-lines flag is removed from the command and its help points at validate --repair, a duplicate-key fixture asserts the remedy text, and the full suite passes (exit 0).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 1) The unparseable-line refusal from normalize-board names the remedy inline (line number + `validate --repair` \u2192 review tasks.rewritten.jsonl \u2192 swap \u2192 re-run normalize-board). 2) Either `--skip-bad-lines` on normalize-board becomes a usable degraded path that writes the repaired tasks.jsonl and preserves the dropped lines in a sidecar (e.g. tasks.skipped-lines.jsonl) with an explicit exit code, or the flag is removed from that command's help and the help points at validate --repair. 3) A fixture reproducing the duplicate-key line asserts the remedy text (grep for 'validate --repair' in the error output). 4) `go test ./...` exits 0.: (1) internal/board/normalizeboard.go:189 defines NormalizeBoardRepairHint and :323 wraps the parse error as fmt.Errorf(\"%s: %w \u2014 %s\", b.tasksPath, err, NormalizeBoardRepairHint). Live CLI run on a duplicate-key fixture printed: `boardctl: /tmp/.../tasks.jsonl: line 2: duplicate key \"status\" in row \u2014 remedy: run 'boardctl validate --repair' (salvages every parseable row into tasks.rewritten.jsonl), review tasks.rewritten.jsonl, swap the reviewed file into tasks.jsonl, then re-run 'boardctl normalize-board'` with EXIT=1 \u2014 file + 1-based line number + all four ordered steps. (2) Flag removed: cmd/boardctl/main.go:1363-1368 registers only --apply/--json/--repair-events/-C (no useSkipBad); live `normalize-board --skip-bad-lines` -> `flag provided but not defined: -skip-bad-lines` EXIT=1. Help at main.go:1380-1381 prints 'an UNPARSEABLE tasks.jsonl line REFUSES the whole command ... this repair never degrades. The remedy is printed on the refusal itself:' followed by NormalizeBoardRepairHint (validate --repair path); top-level usageText main.go:87 lists no --skip-bad-lines for normalize-board. (3) internal/board/df_boardctl_46_test.go:29 df46DupKeyRow is the duplicate-key line; TestDF46NormalizeBoardRefusalCarriesRemedy asserts strings.Contains(err.Error(), \"validate --repair\") (line 105) plus tasks.rewritten.jsonl/swap/re-run (line 74), and TestDF46RepairHintNamesEveryStep (line 117) pins every step; `go test -count=1 -run DF46 -v ./internal/board/` -> 3x PASS, ok github.com/coding-hermes/boardctl/internal/board. (4) `go test -count=1 ./...` -> all 12 packages `ok`, EXIT=0.\nnormalize-board now fails closed with an inline, ordered validate --repair remedy naming the file and line, the dead-end --skip-bad-lines flag is removed from the command and its help points at validate --repair, a duplicate-key fixture asserts the remedy text, and the full suite passes (exit 0).",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "1) The unparseable-line refusal from normalize-board names the remedy inline (line number + `validate --repair` \u2192 review tasks.rewritten.jsonl \u2192 swap \u2192 re-run normalize-board). 2) Either `--skip-bad-lines` on normalize-board becomes a usable degraded path that writes the repaired tasks.jsonl and preserves the dropped lines in a sidecar (e.g. tasks.skipped-lines.jsonl) with an explicit exit code, or the flag is removed from that command's help and the help points at validate --repair. 3) A fixture reproducing the duplicate-key line asserts the remedy text (grep for 'validate --repair' in the error output). 4) `go test ./...` exits 0.",
+                "status": "PASS",
+                "detail": "(1) internal/board/normalizeboard.go:189 defines NormalizeBoardRepairHint and :323 wraps the parse error as fmt.Errorf(\"%s: %w \u2014 %s\", b.tasksPath, err, NormalizeBoardRepairHint). Live CLI run on a duplicate-key fixture printed: `boardctl: /tmp/.../tasks.jsonl: line 2: duplicate key \"status\" in row \u2014 remedy: run 'boardctl validate --repair' (salvages every parseable row into tasks.rewritten.jsonl), review tasks.rewritten.jsonl, swap the reviewed file into tasks.jsonl, then re-run 'boardctl normalize-board'` with EXIT=1 \u2014 file + 1-based line number + all four ordered steps. (2) Flag removed: cmd/boardctl/main.go:1363-1368 registers only --apply/--json/--repair-events/-C (no useSkipBad); live `normalize-board --skip-bad-lines` -> `flag provided but not defined: -skip-bad-lines` EXIT=1. Help at main.go:1380-1381 prints 'an UNPARSEABLE tasks.jsonl line REFUSES the whole command ... this repair never degrades. The remedy is printed on the refusal itself:' followed by NormalizeBoardRepairHint (validate --repair path); top-level usageText main.go:87 lists no --skip-bad-lines for normalize-board. (3) internal/board/df_boardctl_46_test.go:29 df46DupKeyRow is the duplicate-key line; TestDF46NormalizeBoardRefusalCarriesRemedy asserts strings.Contains(err.Error(), \"validate --repair\") (line 105) plus tasks.rewritten.jsonl/swap/re-run (line 74), and TestDF46RepairHintNamesEveryStep (line 117) pins every step; `go test -count=1 -run DF46 -v ./internal/board/` -> 3x PASS, ok github.com/coding-hermes/boardctl/internal/board. (4) `go test -count=1 ./...` -> all 12 packages `ok`, EXIT=0."
+              }
+            ],
+            "summary": "normalize-board now fails closed with an inline, ordered validate --repair remedy naming the file and line, the dead-end --skip-bad-lines flag is removed from the command and its help points at validate --repair, a duplicate-key fixture asserts the remedy text, and the full suite passes (exit 0).",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-46\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 1) The unparseable-line refusal from normalize-board names the remedy inline (line number + `validate --repair` \u2192 review tasks.rewritten.jsonl \u2192 swap \u2192 re-run normalize-board). 2) Either `--skip-bad-lines` on normalize-board becomes a usable degraded path that writes the repaired tasks.jsonl and preserves the dropped lines in a sidecar (e.g. tasks.skipped-lines.jsonl) with an explicit exit code, or the flag is removed from that command's help and the help points at validate --repair. 3) A fixture reproducing the duplicate-key line asserts the remedy text (grep for 'validate --repair' in the error output). 4) `go test ./...` exits 0.: (1) internal/board/normalizeboard.go:189 defines NormalizeBoardRepairHint and :323 wraps the parse error as fmt.Errorf(\"%s: %w \u2014 %s\", b.tasksPath, err, NormalizeBoardRepairHint). Live CLI run on a duplicate-key fixture printed: `boardctl: /tmp/.../tasks.jsonl: line 2: duplicate key \"status\" in row \u2014 remedy: run 'boardctl validate --repair' (salvages every parseable row into tasks.rewritten.jsonl), review tasks.rewritten.jsonl, swap the reviewed file into tasks.jsonl, then re-run 'boardctl normalize-board'` with EXIT=1 \u2014 file + 1-based line number + all four ordered steps. (2) Flag removed: cmd/boardctl/main.go:1363-1368 registers only --apply/--json/--repair-events/-C (no useSkipBad); live `normalize-board --skip-bad-lines` -> `flag provided but not defined: -skip-bad-lines` EXIT=1. Help at main.go:1380-1381 prints 'an UNPARSEABLE tasks.jsonl line REFUSES the whole command ... this repair never degrades. The remedy is printed on the refusal itself:' followed by NormalizeBoardRepairHint (validate --repair path); top-level usageText main.go:87 lists no --skip-bad-lines for normalize-board. (3) internal/board/df_boardctl_46_test.go:29 df46DupKeyRow is the duplicate-key line; TestDF46NormalizeBoardRefusalCarriesRemedy asserts strings.Contains(err.Error(), \"validate --repair\") (line 105) plus tasks.rewritten.jsonl/swap/re-run (line 74), and TestDF46RepairHintNamesEveryStep (line 117) pins every step; `go test -count=1 -run DF46 -v ./internal/board/` -> 3x PASS, ok github.com/coding-hermes/boardctl/internal/board. (4) `go test -count=1 ./...` -> all 12 packages `ok`, EXIT=0.\nnormalize-board now fails closed with an inline, ordered validate --repair remedy naming the file and line, the dead-end --skip-bad-lines flag is removed from the command and its help points at validate --repair, a duplicate-key fixture asserts the remedy text, and the full suite passes (exit 0).\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-23T20:57:19.451077",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-23T20:57:19.496103+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3507,
+        "truncated": false,
+        "source": "git show e9d50f313cb2"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 74873,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-46"
+  }
+}

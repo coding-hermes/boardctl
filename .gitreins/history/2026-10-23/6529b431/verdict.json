@@ -1,0 +1,109 @@
+{
+  "task_id": "DF-BOARDCTL-44",
+  "task_title": "[P2] --repair-events re-encodes each renumbered event through map[string]any and silently mutates NON-id fields (ints >2^53 round, double spaces collapse inside string values, keys reorder) \u2014 README promises 'every other field untouched'",
+  "task_criteria": [
+    "1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "e9d50f313cb20b0169857ec0243c65aa2ab77934",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n3:56PM INF scanned ~3640786 bytes (3.64 MB) in 1.53s\n3:56PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 250 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T204452.957338Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t12.917s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t5.551s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.309s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.113s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T204452.957338Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0.: AC1: built /tmp/boardctl-new from cmd/boardctl; fixture /tmp/fix1/.coding-hermes/board/events.jsonl line 2 = `{ \"title\": \"fix  double  spaces\", \"detail\": \"cmd: rsync -a  /x  /y\", \"tick_number\": 9007199254740993, \"zeta\": \"last  alphabetically\", \"id\": 2, \"nested\": { \"id\": 42, \"note\": \"nested  spaces\" } }` (non-alphabetical key order). `normalize-board --repair-events --apply` exit 0, report 'fixed: 1 event(s) renumbered'; `diff` before/after printed exactly one changed line pair differing only in `\"id\": 2` -> `\"id\": 6`; `grep -c 'double  spaces'` = 1; tick_number 9007199254740993 and key order byte-identical. AC2: pre-fix tree (git worktree at de3383d^ + the new test file) `go test ./internal/board -run RepairEvents -count=1` => PRE_EXIT=1 with `--- FAIL: TestRepairEvents_preservesNonIDBytes` (repair_events_test.go:388 'preserved bytes missing \"fix  double  spaces\"', :392 'integer above 2^53 was rounded', :410 'key order changed: before [title detail tick_number zeta id nested quote], after [detail id nested quote tick_number title zeta]'), `--- FAIL: TestRepairEvents_largeIntBeyondFloatPrecision`, `--- FAIL: TestRepairEvents_renumberEventIDSplicesOnlyID`; post-fix tree => POST_EXIT=0, `ok github.com/coding-hermes/boardctl/internal/board 0.034s` (all 7 RepairEvents tests PASS). Tests at internal/board/repair_events_test.go:341 (double spaces + >2^53 + key order), :423 (>2^53), :461 (splice unit table). AC3: copied /home/kara/task-router/.coding-hermes/board (704 events) to /tmp/trcopy, ran `normalize-board --repair-events --apply` (477 renumbered); diff before/after = 477 changed line pairs, and a per-line comparison with the id token masked reported 'changed lines: 477 non-id-only: 0'. Control: pre-fix binary on the same copy produced 'PRE-FIX non-id-only changed lines: 477'. AC4: `go test ./... -count=1` => FULL_EXIT=0, all 12 packages `ok` (cmd/boardctl 8.043s, internal/board 2.632s, ...), no FAIL lines. Implementation is a raw-byte splice (internal/board/repair_events.go renumberEventID/topLevelFieldSpan) replacing only the top-level id value span; README.md:922-940 documents the byte-level contract.\nAll four acceptance criteria verified with live command output: fixture diff shows only the id token changed with double spaces and >2^53 int intact, the new regression tests exit 1 pre-fix and 0 post-fix, the task-router board copy shows 477 id-only changes (0 non-id), and `go test ./...` exits 0.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0.: AC1: built /tmp/boardctl-new from cmd/boardctl; fixture /tmp/fix1/.coding-hermes/board/events.jsonl line 2 = `{ \"title\": \"fix  double  spaces\", \"detail\": \"cmd: rsync -a  /x  /y\", \"tick_number\": 9007199254740993, \"zeta\": \"last  alphabetically\", \"id\": 2, \"nested\": { \"id\": 42, \"note\": \"nested  spaces\" } }` (non-alphabetical key order). `normalize-board --repair-events --apply` exit 0, report 'fixed: 1 event(s) renumbered'; `diff` before/after printed exactly one changed line pair differing only in `\"id\": 2` -> `\"id\": 6`; `grep -c 'double  spaces'` = 1; tick_number 9007199254740993 and key order byte-identical. AC2: pre-fix tree (git worktree at de3383d^ + the new test file) `go test ./internal/board -run RepairEvents -count=1` => PRE_EXIT=1 with `--- FAIL: TestRepairEvents_preservesNonIDBytes` (repair_events_test.go:388 'preserved bytes missing \"fix  double  spaces\"', :392 'integer above 2^53 was rounded', :410 'key order changed: before [title detail tick_number zeta id nested quote], after [detail id nested quote tick_number title zeta]'), `--- FAIL: TestRepairEvents_largeIntBeyondFloatPrecision`, `--- FAIL: TestRepairEvents_renumberEventIDSplicesOnlyID`; post-fix tree => POST_EXIT=0, `ok github.com/coding-hermes/boardctl/internal/board 0.034s` (all 7 RepairEvents tests PASS). Tests at internal/board/repair_events_test.go:341 (double spaces + >2^53 + key order), :423 (>2^53), :461 (splice unit table). AC3: copied /home/kara/task-router/.coding-hermes/board (704 events) to /tmp/trcopy, ran `normalize-board --repair-events --apply` (477 renumbered); diff before/after = 477 changed line pairs, and a per-line comparison with the id token masked reported 'changed lines: 477 non-id-only: 0'. Control: pre-fix binary on the same copy produced 'PRE-FIX non-id-only changed lines: 477'. AC4: `go test ./... -count=1` => FULL_EXIT=0, all 12 packages `ok` (cmd/boardctl 8.043s, internal/board 2.632s, ...), no FAIL lines. Implementation is a raw-byte splice (internal/board/repair_events.go renumberEventID/topLevelFieldSpan) replacing only the top-level id value span; README.md:922-940 documents the byte-level contract.\nAll four acceptance criteria verified with live command output: fixture diff shows only the id token changed with double spaces and >2^53 int intact, the new regression tests exit 1 pre-fix and 0 post-fix, the task-router board copy shows 477 id-only changes (0 non-id), and `go test ./...` exits 0.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0.",
+                "status": "PASS",
+                "detail": "AC1: built /tmp/boardctl-new from cmd/boardctl; fixture /tmp/fix1/.coding-hermes/board/events.jsonl line 2 = `{ \"title\": \"fix  double  spaces\", \"detail\": \"cmd: rsync -a  /x  /y\", \"tick_number\": 9007199254740993, \"zeta\": \"last  alphabetically\", \"id\": 2, \"nested\": { \"id\": 42, \"note\": \"nested  spaces\" } }` (non-alphabetical key order). `normalize-board --repair-events --apply` exit 0, report 'fixed: 1 event(s) renumbered'; `diff` before/after printed exactly one changed line pair differing only in `\"id\": 2` -> `\"id\": 6`; `grep -c 'double  spaces'` = 1; tick_number 9007199254740993 and key order byte-identical. AC2: pre-fix tree (git worktree at de3383d^ + the new test file) `go test ./internal/board -run RepairEvents -count=1` => PRE_EXIT=1 with `--- FAIL: TestRepairEvents_preservesNonIDBytes` (repair_events_test.go:388 'preserved bytes missing \"fix  double  spaces\"', :392 'integer above 2^53 was rounded', :410 'key order changed: before [title detail tick_number zeta id nested quote], after [detail id nested quote tick_number title zeta]'), `--- FAIL: TestRepairEvents_largeIntBeyondFloatPrecision`, `--- FAIL: TestRepairEvents_renumberEventIDSplicesOnlyID`; post-fix tree => POST_EXIT=0, `ok github.com/coding-hermes/boardctl/internal/board 0.034s` (all 7 RepairEvents tests PASS). Tests at internal/board/repair_events_test.go:341 (double spaces + >2^53 + key order), :423 (>2^53), :461 (splice unit table). AC3: copied /home/kara/task-router/.coding-hermes/board (704 events) to /tmp/trcopy, ran `normalize-board --repair-events --apply` (477 renumbered); diff before/after = 477 changed line pairs, and a per-line comparison with the id token masked reported 'changed lines: 477 non-id-only: 0'. Control: pre-fix binary on the same copy produced 'PRE-FIX non-id-only changed lines: 477'. AC4: `go test ./... -count=1` => FULL_EXIT=0, all 12 packages `ok` (cmd/boardctl 8.043s, internal/board 2.632s, ...), no FAIL lines. Implementation is a raw-byte splice (internal/board/repair_events.go renumberEventID/topLevelFieldSpan) replacing only the top-level id value span; README.md:922-940 documents the byte-level contract."
+              }
+            ],
+            "summary": "All four acceptance criteria verified with live command output: fixture diff shows only the id token changed with double spaces and >2^53 int intact, the new regression tests exit 1 pre-fix and 0 post-fix, the task-router board copy shows 477 id-only changes (0 non-id), and `go test ./...` exits 0.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-44\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 1) `boardctl normalize-board --repair-events --apply` on a fixture whose descending event carries 'title':'fix  double  spaces', 'detail':'cmd: rsync -a  /x  /y', 'tick_number':9007199254740993 and a deliberately non-alphabetical key order must leave those values and that key order byte-identical: a `diff` of the before/after line must show only the `id` token changed, and the double spaces must still be present (grep -c 'double  spaces' events.jsonl prints 1). 2) A regression test under internal/board covering all three shapes (double-space string, integer above 2^53, key order) must exit 1 on the pre-fix tree and exit 0 after the fix: run `go test ./internal/board -run RepairEvents` and record both exit codes in the row's evidence. 3) Re-running the repair on a copy of task-router's board must show id-only changes: `git diff` of the pre- and post-repair events.jsonl prints zero lines whose changed field is not `id`. 4) Full suite exits 0: `go test ./...` expected exit code 0.: AC1: built /tmp/boardctl-new from cmd/boardctl; fixture /tmp/fix1/.coding-hermes/board/events.jsonl line 2 = `{ \"title\": \"fix  double  spaces\", \"detail\": \"cmd: rsync -a  /x  /y\", \"tick_number\": 9007199254740993, \"zeta\": \"last  alphabetically\", \"id\": 2, \"nested\": { \"id\": 42, \"note\": \"nested  spaces\" } }` (non-alphabetical key order). `normalize-board --repair-events --apply` exit 0, report 'fixed: 1 event(s) renumbered'; `diff` before/after printed exactly one changed line pair differing only in `\"id\": 2` -> `\"id\": 6`; `grep -c 'double  spaces'` = 1; tick_number 9007199254740993 and key order byte-identical. AC2: pre-fix tree (git worktree at de3383d^ + the new test file) `go test ./internal/board -run RepairEvents -count=1` => PRE_EXIT=1 with `--- FAIL: TestRepairEvents_preservesNonIDBytes` (repair_events_test.go:388 'preserved bytes missing \"fix  double  spaces\"', :392 'integer above 2^53 was rounded', :410 'key order changed: before [title detail tick_number zeta id nested quote], after [detail id nested quote tick_number title zeta]'), `--- FAIL: TestRepairEvents_largeIntBeyondFloatPrecision`, `--- FAIL: TestRepairEvents_renumberEventIDSplicesOnlyID`; post-fix tree => POST_EXIT=0, `ok github.com/coding-hermes/boardctl/internal/board 0.034s` (all 7 RepairEvents tests PASS). Tests at internal/board/repair_events_test.go:341 (double spaces + >2^53 + key order), :423 (>2^53), :461 (splice unit table). AC3: copied /home/kara/task-router/.coding-hermes/board (704 events) to /tmp/trcopy, ran `normalize-board --repair-events --apply` (477 renumbered); diff before/after = 477 changed line pairs, and a per-line comparison with the id token masked reported 'changed lines: 477 non-id-only: 0'. Control: pre-fix binary on the same copy produced 'PRE-FIX non-id-only changed lines: 477'. AC4: `go test ./... -count=1` => FULL_EXIT=0, all 12 packages `ok` (cmd/boardctl 8.043s, internal/board 2.632s, ...), no FAIL lines. Implementation is a raw-byte splice (internal/board/repair_events.go renumberEventID/topLevelFieldSpan) replacing only the top-level id value span; README.md:922-940 documents the byte-level contract.\nAll four acceptance criteria verified with live command output: fixture diff shows only the id token changed with double spaces and >2^53 int intact, the new regression tests exit 1 pre-fix and 0 post-fix, the task-router board copy shows 477 id-only changes (0 non-id), and `go test ./...` exits 0.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-23T20:57:35.683751",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-23T20:57:35.732311+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3507,
+        "truncated": false,
+        "source": "git show e9d50f313cb2"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 74873,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-44"
+  }
+}

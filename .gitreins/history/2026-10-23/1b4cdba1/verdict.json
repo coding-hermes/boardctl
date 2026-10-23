@@ -1,0 +1,109 @@
+{
+  "task_id": "DF-BOARDCTL-47",
+  "task_title": "[P2] umbrella aborts the WHOLE cross-board view on one unparseable line in one child board (no --skip-bad-lines) \u2014 every other verb has a degrade mode",
+  "task_criteria": [
+    "1) `umbrella --skip-bad-lines` exists and degrades: every parseable row of every healthy child board is counted, each skipped board/line is reported with file:line on stderr, exit 1. 2) On the boardctl+warpfs pair above, `umbrella --stats` and `umbrella --list` print both boards' totals plus a SKIPPED block instead of aborting. 3) Without the flag the current fail-closed behaviour is unchanged (rc=1, same message). 4) `umbrella --help` documents both modes, and a regression test drives a fixture umbrella whose second child carries a duplicate-key line. 5) `go test ./...` exits 0."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "e9d50f313cb20b0169857ec0243c65aa2ab77934",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n3:49PM INF scanned ~3640786 bytes (3.64 MB) in 1.55s\n3:49PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 250 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T204452.957338Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t6.888s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.035s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t2.051s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.277s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.044s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.051s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.011s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.867s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T204452.957338Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 1) `umbrella --skip-bad-lines` exists and degrades: every parseable row of every healthy child board is counted, each skipped board/line is reported with file:line on stderr, exit 1. 2) On the boardctl+warpfs pair above, `umbrella --stats` and `umbrella --list` print both boards' totals plus a SKIPPED block instead of aborting. 3) Without the flag the current fail-closed behaviour is unchanged (rc=1, same message). 4) `umbrella --help` documents both modes, and a regression test drives a fixture umbrella whose second child carries a duplicate-key line. 5) `go test ./...` exits 0.: All 5 sub-criteria verified with live binary runs + test output.\n\n(1) Flag exists: cmd/boardctl/umbrella.go:63 `skipBad := useSkipBad(fs)`, :131-133 `if *skipBad { um.SetSkipBad() }`; internal/board/umbrella.go SetSkipBad() arms SkipBad on every board in the view. Live run on a boardctl+warpfs fixture (warpfs tasks.jsonl line 2 = duplicate `worker_status` key): `umbrella --stats --skip-bad-lines` printed `repo boardctl (2 tasks)` + `repo warpfs (1 tasks)` + `umbrella total: total tasks: 3` \u2014 every parseable row of both healthy boards counted \u2014 then `SKIPPED-LINES: 1 line(s) could not be parsed and were skipped:` / `warpfs (/tmp/umb/warpfs/.coding-hermes/board): /tmp/umb/warpfs/.coding-hermes/board/tasks.jsonl line 2: duplicate key \"worker_status\" in row` + snippet, rc=1. Stream check: stdout grep for SKIPPED-LINES = 0, stderr grep = 1 (evidence is on stderr); `--json --skip-bad-lines` stdout still parses as JSON (boards=2).\n\n(2) `--stats` and `--list` both degrade instead of aborting: --stats output above; `--list --skip-bad-lines` printed rows `boardctl BC-1`, `boardctl BC-2`, `warpfs WF-1` plus the same SKIPPED-LINES block, rc=1.\n\n(3) Default unchanged: `umbrella --stats` with no flag -> `boardctl: board warpfs (/tmp/umb/warpfs/.coding-hermes/board): /tmp/umb/warpfs/.coding-hermes/board/tasks.jsonl: line 2: duplicate key \"worker_status\" in row`, rc=1, no partial output. umbrella.go:186-189 makes the degraded clause conditional on skipped>0, so the default message is byte-identical to the pre-change wording at :192.\n\n(4) `umbrella --help` (rc=0) prints a `Line-level read modes (DF-BOARDCTL-47):` section documenting both `(default) fail-closed: the FIRST unparseable line in ANY board aborts the whole view with that board's file and line (exit 1, no partial output).` and `--skip-bad-lines degraded: every parseable row from every healthy board is still counted/listed ... reported on stderr as SKIPPED-LINES ... exits 1`. Regression fixture matches the criterion exactly: internal/board/df_boardctl_47_test.go:62-70 df47Fixture() = childA healthy with 2 tasks, childB with 1 healthy task followed by one duplicate-key line (the SECOND child), with premise assertions that the line is valid JSON but ParseRow rejects it for `duplicate key`. Tests pass: TestUmbrellaDefaultFailClosed, TestUmbrellaSkipBadAggregatesHealthyBoards, TestUmbrellaSkipBadDedupesAcrossReads, TestUmbrellaSkipBadHealthyBoardsClean all `--- PASS`; CLI side TestDF47DefaultFailClosedUnchanged, TestDF47StatsSkipBadDegrades, TestDF47ListSkipBadDegrades, TestDF47CensusSkipBadDegrades, TestDF47JSONSkipBadKeepsStdoutParseable, TestDF47HelpDocumentsBothModes, TestDF47SkipBadOnHealthyUmbrellaStaysClean, TestDF47SkipBadIsReadOnly all `--- PASS`.\n\n(5) `go test -count=1 ./...` -> TEST_EXIT=0, 12 packages reported `ok` (cmd/boardctl, cmd/dedupe-board, cmd/gendocs, internal/board, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/vulncheck, internal/workflowcheck), zero FAIL/panic lines. `go build ./...` also exit 0.\n`umbrella --skip-bad-lines` is implemented and verified end-to-end: it counts every parseable row across both boards, emits a stderr SKIPPED-LINES block with repo + file:line + parse error, exits 1, leaves the default fail-closed path byte-identical, documents both modes in --help, ships library+CLI regression tests on a second-child duplicate-key fixture, and `go test -count=1 ./...` exits 0.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 1) `umbrella --skip-bad-lines` exists and degrades: every parseable row of every healthy child board is counted, each skipped board/line is reported with file:line on stderr, exit 1. 2) On the boardctl+warpfs pair above, `umbrella --stats` and `umbrella --list` print both boards' totals plus a SKIPPED block instead of aborting. 3) Without the flag the current fail-closed behaviour is unchanged (rc=1, same message). 4) `umbrella --help` documents both modes, and a regression test drives a fixture umbrella whose second child carries a duplicate-key line. 5) `go test ./...` exits 0.: All 5 sub-criteria verified with live binary runs + test output.\n\n(1) Flag exists: cmd/boardctl/umbrella.go:63 `skipBad := useSkipBad(fs)`, :131-133 `if *skipBad { um.SetSkipBad() }`; internal/board/umbrella.go SetSkipBad() arms SkipBad on every board in the view. Live run on a boardctl+warpfs fixture (warpfs tasks.jsonl line 2 = duplicate `worker_status` key): `umbrella --stats --skip-bad-lines` printed `repo boardctl (2 tasks)` + `repo warpfs (1 tasks)` + `umbrella total: total tasks: 3` \u2014 every parseable row of both healthy boards counted \u2014 then `SKIPPED-LINES: 1 line(s) could not be parsed and were skipped:` / `warpfs (/tmp/umb/warpfs/.coding-hermes/board): /tmp/umb/warpfs/.coding-hermes/board/tasks.jsonl line 2: duplicate key \"worker_status\" in row` + snippet, rc=1. Stream check: stdout grep for SKIPPED-LINES = 0, stderr grep = 1 (evidence is on stderr); `--json --skip-bad-lines` stdout still parses as JSON (boards=2).\n\n(2) `--stats` and `--list` both degrade instead of aborting: --stats output above; `--list --skip-bad-lines` printed rows `boardctl BC-1`, `boardctl BC-2`, `warpfs WF-1` plus the same SKIPPED-LINES block, rc=1.\n\n(3) Default unchanged: `umbrella --stats` with no flag -> `boardctl: board warpfs (/tmp/umb/warpfs/.coding-hermes/board): /tmp/umb/warpfs/.coding-hermes/board/tasks.jsonl: line 2: duplicate key \"worker_status\" in row`, rc=1, no partial output. umbrella.go:186-189 makes the degraded clause conditional on skipped>0, so the default message is byte-identical to the pre-change wording at :192.\n\n\n\u2026 [1200 chars omitted \u2014 1 line(s)] \u2026\n\n(5) `go test -count=1 ./...` -> TEST_EXIT=0, 12 packages reported `ok` (cmd/boardctl, cmd/dedupe-board, cmd/gendocs, internal/board, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/vulncheck, internal/workflowcheck), zero FAIL/panic lines. `go build ./...` also exit 0.\n`umbrella --skip-bad-lines` is implemented and verified end-to-end: it counts every parseable row across both boards, emits a stderr SKIPPED-LINES block with repo + file:line + parse error, exits 1, leaves the default fail-closed path byte-identical, documents both modes in --help, ships library+CLI regression tests on a second-child duplicate-key fixture, and `go test -count=1 ./...` exits 0.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "1) `umbrella --skip-bad-lines` exists and degrades: every parseable row of every healthy child board is counted, each skipped board/line is reported with file:line on stderr, exit 1. 2) On the boardctl+warpfs pair above, `umbrella --stats` and `umbrella --list` print both boards' totals plus a SKIPPED block instead of aborting. 3) Without the flag the current fail-closed behaviour is unchanged (rc=1, same message). 4) `umbrella --help` documents both modes, and a regression test drives a fixture umbrella whose second child carries a duplicate-key line. 5) `go test ./...` exits 0.",
+                "status": "PASS",
+                "detail": "All 5 sub-criteria verified with live binary runs + test output.\n\n(1) Flag exists: cmd/boardctl/umbrella.go:63 `skipBad := useSkipBad(fs)`, :131-133 `if *skipBad { um.SetSkipBad() }`; internal/board/umbrella.go SetSkipBad() arms SkipBad on every board in the view. Live run on a boardctl+warpfs fixture (warpfs tasks.jsonl line 2 = duplicate `worker_status` key): `umbrella --stats --skip-bad-lines` printed `repo boardctl (2 tasks)` + `repo warpfs (1 tasks)` + `umbrella total: total tasks: 3` \u2014 every parseable row of both healthy boards counted \u2014 then `SKIPPED-LINES: 1 line(s) could not be parsed and were skipped:` / `warpfs (/tmp/umb/warpfs/.coding-hermes/board): /tmp/umb/warpfs/.coding-hermes/board/tasks.jsonl line 2: duplicate key \"worker_status\" in row` + snippet, rc=1. Stream check: stdout grep for SKIPPED-LINES = 0, stderr grep = 1 (evidence is on stderr); `--json --skip-bad-lines` stdout still parses as JSON (boards=2).\n\n(2) `--stats` and `--list` both degrade instead of aborting: --stats output above; `--list --skip-bad-lines` printed rows `boardctl BC-1`, `boardctl BC-2`, `warpfs WF-1` plus the same SKIPPED-LINES block, rc=1.\n\n(3) Default unchanged: `umbrella --stats` with no flag -> `boardctl: board warpfs (/tmp/umb/warpfs/.coding-hermes/board): /tmp/umb/warpfs/.coding-hermes/board/tasks.jsonl: line 2: duplicate key \"worker_status\" in row`, rc=1, no partial output. umbrella.go:186-189 makes the degraded clause conditional on skipped>0, so the default message is byte-identical to the pre-change wording at :192.\n\n(4) `umbrella --help` (rc=0) prints a `Line-level read modes (DF-BOARDCTL-47):` section documenting both `(default) fail-closed: the FIRST unparseable line in ANY board aborts the whole view with that board's file and line (exit 1, no partial output).` and `--skip-bad-lines degraded: every parseable row from every healthy board is still counted/listed ... reported on stderr as SKIPPED-LINES ... exits 1`. Regression fixture matches the criterion exactly: internal/board/df_boardctl_47_test.go:62-70 df47Fixture() = childA healthy with 2 tasks, childB with 1 healthy task followed by one duplicate-key line (the SECOND child), with premise assertions that the line is valid JSON but ParseRow rejects it for `duplicate key`. Tests pass: TestUmbrellaDefaultFailClosed, TestUmbrellaSkipBadAggregatesHealthyBoards, TestUmbrellaSkipBadDedupesAcrossReads, TestUmbrellaSkipBadHealthyBoardsClean all `--- PASS`; CLI side TestDF47DefaultFailClosedUnchanged, TestDF47StatsSkipBadDegrades, TestDF47ListSkipBadDegrades, TestDF47CensusSkipBadDegrades, TestDF47JSONSkipBadKeepsStdoutParseable, TestDF47HelpDocumentsBothModes, TestDF47SkipBadOnHealthyUmbrellaStaysClean, TestDF47SkipBadIsReadOnly all `--- PASS`.\n\n(5) `go test -count=1 ./...` -> TEST_EXIT=0, 12 packages reported `ok` (cmd/boardctl, cmd/dedupe-board, cmd/gendocs, internal/board, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/vulncheck, internal/workflowcheck), zero FAIL/panic lines. `go build ./...` also exit 0."
+              }
+            ],
+            "summary": "`umbrella --skip-bad-lines` is implemented and verified end-to-end: it counts every parseable row across both boards, emits a stderr SKIPPED-LINES block with repo + file:line + parse error, exits 1, leaves the default fail-closed path byte-identical, documents both modes in --help, ships library+CLI regression tests on a second-child duplicate-key fixture, and `go test -count=1 ./...` exits 0.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-47\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 1) `umbrella --skip-bad-lines` exists and degrades: every parseable row of every healthy child board is counted, each skipped board/line is reported with file:line on stderr, exit 1. 2) On the boardctl+warpfs pair above, `umbrella --stats` and `umbrella --list` print both boards' totals plus a SKIPPED block instead of aborting. 3) Without the flag the current fail-closed behaviour is unchanged (rc=1, same message). 4) `umbrella --help` documents both modes, and a regression test drives a fixture umbrella whose second child carries a duplicate-key line. 5) `go test ./...` exits 0.: All 5 sub-criteria verified with live binary runs + test output.\n\n(1) Flag exists: cmd/boardctl/umbrella.go:63 `skipBad := useSkipBad(fs)`, :131-133 `if *skipBad { um.SetSkipBad() }`; internal/board/umbrella.go SetSkipBad() arms SkipBad on every board in the view. Live run on a boardctl+warpfs fixture (warpfs tasks.jsonl line 2 = duplicate `worker_status` key): `umbrella --stats --skip-bad-lines` printed `repo boardctl (2 tasks)` + `repo warpfs (1 tasks)` + `umbrella total: total tasks: 3` \u2014 every parseable row of both healthy boards counted \u2014 then `SKIPPED-LINES: 1 line(s) could not be parsed and were skipped:` / `warpfs (/tmp/umb/warpfs/.coding-hermes/board): /tmp/umb/warpfs/.coding-hermes/board/tasks.jsonl line 2: duplicate key \"worker_status\" in row` + snippet, rc=1. Stream check: stdout grep for SKIPPED-LINES = 0, stderr grep = 1 (evidence is on stderr); `--json --skip-bad-lines` stdout still parses as JSON (boards=2).\n\n(2) `--stats` and `--list` both degrade instead of aborting: --stats output above; `--list --skip-bad-lines` printed rows `boardctl BC-1`, `boardctl BC-2`, `warpfs WF-1` plus the same SKIPPED-LINES block, rc=1.\n\n(3) Default unchanged: `umbrella --stats` with no flag -> `boardctl: board warpfs (/tmp/umb/warpfs/.coding-hermes/board): /tmp/umb/warpfs/.coding-hermes/board/tasks.jsonl: line 2: duplicate key \"worker_status\" in row`, rc=1, no partial output. umbrella.go:186-189 makes the degraded clause conditional on skipped>0, so the default message is byte-identical to the pre-change wording at :192.\n\n(4) `umbrella --help` (rc=0) prints a `Line-level read modes (DF-BOARDCTL-47):` section documenting both `(default) fail-closed: the FIRST unparseable line in ANY board aborts the whole view with that board's file and line (exit 1, no partial output).` and `--skip-bad-lines degraded: every parseable row from every healthy board is still counted/listed ... reported on stderr as SKIPPED-LINES ... exits 1`. Regression fixture matches the criterion exactly: internal/board/df_boardctl_47_test.go:62-70 df47Fixture() = childA healthy with 2 tasks, childB with 1 healthy task followed by one duplicate-key line (the SECOND child), with premise assertions that the line is valid JSON but ParseRow rejects it for `duplicate key`. Tests pass: TestUmbrellaDefaultFailClosed, TestUmbrellaSkipBadAggregatesHealthyBoards, TestUmbrellaSkipBadDedupesAcrossReads, TestUmbrellaSkipBadHealthyBoardsClean all `--- PASS`; CLI side TestDF47DefaultFailClosedUnchanged, TestDF47StatsSkipBadDegrades, TestDF47ListSkipBadDegrades, TestDF47CensusSkipBadDegrades, TestDF47JSONSkipBadKeepsStdoutParseable, TestDF47HelpDocumentsBothModes, TestDF47SkipBadOnHealthyUmbrellaStaysClean, TestDF47SkipBadIsReadOnly all `--- PASS`.\n\n(5) `go test -count=1 ./...` -> TEST_EXIT=0, 12 packages reported `ok` (cmd/boardctl, cmd/dedupe-board, cmd/gendocs, internal/board, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/vulncheck, internal/workflowcheck), zero FAIL/panic lines. `go build ./...` also exit 0.\n`umbrella --skip-bad-lines` is implemented and verified end-to-end: it counts every parseable row across both boards, emits a stderr SKIPPED-LINES block with repo + file:line + parse error, exits 1, leaves the default fail-closed path byte-identical, documents both modes in --help, ships library+CLI regression tests on a second-child duplicate-key fixture, and `go test -count=1 ./...` exits 0.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-23T20:50:59.178291",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-23T20:50:59.209108+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3507,
+        "truncated": false,
+        "source": "git show e9d50f313cb2"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 74873,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-47"
+  }
+}

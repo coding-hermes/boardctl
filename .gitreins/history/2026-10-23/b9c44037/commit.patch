@@ -1,0 +1,60 @@
+commit e9d50f313cb20b0169857ec0243c65aa2ab77934
+Merge: 102e8c0 5e66cd6
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 23 15:45:06 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 23 15:48:24 2026 -0500
+
+    Merge commit '5e66cd60c4f50a64671cbf7bcf79113a4c7fc409'
+    
+    # Conflicts:
+    #       cmd/boardctl/main.go
+
+ README.md                               |  27 +++
+ cmd/boardctl/df_boardctl_47_cli_test.go | 309 ++++++++++++++++++++++++++++++++
+ cmd/boardctl/main.go                    |  36 ++--
+ cmd/boardctl/umbrella.go                |  42 ++++-
+ internal/board/df_boardctl_47_test.go   | 216 ++++++++++++++++++++++
+ internal/board/umbrella.go              |  70 ++++++++
+ 6 files changed, 679 insertions(+), 21 deletions(-)
+
+diff --cc cmd/boardctl/main.go
+index 30b7bb2,ba00f06..5456c93
+--- a/cmd/boardctl/main.go
++++ b/cmd/boardctl/main.go
+@@@ -1363,11 -1369,7 +1368,7 @@@ func cmdNormalizeBoard(dir string, arg
+  	var cdir string
+  	addCFlag(fs, &cdir)
+  	fs.Usage = func() {
+- 		// DF-BOARDCTL-46: --skip-bad-lines is deliberately ABSENT here. It
+- 		// promised a degraded read that normalize-board cannot honor without
+- 		// a lossy rewrite, so the command is fail-closed on an unparseable
+- 		// line and the help points at the salvage path instead.
+ -		_, _ = fmt.Fprintf(fs.Output(), "boardctl normalize-board [--apply] [--repair-events] [--json] [--skip-bad-lines] [-C dir]\n")
+ +		_, _ = fmt.Fprintf(fs.Output(), "boardctl normalize-board [--apply] [--repair-events] [--json] [-C dir]\n")
+  		_, _ = fmt.Fprintf(fs.Output(), "\nmechanical repairs (applied together on --apply):\n")
+  		_, _ = fmt.Fprintf(fs.Output(), "  key aliases  -> canonical keys via the BT-056 table (why -> reasoning, acceptance -> acceptance_criteria, ...)\n")
+  		_, _ = fmt.Fprintf(fs.Output(), "  depends_on   -> array from a string value when unambiguous: \"[]\" and \"\" -> [], '[\"A\"]' -> the array, one bare id -> [id]\n")
+@@@ -1377,10 -1379,6 +1378,8 @@@
+  		_, _ = fmt.Fprintf(fs.Output(), "depends_on shape (number/object/malformed), a status that is absent, null, or unknown. Rows without\n")
+  		_, _ = fmt.Fprintf(fs.Output(), "created_at are counted and reported — never fabricated. --apply rewrites tasks.jsonl in ONE guarded\n")
+  		_, _ = fmt.Fprintf(fs.Output(), "atomic pass (all repairs or nothing); no audit event is appended (spelling/shape repair, not a transition).\n")
+ +		_, _ = fmt.Fprintf(fs.Output(), "an UNPARSEABLE tasks.jsonl line REFUSES the whole command (file + line number named) and nothing is\n")
+- 		_, _ = fmt.Fprintf(fs.Output(), "written: this repair never degrades. The remedy is printed on the refusal itself:\n")
+- 		_, _ = fmt.Fprintf(fs.Output(), "  %s\n", board.NormalizeBoardRepairHint)
+- 		_, _ = fmt.Fprintf(fs.Output(), "\n")
+++		_, _ = fmt.Fprint(fs.Output(), "written: this repair never degrades. The remedy is printed on the refusal itself:\n  ", board.NormalizeBoardRepairHint, "\n\n")
+  	}
+  	if err := parseFlags(fs, args); err != nil {
+  		return err
+@@@ -1395,9 -1393,7 +1394,6 @@@
+  	if err != nil {
+  		return err
+  	}
+- 	// DF-BOARDCTL-46: no armSkipBad here — normalize-board reads the board
+- 	// strictly. A degraded read would let --apply rewrite a board it could
+- 	// not classify in full, so an unparseable line refuses the command.
+ -	armSkipBad(b, skipBad)
+  	rep, err := b.NormalizeBoard(*apply)
+  	if err != nil {
+  		return err
