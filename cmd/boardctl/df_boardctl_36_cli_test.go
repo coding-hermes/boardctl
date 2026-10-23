@@ -32,18 +32,34 @@ func df36SeedCLIBoard(t *testing.T) (dir, boardDir string) {
 }
 
 // AC1: `normalize-board` -h documents the flags (BT-041 help contract).
+// DF-BOARDCTL-46: --skip-bad-lines is GONE from this verb — it promised a
+// degraded read the command cannot honor — and the help now points at the
+// validate --repair salvage path instead.
 func TestDF36CLIHelpAndUsage(t *testing.T) {
 	got, err := captureStdout(func() { run([]string{"normalize-board", "-h"}) })
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"--apply", "--json", "--skip-bad-lines", "normalize-board"} {
+	for _, want := range []string{"--apply", "--json", "normalize-board", "validate --repair", "tasks.rewritten.jsonl"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("normalize-board -h missing %q:\n%s", want, got)
 		}
 	}
+	if strings.Contains(got, "--skip-bad-lines") {
+		t.Errorf("normalize-board -h still advertises --skip-bad-lines (removed by DF-BOARDCTL-46; the command is fail-closed):\n%s", got)
+	}
 	if !strings.Contains(usageText, "normalize-board") {
 		t.Errorf("usageText lost the normalize-board verb")
+	}
+	// The root usage entry and the closure must agree flag-for-flag: the
+	// entry's usage line (the one that opens a flag bracket) must not carry
+	// the removed flag. Prose continuation lines that NAME the flag as
+	// deliberately absent are the documentation, not the usage list.
+	for _, line := range strings.Split(usageText, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "normalize-board [") && strings.Contains(trimmed, "--skip-bad-lines") {
+			t.Errorf("usageText normalize-board usage line still lists --skip-bad-lines: %q", line)
+		}
 	}
 	// The registry derives verbs from run()'s switch: the new verb must be
 	// visible or docs tooling renders a stale command set.

@@ -845,6 +845,31 @@ byte-identical, no audit event (spelling/shape repair, not a state
 transition). Exit stays 0 in both modes: the report is the product,
 `validate` owns exit semantics.
 
+### Unparseable lines: fail-closed, with the remedy on the refusal (DF-BOARDCTL-46)
+
+`normalize-board` repairs ROW SHAPES; it is not a salvage tool, and it takes
+no `--skip-bad-lines`. If any line of `tasks.jsonl` cannot be parsed — a
+truncated line, a JSON object fused into another, a row with a duplicate key
+— the command REFUSES: it names the file and the 1-based line number, writes
+nothing in either mode (no `tasks.jsonl`, no `tasks.normalized.jsonl`), and
+exits 1. That refusal prints the remedy inline, in order:
+
+```bash
+boardctl -C ~/myproject normalize-board
+# boardctl: .../board/tasks.jsonl: line 214: duplicate key "status" in row
+#   — remedy: run 'boardctl validate --repair' (salvages every parseable row
+#   into tasks.rewritten.jsonl), review tasks.rewritten.jsonl, swap the
+#   reviewed file into tasks.jsonl, then re-run 'boardctl normalize-board'
+```
+
+`validate --repair` is the ONLY sanctioned way back to a readable board: it
+writes the salvageable rows to `tasks.rewritten.jsonl` and never touches
+`tasks.jsonl`, so the swap is a deliberate manual step you review first (see
+the damaged-board salvage procedure under `render`/`validate` above).
+Repairing a board you could not fully read would mean rewriting rows whose
+neighbours you never classified — the degraded write this command refuses to
+perform.
+
 **Board resolution prerequisite for `--apply`:** `normalize-board`
 (dry-run and `--apply` alike) resolves a board by looking for two files
 in the board directory: `tasks.jsonl` (the task rows) and

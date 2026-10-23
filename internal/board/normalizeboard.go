@@ -179,11 +179,26 @@ func mustJSONRaw(v any) json.RawMessage {
 	return b
 }
 
+// NormalizeBoardRepairHint is the inline remedy attached to normalize-board's
+// fail-closed refusal on an unparseable tasks.jsonl line (DF-BOARDCTL-46).
+// normalize-board is a ROW-SHAPE repair, not a salvage tool: it never rewrites
+// a board it could not fully read, and the only safe path to a readable board
+// is validate --repair (write a review file) followed by a deliberate manual
+// swap. The hint names every step in order so the refusal is actionable where
+// it is printed.
+const NormalizeBoardRepairHint = "remedy: run 'boardctl validate --repair' (salvages every parseable row into tasks.rewritten.jsonl), review tasks.rewritten.jsonl, swap the reviewed file into tasks.jsonl, then re-run 'boardctl normalize-board'"
+
 // NormalizeBoard classifies every task row against the canon and, when
 // apply=true, rewrites tasks.jsonl with every mechanical repair in ONE
 // guarded atomic rewrite. Dry-run (apply=false) writes the would-be bytes to
 // tasks.normalized.jsonl under the board dir for review — unless the board
 // is already clean, in which case nothing is written at all.
+//
+// FAIL-CLOSED on an unparseable line: the whole command refuses (naming the
+// file and the 1-based line number) and nothing is written in either mode.
+// There is no degraded writer here by design — a row-shape repair must never
+// write a board it could not read in full — so the refusal carries
+// NormalizeBoardRepairHint rather than a --skip-bad-lines escape hatch.
 //
 // Refusal rules (never mutate, always report):
 //   - an alias whose canonical key is already present on the row, or an
@@ -191,10 +206,10 @@ func mustJSONRaw(v any) json.RawMessage {
 //   - a depends_on value that cannot be converted without guessing;
 //   - a status that is absent, null, or unknown (BT-025: never coerced).
 //
-// A row carrying a refusal still gets its OTHER mechanical repairs applied
-// on the classify pass? No: a refusal marks the WHOLE row untouched, so the
-// operator resolves it by hand without half-repaired rows. Rows with only
-// mechanical repairs convert together.
+// A row carrying a refusal keeps its OTHER mechanical repairs unapplied: a
+// refusal marks the WHOLE row untouched, so the operator resolves it by hand
+// without half-repaired rows. Rows with only mechanical repairs convert
+// together.
 func (b *Board) NormalizeBoard(apply bool) (*NormalizeBoardReport, error) {
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
@@ -292,24 +307,20 @@ func (b *Board) NormalizeBoard(apply bool) (*NormalizeBoardReport, error) {
 		}
 	}
 
-	if b.SkipBad {
-		b.iterParsedTolerant(lines, b.tasksPath, func(row *Row, idx int, _ []byte) error {
-			if b.skipTaskLine(lines, idx) {
-				return nil
-			}
-			classifyRow(row, idx)
+	// DF-BOARDCTL-46: fail closed on an unparseable line in BOTH modes — the
+	// file cannot be classified as a whole, and this command has no degraded
+	// writer. The error keeps the file + 1-based line number from IterParsed
+	// (e.g. a duplicate-key line reports `line N: duplicate key "status" in
+	// row`) and appends the step-by-step remedy, so the refusal is actionable
+	// without opening the README.
+	if err := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+		if b.skipTaskLine(lines, idx) {
 			return nil
-		})
-	} else {
-		if err := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
-			if b.skipTaskLine(lines, idx) {
-				return nil
-			}
-			classifyRow(row, idx)
-			return nil
-		}); err != nil {
-			return nil, fmt.Errorf("%s: %w", b.tasksPath, err)
 		}
+		classifyRow(row, idx)
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("%s: %w — %s", b.tasksPath, err, NormalizeBoardRepairHint)
 	}
 
 	if len(missingCreated) > 0 {
