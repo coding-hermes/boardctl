@@ -1,0 +1,178 @@
+commit ef1fcd660883d73aa327f1f96b0943645dd4ded3
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 23 16:26:08 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 23 16:31:49 2026 -0500
+
+    fix(board): serialize event repairs atomically. Addresses DF-BOARDCTL-49.
+---
+ internal/board/iddupe.go             | 17 +++++++++-
+ internal/board/repair_events.go      | 36 ++++++++++++++-------
+ internal/board/repair_events_test.go | 62 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 102 insertions(+), 13 deletions(-)
+
+diff --git a/internal/board/iddupe.go b/internal/board/iddupe.go
+index b1cb1b7..dabdb88 100644
+--- a/internal/board/iddupe.go
++++ b/internal/board/iddupe.go
+@@ -103,8 +103,23 @@ type idDupeRow struct {
+ }
+ 
+ // DedupeByID runs (or previews) the DF-BOARDCTL-10 id-aware collapse on this
+-// board. See the package-file comment above for the exact contract.
++// board. See the package-file comment above for the exact contract. The write
++// guard covers the complete read/classify/plan/rewrite-and-audit sequence so a
++// concurrent writer cannot be lost between the snapshot and atomicRewrite.
+ func (b *Board) DedupeByID(apply bool) (*IDDupeReport, error) {
++	var rep *IDDupeReport
++	var dedupeErr error
++	lockErr := b.withWriteLock(b.tasksPath, func() error {
++		rep, dedupeErr = b.dedupeByIDLocked(apply)
++		return nil // err rides dedupeErr; the guard must drop regardless
++	})
++	if lockErr != nil {
++		return nil, lockErr
++	}
++	return rep, dedupeErr
++}
++
++func (b *Board) dedupeByIDLocked(apply bool) (*IDDupeReport, error) {
+ 	lines, err := ReadJSONLLines(b.tasksPath)
+ 	if err != nil {
+ 		return nil, err
+diff --git a/internal/board/repair_events.go b/internal/board/repair_events.go
+index 343e0c9..3f177d8 100644
+--- a/internal/board/repair_events.go
++++ b/internal/board/repair_events.go
+@@ -53,10 +53,28 @@ func (r *RepairEventsReport) RenderText() string {
+ 	return out
+ }
+ 
++// repairEventsBeforeRewriteHook is a test-only seam for deterministic
++// append-vs-repair interleaving tests. Production never changes it.
++var repairEventsBeforeRewriteHook = func() {}
++
+ // RepairEvents repairs descending event ids in events.jsonl.
+ // When dryRun=true, it only reports what would be fixed.
+-// When dryRun=false, it rewrites events.jsonl atomically.
++// When dryRun=false, it rewrites events.jsonl atomically while holding the
++// board write guard for the complete read/classify/plan/rewrite window.
+ func (b *Board) RepairEvents(dryRun bool) (*RepairEventsReport, error) {
++	var rep *RepairEventsReport
++	var repairErr error
++	lockErr := b.withWriteLock(b.eventsPath, func() error {
++		rep, repairErr = b.repairEventsLocked(dryRun)
++		return nil // err rides repairErr; the guard must drop regardless
++	})
++	if lockErr != nil {
++		return nil, lockErr
++	}
++	return rep, repairErr
++}
++
++func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
+ 	lines, err := ReadJSONLLines(b.eventsPath)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("read %s: %w", b.eventsPath, err)
+@@ -199,21 +217,15 @@ func (b *Board) RepairEvents(dryRun bool) (*RepairEventsReport, error) {
+ 		return rep, nil
+ 	}
+ 
+-	// Apply: rewrite events.jsonl with changes.
++	// Apply: rewrite events.jsonl atomically. The caller holds the write guard
++	// across the complete read/classify/plan/rewrite sequence.
+ 	out, err := renumberEventsFile(lines, changeMap)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("generate rewritten events.jsonl: %w", err)
+ 	}
+-
+-	// Guarded atomic rewrite.
+-	lockErr := b.withWriteLock(b.eventsPath, func() error {
+-		if err := os.WriteFile(b.eventsPath, out, 0o644); err != nil {
+-			return fmt.Errorf("write %s: %w", b.eventsPath, err)
+-		}
+-		return nil
+-	})
+-	if lockErr != nil {
+-		return nil, lockErr
++	repairEventsBeforeRewriteHook()
++	if err := atomicRewrite(b.eventsPath, out); err != nil {
++		return nil, fmt.Errorf("write %s: %w", b.eventsPath, err)
+ 	}
+ 
+ 	rep.Applied = true
+diff --git a/internal/board/repair_events_test.go b/internal/board/repair_events_test.go
+index 427c833..0be978b 100644
+--- a/internal/board/repair_events_test.go
++++ b/internal/board/repair_events_test.go
+@@ -7,8 +7,70 @@ import (
+ 	"path/filepath"
+ 	"strings"
+ 	"testing"
++	"time"
+ )
+ 
++// TestRepairEvents_AppendCannotBeLost verifies the full repair critical section.
++// The hook pauses after planning and before the atomic replacement; the append
++// is started during that pause. With writeLockBypass=true the append completes
++// before the stale replacement and this same assertion is RED (the marker is
++// lost), proving the regression is testing the production guard rather than
++// merely observing sequential behavior.
++func TestConcurrentRepairEventsAppendCannotBeLost(t *testing.T) {
++	b := newTestBoard(t)
++	if err := os.WriteFile(b.EventsPath(), []byte("{\"id\":1,\"event_type\":\"audit\"}\n{\"id\":3,\"event_type\":\"audit\"}\n{\"id\":2,\"event_type\":\"audit\"}\n"), 0o644); err != nil {
++		t.Fatal(err)
++	}
++	repairBoard, err := Resolve(b.Dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++	appendBoard, err := Resolve(b.Dir)
++	if err != nil {
++		t.Fatal(err)
++	}
++
++	repairReady := make(chan struct{})
++	appendStarted := make(chan struct{})
++	appendDone := make(chan error, 1)
++	oldHook := repairEventsBeforeRewriteHook
++	repairEventsBeforeRewriteHook = func() {
++		close(repairReady)
++		<-appendStarted
++	}
++	defer func() { repairEventsBeforeRewriteHook = oldHook }()
++
++	go func() {
++		<-repairReady
++		close(appendStarted)
++		_, err := appendBoard.AppendEvent(EventSpec{
++			Type:        "audit",
++			DetailText:  strPtr("PROBE-EV-1"),
++			NoTickWrite: true,
++		})
++		appendDone <- err
++	}()
++
++	if _, err := repairBoard.RepairEvents(false); err != nil {
++		t.Fatalf("RepairEvents(apply): %v", err)
++	}
++	select {
++	case err := <-appendDone:
++		if err != nil {
++			t.Fatalf("concurrent append: %v", err)
++		}
++	case <-time.After(5 * time.Second):
++		t.Fatal("concurrent append did not complete after repair released the guard")
++	}
++	got, err := os.ReadFile(b.EventsPath())
++	if err != nil {
++		t.Fatal(err)
++	}
++	if count := strings.Count(string(got), "PROBE-EV-1"); count != 1 {
++		t.Fatalf("concurrent append marker count = %d, want 1; events=%s", count, got)
++	}
++}
++
+ // TestRepairEvents_descendingIds verifies that --repair-events renumbers
+ // descending event ids to ascending order (DF-BOARDCTL-38 AC1-AC2).
+ func TestRepairEvents_descendingIds(t *testing.T) {

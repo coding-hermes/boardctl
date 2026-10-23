@@ -1,0 +1,129 @@
+{
+  "task_id": "DF-BOARDCTL-49",
+  "task_title": "normalize-board repair-events concurrent append preservation and atomic rewrite",
+  "task_criteria": [
+    "1) Concurrent event append survives normalize-board --repair-events --apply; 2) events.jsonl replacement is atomic under kill -9; 3) DedupeByID guards its read-rewrite window or has an explicit exemption; 4) concurrent regression test is present and passes; 5) go test ./... passes."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "ef1fcd660883d73aa327f1f96b0943645dd4ded3",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n4:34PM INF scanned ~3648004 bytes (3.65 MB) in 2.83s\n4:34PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 250 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T204452.957338Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t17.134s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.132s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.029s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t8.073s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.433s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.166s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.122s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t7.203s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261023T204452.957338Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 1) Concurrent event append survives normalize-board --repair-events --apply: internal/board/repair_events.go:64-75 \u2014 RepairEvents wraps the entire repairEventsLocked body (read/classify/plan/rewrite) in b.withWriteLock(b.eventsPath, ...). AppendEvent takes the same guard at internal/board/write.go:1457-1468 (withWriteLock(b.eventsPath, ...)), so an append cannot interleave between the repair's snapshot and its rewrite. Verified by TestConcurrentRepairEventsAppendCannotBeLost which asserts the PROBE-EV-1 marker count == 1 after a concurrent append during the pre-rewrite hook.\n  \u2713 2) events.jsonl replacement is atomic under kill -9: internal/board/repair_events.go:227 calls atomicRewrite(b.eventsPath, out). atomicRewrite at internal/board/write.go:186-206 creates a same-directory temp file (os.CreateTemp(dir, \".boardctl-rewrite-*\")), writes, Chmods, Closes, then os.Rename(tmpName, path). A same-filesystem rename is atomic on POSIX, so a kill -9 at any point leaves either the complete old file or the complete new file \u2014 never a truncated/partial events.jsonl. (No fsync before rename, so power-loss durability is not guaranteed, but the criterion is process-kill atomicity, which rename satisfies.)\n  \u2713 3) DedupeByID guards its read-rewrite window or has an explicit exemption: internal/board/iddupe.go:109-120 \u2014 DedupeByID runs b.dedupeByIDLocked(apply) inside b.withWriteLock(b.tasksPath, ...), with the explicit doc comment at iddupe.go:105-108: 'The write guard covers the complete read/classify/plan/rewrite-and-audit sequence so a concurrent writer cannot be lost between the snapshot and atomicRewrite.' The locked body reads via ReadJSONLLines (iddupe.go:123) and rewrites via atomicRewrite (iddupe.go:249, 430) \u2014 both inside the guard.\n  \u2713 4) concurrent regression test is present and passes: internal/board/repair_events_test.go:19 defines TestConcurrentRepairEventsAppendCannotBeLost. It uses the test-only seam repairEventsBeforeRewriteHook (repair_events.go:57-59) to pause repair after planning and before the atomic replacement, starts a concurrent AppendEvent from a second Board handle, then asserts the marker appears exactly once. Ran: `go test -count=1 -race -run 'TestConcurrentRepairEventsAppendCannotBeLost' -v ./internal/board/` -> `=== RUN TestConcurrentRepairEventsAppendCannotBeLost` / `--- PASS: TestConcurrentRepairEventsAppendCannotBeLost (0.01s)` / `ok github.com/coding-hermes/boardctl/internal/board 1.023s`, EXIT=0. The test also documents the RED control via writeLockBypass (lock.go:100-113, write_concurrency_test.go:248-249), proving it exercises the production guard rather than sequential behavior.\n  \u2713 5) go test ./... passes: Ran `go test -count=1 ./...` (cache-defeating flag) at repo root: EXIT=0, 12 packages reported `ok` (cmd/boardctl 6.642s, cmd/dedupe-board, cmd/gendocs, internal/board 2.038s, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/vulncheck, internal/workflowcheck); grep for FAIL/panic returned no matches.\nAll five criteria are satisfied: RepairEvents and DedupeByID both hold the board write guard across their full read-plan-rewrite windows, events.jsonl is replaced via same-directory temp+rename (atomic under kill -9), the concurrent regression test exists and passes under -race, and the full `go test -count=1 ./...` suite exits 0 with 12 packages ok.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 1) Concurrent event append survives normalize-board --repair-events --apply: internal/board/repair_events.go:64-75 \u2014 RepairEvents wraps the entire repairEventsLocked body (read/classify/plan/rewrite) in b.withWriteLock(b.eventsPath, ...). AppendEvent takes the same guard at internal/board/write.go:1457-1468 (withWriteLock(b.eventsPath, ...)), so an append cannot interleave between the repair's snapshot and its rewrite. Verified by TestConcurrentRepairEventsAppendCannotBeLost which asserts the PROBE-EV-1 marker count == 1 after a concurrent append during the pre-rewrite hook.\n  \u2713 2) events.jsonl replacement is atomic under kill -9: internal/board/repair_events.go:227 calls atomicRewrite(b.eventsPath, out). atomicRewrite at internal/board/write.go:186-206 creates a same-directory temp file (os.CreateTemp(dir, \".boardctl-rewrite-*\")), writes, Chmods, Closes, then os.Rename(tmpName, path). A same-filesystem rename is atomic on POSIX, so a kill -9 at any point leaves either the complete old file or the complete new file \u2014 never a truncated/partial events.jsonl. (No fsync before rename, so power-loss durability is not guaranteed, but the criterion is process-kill atomicity, which rename satisfies.)\n  \u2713 3) DedupeByID guards its read-rewrite window or has an explicit exemption: internal/board/iddupe.go:109-120 \u2014 DedupeByID runs b.dedupeByIDLocked(apply) inside b.withWriteLock(b.tasksPath, ...), with the explicit doc comment at iddupe.go:105-108: 'The write guard covers the complete read/classify/plan/rewrite-and-audit sequence so a concurrent writer cannot be lost between the snapshot and atomicRewrite.' The locked body reads via ReadJSONLLines (iddupe.go:123) and rewrites via atomicRewrite (iddupe.go:249, 430) \u2014 both inside the guard.\n  \u2713 4) concurrent regression test is present and passes: internal/board/repair_events_test.go:19 defines TestConcurrentRepairEventsAppendCannotBeLost. It uses the test-only seam repairEventsBeforeRewriteHook (repair_events.go:57-59) to pause repair after planning and before the atomic replacement, starts a concurrent AppendEvent from a second Board handle, then asserts the marker appears exactly once. Ran: `go test -count=1 -race -run 'TestConcurrentRepairEventsAppendCannotBeLost' -v ./internal/board/` -> `=== RUN TestConcurrentRepairEventsAppendCannotBeLost` / `--- PASS: TestConcurrentRepairEventsAppendCannotBeLost (0.01s)` / `ok github.com/coding-hermes/boardctl/internal/board 1.023s`, EXIT=0. The test also documents the RED control via writeLockBypass (lock.go:100-113, write_concurrency_test.go:248-249), proving it exercises the production guard rather than sequential behavior.\n  \u2713 5) go test ./... passes: Ran `go test -count=1 ./...` (cache-defeating flag) at repo root: EXIT=0, 12 packages reported `ok` (cmd/boardctl 6.642s, cmd/dedupe-board, cmd/gendocs, internal/board 2.038s, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/vulncheck, internal/workflowcheck); grep for FAIL/panic returned no matches.\nAll five criteria are satisfied: RepairEvents and DedupeByID both hold the board write guard across their full read-plan-rewrite windows, events.jsonl is replaced via same-directory temp+rename (atomic under kill -9), the concurrent regression test exists and passes under -race, and the full `go test -count=1 ./...` suite exits 0 with 12 packages ok.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "1) Concurrent event append survives normalize-board --repair-events --apply",
+                "status": "PASS",
+                "detail": "internal/board/repair_events.go:64-75 \u2014 RepairEvents wraps the entire repairEventsLocked body (read/classify/plan/rewrite) in b.withWriteLock(b.eventsPath, ...). AppendEvent takes the same guard at internal/board/write.go:1457-1468 (withWriteLock(b.eventsPath, ...)), so an append cannot interleave between the repair's snapshot and its rewrite. Verified by TestConcurrentRepairEventsAppendCannotBeLost which asserts the PROBE-EV-1 marker count == 1 after a concurrent append during the pre-rewrite hook."
+              },
+              {
+                "criterion": "2) events.jsonl replacement is atomic under kill -9",
+                "status": "PASS",
+                "detail": "internal/board/repair_events.go:227 calls atomicRewrite(b.eventsPath, out). atomicRewrite at internal/board/write.go:186-206 creates a same-directory temp file (os.CreateTemp(dir, \".boardctl-rewrite-*\")), writes, Chmods, Closes, then os.Rename(tmpName, path). A same-filesystem rename is atomic on POSIX, so a kill -9 at any point leaves either the complete old file or the complete new file \u2014 never a truncated/partial events.jsonl. (No fsync before rename, so power-loss durability is not guaranteed, but the criterion is process-kill atomicity, which rename satisfies.)"
+              },
+              {
+                "criterion": "3) DedupeByID guards its read-rewrite window or has an explicit exemption",
+                "status": "PASS",
+                "detail": "internal/board/iddupe.go:109-120 \u2014 DedupeByID runs b.dedupeByIDLocked(apply) inside b.withWriteLock(b.tasksPath, ...), with the explicit doc comment at iddupe.go:105-108: 'The write guard covers the complete read/classify/plan/rewrite-and-audit sequence so a concurrent writer cannot be lost between the snapshot and atomicRewrite.' The locked body reads via ReadJSONLLines (iddupe.go:123) and rewrites via atomicRewrite (iddupe.go:249, 430) \u2014 both inside the guard."
+              },
+              {
+                "criterion": "4) concurrent regression test is present and passes",
+                "status": "PASS",
+                "detail": "internal/board/repair_events_test.go:19 defines TestConcurrentRepairEventsAppendCannotBeLost. It uses the test-only seam repairEventsBeforeRewriteHook (repair_events.go:57-59) to pause repair after planning and before the atomic replacement, starts a concurrent AppendEvent from a second Board handle, then asserts the marker appears exactly once. Ran: `go test -count=1 -race -run 'TestConcurrentRepairEventsAppendCannotBeLost' -v ./internal/board/` -> `=== RUN TestConcurrentRepairEventsAppendCannotBeLost` / `--- PASS: TestConcurrentRepairEventsAppendCannotBeLost (0.01s)` / `ok github.com/coding-hermes/boardctl/internal/board 1.023s`, EXIT=0. The test also documents the RED control via writeLockBypass (lock.go:100-113, write_concurrency_test.go:248-249), proving it exercises the production guard rather than sequential behavior."
+              },
+              {
+                "criterion": "5) go test ./... passes",
+                "status": "PASS",
+                "detail": "Ran `go test -count=1 ./...` (cache-defeating flag) at repo root: EXIT=0, 12 packages reported `ok` (cmd/boardctl 6.642s, cmd/dedupe-board, cmd/gendocs, internal/board 2.038s, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/vulncheck, internal/workflowcheck); grep for FAIL/panic returned no matches."
+              }
+            ],
+            "summary": "All five criteria are satisfied: RepairEvents and DedupeByID both hold the board write guard across their full read-plan-rewrite windows, events.jsonl is replaced via same-directory temp+rename (atomic under kill -9), the concurrent regression test exists and passes under -race, and the full `go test -count=1 ./...` suite exits 0 with 12 packages ok.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: DF-BOARDCTL-49\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 1) Concurrent event append survives normalize-board --repair-events --apply: internal/board/repair_events.go:64-75 \u2014 RepairEvents wraps the entire repairEventsLocked body (read/classify/plan/rewrite) in b.withWriteLock(b.eventsPath, ...). AppendEvent takes the same guard at internal/board/write.go:1457-1468 (withWriteLock(b.eventsPath, ...)), so an append cannot interleave between the repair's snapshot and its rewrite. Verified by TestConcurrentRepairEventsAppendCannotBeLost which asserts the PROBE-EV-1 marker count == 1 after a concurrent append during the pre-rewrite hook.\n  \u2713 2) events.jsonl replacement is atomic under kill -9: internal/board/repair_events.go:227 calls atomicRewrite(b.eventsPath, out). atomicRewrite at internal/board/write.go:186-206 creates a same-directory temp file (os.CreateTemp(dir, \".boardctl-rewrite-*\")), writes, Chmods, Closes, then os.Rename(tmpName, path). A same-filesystem rename is atomic on POSIX, so a kill -9 at any point leaves either the complete old file or the complete new file \u2014 never a truncated/partial events.jsonl. (No fsync before rename, so power-loss durability is not guaranteed, but the criterion is process-kill atomicity, which rename satisfies.)\n  \u2713 3) DedupeByID guards its read-rewrite window or has an explicit exemption: internal/board/iddupe.go:109-120 \u2014 DedupeByID runs b.dedupeByIDLocked(apply) inside b.withWriteLock(b.tasksPath, ...), with the explicit doc comment at iddupe.go:105-108: 'The write guard covers the complete read/classify/plan/rewrite-and-audit sequence so a concurrent writer cannot be lost between the snapshot and atomicRewrite.' The locked body reads via ReadJSONLLines (iddupe.go:123) and rewrites via atomicRewrite (iddupe.go:249, 430) \u2014 both inside the guard.\n  \u2713 4) concurrent regression test is present and passes: internal/board/repair_events_test.go:19 defines TestConcurrentRepairEventsAppendCannotBeLost. It uses the test-only seam repairEventsBeforeRewriteHook (repair_events.go:57-59) to pause repair after planning and before the atomic replacement, starts a concurrent AppendEvent from a second Board handle, then asserts the marker appears exactly once. Ran: `go test -count=1 -race -run 'TestConcurrentRepairEventsAppendCannotBeLost' -v ./internal/board/` -> `=== RUN TestConcurrentRepairEventsAppendCannotBeLost` / `--- PASS: TestConcurrentRepairEventsAppendCannotBeLost (0.01s)` / `ok github.com/coding-hermes/boardctl/internal/board 1.023s`, EXIT=0. The test also documents the RED control via writeLockBypass (lock.go:100-113, write_concurrency_test.go:248-249), proving it exercises the production guard rather than sequential behavior.\n  \u2713 5) go test ./... passes: Ran `go test -count=1 ./...` (cache-defeating flag) at repo root: EXIT=0, 12 packages reported `ok` (cmd/boardctl 6.642s, cmd/dedupe-board, cmd/gendocs, internal/board 2.038s, internal/describe, internal/fmtcheck, internal/freshness, internal/render, internal/speccheck, internal/versioncheck, internal/vulncheck, internal/workflowcheck); grep for FAIL/panic returned no matches.\nAll five criteria are satisfied: RepairEvents and DedupeByID both hold the board write guard across their full read-plan-rewrite windows, events.jsonl is replaced via same-directory temp+rename (atomic under kill -9), the concurrent regression test exists and passes under -race, and the full `go test -count=1 ./...` suite exits 0 with 12 packages ok.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-23T21:35:19.003469",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-23T21:35:19.027430+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 6514,
+        "truncated": false,
+        "source": "git show ef1fcd660883"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 70781,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-49"
+  }
+}
