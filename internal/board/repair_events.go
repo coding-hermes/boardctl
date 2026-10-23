@@ -53,10 +53,28 @@ func (r *RepairEventsReport) RenderText() string {
 	return out
 }
 
+// repairEventsBeforeRewriteHook is a test-only seam for deterministic
+// append-vs-repair interleaving tests. Production never changes it.
+var repairEventsBeforeRewriteHook = func() {}
+
 // RepairEvents repairs descending event ids in events.jsonl.
 // When dryRun=true, it only reports what would be fixed.
-// When dryRun=false, it rewrites events.jsonl atomically.
+// When dryRun=false, it rewrites events.jsonl atomically while holding the
+// board write guard for the complete read/classify/plan/rewrite window.
 func (b *Board) RepairEvents(dryRun bool) (*RepairEventsReport, error) {
+	var rep *RepairEventsReport
+	var repairErr error
+	lockErr := b.withWriteLock(b.eventsPath, func() error {
+		rep, repairErr = b.repairEventsLocked(dryRun)
+		return nil // err rides repairErr; the guard must drop regardless
+	})
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	return rep, repairErr
+}
+
+func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 	lines, err := ReadJSONLLines(b.eventsPath)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", b.eventsPath, err)
@@ -199,21 +217,15 @@ func (b *Board) RepairEvents(dryRun bool) (*RepairEventsReport, error) {
 		return rep, nil
 	}
 
-	// Apply: rewrite events.jsonl with changes.
+	// Apply: rewrite events.jsonl atomically. The caller holds the write guard
+	// across the complete read/classify/plan/rewrite sequence.
 	out, err := renumberEventsFile(lines, changeMap)
 	if err != nil {
 		return nil, fmt.Errorf("generate rewritten events.jsonl: %w", err)
 	}
-
-	// Guarded atomic rewrite.
-	lockErr := b.withWriteLock(b.eventsPath, func() error {
-		if err := os.WriteFile(b.eventsPath, out, 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", b.eventsPath, err)
-		}
-		return nil
-	})
-	if lockErr != nil {
-		return nil, lockErr
+	repairEventsBeforeRewriteHook()
+	if err := atomicRewrite(b.eventsPath, out); err != nil {
+		return nil, fmt.Errorf("write %s: %w", b.eventsPath, err)
 	}
 
 	rep.Applied = true

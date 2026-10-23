@@ -7,7 +7,69 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
+
+// TestRepairEvents_AppendCannotBeLost verifies the full repair critical section.
+// The hook pauses after planning and before the atomic replacement; the append
+// is started during that pause. With writeLockBypass=true the append completes
+// before the stale replacement and this same assertion is RED (the marker is
+// lost), proving the regression is testing the production guard rather than
+// merely observing sequential behavior.
+func TestConcurrentRepairEventsAppendCannotBeLost(t *testing.T) {
+	b := newTestBoard(t)
+	if err := os.WriteFile(b.EventsPath(), []byte("{\"id\":1,\"event_type\":\"audit\"}\n{\"id\":3,\"event_type\":\"audit\"}\n{\"id\":2,\"event_type\":\"audit\"}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	repairBoard, err := Resolve(b.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	appendBoard, err := Resolve(b.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repairReady := make(chan struct{})
+	appendStarted := make(chan struct{})
+	appendDone := make(chan error, 1)
+	oldHook := repairEventsBeforeRewriteHook
+	repairEventsBeforeRewriteHook = func() {
+		close(repairReady)
+		<-appendStarted
+	}
+	defer func() { repairEventsBeforeRewriteHook = oldHook }()
+
+	go func() {
+		<-repairReady
+		close(appendStarted)
+		_, err := appendBoard.AppendEvent(EventSpec{
+			Type:        "audit",
+			DetailText:  strPtr("PROBE-EV-1"),
+			NoTickWrite: true,
+		})
+		appendDone <- err
+	}()
+
+	if _, err := repairBoard.RepairEvents(false); err != nil {
+		t.Fatalf("RepairEvents(apply): %v", err)
+	}
+	select {
+	case err := <-appendDone:
+		if err != nil {
+			t.Fatalf("concurrent append: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("concurrent append did not complete after repair released the guard")
+	}
+	got, err := os.ReadFile(b.EventsPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count := strings.Count(string(got), "PROBE-EV-1"); count != 1 {
+		t.Fatalf("concurrent append marker count = %d, want 1; events=%s", count, got)
+	}
+}
 
 // TestRepairEvents_descendingIds verifies that --repair-events renumbers
 // descending event ids to ascending order (DF-BOARDCTL-38 AC1-AC2).
