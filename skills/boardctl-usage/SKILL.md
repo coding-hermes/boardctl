@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.18.0
-date: 2026-10-16
+version: 1.19.0
+date: 2026-10-23
 category: software-development
 ---
 
@@ -205,6 +205,22 @@ boardctl -C R normalize-board              # classify + stage tasks.normalized.j
                                            # --apply rewrites tasks.jsonl in ONE
                                            # guarded atomic pass. EXITS 0 in both
                                            # modes (validate owns exit semantics).
+
+# drifted EVENT IDS, events.jsonl (DF-BOARDCTL-38, in v0.1.11)
+boardctl -C R normalize-board --repair-events
+                                           # renumbers descending event ids to
+                                           # ascending (running max + 1), stages
+                                           # events.jsonl.renumbered.jsonl in
+                                           # dry-run; --apply rewrites the file.
+                                           # PROVEN on a 700-event board: 473
+                                           # fixed, validate 418 err -> 11, 0
+                                           # descend. CAVEAT (DF-BOARDCTL-44):
+                                           # renumbered lines are RE-SERIALIZED,
+                                           # so keep a backup and diff fields —
+                                           # ints >2^53 round, double spaces in
+                                           # string values collapse, keys re-sort.
+                                           # Also lacks duplicate lookahead
+                                           # (DF-BOARDCTL-45).
 
 # pre-commit board lint (run 15, v0.1.8+, BT-054)
 boardctl -C R install [--hook-path P] [--timeout S] [--dry-run]
@@ -675,20 +691,52 @@ Boards are tiny; there is no need to batch or cache.
   6 REFUSED with reasons — never guess a status) → `normalize-board --apply` →
   `boardctl validate` and READ THE ERROR CLASSES: terminal duplicate-id lines
   stay by scope, "superseded" statuses need a human decision, and legacy
-  events.jsonl id-descend errors have NO repair verb (DF-BOARDCTL-38) — a red
-  validate after a correct chain is classified, not a failure of the chain.
-- normalize-board scope: tasks.jsonl only. Event-id errors are out of scope for
-  every current verb — file them, don't fight them.
-- RELEASE TRAP (repeat of run 20): the latest release (v0.1.10, 09-29) rejects
-  normalize-board with `unknown command` while README presents it as current
-  (DF-BOARDCTL-39). Before driving a README-documented verb, check
-  `boardctl version` against the README's "current release" line; if the verb is
-  newer than the release, build HEAD from source instead.
+  events.jsonl id-descend errors had NO repair verb at that time (DF-BOARDCTL-38
+  — since shipped as `normalize-board --repair-events`, proven in run 25) — a
+  red validate after a correct chain is classified, not a failure of the chain.
+- normalize-board's default pass touches tasks.jsonl only; event-id drift is
+  repaired by the SAME command with `--repair-events` (see the run-25 lessons
+  below — DF-BOARDCTL-38 shipped and is in v0.1.11, so the old "event ids are
+  out of scope for every verb" line is no longer true).
+- RELEASE TRAP — RESOLVED as of v0.1.11 (2026-10-18), keep the habit: the
+  README's "Current release" line must name an asset that actually carries the
+  verb you are about to drive. Run 25 verified v0.1.11 ships `normalize-board`
+  and `--repair-events`; the run-20/23 gap (v0.1.10 rejected them) is closed.
+  Still check `boardctl version` against the README pin before driving a
+  newly-documented verb — the risk is now cut cadence, not stale docs.
 - Exit-code capture: probe exit codes with a single direct command and `$?` —
   capture indirection through leg scripts has read rc=0 off an unknown-command
-  failure (DF-BOARDCTL-40, probe pending).
-  In scripts, check output text, not exit code, for the refusal — or pass
-  `--json`.
+  failure. (DF-BOARDCTL-40 was closed as premise-false for this reason: v0.1.10
+  does exit 2 on an unknown command.) In scripts, check output text, not exit
+  code, for the refusal — or pass `--json`.
+
+### Run-25 lessons (2026-10-23, `--repair-events` under real use)
+
+- `--repair-events` WORKS and its staging contract holds: on a real 700-event
+  board (473 descending ids) the dry-run wrote only `events.jsonl.renumbered.jsonl`,
+  `--apply` landed bytes identical to the staged file, and validate went from
+  418 errors (407 descend) to 11 (0 descend) with the residual class untouched.
+- **But renumbered lines are re-serialized, so non-id fields move
+  (DF-BOARDCTL-44).** Every number on the line becomes a float64
+  (`9007199254740993` → `9007199254740992`), keys re-sort alphabetically, and a
+  `bytes.ReplaceAll("  ", " ")` style fix collapses double spaces INSIDE string
+  values — a recorded `detail` command and a `title` both came out changed.
+  If the audit trail's byte fidelity matters to you: keep a copy of
+  `events.jsonl` before `--apply`, and diff field-by-field, not by eye. This is
+  a live artifact-level defect in v0.1.11 too, not a HEAD-only one.
+- Renumbering has no lookahead (DF-BOARDCTL-45): `runningMax+1` can equal an id
+  a later line already carries, the report still prints `duplicate ids: 0`
+  (it counted the input), and validate only warns. Re-run `validate` after apply
+  and read the duplicate warnings, not the census.
+- One unparseable line blocks the repair verbs (DF-BOARDCTL-46/47): with a
+  duplicate-key row present, `normalize-board` aborts without naming a remedy,
+  `normalize-board --skip-bad-lines` degrades and then refuses to write, and
+  `umbrella` (which has NO `--skip-bad-lines`) loses the entire cross-board
+  view. The path that works is `validate --repair` → review
+  `tasks.rewritten.jsonl` → swap by hand → re-run normalize-board.
+- Timings (warm p50, 700-event board, loaded host): validate 84.6 ms, stats
+  55.9 ms, list 56.1 ms, show 72.5 ms, repair-events dry-run 93.0 ms; cold on a
+  fresh box 87.5 ms. Fast enough that no perf work is warranted.
 - The audit event preserves title+reasoning verbatim; finding text stored in a
   custom row field (e.g. lore's `releng_note`) is preserved on the closed ROW
   but NOT quoted into the event log. If a lane's finding text lives outside

@@ -658,3 +658,52 @@ Real view = boardctl's own board + warpfs's board via the links registry
 5. **Misseeded prompt config fact:** the stored `boardctl-dogfood` lane prompt names
    warpfs as target (identical body to warpfs-dogfood). Lane name is authority — this
    run targeted boardctl. Recorded for the config owner; not edited by this lane.
+
+## Run-25 addendum (2026-10-23) — the event-id repair repairs the sequence and edits the record
+
+1. **How `--repair-events` is built, and why that matters more than whether it works.**
+   `RepairEvents` (`internal/board/repair_events.go:70`) makes one classification pass
+   over the parsed lines, then, for every descending id, calls `renumberEventID`
+   (`:224`) which does `json.Unmarshal` into `map[string]any`, sets `id`, and
+   re-marshals — followed by `bytes.ReplaceAll(out, []byte("  "), []byte(" "))`
+   to "restore" single-line style. Consequences, all measured: every number on a
+   repaired line becomes a `float64` (so `9007199254740993` prints as
+   `9007199254740992`), every key is re-sorted alphabetically, and the
+   double-space collapse runs over the *whole* re-encoded line — including
+   inside string values, which rewrote a recorded command (`rsync -a  /x  /y`
+   → `rsync -a /x /y`) and a title (`fix  double  spaces` → `fix double spaces`).
+   The right shape is the one the row pass already uses: stage the raw line and
+   replace only the id token. Lesson for future repair verbs in this repo: a
+   "mechanical" repair that re-serializes a parsed map is never field-preserving,
+   and the promise in the README is byte-level, not semantic.
+2. **Renumbering is a left-to-right running max with no lookahead.** `runningMax+1`
+   can land on an id that a LATER line already holds; the command then reports
+   `duplicate ids: 0` because it counted the input, and `validate` only warns
+   about the duplicate it just created. Census output must describe the file the
+   command WROTE, not the one it read — the same class of mistake as run 22's
+   `--stats` swallowing an alien priority vocabulary (DF-BOARDCTL-34).
+3. **One unparseable line poisons three verbs at once.** The live warpfs board
+   carries a duplicate `worker_status` key on line 412 (written 2026-10-23 by
+   that project's own foreman). `validate` names it (FAIL, 1 error); `normalize-board`
+   aborts on it and names no remedy; `normalize-board --skip-bad-lines` reports
+   SKIPPED-LINES and then refuses to write ("board read was degraded"), which is
+   correct fail-closed behaviour but leaves a user with 410 rows of drift and no
+   next step; `umbrella` (no `--skip-bad-lines` at all) loses the whole
+   cross-board view, exit 1, after printing only the first healthy board. The
+   only working path is the README's damaged-board slogan (`validate --repair`
+   → review `tasks.rewritten.jsonl` → swap by hand), which was verified again:
+   417 salvaged, line 412 dropped, `tasks.jsonl` untouched.
+4. **The verb surface is now fast, and the release boundary is finally even.**
+   Warm p50 on the real 700-event board: validate 84.6 ms (fails), stats 55.9 ms,
+   list 56.1 ms, show 72.5 ms, repair-events dry-run 93.0 ms; cold on a fresh
+   box 87.5 ms. No PERF rows — nothing a user feels. And README's "Current
+   release: v0.1.11" now matches a real asset that DOES carry `normalize-board`
+   and `--repair-events`, closing the DF-BOARDCTL-26/39 class for the first time
+   since run 20. The remaining release risk is cadence, not the docs this time:
+   four new rows land on HEAD that v0.1.11 predates.
+5. **Install leg.** bunker-mvp agent `boardctl-df25` (TTL 2h, destroyed after;
+   residue rechecked): README quickstart verbatim → checksum OK, `boardctl
+   version v0.1.11`, 1.18 s end to end, no Go, no sudo. The released binary then
+   drove the same drifted boards, reproducing every defect — the findings are
+   artifact-level, not checkout-level. `bunker exec` still expands `$HOME` on the
+   controller, so stage scripts with `bunker cp` and invoke them by relative name.
