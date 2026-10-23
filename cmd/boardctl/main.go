@@ -118,7 +118,8 @@ commands:
           same evidence behind a WARN-ONLY banner and allows it (a
           re-install flips the mode in place; --fleet carries the mode
           into every hook it writes)
-  umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict] [-C dir]
+  umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict]
+           [--skip-bad-lines] [-C dir]
           read-only unified view over this repo and every child board
           symlinked under .coding-hermes/links/ (one symlink per child
           repo, named after the repo, aimed at <child>/.coding-hermes).
@@ -128,16 +129,20 @@ commands:
           colliding ids stay distinct, and cross-board depends_on refs
           resolve only when unambiguous (AMBIGUOUS is reported, never
           guessed). Broken/looping/out-of-repo links are findings (exit 1),
-          never followed. NEVER writes — writes stay single-repo via -C
+          never followed. NEVER writes — writes stay single-repo via -C.
+          Line-level reads: by default the FIRST unparseable line in any
+          board aborts the whole view (exit 1, no partial output);
+          --skip-bad-lines degrades instead — every parseable row from
+          every healthy board is still counted/listed, each unparseable
+          line is reported on stderr as a SKIPPED-LINES block naming its
+          board and file:line, and the command exits 1
 
---skip-bad-lines (list/show/stats/validate/render): read the board tolerantly,
-keeping every line that parses; unparseable lines are reported on stderr as a
-SKIPPED-LINES evidence block and the command exits 1 even though it produced
-its normal output. Without the flag the first unparseable line aborts.
-normalize-board is fail-closed and takes NO --skip-bad-lines: a writing repair
-must never rewrite a board it could not read in full, so an unparseable line
-refuses the command (file + line number named) with the remedy printed inline:
-validate --repair -> review tasks.rewritten.jsonl -> swap it in -> re-run.
+--skip-bad-lines (list/show/stats/validate/render/umbrella): read the board
+tolerantly, keeping every line that parses; unparseable lines are reported on
+stderr as a SKIPPED-LINES evidence block and the command exits 1 even though it
+produced its normal output. Without the flag the first unparseable line aborts.
+For umbrella the block names each skipped line's board + file:line and the
+parseable rows of every healthy child board are still counted/listed.
 validate --repair: salvage every parseable row into <boarddir>/tasks.rewritten.jsonl
 (manual review file — tasks.jsonl is never overwritten).
 validate --strict-keys: treat BT-056 key-uniformity drift as an error (exit 1).
@@ -1363,10 +1368,6 @@ func cmdNormalizeBoard(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		// DF-BOARDCTL-46: --skip-bad-lines is deliberately ABSENT here. It
-		// promised a degraded read that normalize-board cannot honor without
-		// a lossy rewrite, so the command is fail-closed on an unparseable
-		// line and the help points at the salvage path instead.
 		_, _ = fmt.Fprintf(fs.Output(), "boardctl normalize-board [--apply] [--repair-events] [--json] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\nmechanical repairs (applied together on --apply):\n")
 		_, _ = fmt.Fprintf(fs.Output(), "  key aliases  -> canonical keys via the BT-056 table (why -> reasoning, acceptance -> acceptance_criteria, ...)\n")
@@ -1378,9 +1379,7 @@ func cmdNormalizeBoard(dir string, args []string) error {
 		_, _ = fmt.Fprintf(fs.Output(), "created_at are counted and reported — never fabricated. --apply rewrites tasks.jsonl in ONE guarded\n")
 		_, _ = fmt.Fprintf(fs.Output(), "atomic pass (all repairs or nothing); no audit event is appended (spelling/shape repair, not a transition).\n")
 		_, _ = fmt.Fprintf(fs.Output(), "an UNPARSEABLE tasks.jsonl line REFUSES the whole command (file + line number named) and nothing is\n")
-		_, _ = fmt.Fprintf(fs.Output(), "written: this repair never degrades. The remedy is printed on the refusal itself:\n")
-		_, _ = fmt.Fprintf(fs.Output(), "  %s\n", board.NormalizeBoardRepairHint)
-		_, _ = fmt.Fprintf(fs.Output(), "\n")
+		_, _ = fmt.Fprint(fs.Output(), "written: this repair never degrades. The remedy is printed on the refusal itself:\n  ", board.NormalizeBoardRepairHint, "\n\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -1395,9 +1394,6 @@ func cmdNormalizeBoard(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	// DF-BOARDCTL-46: no armSkipBad here — normalize-board reads the board
-	// strictly. A degraded read would let --apply rewrite a board it could
-	// not classify in full, so an unparseable line refuses the command.
 	rep, err := b.NormalizeBoard(*apply)
 	if err != nil {
 		return err
