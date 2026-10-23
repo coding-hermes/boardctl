@@ -11,21 +11,27 @@ import (
 //
 // The validateEvents function (validate.go:534) reports errors when
 // event ids descend below earlier ids. This function renumbers those
-// descending ids to restore ascending order, starting from max(existing)+1
-// for the first descending event.
+// descending ids to restore ascending order: every id it mints is the
+// running max of the REPAIRED sequence + 1, so the output ascends by
+// construction.
 //
 // The repair is mechanical: preserve every field except "id".
 // Legacy events without numeric ids (missing or string-valued) are skipped.
-// Duplicate ids are warned but not repaired (benign legacy duplicates).
+// Duplicate ids that already sit between two ORIGINAL ids are reported but not
+// repaired (benign legacy duplicates exist on live boards). A duplicate the
+// repair itself would create is never shipped (DF-BOARDCTL-45): when the
+// minted id equals the id a later event still carries, that later event is
+// renumbered too — ids 10, 9, 11 repair to 10, 11, 12 rather than 10, 11, 11.
+// The report's duplicate count is the census of the REPAIRED output.
 
 // RepairEventsReport holds the result of repairing event ids.
 type RepairEventsReport struct {
 	EventsPath  string `json:"events_path"`
 	TotalEvents int    `json:"total_events"`
 	FixedCount  int    `json:"fixed_count"` // events whose id was renumbered
-	Descending  int    `json:"descending"`  // count of descending id occurrences found
+	Descending  int    `json:"descending"`  // ids renumbered: descending below, or colliding with, a minted id
 	NonNumeric  int    `json:"non_numeric"` // legacy events without numeric ids
-	Duplicates  int    `json:"duplicates"`  // duplicate ids found (warned, not fixed)
+	Duplicates  int    `json:"duplicates"`  // duplicate ids in the REPAIRED output
 	DryRun      bool   `json:"dry_run"`
 	AppliedPath string `json:"applied_path,omitempty"`
 	Applied     bool   `json:"applied"`
@@ -38,7 +44,7 @@ func (r *RepairEventsReport) RenderText() string {
 	out += fmt.Sprintf("total events: %d\n", r.TotalEvents)
 	out += fmt.Sprintf("descending ids: %d\n", r.Descending)
 	out += fmt.Sprintf("non-numeric/missing ids: %d\n", r.NonNumeric)
-	out += fmt.Sprintf("duplicate ids: %d\n", r.Duplicates)
+	out += fmt.Sprintf("duplicate ids in repaired output: %d\n", r.Duplicates)
 
 	if r.Clean {
 		out += "no descending ids found — already canonical\n"
@@ -85,22 +91,17 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 		DryRun:     dryRun,
 	}
 
-	// First pass: classify events and find descending ids.
+	// First pass: classify events (numeric vs legacy) in file order.
 	type eventRecord struct {
-		lineIdx    int
-		line       []byte
-		id         int64
-		hasID      bool
-		isInt      bool
-		legacy     bool // missing or non-numeric id
-		NonNumeric int
-		Duplicates int
+		lineIdx int
+		line    []byte
+		id      int64
+		hasID   bool
+		isInt   bool
+		legacy  bool // missing or non-numeric id
 	}
 
 	var records []eventRecord
-	seenIDs := map[int64]int{} // id -> first line index
-	var maxID int64
-	var haveMax bool
 
 	ierr := IterParsed(lines, func(row *Row, idx int, raw []byte) error {
 		// Keep a copy of the raw line for later.
@@ -125,20 +126,6 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 		}
 		rec.id = id
 
-		// Check for duplicates first (benign legacy).
-		if prev, dup := seenIDs[id]; dup {
-			rec.Duplicates++
-			rep.Duplicates++
-			_ = prev // first occurrence line
-		}
-		seenIDs[id] = idx + 1
-
-		// Track max id seen so far.
-		if !haveMax || id > maxID {
-			maxID = id
-			haveMax = true
-		}
-
 		records = append(records, rec)
 		return nil
 	})
@@ -148,21 +135,27 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 
 	rep.TotalEvents = len(records)
 
-	// Second pass: identify descending ids and renumber.
-	// We need to track the "running max" as we go left-to-right.
-	// Any id that descends below the running max needs renumbering.
-	// The new id = running_max + 1.
+	// Second pass: plan the renumbering left to right.
+	//
+	// The running max is the largest id the REPAIRED file carries so far, so
+	// minting runningMax+1 keeps the output ascending. DF-BOARDCTL-45: the
+	// minted id must also not collide with an id a LATER event still carries.
+	// A later event can only collide when its id equals the running max (any
+	// bigger id lies above every id emitted so far), so that case is caught
+	// here by treating "id == runningMax AND runningMax was minted by this
+	// pass" as an id to repair as well. Ids 10, 9, 11 therefore land as
+	// 10, 11, 12 instead of the old 10, 11, 11 — no two events share an id,
+	// and the census below describes that output. Duplicates between two
+	// ORIGINAL ids are left untouched, as documented above.
 	runningMax := int64(0)
 	hasRunningMax := false
 	fixedCount := 0
 	descendingCount := 0
 
-	// We'll collect lines that need changes.
 	changeMap := map[int][]byte{} // lineIdx -> new line bytes
+	mintedIDs := map[int64]bool{} // ids this pass invented
+	outputIDs := make([]int64, 0, len(records))
 
-	// Re-iterate to find descending ids.
-	runningMax = 0
-	hasRunningMax = false
 	for _, rec := range records {
 		if rec.legacy || !rec.isInt {
 			// Non-numeric events don't affect the running max.
@@ -172,32 +165,46 @@ func (b *Board) repairEventsLocked(dryRun bool) (*RepairEventsReport, error) {
 		id := rec.id
 		lineIdx := rec.lineIdx
 
-		if hasRunningMax && id < runningMax {
-			// Descending! Fix it.
+		collides := hasRunningMax && id == runningMax && mintedIDs[id]
+		if hasRunningMax && (id < runningMax || collides) {
+			// Descending, or the id the repair just minted.
 			runningMax++
 			newID := runningMax
 			descendingCount++
 			fixedCount++
 
-			// Re-encode the line with the new id.
-			// We'll parse and modify the row.
 			newLine, err := renumberEventID(rec.line, newID)
 			if err != nil {
 				return nil, fmt.Errorf("line %d: renumber %d -> %d: %w", lineIdx+1, id, newID, err)
 			}
 			changeMap[lineIdx] = newLine
+			mintedIDs[newID] = true
+			outputIDs = append(outputIDs, newID)
+			hasRunningMax = true
+			continue
+		}
 
-			// The running max stays at the new id.
-			runningMax = newID
-		} else if id > runningMax {
+		if !hasRunningMax || id > runningMax {
 			runningMax = id
 		}
 		hasRunningMax = true
+		outputIDs = append(outputIDs, id)
 	}
 
 	rep.Descending = descendingCount
 	rep.FixedCount = fixedCount
 	rep.Clean = descendingCount == 0
+
+	// DF-BOARDCTL-45: the duplicate census describes the file the repair will
+	// leave behind. Counting the INPUT let the command print "duplicate ids: 0"
+	// while writing a file with two events sharing one id.
+	seenOutput := make(map[int64]bool, len(outputIDs))
+	for _, id := range outputIDs {
+		if seenOutput[id] {
+			rep.Duplicates++
+		}
+		seenOutput[id] = true
+	}
 
 	if rep.Clean {
 		return rep, nil
