@@ -70,6 +70,9 @@ boardctl -C ~/myproject stats
 boardctl -C ~/myproject list --status pending
 boardctl -C ~/myproject list --all       # include fixture rows (hidden by default)
 boardctl -C ~/myproject show DF-MYPROJECT-1 --events
+boardctl -C ~/myproject show DF-MYPROJECT-1 --skip-bad-lines   # degraded read: healthy
+                                                               # rows survive a torn
+                                                               # tasks.jsonl (see `show`)
 boardctl -C ~/myproject validate
 boardctl -C ~/myproject doctor     # validate + deep checks: git tracked-set
                                    # (no .db/.parquet; untracked ones warn as
@@ -331,6 +334,85 @@ The block rides stderr, so `umbrella --json --skip-bad-lines` still emits
 parseable JSON on stdout. Exit 1 is the contract — a degraded view is never a
 clean success. Repair the named board (`validate --repair`, below) and the plain
 command returns to exit 0.
+
+### show
+
+`boardctl show <id>` prints one task row as pretty JSON (add `--events` for the
+task's audit trail):
+
+```bash
+boardctl -C ~/myproject show FEAT-1
+boardctl -C ~/myproject show FEAT-1 --events
+```
+
+#### Degraded reads: `show --skip-bad-lines`
+
+Every line-oriented read in boardctl is **fail-closed by default**: the first
+unparseable line of `tasks.jsonl` or `events.jsonl` aborts the whole command
+with a parse error naming the file and the 1-based line, and nothing is
+printed. That is correct when you want a hard stop — but when a board is
+already damaged and you need the rows that still parse, `show` (like `list`,
+`stats`, `render` and `validate`) accepts `--skip-bad-lines`:
+
+| mode | behaviour |
+|---|---|
+| default | **fail-closed.** The first unparseable line aborts the command: `<file>: line N: <parse error>`, exit 1, no output. |
+| `--skip-bad-lines` | **degraded with evidence.** The requested row still prints when its line parses; every skipped line is reported on stderr as a `SKIPPED-LINES` block; the command still exits 1. |
+
+Three properties are the contract:
+
+- **Parseable output is retained.** A damaged board does not erase the row you
+  asked for: if the row's own line parses, it prints in full, damaged
+  neighbours notwithstanding. (The damaged line itself never yields a row —
+  `show <damaged-id>` reports `task not found` even under the flag, because
+  nothing parseable carries that id.)
+- **The `SKIPPED-LINES` block rides stderr** and names every skipped line —
+  file, 1-based line number, parse error, plus the offending snippet — so the
+  evidence identifies the damage even when stdout is redirected or consumed by
+  a script.
+- **Exit is 1 whenever anything was skipped**, with a
+  `board read was degraded: unparseable lines were skipped` note on stderr. A
+  degraded read must never read as a clean success: pipelines checking `$?`
+  see the failure, and the row above the block is still there to be read.
+
+`--skip-bad-lines` is read-only and composes with `--events`: events that
+parse are printed, skipped event lines join the same `SKIPPED-LINES` block.
+Replayable demonstration (creates a THROWAWAY board under `/tmp` — no real
+board, no external dependency — with a torn row and a torn event line):
+
+```bash
+D=$(mktemp -d /tmp/boardctl-demo.XXXXXX)   # throwaway demo board
+B="$D/.coding-hermes/board"; mkdir -p "$B"
+printf '%s\n' '{"id":"DEMO-1","title":"healthy row","status":"pending"}' \
+    > "$B/tasks.jsonl"
+printf '%s\n' '{"id":"DEMO-2","title":"torn row' >> "$B/tasks.jsonl"  # damage
+: > "$B/events.jsonl"
+printf '%s\n' '{"id":1,"task_id":"DEMO-1","type":"task_created","ts":"2026-10-24T00:00:00Z","data":{}}' >> "$B/events.jsonl"
+printf '%s\n' '{"id":2,"task_id":"DEMO-1","torn' >> "$B/events.jsonl" # damage
+
+# default: fail-closed — the healthy row is invisible behind the parse error
+boardctl -C "$D" show DEMO-1
+# boardctl: /tmp/…/tasks.jsonl: line 2: unexpected EOF      (exit 1)
+
+# tolerant: the healthy row prints, the damage is reported, exit stays 1
+boardctl -C "$D" show DEMO-1 --skip-bad-lines
+# {
+#   "id": "DEMO-1",
+#   "title": "healthy row",
+#   "status": "pending"
+# }
+# SKIPPED-LINES: 1 line(s) could not be parsed and were skipped:
+#   /tmp/…/tasks.jsonl line 2: unexpected EOF
+#     {"id":"DEMO-2","title":"torn row
+# boardctl: board read was degraded: unparseable lines were skipped (see
+# SKIPPED-LINES above)                                      (exit 1)
+```
+
+To recover the board itself — salvage every parseable row into
+`tasks.rewritten.jsonl` for review — use `validate --repair`
+(see the damaged-board salvage procedure under `render`/`validate` and the
+"Damaged-board recovery" section of
+`skills/boardctl-usage/SKILL.md`; `--repair` needs no `--skip-bad-lines`).
 
 ### Headerless boards
 
