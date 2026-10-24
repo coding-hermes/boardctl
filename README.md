@@ -1490,15 +1490,34 @@ outside any checkout, a commit rebased away, or a missing git binary all mean
 silent skip. Set `BOARDCTL_SKIP_FRESHNESS=1` to suppress the warning (the
 warning line itself names this switch).
 
-The toolchain requirement: go.mod declares `go 1.26.10`. The Go 1.26.5 standard
-library shipped reachable advisories (GO-2026-6089 `net/http`, GO-2026-6090
-`crypto/tls`, GO-2026-5972 `encoding/asn1`) that 1.26.6 fixed, and 1.26.9
-cleared the further advisories GO-2026-6603, GO-2026-6607, GO-2026-6608,
-GO-2026-6611, GO-2026-6612, GO-2026-6613 and GO-2026-6617 — so a lower `go`
-directive, or a build with an older
-toolchain, fails this gate. With `GOTOOLCHAIN=auto` (the default) the pinned
-patch toolchain is fetched automatically. Do not lower the directive to
-silence the gate; raise it to the patched release instead.
+### Go toolchain policy {#go-toolchain-policy}
+
+The toolchain requirement is authoritative in `go.mod`: `go.mod` declares `go 1.26.10`,
+which is the patch floor for local builds and CI. GitHub Actions uses
+`actions/setup-go` with `go-version-file: go.mod`, so CI reads that same
+patch-floor declaration instead of selecting a moving `1.26` range. With
+`GOTOOLCHAIN=auto` (the default), Go may download and use the minimum toolchain
+required by the `go.mod` directive; `GOTOOLCHAIN=local` instead requires the
+locally installed toolchain to satisfy `go 1.26.10`. Do not lower the directive
+to silence the gate; raise it to the patched release instead.
+
+This floor matters because Go 1.26.5 shipped reachable advisories (GO-2026-6089
+`net/http`, GO-2026-6090 `crypto/tls`, GO-2026-5972 `encoding/asn1`) that 1.26.6
+fixed, Go 1.26.9 cleared further advisories GO-2026-6603, GO-2026-6607,
+GO-2026-6608, GO-2026-6611, GO-2026-6612, GO-2026-6613 and GO-2026-6617, and
+Go 1.26.10 fixes the reachable crypto/x509 advisory GO-2026-6809. The README,
+`go.mod`, and CI therefore intentionally agree on the exact patch floor rather
+than a moving minor-range selector.
+
+To verify the resolved toolchain and build locally without overriding the
+module policy, run:
+
+```bash
+go version
+go build ./...
+```
+
+<!-- ch:trace row=README-010 anchor=go-toolchain-policy wave=boardctl-2026-10-24-14-59-50#README-010 test=go-version-go-build-./... doc=README.md prompt=/tmp/boardctl-README-010-brief.txt evidence=none:reason witness=none:reason verdict=none:pending commit=none:pending memory=none:not-written -->
 
 ### Installing the deployed copy (BT-042)
 

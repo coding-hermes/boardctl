@@ -428,3 +428,47 @@ func TestGateStepsWiredInCI(t *testing.T) {
 		t.Fatalf("repo tree failed the CI gate-step census:\n%v", err)
 	}
 }
+
+// TestToolchainParityWiredInRepo verifies the README, go.mod directive, and
+// setup-go configuration stay on one exact patch-floor contract.
+func TestToolchainParityWiredInRepo(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	root, err := RepoRoot(cwd)
+	if err != nil {
+		t.Fatalf("locate repo root: %v", err)
+	}
+	if err := CheckToolchainParity(
+		filepath.Join(root, READMEName),
+		filepath.Join(root, CIWorkflowName),
+		filepath.Join(root, GoModName),
+	); err != nil {
+		t.Fatalf("repo tree failed the Go toolchain parity check:\n%v", err)
+	}
+}
+
+// TestToolchainParityRejectsMovingWorkflow is a permanent negative arm for
+// the drift this checker prevents: the README and go.mod may agree while CI
+// silently selects a moving minor-range toolchain.
+func TestToolchainParityRejectsMovingWorkflow(t *testing.T) {
+	dir := t.TempDir()
+	readme := filepath.Join(dir, "README.md")
+	workflow := filepath.Join(dir, "ci.yml")
+	goMod := filepath.Join(dir, "go.mod")
+	if err := os.WriteFile(readme, []byte("go.mod` declares `go 1.26.10`\ngo-version-file: go.mod\n"), 0o644); err != nil {
+		t.Fatalf("write README: %v", err)
+	}
+	if err := os.WriteFile(workflow, []byte("go-version-file: go.mod\ngo-version: [\"1.26\"]\n"), 0o644); err != nil {
+		t.Fatalf("write workflow: %v", err)
+	}
+	if err := os.WriteFile(goMod, []byte("module example.test\n\ngo 1.26.10\n"), 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+	if err := CheckToolchainParity(readme, workflow, goMod); err == nil {
+		t.Fatal("CheckToolchainParity() = nil for a moving workflow selector")
+	} else if !strings.Contains(err.Error(), "moving go-version matrix") {
+		t.Fatalf("CheckToolchainParity() error = %q, want moving-matrix diagnosis", err)
+	}
+}

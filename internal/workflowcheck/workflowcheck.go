@@ -60,6 +60,10 @@ const (
 	CIWorkflowName = ".github/workflows/ci.yml"
 	// MakefileName is the Makefile whose PLATFORMS list is checked.
 	MakefileName = "Makefile"
+	// READMEName is the documentation surface whose toolchain policy is checked.
+	READMEName = "README.md"
+	// GoModName is the module file whose go directive is authoritative.
+	GoModName = "go.mod"
 )
 
 var (
@@ -237,6 +241,44 @@ var ciGateSteps = []GateStep{
 	// Vulnerability-check gate: the same in-process test `make vuln-check`
 	// runs (internal/vulncheck additionally self-asserts this step).
 	{Name: "Vulnerability-check", Run: "go test -count=1 -run TestVulncheck ./internal/vulncheck"},
+}
+
+// CheckToolchainParity verifies that the module's exact Go patch floor is
+// named by the README and that CI reads that module declaration through
+// setup-go's go-version-file input. This is intentionally a local text check:
+// it catches documentation/workflow drift without a network-dependent test.
+func CheckToolchainParity(readmePath, workflowPath, goModPath string) error {
+	readme, err := os.ReadFile(readmePath)
+	if err != nil {
+		return err
+	}
+	workflow, err := os.ReadFile(workflowPath)
+	if err != nil {
+		return err
+	}
+	goMod, err := os.ReadFile(goModPath)
+	if err != nil {
+		return err
+	}
+
+	goDirective := regexp.MustCompile(`(?m)^go ([0-9]+\.[0-9]+\.[0-9]+)$`).FindSubmatch(goMod)
+	if goDirective == nil {
+		return fmt.Errorf("workflowcheck: %s has no exact three-component `go` directive", goModPath)
+	}
+	version := string(goDirective[1])
+	if !strings.Contains(string(readme), "go.mod` declares `go "+version+"`") {
+		return fmt.Errorf("workflowcheck: %s does not state that go.mod declares go %s", readmePath, version)
+	}
+	if !strings.Contains(string(readme), "go-version-file: go.mod") {
+		return fmt.Errorf("workflowcheck: %s does not document CI setup-go reading go.mod", readmePath)
+	}
+	if !strings.Contains(string(workflow), "go-version-file: go.mod") {
+		return fmt.Errorf("workflowcheck: %s does not configure setup-go with `go-version-file: go.mod`", workflowPath)
+	}
+	if strings.Contains(string(workflow), "go-version:") || strings.Contains(string(workflow), "matrix.go-version") {
+		return fmt.Errorf("workflowcheck: %s still contains a moving go-version matrix", workflowPath)
+	}
+	return nil
 }
 
 // CheckGateSteps is the CI gate-step census: every step in ciGateSteps must
