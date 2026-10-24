@@ -1456,6 +1456,64 @@ make spec-check       # serve/OpenAPI parity gate (CI enforces it too)
 make release          # cross-compile all targets into dist/ (same asset names + SHA256SUMS the CI cut publishes)
 ```
 
+### README command/reference drift check (manual-only)
+
+There is no automated `docs-check` or `docs-drift` Make target. This procedure is
+manual-only: it inventories the README command/reference surface and compares each
+entry with the current CLI help, Makefile, workflow, and repository paths. It does
+**not** claim to execute every documented command (the originating inventory had
+131 command lines).
+
+From a fresh checkout, copy and run this inventory step:
+
+```bash
+set -eu
+evidence_dir="${TMPDIR:-/tmp}/boardctl-readme-surface-$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p "$evidence_dir"
+printf 'Evidence directory: %s\n' "$evidence_dir" | tee "$evidence_dir/README.txt"
+awk '
+  /^```(bash|sh|shell)$/ { in_shell=1; next }
+  in_shell && /^```$/ { in_shell=0; next }
+  in_shell { printf "%d:%s\n", NR, $0 }
+' README.md | tee "$evidence_dir/readme-shell-surface.txt"
+grep -nE '`[^`]+`|\[[^]]+\]\([^)]+\)' README.md > "$evidence_dir/readme-inline-references.txt"
+go run ./cmd/boardctl --help > "$evidence_dir/boardctl-help.txt"
+make -qp 2>/dev/null | awk -F: '/^[A-Za-z0-9_.-]+:([^=]|$)/ { print $1 }' | sort -u > "$evidence_dir/make-targets.txt"
+git grep -nE '(^|[[:space:]])(make|go|boardctl|gofmt|govulncheck|git|curl|sha256sum|gh)[[:space:]]' -- .github/workflows > "$evidence_dir/workflow-commands.txt" || true
+git ls-files > "$evidence_dir/repository-paths.txt"
+printf 'Review outputs under %s\n' "$evidence_dir"
+```
+
+Review `readme-shell-surface.txt` and `readme-inline-references.txt` line by
+line. For each item, record its README line, classification, verification, and
+reason in an evidence note under the printed evidence directory. Check executable
+CLI commands against `boardctl --help` (the fresh-checkout equivalent above is
+`go run ./cmd/boardctl --help`), Makefile commands against `make-targets.txt`,
+workflow commands against `workflow-commands.txt`, and repository paths against
+`repository-paths.txt` plus the referenced file. Preserve the four existing local
+gates in the evidence note and run them exactly as written here:
+
+```bash
+make fmt-check
+make version-check VERSION_TAG=v0.1.11
+make spec-check
+make vuln-check
+```
+
+Commands that need a populated board, network access or published release assets,
+or destructive deployment/install steps are intentionally not run by this
+inventory. Classify each one as manual/network-dependent and state why; classify
+historical or example-only text the same way. A command is not exempt merely
+because it is inconvenient to run.
+
+Result: **PASS** only when every listed command/reference is classified as
+executable and verified, intentionally manual/network-dependent with a stated
+reason, or historical/example-only. Result: **FAIL** for an undocumented or
+missing command, stale flag/target/path, or unexplained exception. A PASS also
+requires the evidence note to record the command output and its path under the
+printed evidence directory. This is a review procedure, not an automated gate;
+re-run it whenever the README command or reference surface changes.
+
 Go's vcs stamping matches only a `.git` **directory** when walking parent
 directories, so a build from a linked worktree nested under another repo's
 checkout embeds THAT repo's `vcs.revision` with `vcs.modified=true` — and a
