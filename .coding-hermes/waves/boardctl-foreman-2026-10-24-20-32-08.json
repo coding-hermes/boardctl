@@ -1,0 +1,26 @@
+{
+  "tick": "boardctl-foreman-2026-10-24-20-32-08",
+  "project": "boardctl",
+  "base": "origin/main",
+  "budget": 2,
+  "steps": [
+    {
+      "task_id": "DOC-39",
+      "worktree": "/home/kara/worktrees/boardctl-DOC-39",
+      "branch": "wt/DOC-39",
+      "base_sha": "a1f9643b2c407ac558250d84b0db3599afb3def5",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm",
+      "status": "ready"
+    },
+    {
+      "task_id": "DOC-40",
+      "worktree": "/home/kara/worktrees/boardctl-DOC-40",
+      "branch": "wt/DOC-40",
+      "base_sha": "a1f9643b2c407ac558250d84b0db3599afb3def5",
+      "worker_model": "glm-5.3-flash",
+      "worker_provider": "zai-glm",
+      "status": "ready"
+    }
+  ]
+}
