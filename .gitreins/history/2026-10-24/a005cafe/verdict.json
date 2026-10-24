@@ -1,0 +1,103 @@
+{
+  "task_id": "README-012",
+  "task_title": "README-012 published v0.1.11 acceptance-criteria flag drift",
+  "task_criteria": [
+    "README-012 acceptance: from a fresh checkout or published v0.1.11 asset, execute the README create/update examples and create --help; either the published asset accepts --acceptance-criteria and writes/replaces acceptance_criteria, or README current-release and acceptance-criteria text no longer presents the flag as available in v0.1.11. Preserve P4 policy. Add a regression/documentation proof and a ch:trace marker."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "14592ed43e362968b31341f50ec18d4e64fbc767",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n11:04AM INF scanned ~3711631 bytes (3.71 MB) in 1.68s\n11:04AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 253 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261024T153356.415623Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t10.974s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t3.163s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.301s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.041s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t4.753s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261024T153356.415623Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n\nCap exceeded: Iteration cap (200) reached (200.6 used). Increase max_iterations or split criteria.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n\nCap exceeded: Iteration cap (200) reached (200.6 used). Increase max_iterations or split criteria.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [],
+            "summary": "Cap exceeded: Iteration cap (200) reached (200.6 used). Increase max_iterations or split criteria.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: README-012\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n\nCap exceeded: Iteration cap (200) reached (200.6 used). Increase max_iterations or split criteria.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-24T16:09:55.758136",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-24T16:09:55.790896+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 128339,
+        "truncated": false,
+        "source": "git show 14592ed43e36"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 70585,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "README-012"
+  }
+}

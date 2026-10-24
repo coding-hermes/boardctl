@@ -1,0 +1,109 @@
+{
+  "task_id": "README-012",
+  "task_title": "README-012 published v0.1.11 acceptance-criteria flag drift",
+  "task_criteria": [
+    "README-012 acceptance: from a fresh checkout or published v0.1.11 asset, execute the README create/update examples and create --help; either the published asset accepts --acceptance-criteria and writes/replaces acceptance_criteria, or README current-release and acceptance-criteria text no longer presents the flag as available in v0.1.11. Preserve P4 policy. Add a regression/documentation proof and a ch:trace marker."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "14592ed43e362968b31341f50ec18d4e64fbc767",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n11:10AM INF scanned ~3711631 bytes (3.71 MB) in 1.1s\n11:10AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 253 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261024T153356.415623Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.570s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.009s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.397s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.147s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.032s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261024T153356.415623Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 README-012 acceptance: from a fresh checkout or published v0.1.11 asset, execute the README create/update examples and create --help; either the published asset accepts --acceptance-criteria and writes/replaces acceptance_criteria, or README current-release and acceptance-criteria text no longer presents the flag as available in v0.1.11. Preserve P4 policy. Add a regression/documentation proof and a ch:trace marker.: The fix was never merged into the delivered tree. Commit ec5d086 ('docs: reconcile README acceptance criteria release contract. Addresses README-012.') exists only on branch wt/README-012; `git merge-base --is-ancestor ec5d086 HEAD` -> NO, main HEAD is 14592ed. On main: (a) published asset `./dist/boardctl_linux_amd64 version` -> 'boardctl version v0.1.11' and `create --help`/`update --help | grep -i acceptance` -> empty output (flag absent), so the asset does NOT accept --acceptance-criteria; (b) README.md:1310 still reads 'Both verbs now take `--acceptance-criteria TEXT`:' and README.md:106 still reads 'sanctioned write path for the field, so never hand-edit tasks.jsonl for it.', with only the weak 'Not in the published v0.1.11 binary' note at README.md:1337-1338 \u2014 i.e. the flag is still presented as available in v0.1.11; (c) the regression proof is missing: cmd/boardctl/readme_acceptance_criteria_release_test.go does not exist on main and `go test -count=1 -run TestREADMEAcceptanceCriteriaPublishedReleaseContract ./cmd/boardctl/` -> 'ok ... [no tests to run]'; (d) no ch:trace marker for README-012 in README.md on main (only the README-010 marker at README.md:1520) \u2014 the marker lives only in the unmerged commit message and the board row's worker_summary. Full suite on main `go test -count=1 ./...` exits 0 (all 12 packages ok) but does not exercise this criterion. In the unmerged worktree /home/kara/worktrees/boardctl-README-012 the fix is correct (test passes: 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.004s'; README wording qualified as current-HEAD/next-release; P4 dispatchability policy preserved), but it is not present in the evaluated checkout.\nThe README-012 fix (README qualification + regression test + ch:trace) exists only on the unmerged wt/README-012 branch, so the delivered tree still ships a v0.1.11 asset that rejects --acceptance-criteria alongside README text presenting the flag as available.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 README-012 acceptance: from a fresh checkout or published v0.1.11 asset, execute the README create/update examples and create --help; either the published asset accepts --acceptance-criteria and writes/replaces acceptance_criteria, or README current-release and acceptance-criteria text no longer presents the flag as available in v0.1.11. Preserve P4 policy. Add a regression/documentation proof and a ch:trace marker.: The fix was never merged into the delivered tree. Commit ec5d086 ('docs: reconcile README acceptance criteria release contract. Addresses README-012.') exists only on branch wt/README-012; `git merge-base --is-ancestor ec5d086 HEAD` -> NO, main HEAD is 14592ed. On main: (a) published asset `./dist/boardctl_linux_amd64 version` -> 'boardctl version v0.1.11' and `create --help`/`update --help | grep -i acceptance` -> empty output (flag absent), so the asset does NOT accept --acceptance-criteria; (b) README.md:1310 still reads 'Both verbs now take `--acceptance-criteria TEXT`:' and README.md:106 still reads 'sanctioned write path for the field, so never hand-edit tasks.jsonl for it.', with only the weak 'Not in the published v0.1.11 binary' note at README.md:1337-1338 \u2014 i.e. the flag is still presented as available in v0.1.11; (c) the regression proof is missing: cmd/boardctl/readme_acceptance_criteria_release_test.go does not exist on main and `go test -count=1 -run TestREADMEAcceptanceCriteriaPublishedReleaseContract ./cmd/boardctl/` -> 'ok ... [no tests to run]'; (d) no ch:trace marker for README-012 in README.md on main (only the README-010 marker at README.md:1520) \u2014 the marker lives only in the unmerged commit message and the board row's worker_summary. Full suite on main `go test -count=1 ./...` exits 0 (all 12 packages ok) but does not exercise this criterion. In the unmerged worktree /home/kara/worktrees/boardctl-README-012 the fix is correct (test passes: 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.004s'; README wording qualified as current-HEAD/next-release; P4 dispatchability policy preserved), but it is not present in the evaluated checkout.\nThe README-012 fix (README qualification + regression test + ch:trace) exists only on the unmerged wt/README-012 branch, so the delivered tree still ships a v0.1.11 asset that rejects --acceptance-criteria alongside README text presenting the flag as available.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "README-012 acceptance: from a fresh checkout or published v0.1.11 asset, execute the README create/update examples and create --help; either the published asset accepts --acceptance-criteria and writes/replaces acceptance_criteria, or README current-release and acceptance-criteria text no longer presents the flag as available in v0.1.11. Preserve P4 policy. Add a regression/documentation proof and a ch:trace marker.",
+                "status": "FAIL",
+                "detail": "The fix was never merged into the delivered tree. Commit ec5d086 ('docs: reconcile README acceptance criteria release contract. Addresses README-012.') exists only on branch wt/README-012; `git merge-base --is-ancestor ec5d086 HEAD` -> NO, main HEAD is 14592ed. On main: (a) published asset `./dist/boardctl_linux_amd64 version` -> 'boardctl version v0.1.11' and `create --help`/`update --help | grep -i acceptance` -> empty output (flag absent), so the asset does NOT accept --acceptance-criteria; (b) README.md:1310 still reads 'Both verbs now take `--acceptance-criteria TEXT`:' and README.md:106 still reads 'sanctioned write path for the field, so never hand-edit tasks.jsonl for it.', with only the weak 'Not in the published v0.1.11 binary' note at README.md:1337-1338 \u2014 i.e. the flag is still presented as available in v0.1.11; (c) the regression proof is missing: cmd/boardctl/readme_acceptance_criteria_release_test.go does not exist on main and `go test -count=1 -run TestREADMEAcceptanceCriteriaPublishedReleaseContract ./cmd/boardctl/` -> 'ok ... [no tests to run]'; (d) no ch:trace marker for README-012 in README.md on main (only the README-010 marker at README.md:1520) \u2014 the marker lives only in the unmerged commit message and the board row's worker_summary. Full suite on main `go test -count=1 ./...` exits 0 (all 12 packages ok) but does not exercise this criterion. In the unmerged worktree /home/kara/worktrees/boardctl-README-012 the fix is correct (test passes: 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.004s'; README wording qualified as current-HEAD/next-release; P4 dispatchability policy preserved), but it is not present in the evaluated checkout."
+              }
+            ],
+            "summary": "The README-012 fix (README qualification + regression test + ch:trace) exists only on the unmerged wt/README-012 branch, so the delivered tree still ships a v0.1.11 asset that rejects --acceptance-criteria alongside README text presenting the flag as available.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: README-012\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 README-012 acceptance: from a fresh checkout or published v0.1.11 asset, execute the README create/update examples and create --help; either the published asset accepts --acceptance-criteria and writes/replaces acceptance_criteria, or README current-release and acceptance-criteria text no longer presents the flag as available in v0.1.11. Preserve P4 policy. Add a regression/documentation proof and a ch:trace marker.: The fix was never merged into the delivered tree. Commit ec5d086 ('docs: reconcile README acceptance criteria release contract. Addresses README-012.') exists only on branch wt/README-012; `git merge-base --is-ancestor ec5d086 HEAD` -> NO, main HEAD is 14592ed. On main: (a) published asset `./dist/boardctl_linux_amd64 version` -> 'boardctl version v0.1.11' and `create --help`/`update --help | grep -i acceptance` -> empty output (flag absent), so the asset does NOT accept --acceptance-criteria; (b) README.md:1310 still reads 'Both verbs now take `--acceptance-criteria TEXT`:' and README.md:106 still reads 'sanctioned write path for the field, so never hand-edit tasks.jsonl for it.', with only the weak 'Not in the published v0.1.11 binary' note at README.md:1337-1338 \u2014 i.e. the flag is still presented as available in v0.1.11; (c) the regression proof is missing: cmd/boardctl/readme_acceptance_criteria_release_test.go does not exist on main and `go test -count=1 -run TestREADMEAcceptanceCriteriaPublishedReleaseContract ./cmd/boardctl/` -> 'ok ... [no tests to run]'; (d) no ch:trace marker for README-012 in README.md on main (only the README-010 marker at README.md:1520) \u2014 the marker lives only in the unmerged commit message and the board row's worker_summary. Full suite on main `go test -count=1 ./...` exits 0 (all 12 packages ok) but does not exercise this criterion. In the unmerged worktree /home/kara/worktrees/boardctl-README-012 the fix is correct (test passes: 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.004s'; README wording qualified as current-HEAD/next-release; P4 dispatchability policy preserved), but it is not present in the evaluated checkout.\nThe README-012 fix (README qualification + regression test + ch:trace) exists only on the unmerged wt/README-012 branch, so the delivered tree still ships a v0.1.11 asset that rejects --acceptance-criteria alongside README text presenting the flag as available.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-24T16:11:36.624772",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-24T16:11:36.673580+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 128339,
+        "truncated": false,
+        "source": "git show 14592ed43e36"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 70585,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "README-012"
+  }
+}
