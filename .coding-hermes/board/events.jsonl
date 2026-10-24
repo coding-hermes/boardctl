@@ -539,3 +539,5 @@
 {"id":535,"timestamp":"2026-10-24 20:37:05","event_type":"task_updated","task_id":"DOC-40","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
 {"id":536,"timestamp":"2026-10-24 20:37:05","event_type":"task_dispatched","task_id":"DOC-39","actor":"foreman","detail":"{\"worktree\":\"/home/kara/worktrees/boardctl-DOC-39\",\"branch\":\"wt/DOC-39\",\"worker_model\":\"glm-5.3-flash\",\"worker_provider\":\"zai-glm\"}","tick_number":null}
 {"id":537,"timestamp":"2026-10-24 20:37:05","event_type":"task_dispatched","task_id":"DOC-40","actor":"foreman","detail":"{\"worktree\":\"/home/kara/worktrees/boardctl-DOC-40\",\"branch\":\"wt/DOC-40\",\"worker_model\":\"glm-5.3-flash\",\"worker_provider\":\"zai-glm\"}","tick_number":null}
+{"id":538,"timestamp":"2026-10-24 20:55:53","event_type":"task_completed","task_id":"DOC-39","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":539,"timestamp":"2026-10-24 20:55:53","event_type":"task_completed","task_id":"DOC-40","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
