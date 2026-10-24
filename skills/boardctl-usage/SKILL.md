@@ -739,10 +739,18 @@ Boards are tiny; there is no need to batch or cache.
   and read the duplicate warnings, not the census.
 - One unparseable line blocks the repair verbs (DF-BOARDCTL-46/47): with a
   duplicate-key row present, `normalize-board` aborts without naming a remedy,
-  `normalize-board --skip-bad-lines` degrades and then refuses to write, and
-  `umbrella` (which has NO `--skip-bad-lines`) loses the entire cross-board
-  view. The path that works is `validate --repair` → review
-  `tasks.rewritten.jsonl` → swap by hand → re-run normalize-board.
+  and `normalize-board --skip-bad-lines` degrades and then refuses to write.
+  (The run-25 line "`umbrella` has NO `--skip-bad-lines`" is stale — the flag
+  has since shipped, DF-BOARDCTL-47.) `umbrella` has two explicit line-level
+  modes: DEFAULT is fail-closed — the FIRST unparseable line in ANY child
+  board aborts the whole view with that board's file and line (exit 1, no
+  partial output) — while `umbrella --skip-bad-lines` degrades with evidence:
+  every parseable row from every healthy board is still counted/listed, each
+  unparseable line is reported on stderr as a SKIPPED-LINES block (<repo>,
+  file, line, parse error, snippet), and the command still exits 1, so a
+  degraded view never reads as clean success. The path that works for
+  repairing the damaged row itself is unchanged: `validate --repair` →
+  review `tasks.rewritten.jsonl` → swap by hand → re-run normalize-board.
 - Timings (warm p50, 700-event board, loaded host): validate 84.6 ms, stats
   55.9 ms, list 56.1 ms, show 72.5 ms, repair-events dry-run 93.0 ms; cold on a
   fresh box 87.5 ms. Fast enough that no perf work is warranted.
