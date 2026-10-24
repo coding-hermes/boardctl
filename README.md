@@ -98,12 +98,16 @@ boardctl version --json            # {"version":"v0.1.11","build":"v0.1.11"}
 # "Finding fingerprints" below.
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
     --reasoning "Idempotent retry with backoff" --capability-tags go,net
+# SOURCE BUILD / NEXT RELEASE ONLY: the published v0.1.11 asset does not
+# accept --acceptance-criteria. Build from current HEAD (or use the next
+# release) before running the following acceptance-criteria example.
 # --acceptance-criteria carries the row's dispatchability contract: the field
 # every fleet foreman requires before it will dispatch the row. Free text —
 # multi-line values are ONE JSON string, so the row stays one physical JSONL
 # line with the newlines JSON-escaped. Omitting the flag writes NO
 # acceptance_criteria key at all (never an empty placeholder). This is the
-# sanctioned write path for the field, so never hand-edit tasks.jsonl for it.
+# sanctioned write path for current HEAD/next-release builds, so never hand-edit
+# tasks.jsonl for it.
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
     --acceptance-criteria "1) retry is idempotent; 2) full suite green"
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
@@ -132,12 +136,16 @@ boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
 boardctl -C ~/myproject update FEAT-1 --title "Add retry with backoff"
 boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
     --branch wt/ft-1 --session 2f8c41a0
+# SOURCE BUILD / NEXT RELEASE ONLY: the published v0.1.11 asset does not
+# accept --acceptance-criteria. Build from current HEAD (or use the next
+# release) before running the following acceptance-criteria example.
 # DF-BOARDCTL-50: --acceptance-criteria authors or repairs the dispatchability
 # field on a row that already exists (create's twin flag). The value REPLACES
 # the row's criteria, multi-line text included (one JSON string, one physical
 # row line); omitting the flag leaves the key untouched and never creates an
 # empty one. A row without criteria is exactly what foremen refuse to
-# dispatch — this flag is the sanctioned fix, not a tasks.jsonl hand edit.
+# dispatch — this flag is the sanctioned fix, not a tasks.jsonl hand edit in
+# current HEAD/next-release builds.
 boardctl -C ~/myproject update FEAT-1 \
     --acceptance-criteria "1) retry is idempotent; 2) full suite green"
 # worker and completion metadata (each flag updates only its named field)
@@ -1307,7 +1315,10 @@ guards AND the BT-050 write lock (see [Board topology](#board-topology)). That
 bypass is the known source of duplicate-id corruption on fleet boards, so a
 required field with no sanctioned door guaranteed the unsanctioned one.
 
-Both verbs now take `--acceptance-criteria TEXT`:
+Current HEAD and the next release add `--acceptance-criteria TEXT` to both
+verbs. The published v0.1.11 asset does not accept this flag; use a
+current-HEAD/source build or wait for the next release before running these
+examples:
 
 ```bash
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
@@ -1334,8 +1345,15 @@ boardctl -C ~/myproject update FEAT-1 \
   reports `RESULT: OK`; missing criteria is a dispatchability gap for the
   foreman, not board corruption.
 
-> **Not in the published v0.1.11 binary** — it rejects the flag with "flag
-> provided but not defined". It ships in the next release.
+> **Published v0.1.11 limitation:** the release asset rejects this flag with
+> "flag provided but not defined". The flag is available from current HEAD and
+> is targeted for the next release; do not use these examples with v0.1.11.
+
+For the published v0.1.11 binary, create and update rows without this flag, or
+write the field only through a current-HEAD/source build until the next release
+is published. The P4 dispatchability policy is unchanged: a row without
+`acceptance_criteria` remains a foreman dispatchability gap, not a validation
+error.
 
 ## Board topology
 
@@ -1384,9 +1402,11 @@ there is no stale-lock cleanup, and readers
 (`list`, `show`, `validate`, `doctor`) never take it. Appending rows with your
 own JSON serialization bypasses the id-refusal and shape guards AND this lock —
 that bypass is the known source of duplicate-id corruption on fleet boards.
-Every field a foreman consumes has a sanctioned flag on `create`/`update`,
-`acceptance_criteria` included (`--acceptance-criteria`, DF-BOARDCTL-50), so a
-raw JSONL edit is never the only way to write one.
+Every field a foreman consumes has a sanctioned flag on current
+HEAD/next-release `create`/`update`; `acceptance_criteria` is included
+(`--acceptance-criteria`, DF-BOARDCTL-50). The published v0.1.11 asset predates
+that flag, so a current-HEAD/source build is required to use this write path
+until the next release; a raw JSONL edit is never the intended workaround.
 
 ## Repository layout
 
