@@ -92,7 +92,13 @@ boardctl -C ~/myproduct umbrella --strict   # warnings also fail (exit 1)
 # read
 boardctl -C R stats [--json] [--all]       # counts by status/priority
 boardctl -C R list [--status pending] [--priority P1] [--json] [--all]
-boardctl -C R show <ID> [--events]         # searches tasks AND fixtures
+boardctl -C R show <ID> [--events] [--skip-bad-lines]  # searches tasks AND
+                                                       # fixtures; --skip-bad-lines
+                                                       # keeps a parseable row
+                                                       # readable on a damaged
+                                                       # board (SKIPPED-LINES
+                                                       # block on stderr, exit
+                                                       # still 1)
 boardctl -C R header --json
 boardctl -C R validate                     # shape: JSONL parse, header, ids.
                                            # Flags: --repair (salvage every
@@ -346,12 +352,27 @@ hand-edit the yaml.
 ## Damaged-board recovery — `--skip-bad-lines` and `validate --repair` (run 18)
 
 One unparseable line makes every default read of a board exit 1 (correct: a
-silent partial board is worse than a loud one). The recovery loop, proven
+silent partial board is worse than a loud one). `show` joins the tolerant-read
+surface (`--skip-bad-lines`, run 21): add the flag to read one row off the
+damaged board — its line prints when it parses while the `SKIPPED-LINES`
+evidence block rides stderr and the exit stays 1 until the board is repaired.
+The recovery loop, proven
 end-to-end on synthetic damage replicating all three historical fleet dialects
 (helios raw-newline split rows, consensus truncated rows, ring-runner banner
 lines):
 
 ```bash
+boardctl -C R show <ID> --skip-bad-lines   # read one row off a damaged board:
+                                           # its line prints when it parses,
+                                           # every skipped line a SKIPPED-LINES
+                                           # block on stderr (file, 1-based
+                                           # line, parse error, snippet);
+                                           # exit stays 1 while anything was
+                                           # skipped — degraded output must
+                                           # not read as success. The damaged
+                                           # line itself yields no row (show
+                                           # reports task not found for it);
+                                           # compose with --events freely
 boardctl -C R validate --skip-bad-lines   # census: salvageable rows validated,
                                           # each skipped line an [error] with the
                                           # parse error + 120-rune snippet + line
