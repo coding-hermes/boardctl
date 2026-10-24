@@ -1,0 +1,201 @@
+commit 931526699f14b45c5d8ea2f710dc242db43927c1
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sat Oct 24 10:28:23 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sat Oct 24 10:28:23 2026 -0500
+
+    docs(ci): align Go toolchain floor with go.mod. Addresses README-010.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ .github/workflows/ci.yml                     |  8 ++---
+ README.md                                    | 37 +++++++++++++++++------
+ internal/workflowcheck/workflowcheck.go      | 42 ++++++++++++++++++++++++++
+ internal/workflowcheck/workflowcheck_test.go | 44 ++++++++++++++++++++++++++++
+ 4 files changed, 116 insertions(+), 15 deletions(-)
+
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 4712f4e..7847c99 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -10,18 +10,14 @@ jobs:
+   build:
+     name: Build & Test
+     runs-on: ubuntu-latest
+-    strategy:
+-      matrix:
+-        go-version: ["1.26"]
+-
+     steps:
+       - name: Checkout
+         uses: actions/checkout@v4
+ 
+-      - name: Set up Go ${{ matrix.go-version }}
++      - name: Set up Go from go.mod
+         uses: actions/setup-go@v5
+         with:
+-          go-version: ${{ matrix.go-version }}
++          go-version-file: go.mod
+ 
+       - name: Build
+         run: go build ./...
+diff --git a/README.md b/README.md
+index 10ea218..cb0c0a9 100644
+--- a/README.md
++++ b/README.md
+@@ -1490,15 +1490,34 @@ outside any checkout, a commit rebased away, or a missing git binary all mean
+ silent skip. Set `BOARDCTL_SKIP_FRESHNESS=1` to suppress the warning (the
+ warning line itself names this switch).
+ 
+-The toolchain requirement: go.mod declares `go 1.26.10`. The Go 1.26.5 standard
+-library shipped reachable advisories (GO-2026-6089 `net/http`, GO-2026-6090
+-`crypto/tls`, GO-2026-5972 `encoding/asn1`) that 1.26.6 fixed, and 1.26.9
+-cleared the further advisories GO-2026-6603, GO-2026-6607, GO-2026-6608,
+-GO-2026-6611, GO-2026-6612, GO-2026-6613 and GO-2026-6617 — so a lower `go`
+-directive, or a build with an older
+-toolchain, fails this gate. With `GOTOOLCHAIN=auto` (the default) the pinned
+-patch toolchain is fetched automatically. Do not lower the directive to
+-silence the gate; raise it to the patched release instead.
++### Go toolchain policy {#go-toolchain-policy}
++
++The toolchain requirement is authoritative in `go.mod`: `go.mod` declares `go 1.26.10`,
++which is the patch floor for local builds and CI. GitHub Actions uses
++`actions/setup-go` with `go-version-file: go.mod`, so CI reads that same
++patch-floor declaration instead of selecting a moving `1.26` range. With
++`GOTOOLCHAIN=auto` (the default), Go may download and use the minimum toolchain
++required by the `go.mod` directive; `GOTOOLCHAIN=local` instead requires the
++locally installed toolchain to satisfy `go 1.26.10`. Do not lower the directive
++to silence the gate; raise it to the patched release instead.
++
++This floor matters because Go 1.26.5 shipped reachable advisories (GO-2026-6089
++`net/http`, GO-2026-6090 `crypto/tls`, GO-2026-5972 `encoding/asn1`) that 1.26.6
++fixed, Go 1.26.9 cleared further advisories GO-2026-6603, GO-2026-6607,
++GO-2026-6608, GO-2026-6611, GO-2026-6612, GO-2026-6613 and GO-2026-6617, and
++Go 1.26.10 fixes the reachable crypto/x509 advisory GO-2026-6809. The README,
++`go.mod`, and CI therefore intentionally agree on the exact patch floor rather
++than a moving minor-range selector.
++
++To verify the resolved toolchain and build locally without overriding the
++module policy, run:
++
++```bash
++go version
++go build ./...
++```
++
++<!-- ch:trace row=README-010 anchor=go-toolchain-policy wave=boardctl-2026-10-24-14-59-50#README-010 test=go-version-go-build-./... doc=README.md prompt=/tmp/boardctl-README-010-brief.txt evidence=none:reason witness=none:reason verdict=none:pending commit=none:pending memory=none:not-written -->
+ 
+ ### Installing the deployed copy (BT-042)
+ 
+diff --git a/internal/workflowcheck/workflowcheck.go b/internal/workflowcheck/workflowcheck.go
+index 3a7658c..2a6b419 100644
+--- a/internal/workflowcheck/workflowcheck.go
++++ b/internal/workflowcheck/workflowcheck.go
+@@ -60,6 +60,10 @@ const (
+ 	CIWorkflowName = ".github/workflows/ci.yml"
+ 	// MakefileName is the Makefile whose PLATFORMS list is checked.
+ 	MakefileName = "Makefile"
++	// READMEName is the documentation surface whose toolchain policy is checked.
++	READMEName = "README.md"
++	// GoModName is the module file whose go directive is authoritative.
++	GoModName = "go.mod"
+ )
+ 
+ var (
+@@ -239,6 +243,44 @@ var ciGateSteps = []GateStep{
+ 	{Name: "Vulnerability-check", Run: "go test -count=1 -run TestVulncheck ./internal/vulncheck"},
+ }
+ 
++// CheckToolchainParity verifies that the module's exact Go patch floor is
++// named by the README and that CI reads that module declaration through
++// setup-go's go-version-file input. This is intentionally a local text check:
++// it catches documentation/workflow drift without a network-dependent test.
++func CheckToolchainParity(readmePath, workflowPath, goModPath string) error {
++	readme, err := os.ReadFile(readmePath)
++	if err != nil {
++		return err
++	}
++	workflow, err := os.ReadFile(workflowPath)
++	if err != nil {
++		return err
++	}
++	goMod, err := os.ReadFile(goModPath)
++	if err != nil {
++		return err
++	}
++
++	goDirective := regexp.MustCompile(`(?m)^go ([0-9]+\.[0-9]+\.[0-9]+)$`).FindSubmatch(goMod)
++	if goDirective == nil {
++		return fmt.Errorf("workflowcheck: %s has no exact three-component `go` directive", goModPath)
++	}
++	version := string(goDirective[1])
++	if !strings.Contains(string(readme), "go.mod` declares `go "+version+"`") {
++		return fmt.Errorf("workflowcheck: %s does not state that go.mod declares go %s", readmePath, version)
++	}
++	if !strings.Contains(string(readme), "go-version-file: go.mod") {
++		return fmt.Errorf("workflowcheck: %s does not document CI setup-go reading go.mod", readmePath)
++	}
++	if !strings.Contains(string(workflow), "go-version-file: go.mod") {
++		return fmt.Errorf("workflowcheck: %s does not configure setup-go with `go-version-file: go.mod`", workflowPath)
++	}
++	if strings.Contains(string(workflow), "go-version:") || strings.Contains(string(workflow), "matrix.go-version") {
++		return fmt.Errorf("workflowcheck: %s still contains a moving go-version matrix", workflowPath)
++	}
++	return nil
++}
++
+ // CheckGateSteps is the CI gate-step census: every step in ciGateSteps must
+ // exist in the workflow at workflowPath as a `- name: <Name>` line whose step
+ // body carries the exact `run: <Run>` command. Deleting a step — or editing
+diff --git a/internal/workflowcheck/workflowcheck_test.go b/internal/workflowcheck/workflowcheck_test.go
+index d659fc5..8dd4a70 100644
+--- a/internal/workflowcheck/workflowcheck_test.go
++++ b/internal/workflowcheck/workflowcheck_test.go
+@@ -428,3 +428,47 @@ func TestGateStepsWiredInCI(t *testing.T) {
+ 		t.Fatalf("repo tree failed the CI gate-step census:\n%v", err)
+ 	}
+ }
++
++// TestToolchainParityWiredInRepo verifies the README, go.mod directive, and
++// setup-go configuration stay on one exact patch-floor contract.
++func TestToolchainParityWiredInRepo(t *testing.T) {
++	cwd, err := os.Getwd()
++	if err != nil {
++		t.Fatalf("getwd: %v", err)
++	}
++	root, err := RepoRoot(cwd)
++	if err != nil {
++		t.Fatalf("locate repo root: %v", err)
++	}
++	if err := CheckToolchainParity(
++		filepath.Join(root, READMEName),
++		filepath.Join(root, CIWorkflowName),
++		filepath.Join(root, GoModName),
++	); err != nil {
++		t.Fatalf("repo tree failed the Go toolchain parity check:\n%v", err)
++	}
++}
++
++// TestToolchainParityRejectsMovingWorkflow is a permanent negative arm for
++// the drift this checker prevents: the README and go.mod may agree while CI
++// silently selects a moving minor-range toolchain.
++func TestToolchainParityRejectsMovingWorkflow(t *testing.T) {
++	dir := t.TempDir()
++	readme := filepath.Join(dir, "README.md")
++	workflow := filepath.Join(dir, "ci.yml")
++	goMod := filepath.Join(dir, "go.mod")
++	if err := os.WriteFile(readme, []byte("go.mod` declares `go 1.26.10`\ngo-version-file: go.mod\n"), 0o644); err != nil {
++		t.Fatalf("write README: %v", err)
++	}
++	if err := os.WriteFile(workflow, []byte("go-version-file: go.mod\ngo-version: [\"1.26\"]\n"), 0o644); err != nil {
++		t.Fatalf("write workflow: %v", err)
++	}
++	if err := os.WriteFile(goMod, []byte("module example.test\n\ngo 1.26.10\n"), 0o644); err != nil {
++		t.Fatalf("write go.mod: %v", err)
++	}
++	if err := CheckToolchainParity(readme, workflow, goMod); err == nil {
++		t.Fatal("CheckToolchainParity() = nil for a moving workflow selector")
++	} else if !strings.Contains(err.Error(), "moving go-version matrix") {
++		t.Fatalf("CheckToolchainParity() error = %q, want moving-matrix diagnosis", err)
++	}
++}

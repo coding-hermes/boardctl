@@ -1,0 +1,109 @@
+{
+  "task_id": "README-010",
+  "task_title": "P4 README and CI Go toolchain patch-floor parity",
+  "task_criteria": [
+    "README.md, go.mod, and .github/workflows/ci.yml express one verified Go 1.26.10 policy; setup-go uses go.mod as source of truth; documented grep and toolchain/build probe pass."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "931526699f14b45c5d8ea2f710dc242db43927c1",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n10:30AM INF scanned ~3710476 bytes (3.71 MB) in 1.01s\n10:30AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 253 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261024T071552.242031Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.777s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t4.216s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.121s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.589s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.017s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.009s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261024T071552.242031Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README.md, go.mod, and .github/workflows/ci.yml express one verified Go 1.26.10 policy; setup-go uses go.mod as source of truth; documented grep and toolchain/build probe pass.: All three surfaces agree on 1.26.10: go.mod:3 `go 1.26.10`; .github/workflows/ci.yml:18-20 `actions/setup-go@v5` with `go-version-file: go.mod` and no `go-version:`/matrix selector; README.md:1493-1521 (anchor #go-toolchain-policy) states \"`go.mod` declares `go 1.26.10`\", documents `go-version-file: go.mod`, and gives the probe `go version` + `go build ./...`. Enforcement exists in code: internal/workflowcheck/workflowcheck.go:248-281 CheckToolchainParity parses the exact 3-component go directive, requires the README phrase, requires `go-version-file: go.mod` in both README and workflow, and rejects any `go-version:`/`matrix.go-version`. Verified by running: `go test -count=1 -run TestToolchainParity -v ./internal/workflowcheck` -> `--- PASS: TestToolchainParityWiredInRepo`, `--- PASS: TestToolchainParityRejectsMovingWorkflow`, `ok github.com/coding-hermes/boardctl/internal/workflowcheck 0.004s` (exit 0). Probe: `go version` -> `go version go1.26.10 linux/amd64`; `go build ./...` exit_code=0; `go vet ./...` exit_code=0; `go test -short -count=1 ./...` exit_code=0 with every package `ok` (cmd/boardctl, internal/board, internal/workflowcheck, internal/vulncheck, etc.).\nREADME, go.mod, and ci.yml all pin the same Go 1.26.10 patch floor with setup-go reading go.mod, enforced by CheckToolchainParity, and the parity tests, go version, go build, go vet, and the full -short suite all pass.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README.md, go.mod, and .github/workflows/ci.yml express one verified Go 1.26.10 policy; setup-go uses go.mod as source of truth; documented grep and toolchain/build probe pass.: All three surfaces agree on 1.26.10: go.mod:3 `go 1.26.10`; .github/workflows/ci.yml:18-20 `actions/setup-go@v5` with `go-version-file: go.mod` and no `go-version:`/matrix selector; README.md:1493-1521 (anchor #go-toolchain-policy) states \"`go.mod` declares `go 1.26.10`\", documents `go-version-file: go.mod`, and gives the probe `go version` + `go build ./...`. Enforcement exists in code: internal/workflowcheck/workflowcheck.go:248-281 CheckToolchainParity parses the exact 3-component go directive, requires the README phrase, requires `go-version-file: go.mod` in both README and workflow, and rejects any `go-version:`/`matrix.go-version`. Verified by running: `go test -count=1 -run TestToolchainParity -v ./internal/workflowcheck` -> `--- PASS: TestToolchainParityWiredInRepo`, `--- PASS: TestToolchainParityRejectsMovingWorkflow`, `ok github.com/coding-hermes/boardctl/internal/workflowcheck 0.004s` (exit 0). Probe: `go version` -> `go version go1.26.10 linux/amd64`; `go build ./...` exit_code=0; `go vet ./...` exit_code=0; `go test -short -count=1 ./...` exit_code=0 with every package `ok` (cmd/boardctl, internal/board, internal/workflowcheck, internal/vulncheck, etc.).\nREADME, go.mod, and ci.yml all pin the same Go 1.26.10 patch floor with setup-go reading go.mod, enforced by CheckToolchainParity, and the parity tests, go version, go build, go vet, and the full -short suite all pass.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README.md, go.mod, and .github/workflows/ci.yml express one verified Go 1.26.10 policy; setup-go uses go.mod as source of truth; documented grep and toolchain/build probe pass.",
+                "status": "PASS",
+                "detail": "All three surfaces agree on 1.26.10: go.mod:3 `go 1.26.10`; .github/workflows/ci.yml:18-20 `actions/setup-go@v5` with `go-version-file: go.mod` and no `go-version:`/matrix selector; README.md:1493-1521 (anchor #go-toolchain-policy) states \"`go.mod` declares `go 1.26.10`\", documents `go-version-file: go.mod`, and gives the probe `go version` + `go build ./...`. Enforcement exists in code: internal/workflowcheck/workflowcheck.go:248-281 CheckToolchainParity parses the exact 3-component go directive, requires the README phrase, requires `go-version-file: go.mod` in both README and workflow, and rejects any `go-version:`/`matrix.go-version`. Verified by running: `go test -count=1 -run TestToolchainParity -v ./internal/workflowcheck` -> `--- PASS: TestToolchainParityWiredInRepo`, `--- PASS: TestToolchainParityRejectsMovingWorkflow`, `ok github.com/coding-hermes/boardctl/internal/workflowcheck 0.004s` (exit 0). Probe: `go version` -> `go version go1.26.10 linux/amd64`; `go build ./...` exit_code=0; `go vet ./...` exit_code=0; `go test -short -count=1 ./...` exit_code=0 with every package `ok` (cmd/boardctl, internal/board, internal/workflowcheck, internal/vulncheck, etc.)."
+              }
+            ],
+            "summary": "README, go.mod, and ci.yml all pin the same Go 1.26.10 patch floor with setup-go reading go.mod, enforced by CheckToolchainParity, and the parity tests, go version, go build, go vet, and the full -short suite all pass.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: README-010\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README.md, go.mod, and .github/workflows/ci.yml express one verified Go 1.26.10 policy; setup-go uses go.mod as source of truth; documented grep and toolchain/build probe pass.: All three surfaces agree on 1.26.10: go.mod:3 `go 1.26.10`; .github/workflows/ci.yml:18-20 `actions/setup-go@v5` with `go-version-file: go.mod` and no `go-version:`/matrix selector; README.md:1493-1521 (anchor #go-toolchain-policy) states \"`go.mod` declares `go 1.26.10`\", documents `go-version-file: go.mod`, and gives the probe `go version` + `go build ./...`. Enforcement exists in code: internal/workflowcheck/workflowcheck.go:248-281 CheckToolchainParity parses the exact 3-component go directive, requires the README phrase, requires `go-version-file: go.mod` in both README and workflow, and rejects any `go-version:`/`matrix.go-version`. Verified by running: `go test -count=1 -run TestToolchainParity -v ./internal/workflowcheck` -> `--- PASS: TestToolchainParityWiredInRepo`, `--- PASS: TestToolchainParityRejectsMovingWorkflow`, `ok github.com/coding-hermes/boardctl/internal/workflowcheck 0.004s` (exit 0). Probe: `go version` -> `go version go1.26.10 linux/amd64`; `go build ./...` exit_code=0; `go vet ./...` exit_code=0; `go test -short -count=1 ./...` exit_code=0 with every package `ok` (cmd/boardctl, internal/board, internal/workflowcheck, internal/vulncheck, etc.).\nREADME, go.mod, and ci.yml all pin the same Go 1.26.10 patch floor with setup-go reading go.mod, enforced by CheckToolchainParity, and the parity tests, go version, go build, go vet, and the full -short suite all pass.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-24T15:31:14.177499",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-24T15:31:14.202140+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 8864,
+        "truncated": false,
+        "source": "git show 931526699f14"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 72636,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "README-010"
+  }
+}
