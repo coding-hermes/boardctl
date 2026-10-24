@@ -1,0 +1,995 @@
+diff --git a/.coding-hermes/board/events.jsonl b/.coding-hermes/board/events.jsonl
+index 3484cf3..ec8ae55 100644
+--- a/.coding-hermes/board/events.jsonl
++++ b/.coding-hermes/board/events.jsonl
+@@ -529,3 +529,4 @@
+ {"id":525,"timestamp":"2026-10-24T15:33:10.223319+00:00","event_type":"task_completed","task_id":"README-010","actor":"foreman","detail":"{\"status\":\"complete\"}"}
+ {"id":526,"timestamp":"2026-10-24 15:35:00","event_type":"audit","task_id":null,"actor":"foreman","detail":"{\"type\":\"tick\",\"project\":\"boardctl\",\"summary\":\"Completed README-010: aligned CI setup-go with go.mod Go 1.26.10 and added workflow parity coverage. Commit 9315266, GitReins PASS 8992286e, gates green.\",\"ch:trace\":\"row=README-010 spec=README.md#go-toolchain-policy wave=boardctl-2026-10-24-14-59-50#README-010 test=go-version-go-build-./... evidence=.gitreins/history/2026-10-24/8992286e/verdict.json witness=github:actions/main@9315266 verdict=8992286e commit=931526699f14b45c5d8ea2f710dc242db43927c1 memory=none:not-written\",\"gates\":{\"go_version\":\"go1.26.10\",\"build\":\"exit 0\",\"vet\":\"exit 0\",\"tests_short_p1\":\"exit 0\",\"workflowcheck\":\"exit 0\",\"validate\":\"RESULT: OK\",\"doctor\":\"RESULT: OK\"},\"closed\":\"README-010 (commit 931526699f14b45c5d8ea2f710dc242db43927c1, verdict .gitreins/history/2026-10-24/8992286e/verdict.json)\",\"filed\":\"none\"}","tick_number":153}
+ {"id":527,"timestamp":"2026-10-24 16:03:21","event_type":"task_completed","task_id":"README-012","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
++{"id":528,"timestamp":"2026-10-24 16:31:25","event_type":"task_updated","task_id":"README-011","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
+diff --git a/.coding-hermes/board/tasks.jsonl b/.coding-hermes/board/tasks.jsonl
+index 520d1a8..b963e8d 100644
+--- a/.coding-hermes/board/tasks.jsonl
++++ b/.coding-hermes/board/tasks.jsonl
+@@ -194,5 +194,5 @@
+ {"id": "DF-BOARDCTL-50", "title": "no boardctl verb can set row acceptance_criteria — the fleet's dispatchability requirement forces every agent to hand-edit tasks.jsonl in raw JSON, bypassing the id/shape guards and the BT-050 lock", "status": "complete", "priority": "P2", "reasoning": "Dogfood run 25 (tick boardctl-dogfood-2026-10-23-10-52-34), second delivery. Found while filing this run's own rows: the fleet's foremen will not dispatch a row without acceptance_criteria, but there is no flag to write it.\n\nEVIDENCE: `boardctl create --id TEST-AA-1 --title t --acceptance-criteria 'must do x'` -> rc=1, 'flag provided but not defined: -acceptance-criteria'. `boardctl update --help` has no acceptance flag either (34 flags listed, none named acceptance). README mentions acceptance_criteria only as a DRIFT KEY the normalize-board repair rewrites (README:476, 811, 823) — the tool can repair that key but cannot author it. This run's rows and the sibling delivery's DF-BOARDCTL-44..47 all had their criteria appended 'line-wise' by a python JSONL edit, i.e. exactly the bypass README:1262-1264 warns about ('Appending rows with your own JSON serialization bypasses the id-refusal and shape guards AND this lock — that bypass is the known source of duplicate-id corruption on fleet boards').\n\nConsequence: the sanctioned workflow has no sanctioned path for a required field, so every lane takes the unsanctioned one; the resulting interleave is exactly what produced the duplicate-id corruption BT-050 was written to stop. Secondary: the same gap exists for other foreman-consumed fields (e.g. capability_tags is settable at create, acceptance is not), so a row can be created dispatchable-looking but undispatched.", "created_at": "2026-10-23T11:26:21Z", "updated_at": "2026-10-24T04:56:33Z", "created_by": null, "acceptance_criteria": "1) A dispatchable row must be authorable through the locked write path: `boardctl create --id TEST-AA-1 --title t` plus the new acceptance flag must exit 0 and print 'created task TEST-AA-1'; `boardctl update --id TEST-AA-1` with that same flag must exit 0 and print the updated row with the criteria present in .coding-hermes/board/tasks.jsonl under acceptance_criteria. 2) `boardctl create --help` and `boardctl update --help` must both print a line for that flag (grep their output for 'acceptance' and expect 1 or more matches) and README.md's create/update usage block documents it, so the dispatchability note stops implying a hand edit. 3) A test creates a row with multi-line criteria and reads it back byte-exact including newlines: `go test ./internal/board -run Write` expected exit code 0. 4) With the flag absent, no empty-string acceptance_criteria key is written: `grep -c acceptance_criteria` of the created line prints 0, and `boardctl validate` still prints RESULT: OK with the missing field as a warning, not an error (exit 0). 5) Full suite exits 0: `go test ./...` expected exit code 0.", "capability_tags": [], "complexity": 3, "depends_on": [], "foreman_note": null, "commit_hash": "7d65737", "guard_result": null, "ci_result": null, "worker_summary": "create/update --acceptance-criteria shipped in 7d65737. Foreman-verified all 5 ACs live: (1) create+update exit 0 with flag, value present in tasks.jsonl; (2) --help prints flag, README documents it; (3) go test ./internal/board -run Write exits 0; (4) omit flag -> no acceptance_criteria key written, validate OK exit 0; (5) full suite exits 0. Verdict PASS at .gitreins/history/2026-10-23/bb53807e.", "detail": {"fingerprint": "5c88fe7eff9792b87827a96a410c88ba69ceda88f2b96c97cfa69c92444d12ab", "evidence": [{"run_id":"boardctl-dogfood-2026-10-23-10-52-34","ts":"2026-10-23T11:26:21Z"},{"run_id":"bb53807e","ts":"2026-10-24T04:56:33Z"}]}, "worker_status": "in_progress", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-50", "branch": "wt/DF-BOARDCTL-50"}
+ {"id": "DF-BOARDCTL-51", "title": "normalize canon-key drift on 7 rows (acceptance/closed/commit/note)", "status": "complete", "priority": "P3", "reasoning": null, "created_at": "2026-10-24T05:08:14Z", "updated_at": "2026-10-24T05:08:14Z", "created_by": null, "acceptance_criteria": "1) boardctl validate prints 0 [warn] lines about 'key(s) {...} outside the declared canon'. 2) The 7 rows (NEVER-DONE, DOC-28, DOC-29, INT-ENV-001, DF-BOARDCTL-41, DF-BOARDCTL-42, README-007, README-009, RELEASE-2026-10-22-02) carry only canon keys after normalization. 3) go build/vet/test -short still exit 0.", "capability_tags": [], "complexity": 3, "depends_on": [], "foreman_note": "PM verification 2026-10-24: fix already landed in 8de971060a95483c7d8426a12f3c3c5d8c7c8051 on origin/main. `git merge-base --is-ancestor 8de9710 origin/main` = exit 0. `./bin/boardctl validate -C .` = RESULT: OK, 0 key-uniformity drift warnings; raw G8 audit = lines=195 parsed=195 bad_lines=0 unique_ids=195 duplicate_ids={}. `git diff --check -- .coding-hermes/board/tasks.jsonl .coding-hermes/board/events.jsonl` = exit 0. Exact local gate is running separately: `go build ./... && go vet ./... && go test -short -p 1 ./...`; close evidence is the landed board-maintenance commit plus validator/G8 probes.", "commit_hash": "8de9710", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": null, "detail": {"fingerprint": "d575883531d65de6230df67e336aaec5afcff4ffb134fbd2efa5712e691483bd"}, "worker_status": "complete", "worktree": null, "branch": null, "completed_at": "2026-10-24T06:56:00Z"}
+ {"id": "README-010", "title": "P4 — README claims CI's Go 1.26 toolchain is sufficient while go.mod requires Go 1.26.10", "status": "complete", "priority": "P4", "reasoning": "Doc severity P4 by Bane's 2026-09-30 ruling: documentation findings are P4/P5, not P1-P3; this policy is not a new assessment of the underlying toolchain risk.\n\nFINDING: README.md:1493-1501 says the toolchain requirement is `go 1.26.10`, but .github/workflows/ci.yml:15 runs the full CI job with `go-version: [\"1.26\"]`. On GitHub Actions, setup-go resolves that moving minor line independently of the README's patch requirement, so the README does not tell a stranger the actual CI toolchain floor or how CI obtains 1.26.10.\n\nEXACT COMMANDS AND OUTPUT:\n`grep -nE 'go-version|go 1\\.26' README.md .github/workflows/ci.yml go.mod` -> README.md:1493: The toolchain requirement: go.mod declares `go 1.26.10`; .github/workflows/ci.yml:15: go-version: [\"1.26\"]; go.mod:3: go 1.26.10.\n`sed -n '12,28p' .github/workflows/ci.yml` -> CI configures setup-go with `go-version: [\"1.26\"]`, not `1.26.10`.\n`go version` -> go1.26.10 linux/amd64 for this local probe; no older Go toolchain was installed to exercise the refusal branch.\n\nFIX: reconcile the README and CI contract: either pin CI to `1.26.10` and state that exact floor, or document the moving `1.26` CI resolution and separately explain how the patched 1.26.10 requirement is enforced. Add a reproducible parity check so the two files cannot drift.\n\nACCEPTANCE: the README toolchain paragraph, go.mod:3, and CI setup-go version express one verified policy; a fresh checkout can run the documented command and see the same floor.\n\nUNVERIFIED: no older Go 1.26.x toolchain was available, so this sweep did not prove the exact failure behavior below 1.26.10.\n\nch:trace row=README-010 spec=README.md#deployment-freshness-gate-bt-057 wave=none:serial-tick test=none:no-test-covers-readme-ci-toolchain doc=README.md prompt=~/.hermes/skills/coding-hermes/coding-hermes-readme/SKILL.md evidence=/var/tmp/boardctl-readme-sweep.log witness=path@origin:.github/workflows/ci.yml verdict=none:no-judge commit=none:not-yet-fixed memory=none:tick-local", "created_at": "2026-10-24T14:57:45Z", "updated_at": "2026-10-24T15:33:10Z", "created_by": null, "acceptance_criteria": "From a fresh checkout, run `grep -nE 'go-version|go 1\\.26' README.md .github/workflows/ci.yml go.mod` and a documented toolchain/build probe; the README, go.mod:3, and .github/workflows/ci.yml must agree on the Go patch-floor policy, and the acceptance output must quote the exact resolved version or explicitly state the moving-range policy. No README command may claim a different requirement than CI enforces.", "capability_tags": ["docs", "readme"], "complexity": 3, "depends_on": [], "foreman_note": "Worker commit 931526699f14b45c5d8ea2f710dc242db43927c1 pushed on wt/README-010, fast-forward merged to main, remote parity 0. GitReins Tier 2 PASS at .gitreins/history/2026-10-24/8992286e/verdict.json.", "commit_hash": "931526699f14b45c5d8ea2f710dc242db43927c1", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "README and CI now use go.mod go 1.26.10 as the single toolchain policy; setup-go uses go-version-file: go.mod. Exact acceptance grep, go version go1.26.10, build, vet, short suite, workflowcheck, and diff-check passed. GitReins PASS at .gitreins/history/2026-10-24/8992286e/verdict.json. ch:trace row=README-010 spec=README.md#go-toolchain-policy wave=boardctl-2026-10-24-14-59-50#README-010 test=go-version-go-build-./... doc=README.md prompt=/tmp/boardctl-README-010-brief.txt evidence=.gitreins/history/2026-10-24/8992286e/verdict.json witness=github:actions/main@9315266 verdict=8992286e commit=931526699f14b45c5d8ea2f710dc242db43927c1 memory=none:not-written", "detail": {"fingerprint": "bcbda351912e4e36e3096e2e0ef35ee3acf28b453b19847785931ff3a04fae00", "evidence": [{"run_id":"8992286e","ts":"2026-10-24T15:33:10Z"}]}, "worker_status": "complete", "worktree": null, "branch": null, "completed_at": "2026-10-24 15:35:00"}
+-{"id": "README-011", "title": "P5 — README documents no docs-check or docs-drift command despite requiring command-by-command README verification", "status": "pending", "priority": "P5", "reasoning": "Doc severity P5 by Bane's 2026-09-30 ruling: documentation coverage/polish findings are P4/P5, not P1-P3; this is policy, not a new assessment of any functional gate.\n\nFINDING: the README's Development section (README.md:1426-1437) lists build, vet, test, formatting, version, vulnerability, spec, and release commands, but the repository has no `docs-check` or `docs-drift` target. The README therefore gives contributors no documented command that checks the README's command surface against the implementation, while this lane's required sweep must execute every documented command manually.\n\nEXACT COMMANDS AND OUTPUT:\n`grep -RniE 'docs-check|docs-drift' Makefile .github README.md` -> no matches.\n`make docs-check` -> `make: *** No rule to make target 'docs-check'. Stop.` (exit 2).\n`make fmt-check` -> `ok github.com/coding-hermes/boardctl/internal/fmtcheck` (exit 0); `make version-check VERSION_TAG=v0.1.11` -> `ok github.com/coding-hermes/boardctl/internal/versioncheck` (exit 0); `make spec-check` -> `ok github.com/coding-hermes/boardctl/internal/speccheck` (exit 0); `make vuln-check` -> `ok github.com/coding-hermes/boardctl/internal/vulncheck` (exit 0).\n\nFIX: add a documented, runnable README/docs drift check that exercises the documented command surface, or explicitly document that no automated docs check exists and identify the manual verification procedure. Do not claim the missing target is a broken existing command; the finding is coverage of the reader/maintainer question.\n\nACCEPTANCE: a stranger can run the documented docs-check command from a fresh checkout and receive a clearly defined pass/fail result, or the README explicitly names the manual-only status and its exact procedure; the existing make gates remain green.\n\nUNVERIFIED: I did not execute every one of the README's 131 extracted command lines; many require a populated example board, a network release, or intentionally destructive/manual swap steps. The exact release install block was executed successfully from a fresh clone simulation: checksum OK and `boardctl version v0.1.11`.\n\nch:trace row=README-011 spec=README.md#development wave=none:serial-tick test=none:no-docs-check-surface doc=README.md prompt=~/.hermes/skills/coding-hermes/coding-hermes-readme/SKILL.md evidence=/var/tmp/boardctl-readme-sweep.log witness=none:no-external-docs-check-service verdict=none:no-judge commit=none:not-yet-fixed memory=none:tick-local", "created_at": "2026-10-24T14:57:45Z", "updated_at": "2026-10-24T14:57:45Z", "created_by": null, "acceptance_criteria": "From a fresh checkout, run the documented README/docs drift procedure. It must have an explicit, reproducible command or explicit documented manual-only procedure; the output must define pass/fail and cover the command/reference surface. Re-run `make fmt-check`, `make version-check VERSION_TAG=v0.1.11`, `make spec-check`, and `make vuln-check`; all must remain exit 0.", "capability_tags": ["docs", "readme"], "complexity": 3, "depends_on": [], "foreman_note": null, "commit_hash": null, "guard_result": null, "ci_result": null, "worker_summary": null, "detail": {"fingerprint": "e7de32863a503cf2da3f7df62e2a3c5f78dcea7b9a4f2b58c41452fa95be60e2"}, "worker_status": "pending", "worktree": null, "branch": null, "completed_at": null}
++{"id": "README-011", "title": "P5 — README documents no docs-check or docs-drift command despite requiring command-by-command README verification", "status": "in_progress", "priority": "P5", "reasoning": "Doc severity P5 by Bane's 2026-09-30 ruling: documentation coverage/polish findings are P4/P5, not P1-P3; this is policy, not a new assessment of any functional gate.\n\nFINDING: the README's Development section (README.md:1426-1437) lists build, vet, test, formatting, version, vulnerability, spec, and release commands, but the repository has no `docs-check` or `docs-drift` target. The README therefore gives contributors no documented command that checks the README's command surface against the implementation, while this lane's required sweep must execute every documented command manually.\n\nEXACT COMMANDS AND OUTPUT:\n`grep -RniE 'docs-check|docs-drift' Makefile .github README.md` -> no matches.\n`make docs-check` -> `make: *** No rule to make target 'docs-check'. Stop.` (exit 2).\n`make fmt-check` -> `ok github.com/coding-hermes/boardctl/internal/fmtcheck` (exit 0); `make version-check VERSION_TAG=v0.1.11` -> `ok github.com/coding-hermes/boardctl/internal/versioncheck` (exit 0); `make spec-check` -> `ok github.com/coding-hermes/boardctl/internal/speccheck` (exit 0); `make vuln-check` -> `ok github.com/coding-hermes/boardctl/internal/vulncheck` (exit 0).\n\nFIX: add a documented, runnable README/docs drift check that exercises the documented command surface, or explicitly document that no automated docs check exists and identify the manual verification procedure. Do not claim the missing target is a broken existing command; the finding is coverage of the reader/maintainer question.\n\nACCEPTANCE: a stranger can run the documented docs-check command from a fresh checkout and receive a clearly defined pass/fail result, or the README explicitly names the manual-only status and its exact procedure; the existing make gates remain green.\n\nUNVERIFIED: I did not execute every one of the README's 131 extracted command lines; many require a populated example board, a network release, or intentionally destructive/manual swap steps. The exact release install block was executed successfully from a fresh clone simulation: checksum OK and `boardctl version v0.1.11`.\n\nch:trace row=README-011 spec=README.md#development wave=none:serial-tick test=none:no-docs-check-surface doc=README.md prompt=~/.hermes/skills/coding-hermes/coding-hermes-readme/SKILL.md evidence=/var/tmp/boardctl-readme-sweep.log witness=none:no-external-docs-check-service verdict=none:no-judge commit=none:not-yet-fixed memory=none:tick-local", "created_at": "2026-10-24T14:57:45Z", "updated_at": "2026-10-24T16:31:25Z", "created_by": null, "acceptance_criteria": "From a fresh checkout, run the documented README/docs drift procedure. It must have an explicit, reproducible command or explicit documented manual-only procedure; the output must define pass/fail and cover the command/reference surface. Re-run `make fmt-check`, `make version-check VERSION_TAG=v0.1.11`, `make spec-check`, and `make vuln-check`; all must remain exit 0.", "capability_tags": ["docs", "readme"], "complexity": 3, "depends_on": [], "foreman_note": null, "commit_hash": null, "guard_result": null, "ci_result": null, "worker_summary": null, "detail": {"fingerprint": "e7de32863a503cf2da3f7df62e2a3c5f78dcea7b9a4f2b58c41452fa95be60e2"}, "worker_status": "in_progress", "worktree": "/home/kara/worktrees/boardctl-README-011", "branch": "wt/README-011", "completed_at": null}
+ {"id":"README-012","title":"P4 \u2014 README documents acceptance_criteria writes as available, but published v0.1.11 rejects the flag","status":"complete","priority":"P4","reasoning":"Doc severity P4 by Bane's 2026-09-30 ruling: README findings are P4/P5, not P1-P3; this policy is not a new assessment of the underlying release mismatch.\\n\\nFINDING: README.md:1310-1316 says both create and update take --acceptance-criteria, and README.md:1337-1338 says it is not in the published v0.1.11 binary. The contradiction is user-visible: the README's current release is v0.1.11, so a stranger following the documented write path receives an unknown-flag error from the release asset. The current source build has the flag, proving the README is stale relative to the published release, not that the command is merely omitted.\\n\\nEXACT COMMANDS AND OUTPUT (artifact: /var/tmp/boardctl-readme-2026-10-24-14-44-01.log):\\n -> .\\n -> , exit 1.\\n -> same unknown-flag output, exit 1.\\n -> no output, exit 1.\\nboardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--acceptance-criteria TEXT] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--force] [flags] [-C dir]\n\n          --acceptance-criteria is free text and may span lines (embedded\n          newlines are JSON-escaped into the one physical row line). It is\n          the dispatchability field: a foreman will not dispatch a row\n          without it. Omit the flag and NO acceptance_criteria key is\n          written (never an empty placeholder).\n\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n          -review \u2192 P4, -docs/-readme \u2192 P5. An explicit --priority\n          always wins (BT-071). from current HEAD -> help includes  for create and update.\\n\\nFIX: make the published release and README agree: publish a release containing the documented flag, or change the README's current release and acceptance-criteria section to the actual shipped contract. Keep the release URL, help output, and section wording synchronized.\\n\\nACCEPTANCE: from a fresh checkout or the named published release, run the exact create/update commands above and ; the documented flag is accepted and writes/replaces acceptance_criteria, or the README no longer presents it as available in that release.\\n\\nUNVERIFIED: I did not publish or alter a release, and I did not run every one of the README's 131 extracted command lines; many require populated example boards, network release permissions, or intentionally manual/destructive steps.\\n\\nch:trace row=README-012 spec=README.md#acceptance-criteria-df-boardctl-50 wave=none:serial-tick test=none:release-asset-manual-probe doc=README.md prompt=~/.hermes/skills/coding-hermes/coding-hermes-readme/SKILL.md evidence=/var/tmp/boardctl-readme-2026-10-24-14-44-01.log witness=tag:v0.1.11@origin verdict=none:no-judge commit=none:not-yet-fixed memory=none:tick-local","created_at":"2026-10-24T15:02:19Z","updated_at":"2026-10-24T16:03:20Z","created_by":null,"acceptance_criteria":"From a fresh checkout or the published v0.1.11 asset, execute the README.md:1313-1316 create/update commands and `create --help`. The release contract must match the README: either the published asset accepts --acceptance-criteria and writes/replaces acceptance_criteria, or the README current-release and acceptance-criteria text is corrected so it does not advertise an unavailable command. Quote the exact command and output in the worker summary; preserve the P4 doc-severity policy.","capability_tags":[],"complexity":3,"depends_on":[],"foreman_note":"Replaced malformed first filing; exact shell metacharacters are preserved in /var/tmp/readme-rows.json and this corrected row summary.\n\nREADME-012 closed without publishing: v0.1.11 is live and rejects --acceptance-criteria; README now says so and qualifies source/next-release examples. Worker commit ec5d086 pushed to wt/README-012 (origin parity 0). gitreins task create/start were run in main, but task complete in the worktree reported Task not found; no verdict exists. Guard post-commit was DEGRADED PASS because no Go files were staged; build/vet/test were independently run and passed. Evidence: cmd/boardctl/readme_acceptance_criteria_release_test.go and live downloaded v0.1.11 probe.","commit_hash":"ec5d08662bd10f58c9e7dec1ec78aee7e56f435e","guard_result":"PASS","ci_result":"GREEN","worker_summary":"README v0.1.11 contract reconciled: acceptance_criteria examples are explicitly current-HEAD/next-release only; published v0.1.11 limitation is stated; offline regression test passes. ch:trace row=README-012 spec=README.md#acceptance-criteria-df-boardctl-50 wave=boardctl-2026-10-24-15-41-49#README-012 test=cmd/boardctl/readme_acceptance_criteria_release_test.go::TestREADMEAcceptanceCriteriaPublishedReleaseContract doc=README.md prompt=/tmp/README-012-brief.txt evidence=cmd/boardctl/readme_acceptance_criteria_release_test.go witness=tag:v0.1.11@origin verdict=none:task-complete-unavailable commit=ec5d08662bd10f58c9e7dec1ec78aee7e56f435e memory=none:tick-local STATUS: COMPLETE TIER: T3 EVIDENCE: go test -run TestREADMEAcceptanceCriteriaPublishedReleaseContract ./cmd/boardctl; published v0.1.11 version/help probe","detail":{"fingerprint":"f19d4a908e03a9b4aac1c64425a4c40f67ce41f7a6153abb17d84aefd2f3a5b8","evidence":[{"run_id":"none:gitreins-task-not-found","ts":"2026-10-24T16:03:20Z"}]},"worker_status":"complete","worktree":"/home/kara/worktrees/boardctl-README-012","branch":"wt/README-012","completed_at":"2026-10-24 11:03:00","sessions":["20261024_README012"]}
+diff --git a/.gitreins/logs/guard-20261016T232755.921389Z.log b/.gitreins/logs/guard-20261016T232755.921389Z.log
+deleted file mode 100644
+index 18a8d53..0000000
+--- a/.gitreins/logs/guard-20261016T232755.921389Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-16T23:27:55Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261016T234428.531068Z.log b/.gitreins/logs/guard-20261016T234428.531068Z.log
+deleted file mode 100644
+index 2d76b1f..0000000
+--- a/.gitreins/logs/guard-20261016T234428.531068Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-16T23:44:28Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T001736.140781Z.log b/.gitreins/logs/guard-20261017T001736.140781Z.log
+deleted file mode 100644
+index 3c5b8bf..0000000
+--- a/.gitreins/logs/guard-20261017T001736.140781Z.log
++++ /dev/null
+@@ -1,69 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:17:36Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (2 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_lint  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-[cmd/boardctl] cmd/boardctl/main.go:1404:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+-			fmt.Fprintf(os.Stdout, "\n=== events.jsonl repair ===\n")
+-			           ^
+-1 issues:
+-* errcheck: 1
+-
+-[internal/board] internal/board/associations.go:1: : # github.com/coding-hermes/boardctl/internal/board [github.com/coding-hermes/boardctl/internal/board.test]
+-internal/board/repair_events_test.go:37:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:101:10: undefined: NewRow
+-internal/board/repair_events_test.go:139:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:174:12: undefined: OpenBoard (typecheck)
+-package board
+-1 issues:
+-* typecheck: 1
+-
+-==============================================================================
+-[FAIL] go_tests  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-# github.com/coding-hermes/boardctl/internal/board [github.com/coding-hermes/boardctl/internal/board.test]
+-internal/board/repair_events_test.go:37:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:101:10: undefined: NewRow
+-internal/board/repair_events_test.go:139:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:174:12: undefined: OpenBoard
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.132s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.019s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.005s
+-FAIL	github.com/coding-hermes/boardctl/internal/board [build failed]
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.008s
+---- FAIL: TestGofmt (0.18s)
+-    fmtcheck_test.go:29: found 1 file(s) not gofmt-clean — run `gofmt -w` (or `make fmt`) on:
+-          internal/board/repair_events.go
+-FAIL
+-FAIL	github.com/coding-hermes/boardctl/internal/fmtcheck	0.181s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.856s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.031s
+-ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.027s
+-ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.010s
+-ok  	github.com/coding-hermes/boardctl/internal/vulncheck	2.971s
+-ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.009s
+-FAIL
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+diff --git a/.gitreins/logs/guard-20261017T002616.180981Z.log b/.gitreins/logs/guard-20261017T002616.180981Z.log
+deleted file mode 100644
+index f9f53dc..0000000
+--- a/.gitreins/logs/guard-20261017T002616.180981Z.log
++++ /dev/null
+@@ -1,47 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:26:16Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (1 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_lint  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-[cmd/boardctl] cmd/boardctl/main.go:1406:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+-			fmt.Fprintf(os.Stdout, "\n=== events.jsonl repair ===\n")
+-			           ^
+-1 issues:
+-* errcheck: 1
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.309s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.014s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.903s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.137s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.926s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.027s
+-ok  
+diff --git a/.gitreins/logs/guard-20261017T002647.153571Z.log b/.gitreins/logs/guard-20261017T002647.153571Z.log
+deleted file mode 100644
+index 258f522..0000000
+--- a/.gitreins/logs/guard-20261017T002647.153571Z.log
++++ /dev/null
+@@ -1,43 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:26:47Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-golangci-lint: clean (2 packages)
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	5.307s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.077s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.011s
+-ok  	github.com/coding-hermes/boardctl/internal/board	4.352s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.012s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.179s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	1.731s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.078s
+-ok  
+diff --git a/.gitreins/logs/guard-20261017T003130.191139Z.log b/.gitreins/logs/guard-20261017T003130.191139Z.log
+deleted file mode 100644
+index 0f5f427..0000000
+--- a/.gitreins/logs/guard-20261017T003130.191139Z.log
++++ /dev/null
+@@ -1,51 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:31:30Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (1 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_tests  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.007s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.013s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.786s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.003s
+---- FAIL: TestGofmt (0.13s)
+-    fmtcheck_test.go:29: found 1 file(s) not gofmt-clean — run `gofmt -w` (or `make fmt`) on:
+-          internal/board/repair_events_test.go
+-FAIL
+-FAIL	github.com/coding-hermes/boardctl/internal/fmtcheck	0.128s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.777s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.023s
+-ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.021s
+-ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.009s
+-ok  	github.com/coding-hermes/boardctl/internal/vulncheck	3.356s
+-ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.008s
+-FAIL
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-golangci-lint: clean
+diff --git a/.gitreins/logs/guard-20261017T003152.151061Z.log b/.gitreins/logs/guard-20261017T003152.151061Z.log
+deleted file mode 100644
+index 50f9ee8..0000000
+--- a/.gitreins/logs/guard-20261017T003152.151061Z.log
++++ /dev/null
+@@ -1,43 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:31:52Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-golangci-lint: clean
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.224s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.017s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.007s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.871s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.007s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.148s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.850s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.037s
+-ok  
+diff --git a/.gitreins/logs/guard-20261017T003335.049655Z.log b/.gitreins/logs/guard-20261017T003335.049655Z.log
+deleted file mode 100644
+index ddbe2e6..0000000
+--- a/.gitreins/logs/guard-20261017T003335.049655Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:33:35Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T122756.664359Z.log b/.gitreins/logs/guard-20261017T122756.664359Z.log
+deleted file mode 100644
+index 924ce0c..0000000
+--- a/.gitreins/logs/guard-20261017T122756.664359Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T12:27:56Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T140216.346475Z.log b/.gitreins/logs/guard-20261017T140216.346475Z.log
+deleted file mode 100644
+index 42bd716..0000000
+--- a/.gitreins/logs/guard-20261017T140216.346475Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T14:02:16Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T140753.116131Z.log b/.gitreins/logs/guard-20261017T140753.116131Z.log
+deleted file mode 100644
+index 665a9e2..0000000
+--- a/.gitreins/logs/guard-20261017T140753.116131Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T14:07:53Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T193351.416871Z.log b/.gitreins/logs/guard-20261017T193351.416871Z.log
+deleted file mode 100644
+index c9d2cbe..0000000
+--- a/.gitreins/logs/guard-20261017T193351.416871Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T19:33:51Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T223734.446036Z.log b/.gitreins/logs/guard-20261017T223734.446036Z.log
+deleted file mode 100644
+index 5aa5887..0000000
+--- a/.gitreins/logs/guard-20261017T223734.446036Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T22:37:34Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T223850.453218Z.log b/.gitreins/logs/guard-20261017T223850.453218Z.log
+deleted file mode 100644
+index 8ccbef4..0000000
+--- a/.gitreins/logs/guard-20261017T223850.453218Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T22:38:50Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T224112.241967Z.log b/.gitreins/logs/guard-20261017T224112.241967Z.log
+deleted file mode 100644
+index 4e61e82..0000000
+--- a/.gitreins/logs/guard-20261017T224112.241967Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T22:41:12Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261018T143557.019988Z.log b/.gitreins/logs/guard-20261018T143557.019988Z.log
+deleted file mode 100644
+index 879af30..0000000
+--- a/.gitreins/logs/guard-20261018T143557.019988Z.log
++++ /dev/null
+@@ -1,43 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-18T14:35:57Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-golangci-lint: clean
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.034s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.016s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.005s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.810s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.154s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.808s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.030s
+-ok  
+diff --git a/.gitreins/logs/guard-20261018T144851.777804Z.log b/.gitreins/logs/guard-20261018T144851.777804Z.log
+deleted file mode 100644
+index 30a7b67..0000000
+--- a/.gitreins/logs/guard-20261018T144851.777804Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-18T14:48:51Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261018T145106.360101Z.log b/.gitreins/logs/guard-20261018T145106.360101Z.log
+deleted file mode 100644
+index 7ae76ef..0000000
+--- a/.gitreins/logs/guard-20261018T145106.360101Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-18T14:51:06Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261019T045108.769538Z.log b/.gitreins/logs/guard-20261019T045108.769538Z.log
+deleted file mode 100644
+index 1743edf..0000000
+--- a/.gitreins/logs/guard-20261019T045108.769538Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-19T04:51:08Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261019T045903.236489Z.log b/.gitreins/logs/guard-20261019T045903.236489Z.log
+deleted file mode 100644
+index 045bab1..0000000
+--- a/.gitreins/logs/guard-20261019T045903.236489Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-19T04:59:03Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/cmd/boardctl/board-report.html b/cmd/boardctl/board-report.html
+index 8bbac8b..44ad390 100644
+--- a/cmd/boardctl/board-report.html
++++ b/cmd/boardctl/board-report.html
+@@ -111,7 +111,7 @@ footer ul{margin:4px 0;padding-left:18px}
+ <main id="view-compare" hidden></main>
+ <div id="errbox" hidden></div>
+ <footer id="foot"></footer>
+-<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-19T02:36:05-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
++<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-24T12:44:13-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
+ <script>
+ "use strict";
+ (function(){

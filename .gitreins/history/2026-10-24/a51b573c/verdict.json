@@ -1,0 +1,109 @@
+{
+  "task_id": "README-011",
+  "task_title": "README docs drift check",
+  "task_criteria": [
+    "README command/reference drift procedure is documented with explicit pass/fail semantics and four required make gates remain green."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "09e00a2970fd5bffffe1f9dbaffde7f5a3078337",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n12:44PM INF scanned ~3719305 bytes (3.72 MB) in 3.16s\n12:44PM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 254 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261024T153356.415623Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t17.034s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t10.779s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.500s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.075s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.065s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t6.454s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.052s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261024T153356.415623Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README command/reference drift procedure is documented with explicit pass/fail semantics and four required make gates remain green.: README.md:1459-1515 contains section '### README command/reference drift check (manual-only)' with a copy-paste inventory script (awk shell-block extraction, inline-reference grep, `go run ./cmd/boardctl --help`, `make -qp` target list, workflow command grep, `git ls-files`), per-item classification rules, and explicit semantics: 'Result: **PASS** only when every listed command/reference is classified as executable and verified, intentionally manual/network-dependent with a stated reason, or historical/example-only. Result: **FAIL** for an undocumented or missing command, stale flag/target/path, or unexplained exception.' README.md:1496-1501 lists the four gates (make fmt-check; make version-check VERSION_TAG=v0.1.11; make spec-check; make vuln-check). All four verified green with fresh runs: `make fmt-check` -> 'ok github.com/coding-hermes/boardctl/internal/fmtcheck 0.155s' exit 0; `make version-check VERSION_TAG=v0.1.11` -> 'ok .../internal/versioncheck 0.006s' exit 0 (README.md:17 and :20-21 pin v0.1.11); `make spec-check` -> 'ok .../internal/speccheck 0.049s' exit 0; `make vuln-check` -> 'ok .../internal/vulncheck 3.623s' exit 0.\nREADME documents the manual README command/reference drift procedure with explicit PASS/FAIL semantics, and all four required make gates (fmt-check, version-check, spec-check, vuln-check) pass with exit code 0.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README command/reference drift procedure is documented with explicit pass/fail semantics and four required make gates remain green.: README.md:1459-1515 contains section '### README command/reference drift check (manual-only)' with a copy-paste inventory script (awk shell-block extraction, inline-reference grep, `go run ./cmd/boardctl --help`, `make -qp` target list, workflow command grep, `git ls-files`), per-item classification rules, and explicit semantics: 'Result: **PASS** only when every listed command/reference is classified as executable and verified, intentionally manual/network-dependent with a stated reason, or historical/example-only. Result: **FAIL** for an undocumented or missing command, stale flag/target/path, or unexplained exception.' README.md:1496-1501 lists the four gates (make fmt-check; make version-check VERSION_TAG=v0.1.11; make spec-check; make vuln-check). All four verified green with fresh runs: `make fmt-check` -> 'ok github.com/coding-hermes/boardctl/internal/fmtcheck 0.155s' exit 0; `make version-check VERSION_TAG=v0.1.11` -> 'ok .../internal/versioncheck 0.006s' exit 0 (README.md:17 and :20-21 pin v0.1.11); `make spec-check` -> 'ok .../internal/speccheck 0.049s' exit 0; `make vuln-check` -> 'ok .../internal/vulncheck 3.623s' exit 0.\nREADME documents the manual README command/reference drift procedure with explicit PASS/FAIL semantics, and all four required make gates (fmt-check, version-check, spec-check, vuln-check) pass with exit code 0.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README command/reference drift procedure is documented with explicit pass/fail semantics and four required make gates remain green.",
+                "status": "PASS",
+                "detail": "README.md:1459-1515 contains section '### README command/reference drift check (manual-only)' with a copy-paste inventory script (awk shell-block extraction, inline-reference grep, `go run ./cmd/boardctl --help`, `make -qp` target list, workflow command grep, `git ls-files`), per-item classification rules, and explicit semantics: 'Result: **PASS** only when every listed command/reference is classified as executable and verified, intentionally manual/network-dependent with a stated reason, or historical/example-only. Result: **FAIL** for an undocumented or missing command, stale flag/target/path, or unexplained exception.' README.md:1496-1501 lists the four gates (make fmt-check; make version-check VERSION_TAG=v0.1.11; make spec-check; make vuln-check). All four verified green with fresh runs: `make fmt-check` -> 'ok github.com/coding-hermes/boardctl/internal/fmtcheck 0.155s' exit 0; `make version-check VERSION_TAG=v0.1.11` -> 'ok .../internal/versioncheck 0.006s' exit 0 (README.md:17 and :20-21 pin v0.1.11); `make spec-check` -> 'ok .../internal/speccheck 0.049s' exit 0; `make vuln-check` -> 'ok .../internal/vulncheck 3.623s' exit 0."
+              }
+            ],
+            "summary": "README documents the manual README command/reference drift procedure with explicit PASS/FAIL semantics, and all four required make gates (fmt-check, version-check, spec-check, vuln-check) pass with exit code 0.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: README-011\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README command/reference drift procedure is documented with explicit pass/fail semantics and four required make gates remain green.: README.md:1459-1515 contains section '### README command/reference drift check (manual-only)' with a copy-paste inventory script (awk shell-block extraction, inline-reference grep, `go run ./cmd/boardctl --help`, `make -qp` target list, workflow command grep, `git ls-files`), per-item classification rules, and explicit semantics: 'Result: **PASS** only when every listed command/reference is classified as executable and verified, intentionally manual/network-dependent with a stated reason, or historical/example-only. Result: **FAIL** for an undocumented or missing command, stale flag/target/path, or unexplained exception.' README.md:1496-1501 lists the four gates (make fmt-check; make version-check VERSION_TAG=v0.1.11; make spec-check; make vuln-check). All four verified green with fresh runs: `make fmt-check` -> 'ok github.com/coding-hermes/boardctl/internal/fmtcheck 0.155s' exit 0; `make version-check VERSION_TAG=v0.1.11` -> 'ok .../internal/versioncheck 0.006s' exit 0 (README.md:17 and :20-21 pin v0.1.11); `make spec-check` -> 'ok .../internal/speccheck 0.049s' exit 0; `make vuln-check` -> 'ok .../internal/vulncheck 3.623s' exit 0.\nREADME documents the manual README command/reference drift procedure with explicit PASS/FAIL semantics, and all four required make gates (fmt-check, version-check, spec-check, vuln-check) pass with exit code 0.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-24T17:44:44.020476",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-24T17:44:44.049946+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 4168,
+        "truncated": false,
+        "source": "git show 09e00a2970fd"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 70962,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "README-011"
+  }
+}
