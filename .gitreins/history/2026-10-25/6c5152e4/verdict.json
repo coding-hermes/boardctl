@@ -1,0 +1,109 @@
+{
+  "task_id": "QA-BOARDCTL-REVIEW-2",
+  "task_title": "Verify malformed stderr redirect is fixed and QA collect no longer syntax-fails",
+  "task_criteria": [
+    "1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bunker-qa launch boardctlctl and collect the printed evidence path; 3) collect status is OK, RUNNING or FAIL without syntax error near unexpected token."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "6b8c43144c7651ed61e4a2a704cb05286a63dd53",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n11:52AM INF scanned ~3762207 bytes (3.76 MB) in 2.87s\n11:52AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 253 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T163904.264807Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t15.147s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.044s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t4.602s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t1.017s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.109s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T163904.264807Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bunker-qa launch boardctlctl and collect the printed evidence path; 3) collect status is OK, RUNNING or FAIL without syntax error near unexpected token.: Part 1 PASSES: `grep -c \" 2 \\\"\" src/bridge/tool_raw.go` printed `0` with exit_code 1; src/bridge/tool_raw.go:158 now reads `\" 2> \" + shellSingleQuote(a.errPath) +` (no stray quote), and `go test -count=1 -v ./src/bridge/ -run TestTerminalRawWrapperShellSemantics` -> `--- PASS: TestTerminalRawWrapperShellSemantics (0.09s)` with all 10 subtests PASS, `ok github.com/Hermes-DAGger/hermes-dagger/src/bridge 0.111s`. Parts 2 and 3 FAIL: no `boardctlctl` target exists anywhere \u2014 `grep -rln boardctlctl ~/.hermes/scripts/` returns nothing and `grep -rn boardctlctl` over the repo (md/go/yaml/json) returns nothing; ~/.hermes/scripts/bunker-qa.sh contains no boardctl/boardctlctl invocation at all (only a comment at line 825), so `bunker-qa.sh launch boardctlctl` cannot run. No launch was executed, no evidence path was printed, and no collect status (OK/RUNNING/FAIL) was captured \u2014 there is no evidence of a collect run free of `syntax error near unexpected token`. Additionally the only changed file, cmd/boardctl/board-report.html, is untracked and absent from the working tree (cmd/boardctl/ does not exist; `git ls-files cmd/boardctl/` is empty) and is unrelated to the stderr-redirect fix.\nThe malformed stderr redirect is gone (grep prints 0/exit 1 and the wrapper shell-semantics test passes), but the required bunker-qa launch/collect of boardctlctl was never performed and no such target exists, so the criterion as a whole is not met.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bunker-qa launch boardctlctl and collect the printed evidence path; 3) collect status is OK, RUNNING or FAIL without syntax error near unexpected token.: Part 1 PASSES: `grep -c \" 2 \\\"\" src/bridge/tool_raw.go` printed `0` with exit_code 1; src/bridge/tool_raw.go:158 now reads `\" 2> \" + shellSingleQuote(a.errPath) +` (no stray quote), and `go test -count=1 -v ./src/bridge/ -run TestTerminalRawWrapperShellSemantics` -> `--- PASS: TestTerminalRawWrapperShellSemantics (0.09s)` with all 10 subtests PASS, `ok github.com/Hermes-DAGger/hermes-dagger/src/bridge 0.111s`. Parts 2 and 3 FAIL: no `boardctlctl` target exists anywhere \u2014 `grep -rln boardctlctl ~/.hermes/scripts/` returns nothing and `grep -rn boardctlctl` over the repo (md/go/yaml/json) returns nothing; ~/.hermes/scripts/bunker-qa.sh contains no boardctl/boardctlctl invocation at all (only a comment at line 825), so `bunker-qa.sh launch boardctlctl` cannot run. No launch was executed, no evidence path was printed, and no collect status (OK/RUNNING/FAIL) was captured \u2014 there is no evidence of a collect run free of `syntax error near unexpected token`. Additionally the only changed file, cmd/boardctl/board-report.html, is untracked and absent from the working tree (cmd/boardctl/ does not exist; `git ls-files cmd/boardctl/` is empty) and is unrelated to the stderr-redirect fix.\nThe malformed stderr redirect is gone (grep prints 0/exit 1 and the wrapper shell-semantics test passes), but the required bunker-qa launch/collect of boardctlctl was never performed and no such target exists, so the criterion as a whole is not met.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bunker-qa launch boardctlctl and collect the printed evidence path; 3) collect status is OK, RUNNING or FAIL without syntax error near unexpected token.",
+                "status": "FAIL",
+                "detail": "Part 1 PASSES: `grep -c \" 2 \\\"\" src/bridge/tool_raw.go` printed `0` with exit_code 1; src/bridge/tool_raw.go:158 now reads `\" 2> \" + shellSingleQuote(a.errPath) +` (no stray quote), and `go test -count=1 -v ./src/bridge/ -run TestTerminalRawWrapperShellSemantics` -> `--- PASS: TestTerminalRawWrapperShellSemantics (0.09s)` with all 10 subtests PASS, `ok github.com/Hermes-DAGger/hermes-dagger/src/bridge 0.111s`. Parts 2 and 3 FAIL: no `boardctlctl` target exists anywhere \u2014 `grep -rln boardctlctl ~/.hermes/scripts/` returns nothing and `grep -rn boardctlctl` over the repo (md/go/yaml/json) returns nothing; ~/.hermes/scripts/bunker-qa.sh contains no boardctl/boardctlctl invocation at all (only a comment at line 825), so `bunker-qa.sh launch boardctlctl` cannot run. No launch was executed, no evidence path was printed, and no collect status (OK/RUNNING/FAIL) was captured \u2014 there is no evidence of a collect run free of `syntax error near unexpected token`. Additionally the only changed file, cmd/boardctl/board-report.html, is untracked and absent from the working tree (cmd/boardctl/ does not exist; `git ls-files cmd/boardctl/` is empty) and is unrelated to the stderr-redirect fix."
+              }
+            ],
+            "summary": "The malformed stderr redirect is gone (grep prints 0/exit 1 and the wrapper shell-semantics test passes), but the required bunker-qa launch/collect of boardctlctl was never performed and no such target exists, so the criterion as a whole is not met.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-REVIEW-2\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bunker-qa launch boardctlctl and collect the printed evidence path; 3) collect status is OK, RUNNING or FAIL without syntax error near unexpected token.: Part 1 PASSES: `grep -c \" 2 \\\"\" src/bridge/tool_raw.go` printed `0` with exit_code 1; src/bridge/tool_raw.go:158 now reads `\" 2> \" + shellSingleQuote(a.errPath) +` (no stray quote), and `go test -count=1 -v ./src/bridge/ -run TestTerminalRawWrapperShellSemantics` -> `--- PASS: TestTerminalRawWrapperShellSemantics (0.09s)` with all 10 subtests PASS, `ok github.com/Hermes-DAGger/hermes-dagger/src/bridge 0.111s`. Parts 2 and 3 FAIL: no `boardctlctl` target exists anywhere \u2014 `grep -rln boardctlctl ~/.hermes/scripts/` returns nothing and `grep -rn boardctlctl` over the repo (md/go/yaml/json) returns nothing; ~/.hermes/scripts/bunker-qa.sh contains no boardctl/boardctlctl invocation at all (only a comment at line 825), so `bunker-qa.sh launch boardctlctl` cannot run. No launch was executed, no evidence path was printed, and no collect status (OK/RUNNING/FAIL) was captured \u2014 there is no evidence of a collect run free of `syntax error near unexpected token`. Additionally the only changed file, cmd/boardctl/board-report.html, is untracked and absent from the working tree (cmd/boardctl/ does not exist; `git ls-files cmd/boardctl/` is empty) and is unrelated to the stderr-redirect fix.\nThe malformed stderr redirect is gone (grep prints 0/exit 1 and the wrapper shell-semantics test passes), but the required bunker-qa launch/collect of boardctlctl was never performed and no such target exists, so the criterion as a whole is not met.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-25T16:55:28.813668",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-25T16:55:28.846487+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 155720,
+        "truncated": false,
+        "source": "git show 6b8c43144c76"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 6702,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-REVIEW-2"
+  }
+}

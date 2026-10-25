@@ -1,0 +1,109 @@
+{
+  "task_id": "QA-BOARDCTL-REVIEW-2",
+  "task_title": "Verify malformed stderr redirect is fixed and QA collect no longer syntax-fails",
+  "task_criteria": [
+    "1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl prints a launch cell with status OK and an agent= id; 3) bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence with the printed JSONL path exits 0 with OK or RUNNING; 4) the evidence JSONL contains no syntax error near unexpected token."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "6b8c43144c7651ed61e4a2a704cb05286a63dd53",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n11:57AM INF scanned ~3762207 bytes (3.76 MB) in 1.36s\n11:57AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 253 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T163904.264807Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t4.532s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.006s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.814s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.139s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.020s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T163904.264807Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl prints a launch cell with status OK and an agent= id; 3) bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence with the printed JSONL path exits 0 with OK or RUNNING; 4) the evidence JSONL contains no syntax error near unexpected token.: All four sub-checks verified with live command output. (1) `grep -c \" 2 \\\"\" .../src/bridge/tool_raw.go` -> stdout `0`, `EXIT=1`; the malformed pattern is gone and the correct form exists at tool_raw.go:158 (`\" 2> \" + shellSingleQuote(a.errPath)`). (2) `bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl` exited 0 and printed `\u2192 agent=2504f5de @ bunker-mvp (tailscale)` plus `LAUNCHED agent=2504f5de evidence=/tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl`; the evidence JSONL line 2 is `{\"project\":\"coding-hermes-boardctl\",\"cell\":\"launch\",\"status\":\"OK\",\"detail\":\"agent=2504f5de server=bunker-mvp ttl=4h script_bytes=143498 \u2014 battery started detached (qa-run.sh)...\"}` \u2014 a launch cell with status OK and an agent= id. (3) `bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence /tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl` printed `RUNNING agent=2504f5de evidence=/tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl` with `EXIT=0`. (4) `grep -in \"syntax error\"` on the JSONL -> no match, GREP_EXIT=1; `grep -in \"unexpected token\"` -> no match, GREP_EXIT=1; a python json.loads pass over every line reported `all lines valid JSON`. No syntax error near unexpected token anywhere in the evidence. Spawned agent 2504f5de was destroyed after verification.\nAll four sub-checks pass with live output: grep prints 0/exit 1, launch emits a status OK cell with agent=2504f5de, collect exits 0 with RUNNING, and the evidence JSONL is clean valid JSON with no syntax errors.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl prints a launch cell with status OK and an agent= id; 3) bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence with the printed JSONL path exits 0 with OK or RUNNING; 4) the evidence JSONL contains no syntax error near unexpected token.: All four sub-checks verified with live command output. (1) `grep -c \" 2 \\\"\" .../src/bridge/tool_raw.go` -> stdout `0`, `EXIT=1`; the malformed pattern is gone and the correct form exists at tool_raw.go:158 (`\" 2> \" + shellSingleQuote(a.errPath)`). (2) `bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl` exited 0 and printed `\u2192 agent=2504f5de @ bunker-mvp (tailscale)` plus `LAUNCHED agent=2504f5de evidence=/tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl`; the evidence JSONL line 2 is `{\"project\":\"coding-hermes-boardctl\",\"cell\":\"launch\",\"status\":\"OK\",\"detail\":\"agent=2504f5de server=bunker-mvp ttl=4h script_bytes=143498 \u2014 battery started detached (qa-run.sh)...\"}` \u2014 a launch cell with status OK and an agent= id. (3) `bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence /tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl` printed `RUNNING agent=2504f5de evidence=/tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl` with `EXIT=0`. (4) `grep -in \"syntax error\"` on the JSONL -> no match, GREP_EXIT=1; `grep -in \"unexpected token\"` -> no match, GREP_EXIT=1; a python json.loads pass over every line reported `all lines valid JSON`. No syntax error near unexpected token anywhere in the evidence. Spawned agent 2504f5de was destroyed after verification.\nAll four sub-checks pass with live output: grep prints 0/exit 1, launch emits a status OK cell with agent=2504f5de, collect exits 0 with RUNNING, and the evidence JSONL is clean valid JSON with no syntax errors.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl prints a launch cell with status OK and an agent= id; 3) bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence with the printed JSONL path exits 0 with OK or RUNNING; 4) the evidence JSONL contains no syntax error near unexpected token.",
+                "status": "PASS",
+                "detail": "All four sub-checks verified with live command output. (1) `grep -c \" 2 \\\"\" .../src/bridge/tool_raw.go` -> stdout `0`, `EXIT=1`; the malformed pattern is gone and the correct form exists at tool_raw.go:158 (`\" 2> \" + shellSingleQuote(a.errPath)`). (2) `bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl` exited 0 and printed `\u2192 agent=2504f5de @ bunker-mvp (tailscale)` plus `LAUNCHED agent=2504f5de evidence=/tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl`; the evidence JSONL line 2 is `{\"project\":\"coding-hermes-boardctl\",\"cell\":\"launch\",\"status\":\"OK\",\"detail\":\"agent=2504f5de server=bunker-mvp ttl=4h script_bytes=143498 \u2014 battery started detached (qa-run.sh)...\"}` \u2014 a launch cell with status OK and an agent= id. (3) `bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence /tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl` printed `RUNNING agent=2504f5de evidence=/tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl` with `EXIT=0`. (4) `grep -in \"syntax error\"` on the JSONL -> no match, GREP_EXIT=1; `grep -in \"unexpected token\"` -> no match, GREP_EXIT=1; a python json.loads pass over every line reported `all lines valid JSON`. No syntax error near unexpected token anywhere in the evidence. Spawned agent 2504f5de was destroyed after verification."
+              }
+            ],
+            "summary": "All four sub-checks pass with live output: grep prints 0/exit 1, launch emits a status OK cell with agent=2504f5de, collect exits 0 with RUNNING, and the evidence JSONL is clean valid JSON with no syntax errors.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-REVIEW-2\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 1) grep -c \" 2 \\\\\\\"\" /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1; 2) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl prints a launch cell with status OK and an agent= id; 3) bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence with the printed JSONL path exits 0 with OK or RUNNING; 4) the evidence JSONL contains no syntax error near unexpected token.: All four sub-checks verified with live command output. (1) `grep -c \" 2 \\\"\" .../src/bridge/tool_raw.go` -> stdout `0`, `EXIT=1`; the malformed pattern is gone and the correct form exists at tool_raw.go:158 (`\" 2> \" + shellSingleQuote(a.errPath)`). (2) `bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl` exited 0 and printed `\u2192 agent=2504f5de @ bunker-mvp (tailscale)` plus `LAUNCHED agent=2504f5de evidence=/tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl`; the evidence JSONL line 2 is `{\"project\":\"coding-hermes-boardctl\",\"cell\":\"launch\",\"status\":\"OK\",\"detail\":\"agent=2504f5de server=bunker-mvp ttl=4h script_bytes=143498 \u2014 battery started detached (qa-run.sh)...\"}` \u2014 a launch cell with status OK and an agent= id. (3) `bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence /tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl` printed `RUNNING agent=2504f5de evidence=/tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl` with `EXIT=0`. (4) `grep -in \"syntax error\"` on the JSONL -> no match, GREP_EXIT=1; `grep -in \"unexpected token\"` -> no match, GREP_EXIT=1; a python json.loads pass over every line reported `all lines valid JSON`. No syntax error near unexpected token anywhere in the evidence. Spawned agent 2504f5de was destroyed after verification.\nAll four sub-checks pass with live output: grep prints 0/exit 1, launch emits a status OK cell with agent=2504f5de, collect exits 0 with RUNNING, and the evidence JSONL is clean valid JSON with no syntax errors.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-25T17:00:52.127917",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-25T17:00:52.577006+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 155720,
+        "truncated": false,
+        "source": "git show 6b8c43144c76"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 6702,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-REVIEW-2"
+  }
+}
