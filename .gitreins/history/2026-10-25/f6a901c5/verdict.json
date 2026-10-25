@@ -1,0 +1,109 @@
+{
+  "task_id": "QA-BOARDCTL-RELENG-2",
+  "task_title": "Collect product-scoped boardctl releng battery",
+  "task_criteria": [
+    "A product-scoped releng battery runs against /home/kara/coding-hermes-boardctl, collected evidence contains expected per-cell verdicts, and no-agent or unverified collection is accepted as green."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "264b8ddd1a4a59cadf79fa051eac4eb0a6dd5a3d",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n11:35AM INF scanned ~3760790 bytes (3.76 MB) in 1.27s\n11:35AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 253 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T045903.236489Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.541s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.908s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.166s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.027s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261019T045903.236489Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 A product-scoped releng battery runs against /home/kara/coding-hermes-boardctl, collected evidence contains expected per-cell verdicts, and no-agent or unverified collection is accepted as green.: Product-scoped run confirmed: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl, agent=c80c0028, server=bunker-mvp (battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, not the parent /home repo). Evidence JSONL (23 lines) carries 22 product cells with per-cell verdicts: repo-head OK (HEAD=2f97c81), launch OK, toolchain-bootstrap x9 OK, fresh-install FAIL, ci-pass OK, upgrade OK, docker-deploy N/A, ui-probe INFO, chaos-disconnect OK, chaos-shutdown N/A, chaos-corruption N/A, chaos-resource PASS, chaos-errorpath OK, collect FAIL. `grep -o 'no-agent|unverified|UNVERIFIED'` over the evidence returned 0 matches, so no no-agent/unverified collection was accepted as green; the collect cell is recorded FAIL and the board row .coding-hermes/board/tasks.jsonl:205 is not closed green (status in_progress, review_notes COLLECT-FAIL no-agent). Independent verification recorded at .gitreins/history/2026-10-25/7183b418/verdict.json (tier2 PASS with per-part detail; tier1 FAIL only on the unrelated secrets guard for .gitreins/** scope). Test evidence: `go test -count=1 ./...` exit_code=0, all 12 packages 'ok' (cmd/boardctl 6.163s, internal/board 0.804s, internal/vulncheck 3.288s).\nThe product-scoped releng battery ran against the boardctl git root at HEAD 2f97c81, produced 22 per-cell verdicts with zero no-agent/unverified markers, and the row was not accepted as green on unverified collection; go test -count=1 ./... passes (exit 0).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 A product-scoped releng battery runs against /home/kara/coding-hermes-boardctl, collected evidence contains expected per-cell verdicts, and no-agent or unverified collection is accepted as green.: Product-scoped run confirmed: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl, agent=c80c0028, server=bunker-mvp (battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, not the parent /home repo). Evidence JSONL (23 lines) carries 22 product cells with per-cell verdicts: repo-head OK (HEAD=2f97c81), launch OK, toolchain-bootstrap x9 OK, fresh-install FAIL, ci-pass OK, upgrade OK, docker-deploy N/A, ui-probe INFO, chaos-disconnect OK, chaos-shutdown N/A, chaos-corruption N/A, chaos-resource PASS, chaos-errorpath OK, collect FAIL. `grep -o 'no-agent|unverified|UNVERIFIED'` over the evidence returned 0 matches, so no no-agent/unverified collection was accepted as green; the collect cell is recorded FAIL and the board row .coding-hermes/board/tasks.jsonl:205 is not closed green (status in_progress, review_notes COLLECT-FAIL no-agent). Independent verification recorded at .gitreins/history/2026-10-25/7183b418/verdict.json (tier2 PASS with per-part detail; tier1 FAIL only on the unrelated secrets guard for .gitreins/** scope). Test evidence: `go test -count=1 ./...` exit_code=0, all 12 packages 'ok' (cmd/boardctl 6.163s, internal/board 0.804s, internal/vulncheck 3.288s).\nThe product-scoped releng battery ran against the boardctl git root at HEAD 2f97c81, produced 22 per-cell verdicts with zero no-agent/unverified markers, and the row was not accepted as green on unverified collection; go test -count=1 ./... passes (exit 0).",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "A product-scoped releng battery runs against /home/kara/coding-hermes-boardctl, collected evidence contains expected per-cell verdicts, and no-agent or unverified collection is accepted as green.",
+                "status": "PASS",
+                "detail": "Product-scoped run confirmed: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl, agent=c80c0028, server=bunker-mvp (battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, not the parent /home repo). Evidence JSONL (23 lines) carries 22 product cells with per-cell verdicts: repo-head OK (HEAD=2f97c81), launch OK, toolchain-bootstrap x9 OK, fresh-install FAIL, ci-pass OK, upgrade OK, docker-deploy N/A, ui-probe INFO, chaos-disconnect OK, chaos-shutdown N/A, chaos-corruption N/A, chaos-resource PASS, chaos-errorpath OK, collect FAIL. `grep -o 'no-agent|unverified|UNVERIFIED'` over the evidence returned 0 matches, so no no-agent/unverified collection was accepted as green; the collect cell is recorded FAIL and the board row .coding-hermes/board/tasks.jsonl:205 is not closed green (status in_progress, review_notes COLLECT-FAIL no-agent). Independent verification recorded at .gitreins/history/2026-10-25/7183b418/verdict.json (tier2 PASS with per-part detail; tier1 FAIL only on the unrelated secrets guard for .gitreins/** scope). Test evidence: `go test -count=1 ./...` exit_code=0, all 12 packages 'ok' (cmd/boardctl 6.163s, internal/board 0.804s, internal/vulncheck 3.288s)."
+              }
+            ],
+            "summary": "The product-scoped releng battery ran against the boardctl git root at HEAD 2f97c81, produced 22 per-cell verdicts with zero no-agent/unverified markers, and the row was not accepted as green on unverified collection; go test -count=1 ./... passes (exit 0).",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-RELENG-2\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 A product-scoped releng battery runs against /home/kara/coding-hermes-boardctl, collected evidence contains expected per-cell verdicts, and no-agent or unverified collection is accepted as green.: Product-scoped run confirmed: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl, agent=c80c0028, server=bunker-mvp (battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, not the parent /home repo). Evidence JSONL (23 lines) carries 22 product cells with per-cell verdicts: repo-head OK (HEAD=2f97c81), launch OK, toolchain-bootstrap x9 OK, fresh-install FAIL, ci-pass OK, upgrade OK, docker-deploy N/A, ui-probe INFO, chaos-disconnect OK, chaos-shutdown N/A, chaos-corruption N/A, chaos-resource PASS, chaos-errorpath OK, collect FAIL. `grep -o 'no-agent|unverified|UNVERIFIED'` over the evidence returned 0 matches, so no no-agent/unverified collection was accepted as green; the collect cell is recorded FAIL and the board row .coding-hermes/board/tasks.jsonl:205 is not closed green (status in_progress, review_notes COLLECT-FAIL no-agent). Independent verification recorded at .gitreins/history/2026-10-25/7183b418/verdict.json (tier2 PASS with per-part detail; tier1 FAIL only on the unrelated secrets guard for .gitreins/** scope). Test evidence: `go test -count=1 ./...` exit_code=0, all 12 packages 'ok' (cmd/boardctl 6.163s, internal/board 0.804s, internal/vulncheck 3.288s).\nThe product-scoped releng battery ran against the boardctl git root at HEAD 2f97c81, produced 22 per-cell verdicts with zero no-agent/unverified markers, and the row was not accepted as green on unverified collection; go test -count=1 ./... passes (exit 0).\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-25T16:36:03.276790",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-25T16:36:03.319598+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 93435,
+        "truncated": false,
+        "source": "git show 264b8ddd1a4a"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 23460,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-RELENG-2"
+  }
+}

@@ -1,0 +1,1203 @@
+commit 264b8ddd1a4a59cadf79fa051eac4eb0a6dd5a3d
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sun Oct 25 10:33:02 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sun Oct 25 10:34:16 2026 -0500
+
+    chore: board tick 160 — QA-BOARDCTL-RELENG-2 verification pending
+    
+    Record the product-scoped releng battery rerun. The battery reached 22 product cells at exact HEAD 2f97c81, but collect could not reach agent c80c0028 after three probes, so the QA row remains pending. Preserve the Tier-2 PASS / Tier-1 harness-scan split verdict and raw evidence path.
+    
+    ch:trace row=QA-BOARDCTL-RELENG-2 spec=none:qa-dagger-acceptance wave=none:verification-only test=/tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl doc=none:qa-evidence prompt=~/.hermes/skills/devops/bunker-qa-harness/SKILL.md evidence=.gitreins/history/2026-10-25/7183b418/verdict.json witness=live:bunker-mvp/agent-c80c0028 verdict=7183b418 commit=HEAD memory=none:tick-local
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ .coding-hermes/board/board.jsonl                     |   2 +-
+ .coding-hermes/board/events.jsonl                    |   1 +
+ .gitreins/history/2026-10-25/7183b418/commit.patch   |  26 ++
+ .gitreins/history/2026-10-25/7183b418/summary.md     |  30 ++
+ .gitreins/history/2026-10-25/7183b418/verdict.json   | 109 +++++++
+ .gitreins/history/2026-10-25/7183b418/worktree.patch | 975 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 1142 insertions(+), 1 deletion(-)
+
+diff --git a/.coding-hermes/board/board.jsonl b/.coding-hermes/board/board.jsonl
+index 2756433..42e8ce8 100644
+--- a/.coding-hermes/board/board.jsonl
++++ b/.coding-hermes/board/board.jsonl
+@@ -1 +1 @@
+-{"project": "boardctl", "namespace": "coding-hermes", "version": 1, "ticks_total": 159, "ticks_idle": 0, "cooldown_s": 21600, "last_commit": "bb7cb7c", "last_tick": "2026-10-24 21:10:00", "updated_at": "2026-10-25 15:09:13"}
++{"project": "boardctl", "namespace": "coding-hermes", "version": 1, "ticks_total": 160, "ticks_idle": 0, "cooldown_s": 21600, "last_commit": "2f97c81", "last_tick": "2026-10-24 21:10:00", "updated_at": "2026-10-25 15:31:23"}
+diff --git a/.coding-hermes/board/events.jsonl b/.coding-hermes/board/events.jsonl
+index 52f4422..892ff87 100644
+--- a/.coding-hermes/board/events.jsonl
++++ b/.coding-hermes/board/events.jsonl
+@@ -549,3 +549,4 @@
+ {"id":545,"timestamp":"2026-10-25 03:59:20","event_type":"audit","task_id":"","actor":"foreman","detail":"Closed QA-BOARDCTL-FOREMAN-2: harness misconfiguration (ui-probe cell targets HTML UIs, boardctl serve is JSON API). Boardctl serve verified working (BT-021, BT-075).","tick_number":158}
+ {"id":546,"timestamp":"2026-10-25 08:08:21","event_type":"audit","task_id":"RELEASE-2026-10-25-01","actor":"releng:boardctl","detail":"{\"sweep\":\"boardctl-releng-2026-10-25-07-55-26\",\"prior_verified_head\":\"c7c09f0\",\"candidate_head\":\"7aab631c669b6afbd2e4e6f0bed3771aa264e21d\",\"baseline\":\"v0.1.11\",\"range\":\"v0.1.11..7aab631\",\"commits\":\"89 total; feat=2, fix=8, docs=19, chore=24, test=0, other=36, breaking=0\",\"semver\":\"propose v0.2.0 minor: two feat commits; no BREAKING CHANGE or ! marker\",\"ci\":\"GREEN on exact candidate SHA: CI 40160218887 and Multi-Arch 40160219257; all executed jobs success, release/container skipped on main push by design\",\"gitreins\":\"no verdict for candidate SHA; latest relevant candidate-independent PASS is RELEASE-2026-10-22-02 at fbcc6a4; latest README/DOC verdicts include failures for README-011, README-012, DOC-39, DOC-40\",\"dogfood\":\"latest dogfood commits run 25/25c and QA 2026-10-25; DF-BOARDCTL-44..50 and QA-BOARDCTL-FOREMAN-1/2 are complete, but no candidate-SHA dogfood verdict\",\"release_surface\":\"v0.1.11 tag and Release object verified; 8 assets including SHA256SUMS; no v0.2.0 tag or Release object\",\"tooling\":\"Makefile release target cross-compiles 7 platforms plus SHA256SUMS; multiarch workflow active and tag-triggered; no CHANGELOG.md exists\",\"version_hygiene\":\"README still pins v0.1.11; make version-check VERSION_TAG=v0.2.0 fails 3 stale pin/URL checks; deployed ~/.local/bin/boardctl reports dev/dev, vcs.revision=7d65737e651b, vcs.modified=true, and make install-check RELEASE_TAG=v0.1.11 fails\",\"local_gates\":\"fmt-check PASS; spec-check PASS; vuln-check PASS; make test PASS; candidate version-check FAIL because prep surfaces are not v0.2.0\",\"decision\":\"NO CUT: version-prep/changelog criterion fails and deployed binary is stale; update this row and land prep commit, add CHANGELOG or documented waiver, rerun all gates and exact-SHA CI, then cut v0.2.0 only after green\",\"unblock\":\"README pins + release identity to v0.2.0, add/promote CHANGELOG with Unreleased policy or document repo waiver, clean tree, CI green on prep SHA, then annotated tag -> tag CI -> Release object/assets -> downloaded checksum/version/install verification\",\"rollback\":\"v0.1.11\"}","tick_number":null}
+ {"id":547,"timestamp":"2026-10-25 15:09:13","event_type":"task_evidence","task_id":"QA-BOARDCTL-RELENG-2","actor":"foreman","detail":"{\"tick\":159,\"task\":\"QA-BOARDCTL-RELENG-2\",\"outcome\":\"verification_only_pending\",\"status\":\"pending\",\"worker_model\":\"none\",\"worker_provider\":\"none\",\"evidence\":{\"qa_evidence\":\"/tmp/bunker-qa-evidence-1792939560342-1.jsonl\",\"qa_meta\":\"/tmp/bunker-qa-evidence-1792939560342-1.jsonl.meta\",\"run_battery\":\"FAIL: launch refused because /home/kara/.hermes/stand-in/releng-lane/boardctl is a subdirectory of git repo /home/kara; product-scoped battery did not start\",\"collect\":\"FAIL: meta has agent= empty; no agent id and no product cells collected\",\"cells_landed\":2,\"cells\":[\"run_battery\",\"collect\"]},\"verification\":\"The row remains pending. This is a QA harness/target-resolution gap, not product evidence. A rerun must target the boardctl git root and collect a complete battery before closure.\",\"gitreins\":{\"verdict\":\"FAIL\",\"path\":\".gitreins/history/2026-10-25/6b21a2e4/verdict.json\",\"notes\":\"Tier-1 secrets scan covered harness state and failed; Tier-2 was INCOMPLETE at iteration cap. Does not convert the QA row to complete.\"}}","tick_number":null}
++{"id":548,"timestamp":"2026-10-25 15:31:13","event_type":"task_evidence","task_id":"QA-BOARDCTL-RELENG-2","actor":"foreman","detail":"{\"tick\":\"boardctl-foreman-2026-10-25-15-14-51\",\"task\":\"QA-BOARDCTL-RELENG-2\",\"outcome\":\"verification_only_pending\",\"status\":\"pending\",\"worker_model\":\"none\",\"worker_provider\":\"none\",\"evidence\":\"/tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl\",\"meta\":\"/tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta\",\"head\":\"2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626\",\"launch\":\"OK agent=c80c0028 server=bunker-mvp product=coding-hermes-boardctl; generated script bash -n and 143498 bytes\",\"collect\":\"FAIL/partial: 23 evidence lines; 22 product cells recorded, collect could not reach c80c0028 after three probes\",\"cells\":\"toolchain-bootstrap x9, fresh-install FAIL, ci-pass OK, upgrade OK, docker-deploy N/A, ui-probe INFO, chaos-disconnect OK, chaos-shutdown N/A, chaos-corruption N/A, chaos-resource PASS, chaos-errorpath OK\",\"verification\":\"Evidence is product-scoped and exact-head, but acceptance requires a collected battery without unresolved collection; row remains pending. Original no-agent refusal was not repeated. Product test evidence: go test -count=1 ./... exit 0.\",\"gitreins\":\"Tier-1 FAIL: harness state excluded from gitleaks scope; Tier-2 PASS at .gitreins/history/2026-10-25/7183b418/verdict.json; overall FAIL; local task deleted only after verdict readback\",\"ch:trace\":\"row=QA-BOARDCTL-RELENG-2 spec=none:qa-dagger-acceptance wave=none:verification-only test=/tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl doc=none:qa-evidence prompt=~/.hermes/skills/devops/bunker-qa-harness/SKILL.md evidence=/tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl witness=live:bunker-mvp/agent-c80c0028 verdict=.gitreins/history/2026-10-25/7183b418/verdict.json commit=none:owner-block memory=none:tick-local\"}","tick_number":null}
+diff --git a/.gitreins/history/2026-10-25/7183b418/commit.patch b/.gitreins/history/2026-10-25/7183b418/commit.patch
+new file mode 100644
+index 0000000..b4c6844
+--- /dev/null
++++ b/.gitreins/history/2026-10-25/7183b418/commit.patch
+@@ -0,0 +1,26 @@
++commit 2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626
++Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
++AuthorDate: Sun Oct 25 10:13:03 2026 -0500
++Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
++CommitDate: Sun Oct 25 10:13:35 2026 -0500
++
++    board: acceptance criteria for QA-BOARDCTL-RELENG-1,QA-BOARDCTL-REVIEW-1,QA-BOARDCTL-REVIEW-2
++---
++ .coding-hermes/board/tasks.jsonl | 6 +++---
++ 1 file changed, 3 insertions(+), 3 deletions(-)
++
++diff --git a/.coding-hermes/board/tasks.jsonl b/.coding-hermes/board/tasks.jsonl
++index d3f4085..b5a5433 100644
++--- a/.coding-hermes/board/tasks.jsonl
+++++ b/.coding-hermes/board/tasks.jsonl
++@@ -201,7 +201,7 @@
++ {"status":"complete","id":"QA-BOARDCTL-FOREMAN-1","title":"[P1] fresh-install produced no artifact (toolsd not in PATH)","detail":{"evidence":[{"run_id":"qa-boardctl-foreman-1-harness-misconfig","ts":"2026-10-25T03:52:29.988518+00:00"}],"text":"install rc=0 but no artifact found — toolsd not in PATH, PREFIX/bin/toolsd missing, or zero-size; go downloaded gopkg.in/yaml.v3 v3.0.1. Install script appears to target toolsd binary rather than boardctl."},"priority":"P1","source":"qa-dagger","reasoning":{"note":"QA foreman cycle 2026-10-25 — fresh-system CI pass (bunker cell: fresh-install)"},"review_notes":"install rc=0 but no artifact found — toolsd not in PATH, PREFIX/bin/toolsd missing, or zero-size; go downloaded gopkg.in/yaml.v3 v3.0.1. Install script appears to target toolsd binary rather than boardctl.","ts":"2026-10-25T03:35:49.569Z","worker_status":"complete","guard_result":"PASS","ci_result":"GREEN","worker_summary":"CLOSED AS HARNESS-MISCONFIGURATION: the qa-dagger fresh-install cell ran a generic install script targeting 'toolsd' (a different binary), not boardctl. Evidence: (1) 'make install INSTALL_DIR=/tmp/test-install' succeeds and installs boardctl binary, sha256-verified against dist/SHA256SUMS; (2) /tmp/test-install/boardctl version runs; (3) the row text says 'toolsd not in PATH, PREFIX/bin/toolsd missing' — toolsd is not a boardctl artifact. The boardctl install surface (Makefile:200, BT-042) is correct and tested. Fix belongs in the qa-dagger harness configuration, not in boardctl.","foreman_note":"qa-dagger fresh-install cell misconfigured: targets toolsd, not boardctl. Boardctl install path verified working."}
++ {"status":"complete","id":"QA-BOARDCTL-FOREMAN-2","title":"[P3] ui-probe skipped: no long-running server surface","detail":{"evidence":[{"run_id":"qa-boardctl-foreman-2-harness-misconfig","ts":"2026-10-25T03:58:34.52396+00:00"}],"text":"go-native start command is not a long-running server (rc/exit in log) — no HTML surface to probe; wrote openapi.yaml (6 http routes from cmd/boardctl/serve.go)."},"priority":"P3","source":"qa-dagger","reasoning":{"note":"QA foreman cycle 2026-10-25 — fresh-system CI pass (bunker cell: ui-probe)"},"review_notes":"go-native start command is not a long-running server (rc/exit in log) — no HTML surface to probe; wrote openapi.yaml (6 http routes from cmd/boardctl/serve.go).","ts":"2026-10-25T03:35:49.569Z","worker_status":"complete","guard_result":"PASS","ci_result":"GREEN","worker_summary":"CLOSED AS HARNESS-MISCONFIGURATION: the qa-dagger ui-probe cell expects an HTML UI to probe, but boardctl serve is a JSON API server (no HTML surface). Evidence: (1) cmd/boardctl/serve.go exists (29KB, verified working via BT-021/BT-075); (2) the row claims 'wrote openapi.yaml' but openapi.yaml does not exist in the repo — the row was filed with incorrect information; (3) boardctl serve serves JSON API routes, not HTML — ui-probe cell is the wrong tool for this surface. Fix belongs in the qa-dagger harness configuration (route JSON API servers to an api-probe cell, not ui-probe).","foreman_note":"qa-dagger ui-probe cell misconfigured: targets HTML UIs, but boardctl serve is a JSON API server. Serve surface verified working (BT-021, BT-075)."}
++ {"id":"RELEASE-2026-10-25-01","title":"NO-CUT readiness sweep for boardctl: propose v0.2.0 from 89 commits past v0.1.11; version-prep and deployed artifact remain stale","status":"blocked","priority":"P2","reasoning":"Releng sweep boardctl-releng-2026-10-25-07-55-26. Canonical repo /home/kara/coding-hermes-boardctl, origin coding-hermes/boardctl, candidate origin/main=7aab631c669b6afbd2e4e6f0bed3771aa264e21d, equal to local main. Baseline newest numeric release v0.1.11; v0.1.11 tag remote and Release object verified with 8 assets including SHA256SUMS. Range v0.1.11..origin/main is 89 commits: feat=2, fix=8, docs=19, chore=24, test=0, other=36, breaking=0. No BREAKING CHANGE or ! marker; semver proposal is minor v0.2.0. Exact candidate-SHA CI is green: CI 40160218887 and Multi-Arch 40160219257, both headSha=7aab631c669b6afbd2e4e6f0bed3771aa264e21d; all executed jobs succeeded, tag-only Release/Container jobs skipped on main push by design. Repo tooling is present: Makefile release cross-compiles 7 platforms and SHA256SUMS; .github/workflows/multiarch.yml is active and triggers on v* tags; no CHANGELOG.md exists. NO-CUT gates: README Current release/download URLs still pin v0.1.11; `make version-check VERSION_TAG=v0.2.0` fails all 3 currency checks. Local fmt-check/spec-check/vuln-check/test pass, but candidate version-check fails. Deployed ~/.local/bin/boardctl is stale: version dev/dev, vcs.revision=7d65737e651b, vcs.modified=true; `make install-check RELEASE_TAG=v0.1.11` fails version, module version, modified, and ancestry arms. Latest dogfood/QA rows are complete (DF-BOARDCTL-44..50, QA-BOARDCTL-FOREMAN-1/2), but no candidate-SHA dogfood or GitReins verdict exists; latest relevant GitReins candidate-independent PASS is RELEASE-2026-10-22-02 at fbcc6a4, while README-011, README-012, DOC-39, and DOC-40 verdicts have failures. Standing release authority does not override failed readiness criteria. Unblock: prepare README release surfaces for v0.2.0; add/promote CHANGELOG or record a documented repository waiver; clean tree; rerun all gates and exact-SHA CI; then annotated tag, tag CI, Release object/assets, downloaded checksum/version/install verification. Rollback anchor v0.1.11.","acceptance_criteria":"1) README Current release and every release download URL name v0.2.0 and `make version-check VERSION_TAG=v0.2.0` exits 0. 2) CHANGELOG.md exists with the v0.2.0 section and an Unreleased section, or a repository-owned release document explicitly records the approved no-CHANGELOG policy. 3) Candidate prep commit is clean and CI is green on its exact SHA for CI and Multi-Arch, with per-job conclusions recorded. 4) No open release-blocking P0/P1 remains and latest relevant GitReins/dogfood evidence is reconciled. 5) Execute the repo-owned tag cut only after these gates: annotated v0.2.0 tag, remote tag, tag-triggered CI green, GitHub Release object with 7 platform assets plus SHA256SUMS, downloaded checksum verification, downloaded boardctl version v0.2.0, and install-check against v0.2.0. 6) Keep rollback anchor v0.1.11.","depends_on":[],"created_by":"boardctl-releng-2026-10-25-07-55-26","detail":{"fingerprint":"releng-boardctl-20261025-v020-7aab631","evidence":{"candidate_sha":"7aab631c669b6afbd2e4e6f0bed3771aa264e21d","baseline":"v0.1.11","ci_runs":[40160218887,40160219257],"gitreins":"no candidate-SHA verdict","dogfood":"DF-BOARDCTL-44..50 and QA-BOARDCTL-FOREMAN-1/2 complete; no candidate-SHA result","local_gates":{"fmt_check":"PASS","spec_check":"PASS","vuln_check":"PASS","test":"PASS","version_check_v020":"FAIL"},"deployed_install_check_v011":"FAIL"}},"worker_status":"pending","guard_result":"SKIP","ci_result":"GREEN"}
++-{"status":"pending","id":"QA-BOARDCTL-RELENG-1","title":"[P3] boardctl-releng battery unfinished/uncollected at collect deadline — second collect pass required (agent left intact)","detail":"COLLECT-FAIL no-agent evidence_path=/tmp/bunker-qa-evidence-1792939560342-1.jsonl","priority":"P3","source":"qa-dagger","reasoning":{"note":"QA foreman cycle 2026-10-25 — fresh-system CI pass (bunker cell: collect)"},"review_notes":"COLLECT-FAIL no-agent evidence_path=/tmp/bunker-qa-evidence-1792939560342-1.jsonl","ts":"2026-10-25T14:46:36.682Z"}
+++{"status": "pending", "id": "QA-BOARDCTL-RELENG-1", "title": "[P3] boardctl-releng battery unfinished/uncollected at collect deadline \u2014 second collect pass required (agent left intact)", "detail": "COLLECT-FAIL no-agent evidence_path=/tmp/bunker-qa-evidence-1792939560342-1.jsonl", "priority": "P3", "source": "qa-dagger", "reasoning": {"note": "QA foreman cycle 2026-10-25 \u2014 fresh-system CI pass (bunker cell: collect)"}, "review_notes": "COLLECT-FAIL no-agent evidence_path=/tmp/bunker-qa-evidence-1792939560342-1.jsonl", "ts": "2026-10-25T14:46:36.682Z", "acceptance": "1) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl prints a launch cell with status OK and an agent= id in its detail \u2014 it FAILS if it repeats the refusal 'is a subdirectory of git repo /home/kara' recorded in this row's evidence. 2) bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence, given the exact .jsonl path printed in that launch cell, exits 0 with the collect cell printing OK or RUNNING. 3) that evidence .jsonl contains no line whose detail contains 'no-agent'."}
++ {"status":"pending","id":"QA-BOARDCTL-RELENG-2","title":"[P1] Battery collection failed: no agent available, zero cells executed","detail":"Cell [collect] returned UNVERIFIED with detail \"COLLECT-FAIL no-agent\" — no agent was available to run the bunker battery for boardctl (/home/kara/.hermes/stand-in/releng-lane/boardctl), so no install/CI/docker/upgrade/chaos cells were ever executed. UNVERIFIED is not OK: this is a harness-level collection gap, not a passing run, and the project's brittleness is entirely unmeasured.","priority":"P1","source":"qa-dagger","reasoning":{"note":"QA foreman cycle 2026-10-25 — fresh-system CI pass (bunker cell: collect)"},"review_notes":"COLLECT-FAIL no-agent","ts":"2026-10-25T14:46:36.682Z","acceptance_criteria":"1) A product-scoped releng battery runs against boardctl's git root, not the parent /home repository. 2) The collected evidence contains the expected battery cells with per-cell verdicts; no-agent/unverified collection is not accepted as green. 3) The row remains pending until the rerun is collected and independently verified."}
++-{"status": "pending", "id": "QA-BOARDCTL-REVIEW-1", "title": "[P3] boardctl-review battery unfinished/uncollected at collect deadline — second collect pass required (agent left intact)", "detail": "COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2'\\n/usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'", "priority": "P3", "source": "qa-dagger", "reasoning": {"note": "QA foreman cycle 2026-10-25 — fresh-system CI pass (bunker cell: collect)"}, "review_notes": "COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2'\\n/usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'", "ts": "2026-10-25T14:46:46.953Z"}
++-{"status": "pending", "id": "QA-BOARDCTL-REVIEW-2", "title": "[P1] collect cell COLLECT-FAIL: malformed bash redirect in harness command leaves the whole battery unverified", "detail": "Cell recorded as UNVERIFIED, which is not OK. Exact cell detail: '[collect] UNVERIFIED — COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2' / /usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'. Root cause is visible in the command itself: the stderr redirect is broken — '2 /var/tmp/.../err' is missing its redirect operator and must be '2> /var/tmp/.../err'. The collect command aborted on the syntax error, so no collect status was ever produced and no cell in the battery can be trusted. This is a harness/CI-path FAIL, hence P1.", "priority": "P1", "source": "qa-dagger", "reasoning": {"note": "QA foreman cycle 2026-10-25 — fresh-system CI pass (bunker cell: collect)"}, "review_notes": "Cell recorded as UNVERIFIED, which is not OK. Exact cell detail: '[collect] UNVERIFIED — COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2' / /usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'. Root cause ", "ts": "2026-10-25T14:46:46.954Z"}
+++{"status": "pending", "id": "QA-BOARDCTL-REVIEW-1", "title": "[P3] boardctl-review battery unfinished/uncollected at collect deadline \u2014 second collect pass required (agent left intact)", "detail": "COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2'\\n/usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'", "priority": "P3", "source": "qa-dagger", "reasoning": {"note": "QA foreman cycle 2026-10-25 \u2014 fresh-system CI pass (bunker cell: collect)"}, "review_notes": "COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2'\\n/usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'", "ts": "2026-10-25T14:46:46.953Z", "acceptance": "1) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl starts the battery: the launch cell prints status OK with an agent= id. 2) bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence, given the .jsonl path from that launch cell, polls until it exits 0 and the collect cell prints OK or RUNNING \u2014 never a detail containing 'syntax error near unexpected token'. 3) the evidence .jsonl records at least the collect cell with a status that is not UNVERIFIED."}
+++{"status": "pending", "id": "QA-BOARDCTL-REVIEW-2", "title": "[P1] collect cell COLLECT-FAIL: malformed bash redirect in harness command leaves the whole battery unverified", "detail": "Cell recorded as UNVERIFIED, which is not OK. Exact cell detail: '[collect] UNVERIFIED \u2014 COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2' / /usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'. Root cause is visible in the command itself: the stderr redirect is broken \u2014 '2 /var/tmp/.../err' is missing its redirect operator and must be '2> /var/tmp/.../err'. The collect command aborted on the syntax error, so no collect status was ever produced and no cell in the battery can be trusted. This is a harness/CI-path FAIL, hence P1.", "priority": "P1", "source": "qa-dagger", "reasoning": {"note": "QA foreman cycle 2026-10-25 \u2014 fresh-system CI pass (bunker cell: collect)"}, "review_notes": "Cell recorded as UNVERIFIED, which is not OK. Exact cell detail: '[collect] UNVERIFIED \u2014 COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2' / /usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'. Root cause ", "ts": "2026-10-25T14:46:46.954Z", "acceptance": "1) grep -c ' 2 \"' /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1 \u2014 the raw-wrapper builder emits '2> ' before the stderr path, never the bare '2' malformation quoted in this row. 2) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl followed by collect --evidence with the printed .jsonl path produces a collect cell whose status is OK, RUNNING or FAIL and whose detail does not contain 'syntax error near unexpected token'."}
+diff --git a/.gitreins/history/2026-10-25/7183b418/summary.md b/.gitreins/history/2026-10-25/7183b418/summary.md
+new file mode 100644
+index 0000000..f5cef81
+--- /dev/null
++++ b/.gitreins/history/2026-10-25/7183b418/summary.md
+@@ -0,0 +1,30 @@
++# Verdict: QA-BOARDCTL-RELENG-2
++
++**Task:** Verification rerun: product-scoped QA battery
++**Evaluated:** 2026-10-25T15:30:31.861321
++**Result:** ✗ FAIL
++
++## Pipeline Stages
++
++- ✗ **tier1**
++  -   ✗ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
++  ✓ tests: scanners: nice=nice -n 10
++- ✓ **tier2**
++  - COMPLETE
++  ✓ Verify the releng battery evidence is product-scoped to boardctl at the recorded HEAD, contains per-cell verdicts without no-agent or unverified product collection, and preserves the row as pending when collection cannot be independently completed. Evidence: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl: Evidence file exists (23 lines, 5363 bytes). (1) PRODUCT-SCOPED: meta file /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl; battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, avoiding the parent repo (git -C /home/kara rev-parse --show-toplevel => /home/kara, the original failure mode). (2) RECORDED HEAD: evidence repo-head cell records HEAD=2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626; actual `git rev-parse HEAD` in /home/kara/coding-hermes-boardctl = 2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626 — exact match. (3) PER-CELL VERDICTS: 22 cells with statuses OK/FAIL/N/A/INFO/PASS — repo-head, launch, toolchain-bootstrap(x9), fresh-install(FAIL), ci-pass(OK), upgrade(OK), docker-deploy(N/A), ui-probe(INFO), chaos-disconnect(OK), chaos-shutdown(N/A), chaos-corruption(N/A), chaos-resource(PASS), chaos-errorpath(OK). (4) NO no-agent/unverified: `grep -o 'no-agent|unverified'` over the evidence returned zero matches. (5) ROW PENDING: final evidence line is cell=collect status=FAIL ('cannot reach agent=c80c0028 on bunker-mvp after 3 probe attempts ... may be TRANSIENT ssh/auth'), i.e. collection not independently completed; the git-tracked authoritative board .coding-hermes/board/tasks.jsonl row QA-BOARDCTL-RELENG-2 has status="pending" with review_notes="COLLECT-FAIL no-agent" — row not closed. Test evidence: `go test -count=1 ./...` in /home/kara/coding-hermes-boardctl => EXIT_CODE=0, all 12 packages 'ok' (cmd/boardctl 4.773s, internal/board 0.765s, internal/vulncheck 2.969s). Caveat noted: .gitreins/tasks.yaml (gitignored harness state per .gitignore:5) shows status: complete, but that is evaluator bookkeeping, not the product board row.
++Evidence is product-scoped to boardctl at the exact recorded HEAD 2f97c81, carries 22 per-cell verdicts with no no-agent/unverified markers, and the authoritative board row remains pending after the collect cell failed — all conjunctive parts satisfied, with go test -count=1 ./... passing (exit 0).
++
++## Summary
++
++Judge Result: QA-BOARDCTL-RELENG-2
++
++Stage tier1: FAIL
++    ✗ secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)
++  ✓ tests: scanners: nice=nice -n 10
++
++Stage tier2: PASS
++  COMPLETE
++  ✓ Verify the releng battery evidence is product-scoped to boardctl at the recorded HEAD, contains per-cell verdicts without no-agent or unverified product collection, and preserves the row as pending when collection cannot be independently completed. Evidence: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl: Evidence file exists (23 lines, 5363 bytes). (1) PRODUCT-SCOPED: meta file /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl; battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, avoiding the parent repo (git -C /home/kara rev-parse --show-toplevel => /home/kara, the original failure mode). (2) RECORDED HEAD: evidence repo-head cell records HEAD=2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626; actual `git rev-parse HEAD` in /home/kara/coding-hermes-boardctl = 2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626 — exact match. (3) PER-CELL VERDICTS: 22 cells with statuses OK/FAIL/N/A/INFO/PASS — repo-head, launch, toolchain-bootstrap(x9), fresh-install(FAIL), ci-pass(OK), upgrade(OK), docker-deploy(N/A), ui-probe(INFO), chaos-disconnect(OK), chaos-shutdown(N/A), chaos-corruption(N/A), chaos-resource(PASS), chaos-errorpath(OK). (4) NO no-agent/unverified: `grep -o 'no-agent|unverified'` over the evidence returned zero matches. (5) ROW PENDING: final evidence line is cell=collect status=FAIL ('cannot reach agent=c80c0028 on bunker-mvp after 3 probe attempts ... may be TRANSIENT ssh/auth'), i.e. collection not independently completed; the git-tracked authoritative board .coding-hermes/board/tasks.jsonl row QA-BOARDCTL-RELENG-2 has status="pending" with review_notes="COLLECT-FAIL no-agent" — row not closed. Test evidence: `go test -count=1 ./...` in /home/kara/coding-hermes-boardctl => EXIT_CODE=0, all 12 packages 'ok' (cmd/boardctl 4.773s, internal/board 0.765s, internal/vulncheck 2.969s). Caveat noted: .gitreins/tasks.yaml (gitignored harness state per .gitignore:5) shows status: complete, but that is evaluator bookkeeping, not the product board row.
++Evidence is product-scoped to boardctl at the exact recorded HEAD 2f97c81, carries 22 per-cell verdicts with no no-agent/unverified markers, and the authoritative board row remains pending after the collect cell failed — all conjunctive parts satisfied, with go test -count=1 ./... passing (exit 0).
++
++Overall: FAIL ✗
+diff --git a/.gitreins/history/2026-10-25/7183b418/verdict.json b/.gitreins/history/2026-10-25/7183b418/verdict.json
+new file mode 100644
+index 0000000..6274512
+--- /dev/null
++++ b/.gitreins/history/2026-10-25/7183b418/verdict.json
+@@ -0,0 +1,109 @@
++{
++  "task_id": "QA-BOARDCTL-RELENG-2",
++  "task_title": "Verification rerun: product-scoped QA battery",
++  "task_criteria": [
++    "Verify the releng battery evidence is product-scoped to boardctl at the recorded HEAD, contains per-cell verdicts without no-agent or unverified product collection, and preserves the row as pending when collection cannot be independently completed. Evidence: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl"
++  ],
++  "passed": false,
++  "worktree": "/home/kara/coding-hermes-boardctl",
++  "branch": "main",
++  "commit": "2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626",
++  "items": [],
++  "stages": {
++    "tier1": {
++      "id": "tier1",
++      "passed": false,
++      "any_failed": true,
++      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
++      "steps": [
++        {
++          "id": "secrets",
++          "type": "script",
++          "passed": false,
++          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n10:29AM INF scanned ~3760191 bytes (3.76 MB) in 1.03s\n10:29AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 255 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
++          "error": "",
++          "data": {
++            "exit_code": 1,
++            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T151335.747535Z.log",
++            "secrets_scanners": [
++              "gitleaks",
++              "builtin"
++            ]
++          }
++        },
++        {
++          "id": "tests",
++          "type": "script",
++          "passed": true,
++          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t6.639s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.808s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.141s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.022s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
++          "error": "",
++          "data": {
++            "exit_code": 0,
++            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T151335.747535Z.log"
++          }
++        }
++      ],
++      "coverage": "secrets+tests"
++    },
++    "tier2": {
++      "id": "tier2",
++      "passed": true,
++      "any_failed": false,
++      "summary": "COMPLETE\n  \u2713 Verify the releng battery evidence is product-scoped to boardctl at the recorded HEAD, contains per-cell verdicts without no-agent or unverified product collection, and preserves the row as pending when collection cannot be independently completed. Evidence: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl: Evidence file exists (23 lines, 5363 bytes). (1) PRODUCT-SCOPED: meta file /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl; battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, avoiding the parent repo (git -C /home/kara rev-parse --show-toplevel => /home/kara, the original failure mode). (2) RECORDED HEAD: evidence repo-head cell records HEAD=2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626; actual `git rev-parse HEAD` in /home/kara/coding-hermes-boardctl = 2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626 \u2014 exact match. (3) PER-CELL VERDICTS: 22 cells with statuses OK/FAIL/N/A/INFO/PASS \u2014 repo-head, launch, toolchain-bootstrap(x9), fresh-install(FAIL), ci-pass(OK), upgrade(OK), docker-deploy(N/A), ui-probe(INFO), chaos-disconnect(OK), chaos-shutdown(N/A), chaos-corruption(N/A), chaos-resource(PASS), chaos-errorpath(OK). (4) NO no-agent/unverified: `grep -o 'no-agent|unverified'` over the evidence returned zero matches. (5) ROW PENDING: final evidence line is cell=collect status=FAIL ('cannot reach agent=c80c0028 on bunker-mvp after 3 probe attempts ... may be TRANSIENT ssh/auth'), i.e. collection not independently completed; the git-tracked authoritative board .coding-hermes/board/tasks.jsonl row QA-BOARDCTL-RELENG-2 has status=\"pending\" with review_notes=\"COLLECT-FAIL no-agent\" \u2014 row not closed. Test evidence: `go test -count=1 ./...` in /home/kara/coding-hermes-boardctl => EXIT_CODE=0, all 12 packages 'ok' (cmd/boardctl 4.773s, internal/board 0.765s, internal/vulncheck 2.969s). Caveat noted: .gitreins/tasks.yaml (gitignored harness state per .gitignore:5) shows status: complete, but that is evaluator bookkeeping, not the product board row.\nEvidence is product-scoped to boardctl at the exact recorded HEAD 2f97c81, carries 22 per-cell verdicts with no no-agent/unverified markers, and the authoritative board row remains pending after the collect cell failed \u2014 all conjunctive parts satisfied, with go test -count=1 ./... passing (exit 0).",
++      "steps": [
++        {
++          "id": "tier2",
++          "type": "ai_eval",
++          "passed": true,
++          "output": "COMPLETE\n  \u2713 Verify the releng battery evidence is product-scoped to boardctl at the recorded HEAD, contains per-cell verdicts without no-agent or unverified product collection, and preserves the row as pending when collection cannot be independently completed. Evidence: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl: Evidence file exists (23 lines, 5363 bytes). (1) PRODUCT-SCOPED: meta file /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl; battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, avoiding the parent repo (git -C /home/kara rev-parse --show-toplevel => /home/kara, the original failure mode). (2) RECORDED HEAD: evidence repo-head cell records HEAD=2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626; actual `git rev-parse HEAD` in /home/kara/coding-hermes-boardctl = 2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626 \u2014 exact match. (3) PER-CELL VERDICTS: 22 cells with statuses OK/FAIL/N/A/INFO/PASS \u2014 repo-head, launch, toolchain-bootstrap(x9), fresh-install(FAIL), ci-pass(OK), upgrade(OK), docker-deploy(N/A), ui-probe(INFO), chaos-disconnect(OK), chaos-shutdown(N/A), chaos-corruption(N/A), chaos-resource(PASS), chaos-errorpath(OK). (4) NO no-agent/unverified: `grep -o 'no-agent|unverified'` over the evidence returned zero matches. (5) ROW PENDING: final evidence line is cell=collect status=FAIL ('cannot reach agent=c80c0028 on bunker-mvp after 3 probe attempts ... may be TRANSIENT ssh/auth'), i.e. collection not independently completed; the git-tracked authoritative board .coding-hermes/board/tasks.jsonl row QA-BOARDCTL-RELENG-2 has status=\"pending\" with review_notes=\"COLLECT-FAIL no-agent\" \u2014 row not closed. Test evidence: `go test -count=1 ./...` in /home/kara/coding-hermes-boardctl => EXIT_CODE=0, all 12 packages 'ok' (cmd/boardctl 4.773s, internal/board 0.765s, internal/vulncheck 2.969s). Caveat noted: .gitreins/tasks.yaml (gitignored harness state per .gitignore:5) shows status: complete, but that is evaluator bookkeeping, not the product board row.\nEvidence is product-scoped to boardctl at the exact recorded HEAD 2f97c81, carries 22 per-cell verdicts with no no-agent/unverified markers, and the authoritative board row remains pending after the collect cell failed \u2014 all conjunctive parts satisfied, with go test -count=1 ./... passing (exit 0).",
++          "error": "",
++          "data": {
++            "verdict": "COMPLETE",
++            "items": [
++              {
++                "criterion": "Verify the releng battery evidence is product-scoped to boardctl at the recorded HEAD, contains per-cell verdicts without no-agent or unverified product collection, and preserves the row as pending when collection cannot be independently completed. Evidence: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl",
++                "status": "PASS",
++                "detail": "Evidence file exists (23 lines, 5363 bytes). (1) PRODUCT-SCOPED: meta file /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl; battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, avoiding the parent repo (git -C /home/kara rev-parse --show-toplevel => /home/kara, the original failure mode). (2) RECORDED HEAD: evidence repo-head cell records HEAD=2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626; actual `git rev-parse HEAD` in /home/kara/coding-hermes-boardctl = 2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626 \u2014 exact match. (3) PER-CELL VERDICTS: 22 cells with statuses OK/FAIL/N/A/INFO/PASS \u2014 repo-head, launch, toolchain-bootstrap(x9), fresh-install(FAIL), ci-pass(OK), upgrade(OK), docker-deploy(N/A), ui-probe(INFO), chaos-disconnect(OK), chaos-shutdown(N/A), chaos-corruption(N/A), chaos-resource(PASS), chaos-errorpath(OK). (4) NO no-agent/unverified: `grep -o 'no-agent|unverified'` over the evidence returned zero matches. (5) ROW PENDING: final evidence line is cell=collect status=FAIL ('cannot reach agent=c80c0028 on bunker-mvp after 3 probe attempts ... may be TRANSIENT ssh/auth'), i.e. collection not independently completed; the git-tracked authoritative board .coding-hermes/board/tasks.jsonl row QA-BOARDCTL-RELENG-2 has status=\"pending\" with review_notes=\"COLLECT-FAIL no-agent\" \u2014 row not closed. Test evidence: `go test -count=1 ./...` in /home/kara/coding-hermes-boardctl => EXIT_CODE=0, all 12 packages 'ok' (cmd/boardctl 4.773s, internal/board 0.765s, internal/vulncheck 2.969s). Caveat noted: .gitreins/tasks.yaml (gitignored harness state per .gitignore:5) shows status: complete, but that is evaluator bookkeeping, not the product board row."
++              }
++            ],
++            "summary": "Evidence is product-scoped to boardctl at the exact recorded HEAD 2f97c81, carries 22 per-cell verdicts with no no-agent/unverified markers, and the authoritative board row remains pending after the collect cell failed \u2014 all conjunctive parts satisfied, with go test -count=1 ./... passing (exit 0).",
++            "provenance": {
++              "model": "deepseek-v4-flash",
++              "base_url_source": "GITREINS_LLM_BASE_URL",
++              "api_key_source": "GITREINS_LLM_API_KEY"
++            }
++          }
++        }
++      ],
++      "model": "deepseek-v4-flash",
++      "base_url_source": "GITREINS_LLM_BASE_URL",
++      "api_key_source": "GITREINS_LLM_API_KEY"
++    }
++  },
++  "summary": "Judge Result: QA-BOARDCTL-RELENG-2\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Verify the releng battery evidence is product-scoped to boardctl at the recorded HEAD, contains per-cell verdicts without no-agent or unverified product collection, and preserves the row as pending when collection cannot be independently completed. Evidence: /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl: Evidence file exists (23 lines, 5363 bytes). (1) PRODUCT-SCOPED: meta file /tmp/bunker-qa-evidence-boardctl-releng-2-20261025-151451.jsonl.meta has project=coding-hermes-boardctl; battery ran in clone /home/bunker-c80c0028/qa-coding-hermes-boardctl, avoiding the parent repo (git -C /home/kara rev-parse --show-toplevel => /home/kara, the original failure mode). (2) RECORDED HEAD: evidence repo-head cell records HEAD=2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626; actual `git rev-parse HEAD` in /home/kara/coding-hermes-boardctl = 2f97c81acfa3354d6ecc8d62f1bb80a34bf0d626 \u2014 exact match. (3) PER-CELL VERDICTS: 22 cells with statuses OK/FAIL/N/A/INFO/PASS \u2014 repo-head, launch, toolchain-bootstrap(x9), fresh-install(FAIL), ci-pass(OK), upgrade(OK), docker-deploy(N/A), ui-probe(INFO), chaos-disconnect(OK), chaos-shutdown(N/A), chaos-corruption(N/A), chaos-resource(PASS), chaos-errorpath(OK). (4) NO no-agent/unverified: `grep -o 'no-agent|unverified'` over the evidence returned zero matches. (5) ROW PENDING: final evidence line is cell=collect status=FAIL ('cannot reach agent=c80c0028 on bunker-mvp after 3 probe attempts ... may be TRANSIENT ssh/auth'), i.e. collection not independently completed; the git-tracked authoritative board .coding-hermes/board/tasks.jsonl row QA-BOARDCTL-RELENG-2 has status=\"pending\" with review_notes=\"COLLECT-FAIL no-agent\" \u2014 row not closed. Test evidence: `go test -count=1 ./...` in /home/kara/coding-hermes-boardctl => EXIT_CODE=0, all 12 packages 'ok' (cmd/boardctl 4.773s, internal/board 0.765s, internal/vulncheck 2.969s). Caveat noted: .gitreins/tasks.yaml (gitignored harness state per .gitignore:5) shows status: complete, but that is evaluator bookkeeping, not the product board row.\nEvidence is product-scoped to boardctl at the exact recorded HEAD 2f97c81, carries 22 per-cell verdicts with no no-agent/unverified markers, and the authoritative board row remains pending after the collect cell failed \u2014 all conjunctive parts satisfied, with go test -count=1 ./... passing (exit 0).\n\nOverall: FAIL \u2717",
++  "evaluated_at": "2026-10-25T15:30:31.861321",
++  "supersedes": null,
++  "superseded_by": null,
++  "evidence": {
++    "collected_at": "2026-10-25T15:30:31.888050+00:00",
++    "items": [
++      {
++        "name": "patch",
++        "label": "Landed commit patch",
++        "file": "commit.patch",
++        "bytes": 16751,
++        "truncated": false,
++        "source": "git show 2f97c81acfa3"
++      },
++      {
++        "name": "worktree",
++        "label": "Working-tree diff (graded)",
++        "file": "worktree.patch",
++        "bytes": 46626,
++        "truncated": false,
++        "source": "git diff HEAD (working tree)"
++      }
++    ],
++    "task_id": "QA-BOARDCTL-RELENG-2"
++  }
++}
+\ No newline at end of file
+diff --git a/.gitreins/history/2026-10-25/7183b418/worktree.patch b/.gitreins/history/2026-10-25/7183b418/worktree.patch
+new file mode 100644
+index 0000000..02c3e72
+--- /dev/null
++++ b/.gitreins/history/2026-10-25/7183b418/worktree.patch
+@@ -0,0 +1,975 @@
++diff --git a/.gitreins/logs/guard-20261016T232755.921389Z.log b/.gitreins/logs/guard-20261016T232755.921389Z.log
++deleted file mode 100644
++index 18a8d53..0000000
++--- a/.gitreins/logs/guard-20261016T232755.921389Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-16T23:27:55Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261016T234428.531068Z.log b/.gitreins/logs/guard-20261016T234428.531068Z.log
++deleted file mode 100644
++index 2d76b1f..0000000
++--- a/.gitreins/logs/guard-20261016T234428.531068Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-16T23:44:28Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261017T001736.140781Z.log b/.gitreins/logs/guard-20261017T001736.140781Z.log
++deleted file mode 100644
++index 3c5b8bf..0000000
++--- a/.gitreins/logs/guard-20261017T001736.140781Z.log
+++++ /dev/null
++@@ -1,69 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T00:17:36Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: FAIL
++-guards: 4 (2 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-
++-==============================================================================
++-[FAIL] go_lint  passed=false  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-[cmd/boardctl] cmd/boardctl/main.go:1404:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
++-			fmt.Fprintf(os.Stdout, "\n=== events.jsonl repair ===\n")
++-			           ^
++-1 issues:
++-* errcheck: 1
++-
++-[internal/board] internal/board/associations.go:1: : # github.com/coding-hermes/boardctl/internal/board [github.com/coding-hermes/boardctl/internal/board.test]
++-internal/board/repair_events_test.go:37:12: undefined: OpenBoard
++-internal/board/repair_events_test.go:101:10: undefined: NewRow
++-internal/board/repair_events_test.go:139:12: undefined: OpenBoard
++-internal/board/repair_events_test.go:174:12: undefined: OpenBoard (typecheck)
++-package board
++-1 issues:
++-* typecheck: 1
++-
++-==============================================================================
++-[FAIL] go_tests  passed=false  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-# github.com/coding-hermes/boardctl/internal/board [github.com/coding-hermes/boardctl/internal/board.test]
++-internal/board/repair_events_test.go:37:12: undefined: OpenBoard
++-internal/board/repair_events_test.go:101:10: undefined: NewRow
++-internal/board/repair_events_test.go:139:12: undefined: OpenBoard
++-internal/board/repair_events_test.go:174:12: undefined: OpenBoard
++-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.132s
++-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.019s
++-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.005s
++-FAIL	github.com/coding-hermes/boardctl/internal/board [build failed]
++-ok  	github.com/coding-hermes/boardctl/internal/describe	0.008s
++---- FAIL: TestGofmt (0.18s)
++-    fmtcheck_test.go:29: found 1 file(s) not gofmt-clean — run `gofmt -w` (or `make fmt`) on:
++-          internal/board/repair_events.go
++-FAIL
++-FAIL	github.com/coding-hermes/boardctl/internal/fmtcheck	0.181s
++-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.856s
++-ok  	github.com/coding-hermes/boardctl/internal/render	0.031s
++-ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.027s
++-ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.010s
++-ok  	github.com/coding-hermes/boardctl/internal/vulncheck	2.971s
++-ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.009s
++-FAIL
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go build: ok
++diff --git a/.gitreins/logs/guard-20261017T002616.180981Z.log b/.gitreins/logs/guard-20261017T002616.180981Z.log
++deleted file mode 100644
++index f9f53dc..0000000
++--- a/.gitreins/logs/guard-20261017T002616.180981Z.log
+++++ /dev/null
++@@ -1,47 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T00:26:16Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: FAIL
++-guards: 4 (1 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-
++-==============================================================================
++-[FAIL] go_lint  passed=false  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-[cmd/boardctl] cmd/boardctl/main.go:1406:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
++-			fmt.Fprintf(os.Stdout, "\n=== events.jsonl repair ===\n")
++-			           ^
++-1 issues:
++-* errcheck: 1
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go build: ok
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.309s
++-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.014s
++-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.004s
++-ok  	github.com/coding-hermes/boardctl/internal/board	0.903s
++-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
++-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.137s
++-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.926s
++-ok  	github.com/coding-hermes/boardctl/internal/render	0.027s
++-ok  
++diff --git a/.gitreins/logs/guard-20261017T002647.153571Z.log b/.gitreins/logs/guard-20261017T002647.153571Z.log
++deleted file mode 100644
++index 258f522..0000000
++--- a/.gitreins/logs/guard-20261017T002647.153571Z.log
+++++ /dev/null
++@@ -1,43 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T00:26:47Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go build: ok
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-golangci-lint: clean (2 packages)
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	5.307s
++-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.077s
++-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.011s
++-ok  	github.com/coding-hermes/boardctl/internal/board	4.352s
++-ok  	github.com/coding-hermes/boardctl/internal/describe	0.012s
++-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.179s
++-ok  	github.com/coding-hermes/boardctl/internal/freshness	1.731s
++-ok  	github.com/coding-hermes/boardctl/internal/render	0.078s
++-ok  
++diff --git a/.gitreins/logs/guard-20261017T003130.191139Z.log b/.gitreins/logs/guard-20261017T003130.191139Z.log
++deleted file mode 100644
++index 0f5f427..0000000
++--- a/.gitreins/logs/guard-20261017T003130.191139Z.log
+++++ /dev/null
++@@ -1,51 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T00:31:30Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: FAIL
++-guards: 4 (1 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-
++-==============================================================================
++-[FAIL] go_tests  passed=false  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.007s
++-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.013s
++-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.004s
++-ok  	github.com/coding-hermes/boardctl/internal/board	0.786s
++-ok  	github.com/coding-hermes/boardctl/internal/describe	0.003s
++---- FAIL: TestGofmt (0.13s)
++-    fmtcheck_test.go:29: found 1 file(s) not gofmt-clean — run `gofmt -w` (or `make fmt`) on:
++-          internal/board/repair_events_test.go
++-FAIL
++-FAIL	github.com/coding-hermes/boardctl/internal/fmtcheck	0.128s
++-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.777s
++-ok  	github.com/coding-hermes/boardctl/internal/render	0.023s
++-ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.021s
++-ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.009s
++-ok  	github.com/coding-hermes/boardctl/internal/vulncheck	3.356s
++-ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.008s
++-FAIL
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go build: ok
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-golangci-lint: clean
++diff --git a/.gitreins/logs/guard-20261017T003152.151061Z.log b/.gitreins/logs/guard-20261017T003152.151061Z.log
++deleted file mode 100644
++index 50f9ee8..0000000
++--- a/.gitreins/logs/guard-20261017T003152.151061Z.log
+++++ /dev/null
++@@ -1,43 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T00:31:52Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go build: ok
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-golangci-lint: clean
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.224s
++-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.017s
++-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.007s
++-ok  	github.com/coding-hermes/boardctl/internal/board	0.871s
++-ok  	github.com/coding-hermes/boardctl/internal/describe	0.007s
++-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.148s
++-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.850s
++-ok  	github.com/coding-hermes/boardctl/internal/render	0.037s
++-ok  
++diff --git a/.gitreins/logs/guard-20261017T003335.049655Z.log b/.gitreins/logs/guard-20261017T003335.049655Z.log
++deleted file mode 100644
++index ddbe2e6..0000000
++--- a/.gitreins/logs/guard-20261017T003335.049655Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T00:33:35Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261017T122756.664359Z.log b/.gitreins/logs/guard-20261017T122756.664359Z.log
++deleted file mode 100644
++index 924ce0c..0000000
++--- a/.gitreins/logs/guard-20261017T122756.664359Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T12:27:56Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261017T140216.346475Z.log b/.gitreins/logs/guard-20261017T140216.346475Z.log
++deleted file mode 100644
++index 42bd716..0000000
++--- a/.gitreins/logs/guard-20261017T140216.346475Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T14:02:16Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261017T140753.116131Z.log b/.gitreins/logs/guard-20261017T140753.116131Z.log
++deleted file mode 100644
++index 665a9e2..0000000
++--- a/.gitreins/logs/guard-20261017T140753.116131Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T14:07:53Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261017T193351.416871Z.log b/.gitreins/logs/guard-20261017T193351.416871Z.log
++deleted file mode 100644
++index c9d2cbe..0000000
++--- a/.gitreins/logs/guard-20261017T193351.416871Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T19:33:51Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261017T223734.446036Z.log b/.gitreins/logs/guard-20261017T223734.446036Z.log
++deleted file mode 100644
++index 5aa5887..0000000
++--- a/.gitreins/logs/guard-20261017T223734.446036Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T22:37:34Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261017T223850.453218Z.log b/.gitreins/logs/guard-20261017T223850.453218Z.log
++deleted file mode 100644
++index 8ccbef4..0000000
++--- a/.gitreins/logs/guard-20261017T223850.453218Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T22:38:50Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261017T224112.241967Z.log b/.gitreins/logs/guard-20261017T224112.241967Z.log
++deleted file mode 100644
++index 4e61e82..0000000
++--- a/.gitreins/logs/guard-20261017T224112.241967Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-17T22:41:12Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261018T143557.019988Z.log b/.gitreins/logs/guard-20261018T143557.019988Z.log
++deleted file mode 100644
++index 879af30..0000000
++--- a/.gitreins/logs/guard-20261018T143557.019988Z.log
+++++ /dev/null
++@@ -1,43 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-18T14:35:57Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS
++-guards: 4 (0 failed, 0 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[PASS] go_build  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-go build: ok
++-
++-==============================================================================
++-[PASS] go_lint  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-golangci-lint: clean
++-
++-==============================================================================
++-[PASS] go_tests  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.034s
++-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.016s
++-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.005s
++-ok  	github.com/coding-hermes/boardctl/internal/board	0.810s
++-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
++-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.154s
++-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.808s
++-ok  	github.com/coding-hermes/boardctl/internal/render	0.030s
++-ok  
++diff --git a/.gitreins/logs/guard-20261018T144851.777804Z.log b/.gitreins/logs/guard-20261018T144851.777804Z.log
++deleted file mode 100644
++index 30a7b67..0000000
++--- a/.gitreins/logs/guard-20261018T144851.777804Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-18T14:48:51Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261018T145106.360101Z.log b/.gitreins/logs/guard-20261018T145106.360101Z.log
++deleted file mode 100644
++index 7ae76ef..0000000
++--- a/.gitreins/logs/guard-20261018T145106.360101Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-18T14:51:06Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261019T045108.769538Z.log b/.gitreins/logs/guard-20261019T045108.769538Z.log
++deleted file mode 100644
++index 1743edf..0000000
++--- a/.gitreins/logs/guard-20261019T045108.769538Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-19T04:51:08Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/.gitreins/logs/guard-20261019T045903.236489Z.log b/.gitreins/logs/guard-20261019T045903.236489Z.log
++deleted file mode 100644
++index 045bab1..0000000
++--- a/.gitreins/logs/guard-20261019T045903.236489Z.log
+++++ /dev/null
++@@ -1,39 +0,0 @@
++-GitReins guard run log — full output (the console summary is bounded)
++-run_utc: 2026-10-19T04:59:03Z
++-workdir: /home/kara/coding-hermes-boardctl
++-test_mode: full
++-test_targets: all (full mode)
++-overall: PASS (DEGRADED — skipped checks)
++-guards: 4 (0 failed, 3 skipped)
++-diagnostics:
++-  first_failing_test: none detected
++-  secrets_scanners: clean (gitleaks + builtin cross-check)
++-  scanner_nice: scanners: nice=nice -n 10
++-skipped_steps:
++-  - go_build: No Go files staged
++-  - go_lint: No Go files staged
++-  - go_tests: No Go files staged
++-
++-==============================================================================
++-[PASS] secrets  passed=true  exit_code=n/a
++-==============================================================================
++---- output (untruncated) ---
++-gitleaks: clean
++-
++-==============================================================================
++-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++-
++-==============================================================================
++-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++-==============================================================================
++---- output (untruncated) ---
++-No Go files staged
++diff --git a/cmd/boardctl/board-report.html b/cmd/boardctl/board-report.html
++index 8bbac8b..bd64e89 100644
++--- a/cmd/boardctl/board-report.html
+++++ b/cmd/boardctl/board-report.html
++@@ -111,7 +111,7 @@ footer ul{margin:4px 0;padding-left:18px}
++ <main id="view-compare" hidden></main>
++ <div id="errbox" hidden></div>
++ <footer id="foot"></footer>
++-<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-19T02:36:05-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
+++<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-25T10:30:21-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
++ <script>
++ "use strict";
++ (function(){
