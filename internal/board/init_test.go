@@ -276,6 +276,15 @@ func TestCreateOnEmptyInitializedBoard(t *testing.T) {
 	if !rows[1].Has("perpetual") || !rows[2].Has("perpetual") {
 		t.Fatal("created rows must stay self-similar with the fixture schema (perpetual key present)")
 	}
+	for i, row := range rows[1:] {
+		raw := row.Get("perpetual")
+		if string(raw) != "false" {
+			t.Fatalf("created row %d perpetual = %s, want JSON false", i+1, raw)
+		}
+	}
+	if raw := rows[0].Get("perpetual"); string(raw) != "true" {
+		t.Fatalf("fixture perpetual = %s, want JSON true", raw)
+	}
 }
 
 // initTopologyBRefusalMessage is the exact error Init returns when the

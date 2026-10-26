@@ -759,6 +759,10 @@ func neutralValue(key string) json.RawMessage {
 		return json.RawMessage(`"pending"`)
 	case "worker_status":
 		return json.RawMessage(`"pending"`)
+	case "perpetual":
+		// Ordinary created rows are not perpetual fixtures. Keep the key's
+		// schema type boolean when mirroring the NEVER-DONE fixture row.
+		return json.RawMessage("false")
 	default:
 		return json.RawMessage("null")
 	}
