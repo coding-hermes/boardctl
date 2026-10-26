@@ -1,0 +1,109 @@
+{
+  "task_id": "QA-BOARDCTL-RELENG-1",
+  "task_title": "boardctl releng battery second collect pass",
+  "task_criteria": [
+    "1) bunker-qa launch against /home/kara/coding-hermes-boardctl produces status OK with agent id. 2) collect on the printed evidence path exits 0 with OK or RUNNING. 3) evidence contains no detail with no-agent."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "d863d3327b271daf76bb4e57e4a4eecf9c16bbd8",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:24AM INF scanned ~3764786 bytes (3.76 MB) in 1s\n6:24AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 253 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T163904.264807Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.928s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.916s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.144s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.020s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T163904.264807Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 1) bunker-qa launch against /home/kara/coding-hermes-boardctl produces status OK with agent id. 2) collect on the printed evidence path exits 0 with OK or RUNNING. 3) evidence contains no detail with no-agent.: 1) /tmp/qa-boardctl-releng1/launch.log: 'QA LAUNCH project: coding-hermes-boardctl \u2014 detached battery on bunker-mvp' and 'LAUNCHED agent=af9c28e8 evidence=/tmp/qa-boardctl-releng1/evidence.jsonl'; evidence.jsonl.meta confirms project=coding-hermes-boardctl, agent=af9c28e8, server=bunker-mvp, and the launch cell row is status OK with detail 'agent=af9c28e8 server=bunker-mvp ttl=4h ...'. 2) /tmp/qa-boardctl-releng1/poll.log attempts 1-4 show 'rc=0 ... RUNNING agent=af9c28e8' and attempt 5 shows 'rc=0 ... COLLECTED agent=af9c28e8 rows=19'; re-running `bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence /tmp/qa-boardctl-releng1/evidence.jsonl` returned 'COLLECTED already-collected' with EXIT=0. 3) `grep -n 'no-agent' evidence.jsonl evidence.jsonl.chaos-disconnect.log` returned no matches (grep_rc=1, count=0); all 22 evidence rows carry real details (e.g. 'agent=af9c28e8 (bunker-mvp) \u2014 pulled 19 evidence row(s)').\nLaunch produced OK with agent af9c28e8 for coding-hermes-boardctl, collect on the printed evidence path exits 0 (RUNNING then COLLECTED), and the evidence contains no 'no-agent' detail.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 1) bunker-qa launch against /home/kara/coding-hermes-boardctl produces status OK with agent id. 2) collect on the printed evidence path exits 0 with OK or RUNNING. 3) evidence contains no detail with no-agent.: 1) /tmp/qa-boardctl-releng1/launch.log: 'QA LAUNCH project: coding-hermes-boardctl \u2014 detached battery on bunker-mvp' and 'LAUNCHED agent=af9c28e8 evidence=/tmp/qa-boardctl-releng1/evidence.jsonl'; evidence.jsonl.meta confirms project=coding-hermes-boardctl, agent=af9c28e8, server=bunker-mvp, and the launch cell row is status OK with detail 'agent=af9c28e8 server=bunker-mvp ttl=4h ...'. 2) /tmp/qa-boardctl-releng1/poll.log attempts 1-4 show 'rc=0 ... RUNNING agent=af9c28e8' and attempt 5 shows 'rc=0 ... COLLECTED agent=af9c28e8 rows=19'; re-running `bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence /tmp/qa-boardctl-releng1/evidence.jsonl` returned 'COLLECTED already-collected' with EXIT=0. 3) `grep -n 'no-agent' evidence.jsonl evidence.jsonl.chaos-disconnect.log` returned no matches (grep_rc=1, count=0); all 22 evidence rows carry real details (e.g. 'agent=af9c28e8 (bunker-mvp) \u2014 pulled 19 evidence row(s)').\nLaunch produced OK with agent af9c28e8 for coding-hermes-boardctl, collect on the printed evidence path exits 0 (RUNNING then COLLECTED), and the evidence contains no 'no-agent' detail.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "1) bunker-qa launch against /home/kara/coding-hermes-boardctl produces status OK with agent id. 2) collect on the printed evidence path exits 0 with OK or RUNNING. 3) evidence contains no detail with no-agent.",
+                "status": "PASS",
+                "detail": "1) /tmp/qa-boardctl-releng1/launch.log: 'QA LAUNCH project: coding-hermes-boardctl \u2014 detached battery on bunker-mvp' and 'LAUNCHED agent=af9c28e8 evidence=/tmp/qa-boardctl-releng1/evidence.jsonl'; evidence.jsonl.meta confirms project=coding-hermes-boardctl, agent=af9c28e8, server=bunker-mvp, and the launch cell row is status OK with detail 'agent=af9c28e8 server=bunker-mvp ttl=4h ...'. 2) /tmp/qa-boardctl-releng1/poll.log attempts 1-4 show 'rc=0 ... RUNNING agent=af9c28e8' and attempt 5 shows 'rc=0 ... COLLECTED agent=af9c28e8 rows=19'; re-running `bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence /tmp/qa-boardctl-releng1/evidence.jsonl` returned 'COLLECTED already-collected' with EXIT=0. 3) `grep -n 'no-agent' evidence.jsonl evidence.jsonl.chaos-disconnect.log` returned no matches (grep_rc=1, count=0); all 22 evidence rows carry real details (e.g. 'agent=af9c28e8 (bunker-mvp) \u2014 pulled 19 evidence row(s)')."
+              }
+            ],
+            "summary": "Launch produced OK with agent af9c28e8 for coding-hermes-boardctl, collect on the printed evidence path exits 0 (RUNNING then COLLECTED), and the evidence contains no 'no-agent' detail.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-RELENG-1\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 1) bunker-qa launch against /home/kara/coding-hermes-boardctl produces status OK with agent id. 2) collect on the printed evidence path exits 0 with OK or RUNNING. 3) evidence contains no detail with no-agent.: 1) /tmp/qa-boardctl-releng1/launch.log: 'QA LAUNCH project: coding-hermes-boardctl \u2014 detached battery on bunker-mvp' and 'LAUNCHED agent=af9c28e8 evidence=/tmp/qa-boardctl-releng1/evidence.jsonl'; evidence.jsonl.meta confirms project=coding-hermes-boardctl, agent=af9c28e8, server=bunker-mvp, and the launch cell row is status OK with detail 'agent=af9c28e8 server=bunker-mvp ttl=4h ...'. 2) /tmp/qa-boardctl-releng1/poll.log attempts 1-4 show 'rc=0 ... RUNNING agent=af9c28e8' and attempt 5 shows 'rc=0 ... COLLECTED agent=af9c28e8 rows=19'; re-running `bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence /tmp/qa-boardctl-releng1/evidence.jsonl` returned 'COLLECTED already-collected' with EXIT=0. 3) `grep -n 'no-agent' evidence.jsonl evidence.jsonl.chaos-disconnect.log` returned no matches (grep_rc=1, count=0); all 22 evidence rows carry real details (e.g. 'agent=af9c28e8 (bunker-mvp) \u2014 pulled 19 evidence row(s)').\nLaunch produced OK with agent af9c28e8 for coding-hermes-boardctl, collect on the printed evidence path exits 0 (RUNNING then COLLECTED), and the evidence contains no 'no-agent' detail.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-26T11:25:40.240194",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-26T11:25:40.334841+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 262176,
+        "truncated": true,
+        "source": "git show d863d3327b27"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 6702,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-RELENG-1"
+  }
+}
