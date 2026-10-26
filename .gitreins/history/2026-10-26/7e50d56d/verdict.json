@@ -1,0 +1,109 @@
+{
+  "task_id": "QA-BOARDCTL-REVIEW-1",
+  "task_title": "Second boardctl-review QA collect pass",
+  "task_criteria": [
+    "1) bunker-qa launch starts successfully with an agent id. 2) bunker-qa collect --evidence reaches OK or RUNNING without the prior syntax error. 3) Evidence JSONL contains a collect cell not UNVERIFIED. Traceability: row QA-BOARDCTL-REVIEW-1, evidence is the collected JSONL path and live command output."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "96fe1e3f446a84f9143d6ea773b7173078c47270",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n1:05PM INF scanned ~3774388 bytes (3.77 MB) in 1.1s\n1:05PM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 254 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T163904.264807Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t55.577s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.327s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t46.145s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.113s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.018s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261025T163904.264807Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 1) bunker-qa launch starts successfully with an agent id. 2) bunker-qa collect --evidence reaches OK or RUNNING without the prior syntax error. 3) Evidence JSONL contains a collect cell not UNVERIFIED. Traceability: row QA-BOARDCTL-REVIEW-1, evidence is the collected JSONL path and live command output.: The live artifacts exist but the required traceability is absent, and the board row records the opposite outcome. (a) Launch: /tmp/bunker-qa-evidence-20261026T175824Z-1004168.jsonl line 2 = {\"cell\":\"launch\",\"status\":\"OK\",\"detail\":\"agent=3b216d9f server=bunker-mvp ttl=4h ...\"} (ts 2026-10-26T17:58:55Z) \u2014 agent id present. (b) Collect: same file line 22 = {\"cell\":\"collect\",\"status\":\"OK\",\"detail\":\"agent=3b216d9f (bunker-mvp) \u2014 pulled 19 evidence row(s)... temp agent destroyed\",\"ts\":\"2026-10-26T18:02:22Z\"}; `grep -n \"syntax error\"` on that file returned exit_code 1 (no match), 22 non-empty lines \u2014 so no prior syntax error. (c) Collect cell status is OK, not UNVERIFIED. HOWEVER the traceability clause fails: .coding-hermes/board/tasks.jsonl:206 \u2014 the only row for QA-BOARDCTL-REVIEW-1 \u2014 still reads \"status\": \"blocked\", \"worker_status\": \"failed\", \"worker_summary\": \"Worker dispatch blocked before launch/collect evidence; Hermes worker stalled after toolset warning with no QA output.\", \"foreman_note\": \"...no launch agent id or evidence JSONL was produced. UNBLOCK: rerun bunker-qa launch/collect...\". `git diff .coding-hermes/board/tasks.jsonl` shows the sole change to that row is pending -> blocked, with no evidence path, agent id, or collect status added. `git diff .coding-hermes/board/events.jsonl` adds only three task_updated events (in_progress x2, blocked) \u2014 no audit/completion event carrying the JSONL path or a ch:trace marker for this row. The only changed code file is cmd/boardctl/board-report.html (rendered_at timestamp bump 2026-10-19 -> 2026-10-26), i.e. no QA evidence artifact was committed. .gitreins/tasks.yaml marks the task complete (completed_at 2026-10-26T18:05:00Z) but records no evidence either. The criterion explicitly requires the row plus the collected JSONL path and live command output as evidence; the row is blocked/failed with no evidence recorded, so the criterion is not met.\nLaunch/collect evidence JSONL on disk shows launch OK agent=3b216d9f and collect OK with no syntax error, but the QA-BOARDCTL-REVIEW-1 board row remains blocked/failed with no evidence path or live output recorded, so the traceability requirement fails.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 1) bunker-qa launch starts successfully with an agent id. 2) bunker-qa collect --evidence reaches OK or RUNNING without the prior syntax error. 3) Evidence JSONL contains a collect cell not UNVERIFIED. Traceability: row QA-BOARDCTL-REVIEW-1, evidence is the collected JSONL path and live command output.: The live artifacts exist but the required traceability is absent, and the board row records the opposite outcome. (a) Launch: /tmp/bunker-qa-evidence-20261026T175824Z-1004168.jsonl line 2 = {\"cell\":\"launch\",\"status\":\"OK\",\"detail\":\"agent=3b216d9f server=bunker-mvp ttl=4h ...\"} (ts 2026-10-26T17:58:55Z) \u2014 agent id present. (b) Collect: same file line 22 = {\"cell\":\"collect\",\"status\":\"OK\",\"detail\":\"agent=3b216d9f (bunker-mvp) \u2014 pulled 19 evidence row(s)... temp agent destroyed\",\"ts\":\"2026-10-26T18:02:22Z\"}; `grep -n \"syntax error\"` on that file returned exit_code 1 (no match), 22 non-empty lines \u2014 so no prior syntax error. (c) Collect cell status is OK, not UNVERIFIED. HOWEVER the traceability clause fails: .coding-hermes/board/tasks.jsonl:206 \u2014 the only row for QA-BOARDCTL-REVIEW-1 \u2014 still reads \"status\": \"blocked\", \"worker_status\": \"failed\", \"worker_summary\": \"Worker dispatch blocked before launch/collect evidence; Hermes worker stalled after toolset warning with no QA output.\", \"foreman_note\": \"...no launch agent id or evidence JSONL was produced. UNBLOCK: rerun bunker-qa launch/collect...\". `git diff .coding-hermes/board/tasks.jsonl` shows the sole change to that row is pending -> blocked, with no evidence path, agent id, or collect status added. `git diff .coding-hermes/board/events.jsonl` adds only three task_updated events (in_progress x2, blocked) \u2014 no audit/completion event carrying the JSONL path or a ch:trace marker for this row. The only changed code file is cmd/boardctl/board-report.html (rendered_at timestamp bump 2026-10-19 -> 2026-10-26), i.e. no QA evidence artifact was committed. .gitreins/tasks.yaml marks the task complete (completed_at 2026-10-26T18:05:00Z) but records no evidence either. The criterion explicitly requires the row plus the collected JSONL path and live command output as evidence; the row is blocked/failed with no evidence recorded, so the criterion is not met.\nLaunch/collect evidence JSONL on disk shows launch OK agent=3b216d9f and collect OK with no syntax error, but the QA-BOARDCTL-REVIEW-1 board row remains blocked/failed with no evidence path or live output recorded, so the traceability requirement fails.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "1) bunker-qa launch starts successfully with an agent id. 2) bunker-qa collect --evidence reaches OK or RUNNING without the prior syntax error. 3) Evidence JSONL contains a collect cell not UNVERIFIED. Traceability: row QA-BOARDCTL-REVIEW-1, evidence is the collected JSONL path and live command output.",
+                "status": "FAIL",
+                "detail": "The live artifacts exist but the required traceability is absent, and the board row records the opposite outcome. (a) Launch: /tmp/bunker-qa-evidence-20261026T175824Z-1004168.jsonl line 2 = {\"cell\":\"launch\",\"status\":\"OK\",\"detail\":\"agent=3b216d9f server=bunker-mvp ttl=4h ...\"} (ts 2026-10-26T17:58:55Z) \u2014 agent id present. (b) Collect: same file line 22 = {\"cell\":\"collect\",\"status\":\"OK\",\"detail\":\"agent=3b216d9f (bunker-mvp) \u2014 pulled 19 evidence row(s)... temp agent destroyed\",\"ts\":\"2026-10-26T18:02:22Z\"}; `grep -n \"syntax error\"` on that file returned exit_code 1 (no match), 22 non-empty lines \u2014 so no prior syntax error. (c) Collect cell status is OK, not UNVERIFIED. HOWEVER the traceability clause fails: .coding-hermes/board/tasks.jsonl:206 \u2014 the only row for QA-BOARDCTL-REVIEW-1 \u2014 still reads \"status\": \"blocked\", \"worker_status\": \"failed\", \"worker_summary\": \"Worker dispatch blocked before launch/collect evidence; Hermes worker stalled after toolset warning with no QA output.\", \"foreman_note\": \"...no launch agent id or evidence JSONL was produced. UNBLOCK: rerun bunker-qa launch/collect...\". `git diff .coding-hermes/board/tasks.jsonl` shows the sole change to that row is pending -> blocked, with no evidence path, agent id, or collect status added. `git diff .coding-hermes/board/events.jsonl` adds only three task_updated events (in_progress x2, blocked) \u2014 no audit/completion event carrying the JSONL path or a ch:trace marker for this row. The only changed code file is cmd/boardctl/board-report.html (rendered_at timestamp bump 2026-10-19 -> 2026-10-26), i.e. no QA evidence artifact was committed. .gitreins/tasks.yaml marks the task complete (completed_at 2026-10-26T18:05:00Z) but records no evidence either. The criterion explicitly requires the row plus the collected JSONL path and live command output as evidence; the row is blocked/failed with no evidence recorded, so the criterion is not met."
+              }
+            ],
+            "summary": "Launch/collect evidence JSONL on disk shows launch OK agent=3b216d9f and collect OK with no syntax error, but the QA-BOARDCTL-REVIEW-1 board row remains blocked/failed with no evidence path or live output recorded, so the traceability requirement fails.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-REVIEW-1\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 1) bunker-qa launch starts successfully with an agent id. 2) bunker-qa collect --evidence reaches OK or RUNNING without the prior syntax error. 3) Evidence JSONL contains a collect cell not UNVERIFIED. Traceability: row QA-BOARDCTL-REVIEW-1, evidence is the collected JSONL path and live command output.: The live artifacts exist but the required traceability is absent, and the board row records the opposite outcome. (a) Launch: /tmp/bunker-qa-evidence-20261026T175824Z-1004168.jsonl line 2 = {\"cell\":\"launch\",\"status\":\"OK\",\"detail\":\"agent=3b216d9f server=bunker-mvp ttl=4h ...\"} (ts 2026-10-26T17:58:55Z) \u2014 agent id present. (b) Collect: same file line 22 = {\"cell\":\"collect\",\"status\":\"OK\",\"detail\":\"agent=3b216d9f (bunker-mvp) \u2014 pulled 19 evidence row(s)... temp agent destroyed\",\"ts\":\"2026-10-26T18:02:22Z\"}; `grep -n \"syntax error\"` on that file returned exit_code 1 (no match), 22 non-empty lines \u2014 so no prior syntax error. (c) Collect cell status is OK, not UNVERIFIED. HOWEVER the traceability clause fails: .coding-hermes/board/tasks.jsonl:206 \u2014 the only row for QA-BOARDCTL-REVIEW-1 \u2014 still reads \"status\": \"blocked\", \"worker_status\": \"failed\", \"worker_summary\": \"Worker dispatch blocked before launch/collect evidence; Hermes worker stalled after toolset warning with no QA output.\", \"foreman_note\": \"...no launch agent id or evidence JSONL was produced. UNBLOCK: rerun bunker-qa launch/collect...\". `git diff .coding-hermes/board/tasks.jsonl` shows the sole change to that row is pending -> blocked, with no evidence path, agent id, or collect status added. `git diff .coding-hermes/board/events.jsonl` adds only three task_updated events (in_progress x2, blocked) \u2014 no audit/completion event carrying the JSONL path or a ch:trace marker for this row. The only changed code file is cmd/boardctl/board-report.html (rendered_at timestamp bump 2026-10-19 -> 2026-10-26), i.e. no QA evidence artifact was committed. .gitreins/tasks.yaml marks the task complete (completed_at 2026-10-26T18:05:00Z) but records no evidence either. The criterion explicitly requires the row plus the collected JSONL path and live command output as evidence; the row is blocked/failed with no evidence recorded, so the criterion is not met.\nLaunch/collect evidence JSONL on disk shows launch OK agent=3b216d9f and collect OK with no syntax error, but the QA-BOARDCTL-REVIEW-1 board row remains blocked/failed with no evidence path or live output recorded, so the traceability requirement fails.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-26T18:07:20.824582",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-26T18:07:20.849166+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 12177,
+        "truncated": false,
+        "source": "git show 96fe1e3f446a"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 23824,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-REVIEW-1"
+  }
+}
