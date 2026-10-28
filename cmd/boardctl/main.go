@@ -51,7 +51,7 @@ commands:
   show    <id> [--events]
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
-          [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--worktree PATH] [--branch NAME]
+          [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
           [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
@@ -62,7 +62,7 @@ commands:
           (repeatable; each merges one element into its pull_requests/
           branches/worktrees dimension — existing elements, the other
           dimensions, and the singular worktree/branch fields survive)
-          [--evidence-run-id RUN] [--deferred true|false] [--normalize] [--force]
+          [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--deferred true|false] [--normalize] [--force]
           (--status complete REQUIRES --evidence-run-id: a completion without a
           bound run is REFUSED — TR-251; doctor reports the historic debt as
           verified_complete_share)
@@ -658,7 +658,7 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "evidence-run-id", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
@@ -680,6 +680,9 @@ func cmdCreate(dir string, args []string) error {
 	// omitted, like every other string flag here.
 	acceptance := fs.String("acceptance-criteria", "", "acceptance criteria the row must satisfy before it can be dispatched (free text; multi-line allowed; omit = write no key)")
 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence (SG-126)")
+	evidenceFingerprint := fs.String("evidence-fingerprint", "", "64-hex GitReins tree digest recorded as evidence (BT-82)")
+	var evidenceArtifacts stringListFlag
+	fs.Var(&evidenceArtifacts, "evidence-artifact", "evidence artifact path or identifier (repeatable; requires --evidence-fingerprint)")
 	// BT-037: build-location + session audit fields. Omitted flags write
 	// NOTHING (no empty worktree/branch, no empty sessions array) — a row
 	// built in the main checkout simply carries no worktree/branch keys.
@@ -707,7 +710,7 @@ func cmdCreate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--acceptance-criteria TEXT] [--evidence-run-id id] [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--acceptance-criteria TEXT] [--evidence-run-id id] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--force] [flags] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\n          --acceptance-criteria is free text and may span lines (embedded\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          newlines are JSON-escaped into the one physical row line). It is\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          the dispatchability field: a foreman will not dispatch a row\n")
@@ -731,15 +734,18 @@ func cmdCreate(dir string, args []string) error {
 		return err
 	}
 	spec := board.TaskRowSpec{
-		ID:            *id,
-		Title:         *title,
-		Status:        *status,
-		Priority:      *priority,
-		Reasoning:     *reasoning,
-		HasDependsOn:  *dependsOn != "",
-		HasTags:       *capTags != "",
-		Force:         *force,
-		EvidenceRunID: *evidenceRunID,
+		ID:                   *id,
+		Title:                *title,
+		Status:               *status,
+		Priority:             *priority,
+		Reasoning:            *reasoning,
+		HasDependsOn:         *dependsOn != "",
+		HasTags:              *capTags != "",
+		Force:                *force,
+		EvidenceRunID:        *evidenceRunID,
+		EvidenceFingerprint:  *evidenceFingerprint,
+		EvidenceArtifacts:    []string(evidenceArtifacts),
+		HasEvidenceArtifacts: len(evidenceArtifacts) > 0,
 	}
 	if spec.HasDependsOn {
 		spec.DependsOn = splitCSV(*dependsOn)
@@ -828,7 +834,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "pull-request", "assoc-branch", "assoc-worktree"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -865,6 +871,9 @@ func cmdUpdate(dir string, args []string) error {
 	// priority is rejected by the same write-time gate create uses.
 	priority := fs.String("priority", "", "priority (P0-P5; bare 0-5 and case variants are normalized; omitted = leave untouched)")
 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence on the existing row's detail (SG-126)")
+	evidenceFingerprint := fs.String("evidence-fingerprint", "", "64-hex GitReins tree digest recorded as evidence (BT-82)")
+	var evidenceArtifacts stringListFlag
+	fs.Var(&evidenceArtifacts, "evidence-artifact", "evidence artifact path or identifier (repeatable; requires --evidence-fingerprint)")
 	// BT-076: value flag taking true|false (strconv.ParseBool spellings),
 	// NOT a bare bool — un-deferring needs the explicit false, which a bare
 	// bool flag cannot express. Omitted = the row's deferred key is
@@ -895,7 +904,7 @@ func cmdUpdate(dir string, args []string) error {
 		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--acceptance-criteria TEXT]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--worktree PATH] [--branch NAME]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... (repeatable; each MERGES one element into its dimension — pull_requests/branches/worktrees — never overwriting existing elements or the other dimensions)\n")
-		_, _ = fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--normalize] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--normalize] [--force] [flags] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\n          --acceptance-criteria is free text and may span lines (embedded\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          newlines are JSON-escaped into the one physical row line). It\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          replaces the row's criteria, so a foreman can dispatch the row;\n")
@@ -965,8 +974,11 @@ func cmdUpdate(dir string, args []string) error {
 		// DF-BOARDCTL-50: empty value = flag omitted for every other string
 		// flag, and the same ptr() discipline applies here — an untouched
 		// row never gains an empty acceptance_criteria key.
-		AcceptanceCriteria: ptr(*acceptance),
-		Force:              *force,
+		AcceptanceCriteria:   ptr(*acceptance),
+		Force:                *force,
+		EvidenceFingerprint:  *evidenceFingerprint,
+		EvidenceArtifacts:    []string(evidenceArtifacts),
+		HasEvidenceArtifacts: len(evidenceArtifacts) > 0,
 	}
 	if *priority != "" {
 		spec.Priority = priority
@@ -1055,13 +1067,17 @@ func cmdUpdate(dir string, args []string) error {
 
 func cmdEvent(dir string, args []string) error {
 	fs := newFlagSet("event")
-	args = reorderArgs(args, valueFlags("C", "type", "task-id", "actor", "detail", "detail-text", "tick"))
+	args = reorderArgs(args, valueFlags("C", "type", "task-id", "actor", "detail", "detail-text", "tick", "evidence-fingerprint", "evidence-artifact"))
 	etype := fs.String("type", "", "event_type (required; no default)")
 	taskID := fs.String("task-id", "", "task_id")
 	actor := fs.String("actor", "", "actor (default foreman)")
 	detailFile := fs.String("detail", "", "detail JSON payload: @/path/file.json")
 	detailText := fs.String("detail-text", "", "detail plain text")
 	tick := fs.String("tick", "", "tick_number")
+	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded in the event evidence")
+	evidenceFingerprint := fs.String("evidence-fingerprint", "", "64-hex GitReins tree digest recorded in the event detail (BT-82)")
+	var evidenceArtifacts stringListFlag
+	fs.Var(&evidenceArtifacts, "evidence-artifact", "evidence artifact path or identifier (repeatable; requires --evidence-fingerprint)")
 	noTickWrite := fs.Bool("no-tick-write", false, "with --tick: skip the header ticks_total rewrite (board keeps its bytes; counter may go stale)")
 	var cdir string
 	addCFlag(fs, &cdir)
@@ -1133,6 +1149,23 @@ func cmdEvent(dir string, args []string) error {
 	}
 	if *detailText != "" {
 		spec.DetailText = detailText
+	}
+	if *evidenceFingerprint != "" {
+		if err := board.ValidateEvidenceFingerprint(*evidenceFingerprint); err != nil {
+			return err
+		}
+		payload := map[string]any{"tree_fp": *evidenceFingerprint, "run_id": *evidenceRunID}
+		if len(evidenceArtifacts) > 0 {
+			payload["artifacts"] = []string(evidenceArtifacts)
+		}
+		enc, _ := json.Marshal(payload)
+		spec.Detail = enc
+	} else if len(evidenceArtifacts) > 0 {
+		return fmt.Errorf("--evidence-artifact requires --evidence-fingerprint")
+	} else if *evidenceRunID != "" {
+		payload := map[string]string{"run_id": *evidenceRunID}
+		enc, _ := json.Marshal(payload)
+		spec.Detail = enc
 	}
 	if *tick != "" {
 		n, err := parseIntFlag("--tick", *tick)

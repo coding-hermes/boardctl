@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -36,6 +37,10 @@ import (
 const findingFingerprintSep = '\x1f'
 
 var (
+	// evidenceFingerprintRe is the tree identity produced by GitReins. It is
+	// deliberately separate from FindingFingerprint, which identifies findings.
+	evidenceFingerprintRe = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
+
 	// findingIDPrefixRe strips a leading finding-id token such as
 	// "QA-CRIER-3 ", "DF-AI-PLAYS-POKE-12 " or "DOGFOOD-MESH-1 " — the id is
 	// recycled per cycle, so it must not be part of the identity.
@@ -75,6 +80,16 @@ func NormalizeFindingText(s string) string {
 		s = trimmed
 	}
 	return strings.Join(strings.Fields(s), " ")
+}
+
+// ValidateEvidenceFingerprint validates a GitReins tree digest. It must be
+// exactly 64 hexadecimal characters; this is intentionally not the finding
+// fingerprint used by dedupe.
+func ValidateEvidenceFingerprint(fp string) error {
+	if !evidenceFingerprintRe.MatchString(fp) {
+		return fmt.Errorf("evidence fingerprint %q must be exactly 64 hexadecimal characters", fp)
+	}
+	return nil
 }
 
 // FindingFingerprint is the SHA-256 (hex) of the normalized title, the unit
@@ -156,9 +171,11 @@ func RowIsOpenFinding(row *Row) bool {
 // EvidenceEntry is one recorded re-observation of a finding: the run that saw
 // it again (and, for a backfill merge, the row it was merged away from).
 type EvidenceEntry struct {
-	RunID  string `json:"run_id,omitempty"`
-	TS     string `json:"ts,omitempty"`
-	TaskID string `json:"task_id,omitempty"`
+	RunID     string   `json:"run_id,omitempty"`
+	TS        string   `json:"ts,omitempty"`
+	TaskID    string   `json:"task_id,omitempty"`
+	TreeFP    string   `json:"tree_fp,omitempty"`
+	Artifacts []string `json:"artifacts,omitempty"`
 }
 
 // FindingDetail is the SG-126 metadata carried inside a task row's detail
@@ -186,16 +203,28 @@ func (p parsedDetail) withFingerprint(fp string) parsedDetail {
 	return p
 }
 
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // withEvidence appends entries, skipping ones already present (idempotent
 // merges: a re-run of the backfill adds nothing).
 func (p parsedDetail) withEvidence(entries []EvidenceEntry) parsedDetail {
 	for _, e := range entries {
-		if e == (EvidenceEntry{}) {
+		if e.RunID == "" && e.TS == "" && e.TaskID == "" && e.TreeFP == "" && len(e.Artifacts) == 0 {
 			continue
 		}
 		dup := false
 		for _, have := range p.Finding.Evidence {
-			if have == e {
+			if have.RunID == e.RunID && have.TS == e.TS && have.TaskID == e.TaskID && slicesEqual(have.Artifacts, e.Artifacts) && have.TreeFP == e.TreeFP {
 				dup = true
 				break
 			}

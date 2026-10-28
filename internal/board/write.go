@@ -218,10 +218,12 @@ type TaskRowSpec struct {
 	CapabilityTags []string
 	HasTags        bool
 	Force          bool // BT-023: bypass the fleet task-id format check
-	// SG-126: optional run identifier recorded as evidence on the new row
-	// (detail.evidence[].run_id) and on a suppressed duplicate's
-	// task_evidence event.
-	EvidenceRunID string
+	// SG-126/BT-82: evidence identity. tree_fp is a GitReins tree digest,
+	// distinct from the finding fingerprint used by dedupe.
+	EvidenceRunID        string
+	EvidenceFingerprint  string
+	EvidenceArtifacts    []string
+	HasEvidenceArtifacts bool
 
 	// BT-037: first-class build-location + session audit fields.
 	//
@@ -312,6 +314,17 @@ type TaskRowSpec struct {
 func (b *Board) Create(spec TaskRowSpec) (string, error) {
 	if spec.ID == "" {
 		return "", fmt.Errorf("create requires --id")
+	}
+	if spec.EvidenceFingerprint != "" {
+		if err := ValidateEvidenceFingerprint(spec.EvidenceFingerprint); err != nil {
+			return "", err
+		}
+	}
+	if spec.HasEvidenceArtifacts && spec.EvidenceFingerprint == "" {
+		return "", fmt.Errorf("--evidence-artifact requires --evidence-fingerprint")
+	}
+	if spec.EvidenceRunID == "" && spec.EvidenceFingerprint != "" {
+		return "", fmt.Errorf("--evidence-fingerprint requires --evidence-run-id")
 	}
 	// BT-050: the whole check-then-act window — duplicate-id scan through
 	// final append (and the audit event) — runs under the exclusive write
@@ -625,7 +638,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	pd := ParseFindingDetail(row.Get("detail"))
 	pd = pd.withFingerprint(FindingFingerprint(spec.Title, spec.Reasoning))
 	if spec.EvidenceRunID != "" {
-		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: nowStr}})
+		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: nowStr, TreeFP: spec.EvidenceFingerprint, Artifacts: spec.EvidenceArtifacts}})
 	}
 	enc, encErr := EncodeFindingDetail(pd, style)
 	if encErr != nil {
@@ -837,8 +850,11 @@ type UpdateSpec struct {
 	// into the row's detail envelope (SG-126), so run evidence can be
 	// recorded on a row that ALREADY exists — create never had the only
 	// door. An omitted flag leaves the key (and the detail bytes) untouched.
-	Priority      *string
-	EvidenceRunID string
+	Priority             *string
+	EvidenceRunID        string
+	EvidenceFingerprint  string
+	EvidenceArtifacts    []string
+	HasEvidenceArtifacts bool
 	// BT-025: normalize mode — rewrite ONLY the row's status (via the
 	// read-alias table) and guard_result/ci_result (via NormalizeResultValue)
 	// to their canonical forms. Any present field whose value cannot be
@@ -861,6 +877,17 @@ type UpdateSpec struct {
 // drift pointer (BT-024) — a task fix commit must NOT overwrite it; the
 // explicit way to move the pointer is `header --set-last-commit` (SetHeader).
 func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
+	if spec.EvidenceFingerprint != "" {
+		if err := ValidateEvidenceFingerprint(spec.EvidenceFingerprint); err != nil {
+			return nil, err
+		}
+	}
+	if spec.HasEvidenceArtifacts && spec.EvidenceFingerprint == "" {
+		return nil, fmt.Errorf("--evidence-artifact requires --evidence-fingerprint")
+	}
+	if spec.EvidenceFingerprint != "" && spec.EvidenceRunID == "" {
+		return nil, fmt.Errorf("--evidence-fingerprint requires --evidence-run-id")
+	}
 	// BT-050: the read-modify-write — file snapshot through atomic rewrite
 	// (and the audit event) — runs under the exclusive write guard, so two
 	// concurrent updates rebase on DIFFERENT snapshots instead of the same
@@ -1121,9 +1148,9 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	// merge idempotent, and EncodeFindingDetail renders the result in the
 	// row's own style. Only set("detail") after the full merge succeeds, so
 	// an encode failure leaves the row (and the changed list) untouched.
-	if spec.EvidenceRunID != "" {
+	if spec.EvidenceRunID != "" || spec.EvidenceFingerprint != "" {
 		pd := ParseFindingDetail(target.Get("detail"))
-		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: now}})
+		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: now, TreeFP: spec.EvidenceFingerprint, Artifacts: spec.EvidenceArtifacts}})
 		enc, err := EncodeFindingDetail(pd, style)
 		if err != nil {
 			return nil, fmt.Errorf("detail: %w", err)

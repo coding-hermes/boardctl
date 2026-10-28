@@ -1164,7 +1164,19 @@ The digest lives INSIDE the existing `detail` field — no new column, no
 migration — with the original prose preserved:
 
 ```json
-"detail": {"fingerprint":"9f2c…","evidence":[{"run_id":"qa-…","ts":"…"}],"text":"original prose"}
+"detail": {"fingerprint":"9f2c…","evidence":[{"run_id":"qa-…","tree_fp":"<64 hex GitReins tree digest>","artifacts":[".gitreins/history/.../verdict.json"],"ts":"…"}],"text":"original prose"}
+```
+
+`fingerprint` and `tree_fp` are different identities. `fingerprint` answers “is this the same finding?” and is computed from normalized title and reasoning for dedupe. `tree_fp` answers “which exact source tree was this evidence run against?” and is supplied by GitReins. A tree digest is accepted only when it is exactly 64 hexadecimal characters; malformed prose is rejected before the row or event is written. Artifacts are optional repeatable pointers to the evidence files.
+
+```bash
+boardctl -C ~/myproject create --id QA-X-9 --title "…" --reasoning "…" \
+  --evidence-run-id run-qa-1 \
+  --evidence-fingerprint 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --evidence-artifact .gitreins/history/2026-10-28/run/verdict.json
+boardctl -C ~/myproject event --type task_evidence --task-id QA-X-3 \
+  --evidence-fingerprint 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --evidence-artifact reports/qa.txt
 ```
 
 `create` refuses a row whose fingerprint is already OPEN, prints
