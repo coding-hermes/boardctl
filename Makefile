@@ -210,7 +210,13 @@ install:
 	fi
 
 # Release-asset path: verify the downloaded platform asset before installing.
+# Keep the explicit missing-assets diagnostic for callers that invoke this
+# release-only path directly; `install` itself falls back to a source build.
 install-release:
+	@if [ ! -f "$(DIST)/SHA256SUMS" ]; then \
+		echo "install: $(DIST)/SHA256SUMS not found — download the released asset + SHA256SUMS per README '## Install' first" >&2; \
+		exit 1; \
+	fi
 	@if [ ! -f "$(DIST)/$(ASSET)" ]; then \
 		echo "install: $(DIST)/$(ASSET) not found — download the asset for this platform ($(ASSET_OS)/$(ASSET_ARCH)) into $(DIST)/" >&2; \
 		exit 1; \
