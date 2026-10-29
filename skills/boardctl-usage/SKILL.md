@@ -820,7 +820,7 @@ Boards are tiny; there is no need to batch or cache.
   closed — check the release tag first.
 
 
-## Run-27 (2026-10-29) — current HEAD real-use and fresh-machine battery
+## Run-27 (2026-10-29; tick boardctl-dogfood-2026-10-29-14-26-36) — current HEAD real-use and fresh-machine battery
 
 - Build the probe from a clean clone of the target HEAD before trusting CLI output; the installed binary may be stale and emits a freshness warning.
 - The real-user path is: `init` → `create --acceptance-criteria` → `update --evidence-run-id` → `show --events` → `event --tick` → `stats --json` → `validate` → `doctor`. On a fresh scratch board, all returned rc=0 and `validate` reported 0 warnings.

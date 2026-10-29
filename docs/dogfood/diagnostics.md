@@ -754,7 +754,7 @@ Real view = boardctl's own board + warpfs's board via the links registry
    same docs): agent `boardctl-df25`, 1.18 s, v0.1.11 verified, destroyed cleanly.
 
 
-## Run-27 addendum (2026-10-29) — current HEAD battery and clean CLI path
+## Run-27 addendum (2026-10-29; tick boardctl-dogfood-2026-10-29-14-26-36) — current HEAD battery and clean CLI path
 
 1. The current target was `7ef46b3` and the real-use probe built from a clean file clone, avoiding the stale installed binary that warned it was nine commits behind. `init`, `create` with acceptance criteria, `update` with an evidence run, `show --events`, `event --tick`, `stats`, `validate`, and `doctor` all worked against a fresh scratch board.
 2. The scratch board ended with 2 non-fixture tasks, 4 events, `validate RESULT: OK`, and `key uniformity: 3/3`; `doctor` reported only the expected non-git scratch warning and a fully verified completion share.

@@ -3,6 +3,7 @@
 verdict=PROMISING-BUT-ROUGH
 
 run date: 2026-10-29
+tick: boardctl-dogfood-2026-10-29-14-26-36
 promise: A real user can install boardctl, initialize a JSONL foreman board, create and complete work with evidence, inspect the audit trail, validate/diagnose the board, and use the CLI interactively; a fresh machine should be able to install the current checkout and survive the documented QA battery.
 
 ## Target and identity
