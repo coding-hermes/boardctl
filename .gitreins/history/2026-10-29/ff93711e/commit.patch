@@ -1,0 +1,29 @@
+commit d2e38fba71305703c6f102e273fa3f91efb682a7
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Thu Oct 29 04:42:22 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Thu Oct 29 04:42:22 2026 -0500
+
+    fix: retain missing-assets diagnostic on release install path (QA-BOARDCTL-FOREMAN-3)
+---
+ Makefile | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/Makefile b/Makefile
+index b3d90dd..e503f88 100644
+--- a/Makefile
++++ b/Makefile
+@@ -210,7 +210,13 @@ install:
+ 	fi
+ 
+ # Release-asset path: verify the downloaded platform asset before installing.
++# Keep the explicit missing-assets diagnostic for callers that invoke this
++# release-only path directly; `install` itself falls back to a source build.
+ install-release:
++	@if [ ! -f "$(DIST)/SHA256SUMS" ]; then \
++		echo "install: $(DIST)/SHA256SUMS not found — download the released asset + SHA256SUMS per README '## Install' first" >&2; \
++		exit 1; \
++	fi
+ 	@if [ ! -f "$(DIST)/$(ASSET)" ]; then \
+ 		echo "install: $(DIST)/$(ASSET) not found — download the asset for this platform ($(ASSET_OS)/$(ASSET_ARCH)) into $(DIST)/" >&2; \
+ 		exit 1; \

@@ -1,0 +1,109 @@
+{
+  "task_id": "QA-BOARDCTL-FOREMAN-3",
+  "task_title": "make install fails at Makefile:201 when dist/ is empty",
+  "task_criteria": [
+    "make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "873018dc007e4550a103f699b2b4fb8aaf594201",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n4:24AM INF scanned ~3830593 bytes (3.83 MB) in 3.65s\n4:24AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 257 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261029T085354.628831Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t20.851s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.036s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.071s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t4.316s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.025s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.610s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t1.375s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.089s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.075s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.035s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t6.861s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.030s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261029T085354.628831Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets: No implementation exists. Makefile:200-207 still hard-fails when dist/SHA256SUMS is absent: `@if [ ! -f \"$(DIST)/SHA256SUMS\" ]; then echo \"install: $(DIST)/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first\" >&2; ... exit 1; fi`. There is no source-build fallback in the install target (the only `go build` invocations are Makefile:43 in the `build` target and Makefile:132 in the `release` target). Empirical probe from a clean tree with no dist/ directory: `make install PREFIX=/tmp/probe3/prefix` printed 'install: dist/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first' followed by 'make: *** [Makefile:201: install] Error 1', EXIT=2, and nothing was installed to PREFIX \u2014 i.e. the exact reported bug at Makefile:201 is still present. `git diff` confirms the only changes are a timestamp bump in cmd/boardctl/board-report.html and deletion of .gitreins log files; the Makefile is untouched. Test suite for reference: `go test ./... -count=1` \u2014 all packages ok (cmd/boardctl 24.143s, internal/board, internal/versioncheck, etc.), but no test covers the required clean-clone install path.\nThe Makefile install target was never modified \u2014 `make install` still exits 2 at Makefile:201 when dist/SHA256SUMS is absent, so the reported bug remains unfixed.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets: No implementation exists. Makefile:200-207 still hard-fails when dist/SHA256SUMS is absent: `@if [ ! -f \"$(DIST)/SHA256SUMS\" ]; then echo \"install: $(DIST)/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first\" >&2; ... exit 1; fi`. There is no source-build fallback in the install target (the only `go build` invocations are Makefile:43 in the `build` target and Makefile:132 in the `release` target). Empirical probe from a clean tree with no dist/ directory: `make install PREFIX=/tmp/probe3/prefix` printed 'install: dist/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first' followed by 'make: *** [Makefile:201: install] Error 1', EXIT=2, and nothing was installed to PREFIX \u2014 i.e. the exact reported bug at Makefile:201 is still present. `git diff` confirms the only changes are a timestamp bump in cmd/boardctl/board-report.html and deletion of .gitreins log files; the Makefile is untouched. Test suite for reference: `go test ./... -count=1` \u2014 all packages ok (cmd/boardctl 24.143s, internal/board, internal/versioncheck, etc.), but no test covers the required clean-clone install path.\nThe Makefile install target was never modified \u2014 `make install` still exits 2 at Makefile:201 when dist/SHA256SUMS is absent, so the reported bug remains unfixed.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets",
+                "status": "FAIL",
+                "detail": "No implementation exists. Makefile:200-207 still hard-fails when dist/SHA256SUMS is absent: `@if [ ! -f \"$(DIST)/SHA256SUMS\" ]; then echo \"install: $(DIST)/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first\" >&2; ... exit 1; fi`. There is no source-build fallback in the install target (the only `go build` invocations are Makefile:43 in the `build` target and Makefile:132 in the `release` target). Empirical probe from a clean tree with no dist/ directory: `make install PREFIX=/tmp/probe3/prefix` printed 'install: dist/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first' followed by 'make: *** [Makefile:201: install] Error 1', EXIT=2, and nothing was installed to PREFIX \u2014 i.e. the exact reported bug at Makefile:201 is still present. `git diff` confirms the only changes are a timestamp bump in cmd/boardctl/board-report.html and deletion of .gitreins log files; the Makefile is untouched. Test suite for reference: `go test ./... -count=1` \u2014 all packages ok (cmd/boardctl 24.143s, internal/board, internal/versioncheck, etc.), but no test covers the required clean-clone install path."
+              }
+            ],
+            "summary": "The Makefile install target was never modified \u2014 `make install` still exits 2 at Makefile:201 when dist/SHA256SUMS is absent, so the reported bug remains unfixed.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-FOREMAN-3\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets: No implementation exists. Makefile:200-207 still hard-fails when dist/SHA256SUMS is absent: `@if [ ! -f \"$(DIST)/SHA256SUMS\" ]; then echo \"install: $(DIST)/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first\" >&2; ... exit 1; fi`. There is no source-build fallback in the install target (the only `go build` invocations are Makefile:43 in the `build` target and Makefile:132 in the `release` target). Empirical probe from a clean tree with no dist/ directory: `make install PREFIX=/tmp/probe3/prefix` printed 'install: dist/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first' followed by 'make: *** [Makefile:201: install] Error 1', EXIT=2, and nothing was installed to PREFIX \u2014 i.e. the exact reported bug at Makefile:201 is still present. `git diff` confirms the only changes are a timestamp bump in cmd/boardctl/board-report.html and deletion of .gitreins log files; the Makefile is untouched. Test suite for reference: `go test ./... -count=1` \u2014 all packages ok (cmd/boardctl 24.143s, internal/board, internal/versioncheck, etc.), but no test covers the required clean-clone install path.\nThe Makefile install target was never modified \u2014 `make install` still exits 2 at Makefile:201 when dist/SHA256SUMS is absent, so the reported bug remains unfixed.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-29T09:25:31.237360",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-29T09:25:31.301621+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 16268,
+        "truncated": false,
+        "source": "git show 873018dc007e"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 14869,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-FOREMAN-3"
+  }
+}

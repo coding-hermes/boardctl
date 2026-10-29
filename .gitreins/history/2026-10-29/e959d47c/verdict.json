@@ -1,0 +1,109 @@
+{
+  "task_id": "QA-BOARDCTL-FOREMAN-3",
+  "task_title": "finalize source-build make install fallback",
+  "task_criteria": [
+    "Makefile has one install target, preserves SHA256SUMS missing-assets diagnostic in install-release, has one install -m 0755 release install, and contains TestDF12QuickstartSHA256SUMSPublishesBinaryAsset"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "2d6d9d34715e24e12cac2ac87d93ef9ae83e7cfb",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n4:50AM INF scanned ~3832040 bytes (3.83 MB) in 1.14s\n4:50AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 257 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261029T094945.505636Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.211s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.409s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.165s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.029s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.500s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.010s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261029T094945.505636Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Makefile has one install target, preserves SHA256SUMS missing-assets diagnostic in install-release, has one install -m 0755 release install, and contains TestDF12QuickstartSHA256SUMSPublishesBinaryAsset: Makefile:201 defines the single `install:` target (target-line grep shows only install:201, install-release:216, install-check:253 \u2014 no duplicate install target). install-release at Makefile:216-219 preserves the missing-assets diagnostic: `echo \"install: $(DIST)/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first\" >&2; exit 1`. Exactly one release install: `grep -c 'install -m 0755' Makefile` = 1, at Makefile:235 (`@install -m 0755 $(DIST)/$(ASSET) $(INSTALL_BIN)`); the source-build fallback in install (Makefile:202-208) uses cp+chmod, not install -m 0755. TestDF12QuickstartSHA256SUMSPublishesBinaryAsset is defined at cmd/boardctl/df12_readme_quickstart_test.go:274. Test evidence: `go test -count=1 -run TestDF12 ./cmd/boardctl/` => `ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s` (exit 0); full `go test -count=1 ./...` => all packages `ok`, exit 0; `go build ./...` exit 0.\nMakefile has a single install target with source-build fallback, install-release retains the SHA256SUMS missing-assets diagnostic, exactly one install -m 0755 release install, and the DF12 SHA256SUMS test exists and the suite passes.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Makefile has one install target, preserves SHA256SUMS missing-assets diagnostic in install-release, has one install -m 0755 release install, and contains TestDF12QuickstartSHA256SUMSPublishesBinaryAsset: Makefile:201 defines the single `install:` target (target-line grep shows only install:201, install-release:216, install-check:253 \u2014 no duplicate install target). install-release at Makefile:216-219 preserves the missing-assets diagnostic: `echo \"install: $(DIST)/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first\" >&2; exit 1`. Exactly one release install: `grep -c 'install -m 0755' Makefile` = 1, at Makefile:235 (`@install -m 0755 $(DIST)/$(ASSET) $(INSTALL_BIN)`); the source-build fallback in install (Makefile:202-208) uses cp+chmod, not install -m 0755. TestDF12QuickstartSHA256SUMSPublishesBinaryAsset is defined at cmd/boardctl/df12_readme_quickstart_test.go:274. Test evidence: `go test -count=1 -run TestDF12 ./cmd/boardctl/` => `ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s` (exit 0); full `go test -count=1 ./...` => all packages `ok`, exit 0; `go build ./...` exit 0.\nMakefile has a single install target with source-build fallback, install-release retains the SHA256SUMS missing-assets diagnostic, exactly one install -m 0755 release install, and the DF12 SHA256SUMS test exists and the suite passes.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Makefile has one install target, preserves SHA256SUMS missing-assets diagnostic in install-release, has one install -m 0755 release install, and contains TestDF12QuickstartSHA256SUMSPublishesBinaryAsset",
+                "status": "PASS",
+                "detail": "Makefile:201 defines the single `install:` target (target-line grep shows only install:201, install-release:216, install-check:253 \u2014 no duplicate install target). install-release at Makefile:216-219 preserves the missing-assets diagnostic: `echo \"install: $(DIST)/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first\" >&2; exit 1`. Exactly one release install: `grep -c 'install -m 0755' Makefile` = 1, at Makefile:235 (`@install -m 0755 $(DIST)/$(ASSET) $(INSTALL_BIN)`); the source-build fallback in install (Makefile:202-208) uses cp+chmod, not install -m 0755. TestDF12QuickstartSHA256SUMSPublishesBinaryAsset is defined at cmd/boardctl/df12_readme_quickstart_test.go:274. Test evidence: `go test -count=1 -run TestDF12 ./cmd/boardctl/` => `ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s` (exit 0); full `go test -count=1 ./...` => all packages `ok`, exit 0; `go build ./...` exit 0."
+              }
+            ],
+            "summary": "Makefile has a single install target with source-build fallback, install-release retains the SHA256SUMS missing-assets diagnostic, exactly one install -m 0755 release install, and the DF12 SHA256SUMS test exists and the suite passes.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-FOREMAN-3\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Makefile has one install target, preserves SHA256SUMS missing-assets diagnostic in install-release, has one install -m 0755 release install, and contains TestDF12QuickstartSHA256SUMSPublishesBinaryAsset: Makefile:201 defines the single `install:` target (target-line grep shows only install:201, install-release:216, install-check:253 \u2014 no duplicate install target). install-release at Makefile:216-219 preserves the missing-assets diagnostic: `echo \"install: $(DIST)/SHA256SUMS not found \u2014 download the released asset + SHA256SUMS per README '## Install' first\" >&2; exit 1`. Exactly one release install: `grep -c 'install -m 0755' Makefile` = 1, at Makefile:235 (`@install -m 0755 $(DIST)/$(ASSET) $(INSTALL_BIN)`); the source-build fallback in install (Makefile:202-208) uses cp+chmod, not install -m 0755. TestDF12QuickstartSHA256SUMSPublishesBinaryAsset is defined at cmd/boardctl/df12_readme_quickstart_test.go:274. Test evidence: `go test -count=1 -run TestDF12 ./cmd/boardctl/` => `ok github.com/coding-hermes/boardctl/cmd/boardctl 0.009s` (exit 0); full `go test -count=1 ./...` => all packages `ok`, exit 0; `go build ./...` exit 0.\nMakefile has a single install target with source-build fallback, install-release retains the SHA256SUMS missing-assets diagnostic, exactly one install -m 0755 release install, and the DF12 SHA256SUMS test exists and the suite passes.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-29T09:50:37.264915",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-29T09:50:37.280832+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 962,
+        "truncated": false,
+        "source": "git show 2d6d9d34715e"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 23451,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-FOREMAN-3"
+  }
+}

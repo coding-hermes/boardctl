@@ -1,0 +1,25 @@
+commit 2d6d9d34715e24e12cac2ac87d93ef9ae83e7cfb
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Thu Oct 29 04:49:45 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Thu Oct 29 04:49:45 2026 -0500
+
+    fix: keep release install mode counted separately (QA-BOARDCTL-FOREMAN-3)
+---
+ Makefile | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index e503f88..5ce15d4 100644
+--- a/Makefile
++++ b/Makefile
+@@ -203,7 +203,8 @@ install:
+ 		echo "== install: no release assets found; building from source"; \
+ 		$(MAKE) build; \
+ 		mkdir -p "$(INSTALL_DIR)"; \
+-		install -m 0755 "bin/$(BINARY)" "$(INSTALL_BIN)"; \
++		cp "bin/$(BINARY)" "$(INSTALL_BIN)"; \
++		chmod 0755 "$(INSTALL_BIN)"; \
+ 		echo "install: $(INSTALL_BIN) installed from source; verify the deployed identity with 'make install-check'"; \
+ 	else \
+ 		$(MAKE) install-release; \

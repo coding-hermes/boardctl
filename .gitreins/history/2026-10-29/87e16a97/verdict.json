@@ -1,0 +1,109 @@
+{
+  "task_id": "QA-BOARDCTL-FOREMAN-3",
+  "task_title": "make install fails at Makefile:201 when dist/ is empty",
+  "task_criteria": [
+    "make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "1a5d1cdb80ba0dafc0e7648d2e742b7e9cee221d",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n4:33AM INF scanned ~3830728 bytes (3.83 MB) in 1.54s\n4:33AM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 257 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261029T093313.945594Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.046s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t3.053s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.219s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.549s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.040s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.018s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t4.291s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.010s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261029T093313.945594Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets: Makefile install target (lines 201-210) branches on `[ ! -f \"$(DIST)/SHA256SUMS\" ]`: absent -> `$(MAKE) build` then `install -m 0755 \"bin/$(BINARY)\" \"$(INSTALL_BIN)\"`; present -> `$(MAKE) install-release` (verify+install preserved at lines 213-230). Verified empirically in /home/kara/coding-hermes-boardctl @1a5d1cd: (A) dist/ emptied -> 'make install INSTALL_DIR=/tmp/qa3-prefix' printed '== install: no release assets found; building from source', ran go build, installed 11MB binary, MAKE_EXIT=0, `boardctl version` -> dev; (D) clean clone via `git archive HEAD | tar -x` into /tmp/qa3-clone (no dist/ dir at all) -> MAKE_EXIT=0, /tmp/qa3-p5/boardctl installed and executable; (B2) valid asset+SHA256SUMS -> 'boardctl_linux_amd64: OK' then installed the asset (verify+install path intact); (C) mismatched asset -> checksum gate still fails loudly (exit 2), gate not weakened. `go test -count=1 ./...` -> GO_TEST_EXIT=0, 12 packages ok, no FAIL. Minor stale doc: README.md:1705 still claims 'make install never builds from the checkout'.\nmake install now falls back to a source build and installs to PREFIX when dist/SHA256SUMS is absent (verified from a clean git-archive clone, exit 0), while the checksum-verified release-asset path is preserved and still fails loudly on mismatch.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets: Makefile install target (lines 201-210) branches on `[ ! -f \"$(DIST)/SHA256SUMS\" ]`: absent -> `$(MAKE) build` then `install -m 0755 \"bin/$(BINARY)\" \"$(INSTALL_BIN)\"`; present -> `$(MAKE) install-release` (verify+install preserved at lines 213-230). Verified empirically in /home/kara/coding-hermes-boardctl @1a5d1cd: (A) dist/ emptied -> 'make install INSTALL_DIR=/tmp/qa3-prefix' printed '== install: no release assets found; building from source', ran go build, installed 11MB binary, MAKE_EXIT=0, `boardctl version` -> dev; (D) clean clone via `git archive HEAD | tar -x` into /tmp/qa3-clone (no dist/ dir at all) -> MAKE_EXIT=0, /tmp/qa3-p5/boardctl installed and executable; (B2) valid asset+SHA256SUMS -> 'boardctl_linux_amd64: OK' then installed the asset (verify+install path intact); (C) mismatched asset -> checksum gate still fails loudly (exit 2), gate not weakened. `go test -count=1 ./...` -> GO_TEST_EXIT=0, 12 packages ok, no FAIL. Minor stale doc: README.md:1705 still claims 'make install never builds from the checkout'.\nmake install now falls back to a source build and installs to PREFIX when dist/SHA256SUMS is absent (verified from a clean git-archive clone, exit 0), while the checksum-verified release-asset path is preserved and still fails loudly on mismatch.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets",
+                "status": "PASS",
+                "detail": "Makefile install target (lines 201-210) branches on `[ ! -f \"$(DIST)/SHA256SUMS\" ]`: absent -> `$(MAKE) build` then `install -m 0755 \"bin/$(BINARY)\" \"$(INSTALL_BIN)\"`; present -> `$(MAKE) install-release` (verify+install preserved at lines 213-230). Verified empirically in /home/kara/coding-hermes-boardctl @1a5d1cd: (A) dist/ emptied -> 'make install INSTALL_DIR=/tmp/qa3-prefix' printed '== install: no release assets found; building from source', ran go build, installed 11MB binary, MAKE_EXIT=0, `boardctl version` -> dev; (D) clean clone via `git archive HEAD | tar -x` into /tmp/qa3-clone (no dist/ dir at all) -> MAKE_EXIT=0, /tmp/qa3-p5/boardctl installed and executable; (B2) valid asset+SHA256SUMS -> 'boardctl_linux_amd64: OK' then installed the asset (verify+install path intact); (C) mismatched asset -> checksum gate still fails loudly (exit 2), gate not weakened. `go test -count=1 ./...` -> GO_TEST_EXIT=0, 12 packages ok, no FAIL. Minor stale doc: README.md:1705 still claims 'make install never builds from the checkout'."
+              }
+            ],
+            "summary": "make install now falls back to a source build and installs to PREFIX when dist/SHA256SUMS is absent (verified from a clean git-archive clone, exit 0), while the checksum-verified release-asset path is preserved and still fails loudly on mismatch.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-FOREMAN-3\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 make install works from a clean clone without pre-downloaded release assets: if dist/SHA256SUMS is absent, build from source and install the built binary to PREFIX; preserve the existing verify+install path when dist/ has release assets: Makefile install target (lines 201-210) branches on `[ ! -f \"$(DIST)/SHA256SUMS\" ]`: absent -> `$(MAKE) build` then `install -m 0755 \"bin/$(BINARY)\" \"$(INSTALL_BIN)\"`; present -> `$(MAKE) install-release` (verify+install preserved at lines 213-230). Verified empirically in /home/kara/coding-hermes-boardctl @1a5d1cd: (A) dist/ emptied -> 'make install INSTALL_DIR=/tmp/qa3-prefix' printed '== install: no release assets found; building from source', ran go build, installed 11MB binary, MAKE_EXIT=0, `boardctl version` -> dev; (D) clean clone via `git archive HEAD | tar -x` into /tmp/qa3-clone (no dist/ dir at all) -> MAKE_EXIT=0, /tmp/qa3-p5/boardctl installed and executable; (B2) valid asset+SHA256SUMS -> 'boardctl_linux_amd64: OK' then installed the asset (verify+install path intact); (C) mismatched asset -> checksum gate still fails loudly (exit 2), gate not weakened. `go test -count=1 ./...` -> GO_TEST_EXIT=0, 12 packages ok, no FAIL. Minor stale doc: README.md:1705 still claims 'make install never builds from the checkout'.\nmake install now falls back to a source build and installs to PREFIX when dist/SHA256SUMS is absent (verified from a clean git-archive clone, exit 0), while the checksum-verified release-asset path is preserved and still fails loudly on mismatch.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-29T09:35:12.938478",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-29T09:35:12.954844+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3055,
+        "truncated": false,
+        "source": "git show 1a5d1cdb80ba"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 17475,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-FOREMAN-3"
+  }
+}

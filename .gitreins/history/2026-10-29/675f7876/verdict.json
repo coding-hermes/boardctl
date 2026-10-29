@@ -1,0 +1,109 @@
+{
+  "task_id": "QA-BOARDCTL-FOREMAN-5",
+  "task_title": "Vendor dependencies for offline network-cut test",
+  "task_criteria": [
+    "Vendor gopkg.in/yaml.v3 v3.0.1 and kin-openapi dependencies; git ls-files vendor/gopkg.in/yaml.v3 >= 1; vendor/modules.txt pins yaml.v3 v3.0.1; GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage passes; include ch:trace row=QA-BOARDCTL-FOREMAN-5 and commit evidence."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "60f6b14fead9ac018e030a44de20185103526e3f",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n5:48PM INF scanned ~3803889 bytes (3.80 MB) in 1.01s\n5:48PM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 251 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261029T145426.617407Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.112s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.828s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.143s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.288s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.010s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t2.812s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261029T145426.617407Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 Vendor gopkg.in/yaml.v3 v3.0.1 and kin-openapi dependencies; git ls-files vendor/gopkg.in/yaml.v3 >= 1; vendor/modules.txt pins yaml.v3 v3.0.1; GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage passes; include ch:trace row=QA-BOARDCTL-FOREMAN-5 and commit evidence.: Vendoring, pinning, and the offline test all PASS, but the required ch:trace marker is absent. Evidence: (a) `git ls-files vendor/gopkg.in/yaml.v3 | wc -l` = 16 (>=1); kin-openapi vendored with 55 tracked files. (b) `grep -c '^# gopkg.in/yaml.v3 v3.0.1' vendor/modules.txt` = 1; go.mod:6-7 pin github.com/getkin/kin-openapi v0.149.0 and gopkg.in/yaml.v3 v3.0.1. (c) `GOFLAGS=-mod=vendor GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage -count=1` -> 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.003s', exit_code=0. (d) FAIL: `grep -rn 'ch:trace row=QA-BOARDCTL-FOREMAN-5'` across the repo (excluding vendor) returns zero matches; .coding-hermes/board/events.jsonl contains 15 ch:trace occurrences, none referencing QA-BOARDCTL-FOREMAN-5; .coding-hermes/board/tasks.jsonl:212 still shows QA-BOARDCTL-FOREMAN-5 with \"status\": \"pending\" and no closeout/completion event; commit 3e711295839906fc5ce9ee066eb2449294f54aff body only states 'Addresses QA-BOARDCTL-FOREMAN-5' with no ch:trace marker. The traceability requirement of the criterion is therefore unmet.\nDependencies are vendored, modules.txt pins yaml.v3 v3.0.1, and GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage passes (exit 0), but no ch:trace row=QA-BOARDCTL-FOREMAN-5 marker exists anywhere and the board row remains pending, so the criterion fails.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 Vendor gopkg.in/yaml.v3 v3.0.1 and kin-openapi dependencies; git ls-files vendor/gopkg.in/yaml.v3 >= 1; vendor/modules.txt pins yaml.v3 v3.0.1; GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage passes; include ch:trace row=QA-BOARDCTL-FOREMAN-5 and commit evidence.: Vendoring, pinning, and the offline test all PASS, but the required ch:trace marker is absent. Evidence: (a) `git ls-files vendor/gopkg.in/yaml.v3 | wc -l` = 16 (>=1); kin-openapi vendored with 55 tracked files. (b) `grep -c '^# gopkg.in/yaml.v3 v3.0.1' vendor/modules.txt` = 1; go.mod:6-7 pin github.com/getkin/kin-openapi v0.149.0 and gopkg.in/yaml.v3 v3.0.1. (c) `GOFLAGS=-mod=vendor GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage -count=1` -> 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.003s', exit_code=0. (d) FAIL: `grep -rn 'ch:trace row=QA-BOARDCTL-FOREMAN-5'` across the repo (excluding vendor) returns zero matches; .coding-hermes/board/events.jsonl contains 15 ch:trace occurrences, none referencing QA-BOARDCTL-FOREMAN-5; .coding-hermes/board/tasks.jsonl:212 still shows QA-BOARDCTL-FOREMAN-5 with \"status\": \"pending\" and no closeout/completion event; commit 3e711295839906fc5ce9ee066eb2449294f54aff body only states 'Addresses QA-BOARDCTL-FOREMAN-5' with no ch:trace marker. The traceability requirement of the criterion is therefore unmet.\nDependencies are vendored, modules.txt pins yaml.v3 v3.0.1, and GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage passes (exit 0), but no ch:trace row=QA-BOARDCTL-FOREMAN-5 marker exists anywhere and the board row remains pending, so the criterion fails.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "Vendor gopkg.in/yaml.v3 v3.0.1 and kin-openapi dependencies; git ls-files vendor/gopkg.in/yaml.v3 >= 1; vendor/modules.txt pins yaml.v3 v3.0.1; GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage passes; include ch:trace row=QA-BOARDCTL-FOREMAN-5 and commit evidence.",
+                "status": "FAIL",
+                "detail": "Vendoring, pinning, and the offline test all PASS, but the required ch:trace marker is absent. Evidence: (a) `git ls-files vendor/gopkg.in/yaml.v3 | wc -l` = 16 (>=1); kin-openapi vendored with 55 tracked files. (b) `grep -c '^# gopkg.in/yaml.v3 v3.0.1' vendor/modules.txt` = 1; go.mod:6-7 pin github.com/getkin/kin-openapi v0.149.0 and gopkg.in/yaml.v3 v3.0.1. (c) `GOFLAGS=-mod=vendor GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage -count=1` -> 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.003s', exit_code=0. (d) FAIL: `grep -rn 'ch:trace row=QA-BOARDCTL-FOREMAN-5'` across the repo (excluding vendor) returns zero matches; .coding-hermes/board/events.jsonl contains 15 ch:trace occurrences, none referencing QA-BOARDCTL-FOREMAN-5; .coding-hermes/board/tasks.jsonl:212 still shows QA-BOARDCTL-FOREMAN-5 with \"status\": \"pending\" and no closeout/completion event; commit 3e711295839906fc5ce9ee066eb2449294f54aff body only states 'Addresses QA-BOARDCTL-FOREMAN-5' with no ch:trace marker. The traceability requirement of the criterion is therefore unmet."
+              }
+            ],
+            "summary": "Dependencies are vendored, modules.txt pins yaml.v3 v3.0.1, and GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage passes (exit 0), but no ch:trace row=QA-BOARDCTL-FOREMAN-5 marker exists anywhere and the board row remains pending, so the criterion fails.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: QA-BOARDCTL-FOREMAN-5\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 Vendor gopkg.in/yaml.v3 v3.0.1 and kin-openapi dependencies; git ls-files vendor/gopkg.in/yaml.v3 >= 1; vendor/modules.txt pins yaml.v3 v3.0.1; GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage passes; include ch:trace row=QA-BOARDCTL-FOREMAN-5 and commit evidence.: Vendoring, pinning, and the offline test all PASS, but the required ch:trace marker is absent. Evidence: (a) `git ls-files vendor/gopkg.in/yaml.v3 | wc -l` = 16 (>=1); kin-openapi vendored with 55 tracked files. (b) `grep -c '^# gopkg.in/yaml.v3 v3.0.1' vendor/modules.txt` = 1; go.mod:6-7 pin github.com/getkin/kin-openapi v0.149.0 and gopkg.in/yaml.v3 v3.0.1. (c) `GOFLAGS=-mod=vendor GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage -count=1` -> 'ok github.com/coding-hermes/boardctl/cmd/boardctl 0.003s', exit_code=0. (d) FAIL: `grep -rn 'ch:trace row=QA-BOARDCTL-FOREMAN-5'` across the repo (excluding vendor) returns zero matches; .coding-hermes/board/events.jsonl contains 15 ch:trace occurrences, none referencing QA-BOARDCTL-FOREMAN-5; .coding-hermes/board/tasks.jsonl:212 still shows QA-BOARDCTL-FOREMAN-5 with \"status\": \"pending\" and no closeout/completion event; commit 3e711295839906fc5ce9ee066eb2449294f54aff body only states 'Addresses QA-BOARDCTL-FOREMAN-5' with no ch:trace marker. The traceability requirement of the criterion is therefore unmet.\nDependencies are vendored, modules.txt pins yaml.v3 v3.0.1, and GOPROXY=off go test ./cmd/boardctl -run TestServeIndexPage passes (exit 0), but no ch:trace row=QA-BOARDCTL-FOREMAN-5 marker exists anywhere and the board row remains pending, so the criterion fails.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-29T22:48:52.261305",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-29T22:48:52.312122+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 11297,
+        "truncated": false,
+        "source": "git show 60f6b14fead9"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 55917,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "QA-BOARDCTL-FOREMAN-5"
+  }
+}
