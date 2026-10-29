@@ -752,3 +752,12 @@ Real view = boardctl's own board + warpfs's board via the links registry
    dangling-`depends_on` and negative-header refusals all fire precisely; read verbs
    stay in the tens of milliseconds. Install leg inherited from run 25 (same HEAD,
    same docs): agent `boardctl-df25`, 1.18 s, v0.1.11 verified, destroyed cleanly.
+
+
+## Run-27 addendum (2026-10-29) — current HEAD battery and clean CLI path
+
+1. The current target was `7ef46b3` and the real-use probe built from a clean file clone, avoiding the stale installed binary that warned it was nine commits behind. `init`, `create` with acceptance criteria, `update` with an evidence run, `show --events`, `event --tick`, `stats`, `validate`, and `doctor` all worked against a fresh scratch board.
+2. The scratch board ended with 2 non-fixture tasks, 4 events, `validate RESULT: OK`, and `key uniformity: 3/3`; `doctor` reported only the expected non-git scratch warning and a fully verified completion share.
+3. `stats --json` cost 7.693 ms cold and 7.512 ms warm p50 over 10 runs (4.786–25.891 ms); this is below a user-noticeable threshold, so no PERF row or profile was justified.
+4. The fresh-machine battery collected 20 rows on `bunker-mvp` agent `7274a462` and then destroyed it; the follow-up `bunker info` returned `not_found`. The source-build install and act CI pass were OK, resource/error paths passed, while upgrade failed at the documented missing-assets gate and network-cut failed on an uncached Go module download. Those failures are already owned by QA-BOARDCTL-FOREMAN-4 and QA-BOARDCTL-FOREMAN-5; the CLI/API UI-probe INFO is owned by QA-BOARDCTL-FOREMAN-6.
+5. No new row was filed because the dogfood lane is read-only and the exact failure classes already have owner rows.

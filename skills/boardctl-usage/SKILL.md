@@ -818,3 +818,11 @@ Boards are tiny; there is no need to batch or cache.
   a HEAD build, and `render -o x.html --json x.json` + `import --renumber`
   round-trips as written. Don't re-chase a docs-vs-artifact gap that this pass
   closed — check the release tag first.
+
+
+## Run-27 (2026-10-29) — current HEAD real-use and fresh-machine battery
+
+- Build the probe from a clean clone of the target HEAD before trusting CLI output; the installed binary may be stale and emits a freshness warning.
+- The real-user path is: `init` → `create --acceptance-criteria` → `update --evidence-run-id` → `show --events` → `event --tick` → `stats --json` → `validate` → `doctor`. On a fresh scratch board, all returned rc=0 and `validate` reported 0 warnings.
+- The current fresh-machine battery can install from source and pass the act CI/resource/error legs while still failing upgrade and network-cut cells. Grade each cell independently; an install OK is not an aggregate battery pass.
+- `stats --json` was single-digit milliseconds (7.693 ms cold, 7.512 ms warm p50 over 10 runs on three records), below a user-noticeable threshold; no performance finding was warranted.
