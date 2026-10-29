@@ -203,7 +203,8 @@ install:
 		echo "== install: no release assets found; building from source"; \
 		$(MAKE) build; \
 		mkdir -p "$(INSTALL_DIR)"; \
-		install -m 0755 "bin/$(BINARY)" "$(INSTALL_BIN)"; \
+		cp "bin/$(BINARY)" "$(INSTALL_BIN)"; \
+		chmod 0755 "$(INSTALL_BIN)"; \
 		echo "install: $(INSTALL_BIN) installed from source; verify the deployed identity with 'make install-check'"; \
 	else \
 		$(MAKE) install-release; \
