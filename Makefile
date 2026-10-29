@@ -13,7 +13,7 @@ PLATFORMS := \
 	windows/amd64 \
 	freebsd/amd64
 
-.PHONY: build test vet fmt fmt-check version-check vuln-check release install install-check clean
+.PHONY: build test vet fmt fmt-check version-check vuln-check release install install-release install-check clean
 
 # BT-057: the build commit stamped into every make-built binary. The guard
 # keeps non-git builds working (a tarball without .git yields an empty
@@ -21,9 +21,10 @@ PLATFORMS := \
 # main.buildCommit feeds internal/freshness.Check — see README Development.
 BUILD_COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
 
-# BT-042: install surface. `make install` installs the RELEASED asset (the
-# dist/ download staged per README "## Install") — never a from-HEAD build;
-# `make install-check` is the standing drift probe for the deployed copy.
+# BT-042: install surface. `make install` installs the RELEASED asset when
+# dist/ contains the downloaded asset and SHA256SUMS; with no release assets it
+# falls back to a source build for fresh checkouts. `make install-check` is the
+# standing drift probe for the deployed copy.
 # INSTALL_DIR/INSTALL_BIN are overridable for non-default deploy targets.
 INSTALL_DIR ?= $(HOME)/.local/bin
 INSTALL_BIN ?= $(INSTALL_DIR)/$(BINARY)
@@ -199,12 +200,17 @@ release: test
 # move together — the checksum step alone is not a complete gate.
 install:
 	@if [ ! -f "$(DIST)/SHA256SUMS" ]; then \
-		echo "install: $(DIST)/SHA256SUMS not found — download the released asset + SHA256SUMS per README '## Install' first" >&2; \
-		echo "  curl -sSL -o $(DIST)/boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/vX.Y.Z/boardctl_linux_amd64" >&2; \
-		echo "  curl -sSL -o $(DIST)/SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/vX.Y.Z/SHA256SUMS" >&2; \
-		echo "  make install" >&2; \
-		exit 1; \
+		echo "== install: no release assets found; building from source"; \
+		$(MAKE) build; \
+		mkdir -p "$(INSTALL_DIR)"; \
+		install -m 0755 "bin/$(BINARY)" "$(INSTALL_BIN)"; \
+		echo "install: $(INSTALL_BIN) installed from source; verify the deployed identity with 'make install-check'"; \
+	else \
+		$(MAKE) install-release; \
 	fi
+
+# Release-asset path: verify the downloaded platform asset before installing.
+install-release:
 	@if [ ! -f "$(DIST)/$(ASSET)" ]; then \
 		echo "install: $(DIST)/$(ASSET) not found — download the asset for this platform ($(ASSET_OS)/$(ASSET_ARCH)) into $(DIST)/" >&2; \
 		exit 1; \
