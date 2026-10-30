@@ -20,7 +20,7 @@ func cmdNormalizeStatuses(dir string, args []string) error {
 		_, _ = fmt.Fprintln(fs.Output(), "boardctl normalize-statuses [--apply] [--dry-run] [--json] [-C dir]")
 		_, _ = fmt.Fprintln(fs.Output(), "\nOne resolved repository-local board only; dry-run is the default and writes nothing.")
 		_, _ = fmt.Fprintln(fs.Output(), "Known read aliases are canonicalized on --apply. Unknown and missing statuses are refused, never guessed.")
-		_, _ = fmt.Fprintln(fs.Output(), "Fleet-wide apply and canonical-set policy changes remain owner-gated.")
+		_, _ = fmt.Fprint(fs.Output(), "Fleet-wide apply and canonical-set policy changes remain owner-gated.\n\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
