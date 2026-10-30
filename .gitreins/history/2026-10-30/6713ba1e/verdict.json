@@ -1,0 +1,109 @@
+{
+  "task_id": "BT-81",
+  "task_title": "Status normalization sweep and reported-vs-verified analytics",
+  "task_criteria": [
+    "Implement and test a re-runnable boardctl status normalization sweep with dry-run and apply semantics for one board without guessing unknown statuses; add a reported-vs-verified completion marker and expose its counts on board-report/v1; document alias warning policy; include traceability links to row, source, tests, evidence, and commit."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "e20ad3e6c4dccb05215964afb0e82de8d2b7e397",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": false,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n3:05PM INF scanned ~3829054 bytes (3.83 MB) in 1.16s\n3:05PM WRN leaks found: 1\nsecrets: gitleaks: findings found (exit 1)\nsecrets: builtin cross-check: Scanned 256 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261030T191702.528223Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t4.961s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.228s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.148s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.426s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.811s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261030T191702.528223Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 Implement and test a re-runnable boardctl status normalization sweep with dry-run and apply semantics for one board without guessing unknown statuses; add a reported-vs-verified completion marker and expose its counts on board-report/v1; document alias warning policy; include traceability links to row, source, tests, evidence, and commit.: Most sub-requirements are met, but the traceability clause is entirely missing. MET: (a) sweep \u2014 internal/board/statusnormalize.go:38 NormalizeStatuses(apply) classifies one board only (b.tasksPath), dry-run default (DryRun: !apply, no write), apply does one atomicRewrite with a guard that untouched lines are byte-identical (statusnormalize.go:120-131); unknown/missing statuses are counted and refused, never coerced (statusnormalize.go:78-95, ResolveStatus at internal/board/read.go:57-65); CLI cmd/boardctl/statusnormalize.go:11-70 exposes --dry-run/--apply/--json/-C and is wired at cmd/boardctl/main.go:226. Re-runnable/idempotent: internal/board/statusnormalize_test.go TestNormalizeStatusesApplyIsAtomicAndIdempotent asserts second apply Changed==0 and byte-identical file. (b) reported-vs-verified marker \u2014 internal/render/derive.go:147-151 adds ReportedCompleteCount/VerifiedCompleteCount/UnverifiedCompleteCount with json tags reported_complete_count/verified_complete_count/unverified_complete_count, computed at derive.go:237-241 via board.RowEvidenceRunIDs (detail.evidence[].run_id or top-level evidence_run_id, internal/board/evidence_gate.go:100-116); these ride the board-report/v1 payload (confirmed present in cmd/boardctl/board-report.html:114 report-data island). (c) alias warning policy documented \u2014 docs/specs/board-analytics-report.md:398-412 (\u00a73.9/\u00a73.9a: read-tolerated aliases warn, canonical writes, single-board dry-run default, owner-gated fleet apply), docs/operations.md:34-43 (\u00a71b), skills/boardctl-usage/SKILL.md:197-206. TESTS RUN FRESH: `go test -count=1 ./...` exit_code 0 \u2014 all packages ok (cmd/boardctl 6.583s, internal/board 1.698s, internal/render 0.036s); targeted `go test -count=1 -run 'NormalizeStatuses|ReportedVerified' -v ./internal/board/ ./internal/render/ ./cmd/boardctl/` exit_code 0 with `--- PASS: TestNormalizeStatusesDryRunPreservesBytesAndRefusesUnknown`, `--- PASS: TestNormalizeStatusesApplyIsAtomicAndIdempotent`, `--- PASS: TestDerivedReportedVerifiedCompleteCounts`, `--- PASS: TestNormalizeStatusesCLIHelpAndDryRun`, `--- PASS: TestNormalizeStatusesCLIApplyLeavesUnknownRefused`, `--- PASS: TestNormalizeStatusesHelpDocumentsScope`. MISSING: the required traceability links to row, source, tests, evidence, and commit. The repo's convention is a `ch:trace row=... spec=... test=... evidence=... commit=...` trailer (internal/board/keys.go:114-119; examples README.md:1692, docs/dogfood/2026-10-29-run27-integration.md:74). No ch:trace marker exists for BT-81 anywhere (grep over docs/, README.md, skills/ returns only unrelated rows). The board row .coding-hermes/board/tasks.jsonl BT-81 still reads status \"pending\" with commit_hash null, completed_at null, and no evidence/evidence_run_id; .coding-hermes/board/events.jsonl has only task_created (id 560) and task_updated blocked (id 561) \u2014 no completion event carrying a trace marker. Commit e81a8c8's message says only \"Addresses BT-81\" and contains no row/source/test/evidence/commit links. The only BT-81 mention in docs is a bare comment at skills/boardctl-usage/SKILL.md:197, which is not a traceability link set.\nThe normalization sweep, reported-vs-verified counts on board-report/v1, and alias-warning policy docs are implemented and all tests pass, but the required traceability links (row, source, tests, evidence, commit) are absent \u2014 no ch:trace marker, no board row/event evidence, and the commit message carries no links.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 Implement and test a re-runnable boardctl status normalization sweep with dry-run and apply semantics for one board without guessing unknown statuses; add a reported-vs-verified completion marker and expose its counts on board-report/v1; document alias warning policy; include traceability links to row, source, tests, evidence, and commit.: Most sub-requirements are met, but the traceability clause is entirely missing. MET: (a) sweep \u2014 internal/board/statusnormalize.go:38 NormalizeStatuses(apply) classifies one board only (b.tasksPath), dry-run default (DryRun: !apply, no write), apply does one atomicRewrite with a guard that untouched lines are byte-identical (statusnormalize.go:120-131); unknown/missing statuses are counted and refused, never coerced (statusnormalize.go:78-95, ResolveStatus at internal/board/read.go:57-65); CLI cmd/boardctl/statusnormalize.go:11-70 exposes --dry-run/--apply/--json/-C and is wired at cmd/boardctl/main.go:226. Re-runnable/idempotent: internal/board/statusnormalize_test.go TestNormalizeStatusesApplyIsAtomicAndIdempotent asserts second apply Changed==0 and byte-identical file. (b) reported-vs-verified marker \u2014 internal/render/derive.go:147-151 adds ReportedCompleteCount/VerifiedCompleteCount/UnverifiedCompleteCount with json tags reported_complete_count/verified_complete_count/unverified_complete_count, computed at derive.go:237-241 via board.RowEvidenceRunIDs (detail.evidence[].run_id or top-level evidence_run_id, internal/board/evidence_gate.go:100-116); these ride the board-report/v1 payload (confirmed present in cmd/boardctl/board-report.html:114 report-data island). (c) alias warning policy documented \u2014 docs/specs/board-analytics-report.md:398-412 (\u00a73.9/\u00a73.9a: read-tolerated aliases warn, canonical writes, single-board dry-run default, owner-gated fleet apply), docs/operations.md:34-43 (\u00a71b), skills/boardctl-usage/SKILL.md:197-206. TESTS RUN FRESH: `go test -count=1 ./...` exit_code 0 \u2014 all packages ok (cmd/boardctl 6.583s, internal/board 1.698s, internal/render 0.036s); targeted `go test -count=1 -run 'NormalizeStatuses|ReportedVerified' -v ./internal/board/ ./internal/render/ ./cmd/boardctl/` exit_code 0 with `--- PASS: TestNormalizeStatusesDryRunPreservesBytesAndRefusesUnknown`, `--- PASS: TestNormalizeStatusesApplyIsAtomicAndIdempotent`, `--- PASS: TestDerivedReportedVerifiedCompleteCounts`, `--- PASS: TestNormalizeStatusesCLIHelpAndDryRun`, `--- PASS: TestNormalizeStatusesCLIApplyLeavesUnknownRefused`, `--- PASS: TestNormalizeStatusesHelpDocumentsScope`. MISSING: the required traceability links to row, source, tests, evidence, and commit. The repo's convention is a `ch:trace row=... spec=... test=... evidence=... commit=...` trailer (internal/board/keys.go:114-119; examples README.md:1692, docs/dogfood/2026-10-29-run27-integration.md:74). No ch:trace marker exists for BT-81 anywhere (grep over docs/, README.md, skills/ returns only unrelated rows). The board row .coding-hermes/board/tasks.jsonl BT-81 still reads status \"pending\" with commit_hash null, completed_at null, and no evidence/evidence_run_id; .coding-hermes/board/events.jsonl has only task_created (id 560) and task_updated blocked (id 561) \u2014 no completion event carrying a trace marker. Commit e81a8c8's message says only \"Addresses BT-81\" and contains no row/source/test/evidence/commit links. The only BT-81 mention in docs is a bare comment at skills/boardctl-usage/SKILL.md:197, which is not a traceability link set.\nThe normalization sweep, reported-vs-verified counts on board-report/v1, and alias-warning policy docs are implemented and all tests pass, but the required traceability links (row, source, tests, evidence, commit) are absent \u2014 no ch:trace marker, no board row/event evidence, and the commit message carries no links.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "Implement and test a re-runnable boardctl status normalization sweep with dry-run and apply semantics for one board without guessing unknown statuses; add a reported-vs-verified completion marker and expose its counts on board-report/v1; document alias warning policy; include traceability links to row, source, tests, evidence, and commit.",
+                "status": "FAIL",
+                "detail": "Most sub-requirements are met, but the traceability clause is entirely missing. MET: (a) sweep \u2014 internal/board/statusnormalize.go:38 NormalizeStatuses(apply) classifies one board only (b.tasksPath), dry-run default (DryRun: !apply, no write), apply does one atomicRewrite with a guard that untouched lines are byte-identical (statusnormalize.go:120-131); unknown/missing statuses are counted and refused, never coerced (statusnormalize.go:78-95, ResolveStatus at internal/board/read.go:57-65); CLI cmd/boardctl/statusnormalize.go:11-70 exposes --dry-run/--apply/--json/-C and is wired at cmd/boardctl/main.go:226. Re-runnable/idempotent: internal/board/statusnormalize_test.go TestNormalizeStatusesApplyIsAtomicAndIdempotent asserts second apply Changed==0 and byte-identical file. (b) reported-vs-verified marker \u2014 internal/render/derive.go:147-151 adds ReportedCompleteCount/VerifiedCompleteCount/UnverifiedCompleteCount with json tags reported_complete_count/verified_complete_count/unverified_complete_count, computed at derive.go:237-241 via board.RowEvidenceRunIDs (detail.evidence[].run_id or top-level evidence_run_id, internal/board/evidence_gate.go:100-116); these ride the board-report/v1 payload (confirmed present in cmd/boardctl/board-report.html:114 report-data island). (c) alias warning policy documented \u2014 docs/specs/board-analytics-report.md:398-412 (\u00a73.9/\u00a73.9a: read-tolerated aliases warn, canonical writes, single-board dry-run default, owner-gated fleet apply), docs/operations.md:34-43 (\u00a71b), skills/boardctl-usage/SKILL.md:197-206. TESTS RUN FRESH: `go test -count=1 ./...` exit_code 0 \u2014 all packages ok (cmd/boardctl 6.583s, internal/board 1.698s, internal/render 0.036s); targeted `go test -count=1 -run 'NormalizeStatuses|ReportedVerified' -v ./internal/board/ ./internal/render/ ./cmd/boardctl/` exit_code 0 with `--- PASS: TestNormalizeStatusesDryRunPreservesBytesAndRefusesUnknown`, `--- PASS: TestNormalizeStatusesApplyIsAtomicAndIdempotent`, `--- PASS: TestDerivedReportedVerifiedCompleteCounts`, `--- PASS: TestNormalizeStatusesCLIHelpAndDryRun`, `--- PASS: TestNormalizeStatusesCLIApplyLeavesUnknownRefused`, `--- PASS: TestNormalizeStatusesHelpDocumentsScope`. MISSING: the required traceability links to row, source, tests, evidence, and commit. The repo's convention is a `ch:trace row=... spec=... test=... evidence=... commit=...` trailer (internal/board/keys.go:114-119; examples README.md:1692, docs/dogfood/2026-10-29-run27-integration.md:74). No ch:trace marker exists for BT-81 anywhere (grep over docs/, README.md, skills/ returns only unrelated rows). The board row .coding-hermes/board/tasks.jsonl BT-81 still reads status \"pending\" with commit_hash null, completed_at null, and no evidence/evidence_run_id; .coding-hermes/board/events.jsonl has only task_created (id 560) and task_updated blocked (id 561) \u2014 no completion event carrying a trace marker. Commit e81a8c8's message says only \"Addresses BT-81\" and contains no row/source/test/evidence/commit links. The only BT-81 mention in docs is a bare comment at skills/boardctl-usage/SKILL.md:197, which is not a traceability link set."
+              }
+            ],
+            "summary": "The normalization sweep, reported-vs-verified counts on board-report/v1, and alias-warning policy docs are implemented and all tests pass, but the required traceability links (row, source, tests, evidence, commit) are absent \u2014 no ch:trace marker, no board row/event evidence, and the commit message carries no links.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: BT-81\n\nStage tier1: FAIL\n    \u2717 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 Implement and test a re-runnable boardctl status normalization sweep with dry-run and apply semantics for one board without guessing unknown statuses; add a reported-vs-verified completion marker and expose its counts on board-report/v1; document alias warning policy; include traceability links to row, source, tests, evidence, and commit.: Most sub-requirements are met, but the traceability clause is entirely missing. MET: (a) sweep \u2014 internal/board/statusnormalize.go:38 NormalizeStatuses(apply) classifies one board only (b.tasksPath), dry-run default (DryRun: !apply, no write), apply does one atomicRewrite with a guard that untouched lines are byte-identical (statusnormalize.go:120-131); unknown/missing statuses are counted and refused, never coerced (statusnormalize.go:78-95, ResolveStatus at internal/board/read.go:57-65); CLI cmd/boardctl/statusnormalize.go:11-70 exposes --dry-run/--apply/--json/-C and is wired at cmd/boardctl/main.go:226. Re-runnable/idempotent: internal/board/statusnormalize_test.go TestNormalizeStatusesApplyIsAtomicAndIdempotent asserts second apply Changed==0 and byte-identical file. (b) reported-vs-verified marker \u2014 internal/render/derive.go:147-151 adds ReportedCompleteCount/VerifiedCompleteCount/UnverifiedCompleteCount with json tags reported_complete_count/verified_complete_count/unverified_complete_count, computed at derive.go:237-241 via board.RowEvidenceRunIDs (detail.evidence[].run_id or top-level evidence_run_id, internal/board/evidence_gate.go:100-116); these ride the board-report/v1 payload (confirmed present in cmd/boardctl/board-report.html:114 report-data island). (c) alias warning policy documented \u2014 docs/specs/board-analytics-report.md:398-412 (\u00a73.9/\u00a73.9a: read-tolerated aliases warn, canonical writes, single-board dry-run default, owner-gated fleet apply), docs/operations.md:34-43 (\u00a71b), skills/boardctl-usage/SKILL.md:197-206. TESTS RUN FRESH: `go test -count=1 ./...` exit_code 0 \u2014 all packages ok (cmd/boardctl 6.583s, internal/board 1.698s, internal/render 0.036s); targeted `go test -count=1 -run 'NormalizeStatuses|ReportedVerified' -v ./internal/board/ ./internal/render/ ./cmd/boardctl/` exit_code 0 with `--- PASS: TestNormalizeStatusesDryRunPreservesBytesAndRefusesUnknown`, `--- PASS: TestNormalizeStatusesApplyIsAtomicAndIdempotent`, `--- PASS: TestDerivedReportedVerifiedCompleteCounts`, `--- PASS: TestNormalizeStatusesCLIHelpAndDryRun`, `--- PASS: TestNormalizeStatusesCLIApplyLeavesUnknownRefused`, `--- PASS: TestNormalizeStatusesHelpDocumentsScope`. MISSING: the required traceability links to row, source, tests, evidence, and commit. The repo's convention is a `ch:trace row=... spec=... test=... evidence=... commit=...` trailer (internal/board/keys.go:114-119; examples README.md:1692, docs/dogfood/2026-10-29-run27-integration.md:74). No ch:trace marker exists for BT-81 anywhere (grep over docs/, README.md, skills/ returns only unrelated rows). The board row .coding-hermes/board/tasks.jsonl BT-81 still reads status \"pending\" with commit_hash null, completed_at null, and no evidence/evidence_run_id; .coding-hermes/board/events.jsonl has only task_created (id 560) and task_updated blocked (id 561) \u2014 no completion event carrying a trace marker. Commit e81a8c8's message says only \"Addresses BT-81\" and contains no row/source/test/evidence/commit links. The only BT-81 mention in docs is a bare comment at skills/boardctl-usage/SKILL.md:197, which is not a traceability link set.\nThe normalization sweep, reported-vs-verified counts on board-report/v1, and alias-warning policy docs are implemented and all tests pass, but the required traceability links (row, source, tests, evidence, commit) are absent \u2014 no ch:trace marker, no board row/event evidence, and the commit message carries no links.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-30T20:06:54.553737",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-30T20:06:54.589987+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 28727,
+        "truncated": false,
+        "source": "git show e20ad3e6c4dc"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 32254,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-81"
+  }
+}

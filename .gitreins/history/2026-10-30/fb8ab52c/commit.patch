@@ -1,0 +1,23 @@
+commit 227494b90530b3e54166089fd54fa81e9201b683
+Merge: e20ad3e e81a8c8
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 30 15:08:49 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 30 15:08:49 2026 -0500
+
+    Merge remote-tracking branch 'origin/wt/BT-81'
+
+ cmd/boardctl/df15_skill_closure_test.go |   8 +-
+ cmd/boardctl/main.go                    |   7 ++
+ cmd/boardctl/statusnormalize.go         |  62 ++++++++++++++
+ cmd/boardctl/statusnormalize_test.go    | 103 +++++++++++++++++++++++
+ docs/operations.md                      |  13 ++-
+ docs/specs/board-analytics-report.md    |  17 ++++
+ internal/board/statusnormalize.go       | 143 ++++++++++++++++++++++++++++++++
+ internal/board/statusnormalize_test.go  |  94 +++++++++++++++++++++
+ internal/describe/describe.go           |  37 +++++----
+ internal/describe/describe_test.go      |   2 +-
+ internal/render/bt081_report_test.go    |  57 +++++++++++++
+ internal/render/derive.go               |  11 +++
+ skills/boardctl-usage/SKILL.md          |  14 +++-
+ 13 files changed, 542 insertions(+), 26 deletions(-)

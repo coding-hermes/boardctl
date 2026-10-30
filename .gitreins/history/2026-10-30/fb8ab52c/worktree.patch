@@ -1,0 +1,248 @@
+diff --git a/.coding-hermes/board/tasks.jsonl b/.coding-hermes/board/tasks.jsonl
+index 8525193..53b2c75 100644
+--- a/.coding-hermes/board/tasks.jsonl
++++ b/.coding-hermes/board/tasks.jsonl
+@@ -205,7 +205,7 @@
+ {"status":"complete","id":"QA-BOARDCTL-RELENG-2","title":"[P1] Battery collection failed: no agent available, zero cells executed","detail":{"evidence":[{"run_id":"f6a901c5","ts":"2026-10-25T16:38:47.434218+00:00"}],"text":"Cell [collect] returned UNVERIFIED with detail \"COLLECT-FAIL no-agent\" — no agent was available to run the bunker battery for boardctl (/home/kara/.hermes/stand-in/releng-lane/boardctl), so no install/CI/docker/upgrade/chaos cells were ever executed. UNVERIFIED is not OK: this is a harness-level collection gap, not a passing run, and the project's brittleness is entirely unmeasured."},"priority":"P1","source":"qa-dagger","reasoning":{"note":"QA foreman cycle 2026-10-25 — fresh-system CI pass (bunker cell: collect)"},"review_notes":"COLLECT-FAIL no-agent","ts":"2026-10-25T14:46:36.682Z","acceptance_criteria":"1) A product-scoped releng battery runs against boardctl's git root, not the parent /home repository. 2) The collected evidence contains the expected battery cells with per-cell verdicts; no-agent/unverified collection is not accepted as green. 3) The row remains pending until the rerun is collected and independently verified.","worker_status":"complete","worker_summary":"Product-scoped bunker releng rerun collected on bunker-mvp agent 90926ebc: 24 evidence rows, 21 battery cells, collect OK after three polls, no-agent/no-agent-text 0, syntax-error text 0. Independent readback: /tmp/boardctl-releng2-rerun2/bunker-qa-evidence-boardctl-releng2-20261025-160129.jsonl; GitReins Tier-2 PASS at .gitreins/history/2026-10-25/f6a901c5/verdict.json, overall FAIL only because pre-existing harness-state secrets scan excluded .gitreins. Boardctl go build/vet/test PASS.","worktree":"/home/kara/worktrees/boardctl-QA-BOARDCTL-RELENG-2","branch":"wt/QA-BOARDCTL-RELENG-2","commit_hash":"264b8ddd1a4a59cadf79fa051eac4eb0a6dd5a3d","guard_result":"SKIP","ci_result":"GREEN","foreman_note":"ch:trace row=QA-BOARDCTL-RELENG-2 spec=none:qa-dagger-acceptance wave=boardctl-foreman-2026-10-25-15-52-53 test=/tmp/boardctl-releng2-rerun2/bunker-qa-evidence-boardctl-releng2-20261025-160129.jsonl doc=none:qa-evidence prompt=~/.hermes/skills/devops/bunker-qa-harness/SKILL.md evidence=.gitreins/history/2026-10-25/f6a901c5/verdict.json witness=live:bunker-mvp/agent-90926ebc verdict=PASS:tier2 commit=264b8ddd1a4a59cadf79fa051eac4eb0a6dd5a3d memory=none:tick-local STATUS: complete TIER: T3 EVIDENCE: collected 21-cell rerun, exact evidence path, independent JSONL readback, local build/vet/test","completed_at":"2026-10-25 16:38:47"}
+ {"status": "complete", "id": "QA-BOARDCTL-REVIEW-1", "title": "[P3] boardctl-review battery unfinished/uncollected at collect deadline \u2014 second collect pass required (agent left intact)", "detail": {"evidence": [{"run_id":"7e50d56d","ts":"2026-10-26T18:10:01.556971+00:00"}], "text": "COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2'\\n/usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'"}, "priority": "P3", "source": "qa-dagger", "reasoning": {"note": "QA foreman cycle 2026-10-25 \u2014 fresh-system CI pass (bunker cell: collect)"}, "review_notes": "COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2'\\n/usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'", "ts": "2026-10-25T14:46:46.953Z", "acceptance": "1) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl starts the battery: the launch cell prints status OK with an agent= id. 2) bash /home/kara/.hermes/scripts/bunker-qa.sh collect --evidence, given the .jsonl path from that launch cell, polls until it exits 0 and the collect cell prints OK or RUNNING \u2014 never a detail containing 'syntax error near unexpected token'. 3) the evidence .jsonl records at least the collect cell with a status that is not UNVERIFIED.", "worker_status": "complete", "worker_summary": "Second QA collect pass verified: launch agent=3b216d9f status OK; collect status OK; evidence has 22 rows and collect status OK; no syntax error.", "foreman_note": "Dispatch session 20261026_124518_ff6bfd; no completion evidence yet.\n\nLIVE PROBE 2026-10-26T13:00Z: ps showed worker alive 10m with 0-byte meaningful report and only Warning: Unknown toolsets: chrome_profiles; no launch agent id or evidence JSONL was produced. UNBLOCK: rerun bunker-qa launch/collect in a worker or interactive QA lane.\n\nch:trace row=QA-BOARDCTL-REVIEW-1 spec=none:qa-battery-row wave=none:serial-tick-boardctl-2026-10-26-17-35-03 test=bash-/home/kara/.hermes/scripts/bunker-qa.sh-collect-evidence doc=none:qa-operations evidence=/tmp/bunker-qa-evidence-20261026T175824Z-1004168.jsonl witness=live:bunker-qa-launch-agent-3b216d9f+collect-OK verdict=gitreins:7e50d56d commit=96fe1e3 memory=none:not-written\n\nSecond QA collect pass live evidence: launch OK agent=3b216d9f; collect OK exit 0; evidence=/tmp/bunker-qa-evidence-20261026T175824Z-1004168.jsonl; 22 JSONL rows; collect status OK; syntax-error matches 0. Prior GitReins verdict .gitreins/history/2026-10-26/7e50d56d/verdict.json was stale because it evaluated before the evidence/row closeout; row now carries the resolved evidence.\n\nSecond QA collect pass live evidence: launch OK agent=3b216d9f; collect OK exit 0; evidence=/tmp/bunker-qa-evidence-20261026T175824Z-1004168.jsonl; 22 JSONL rows; collect status OK; syntax-error matches 0. Prior GitReins verdict .gitreins/history/2026-10-26/7e50d56d was stale because it evaluated before the evidence/row closeout; row now carries the resolved evidence."}
+ {"status": "complete", "id": "QA-BOARDCTL-REVIEW-2", "title": "[P1] collect cell COLLECT-FAIL: malformed bash redirect in harness command leaves the whole battery unverified", "detail": {"evidence": [{"run_id":"377ba9be","ts":"2026-10-25T17:02:30.843639+00:00"}], "text": "Cell recorded as UNVERIFIED, which is not OK. Exact cell detail: '[collect] UNVERIFIED \u2014 COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2' / /usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'. Root cause is visible in the command itself: the stderr redirect is broken \u2014 '2 /var/tmp/.../err' is missing its redirect operator and must be '2> /var/tmp/.../err'. The collect command aborted on the syntax error, so no collect status was ever produced and no cell in the battery can be trusted. This is a harness/CI-path FAIL, hence P1."}, "priority": "P1", "source": "qa-dagger", "reasoning": {"note": "QA foreman cycle 2026-10-25 \u2014 fresh-system CI pass (bunker cell: collect)"}, "review_notes": "Cell recorded as UNVERIFIED, which is not OK. Exact cell detail: '[collect] UNVERIFIED \u2014 COLLECT-FAIL unreachable/no collect status: /usr/bin/bash: eval: line 6: syntax error near unexpected token `2' / /usr/bin/bash: eval: line 6: `) > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/out\" 2 \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/err\"; echo $? > \"/var/tmp/hermes-scratch/dagger-toolraw-970636122/rc\"'. Root cause ", "ts": "2026-10-25T14:46:46.954Z", "acceptance": "1) grep -c ' 2 \"' /home/kara/Hermes-DAGger/hermes-dagger/src/bridge/tool_raw.go prints 0 and exits 1 \u2014 the raw-wrapper builder emits '2> ' before the stderr path, never the bare '2' malformation quoted in this row. 2) bash /home/kara/.hermes/scripts/bunker-qa.sh launch /home/kara/coding-hermes-boardctl followed by collect --evidence with the printed .jsonl path produces a collect cell whose status is OK, RUNNING or FAIL and whose detail does not contain 'syntax error near unexpected token'.", "worker_status": "complete", "commit_hash": "6b8c43144c7651ed61e4a2a704cb05286a63dd53", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "Verified live: malformed redirect absent (grep count 0, exit 1); bunker-qa launch returned OK with agent=2504f5de and evidence=/tmp/bunker-qa-evidence-20261025T165824Z-1477537.jsonl; collect returned RUNNING with exit 0; evidence JSONL parsed successfully and contains no syntax error or unexpected token. GitReins Tier 2 PASS at .gitreins/history/2026-10-25/377ba9be/verdict.json; Tier 1 secrets failed because gitleaks scanned harness state, while project tests passed.", "foreman_note": "Foreman tick 162: verification-only closeout of the P1 QA finding. The first judge run used an incomplete criterion and failed; task was recreated with the exact runnable launch/collect acceptance and re-judged. The on-disk verdict directory is .gitreins/history/2026-10-25/377ba9be/ (printed id 18c049be is not the directory). The target Hermes-DAGger fix is already present in e1be5432; no boardctl source change was required.", "completed_at": "2026-10-25 17:02:14"}
+-{"status": "pending", "id": "BT-81", "title": "3,761 rows (measured 2026-10-28; 6,412 re-measured 2026-10-30) sit outside boardctl's own canonical status vocabulary because validation only WARNS; and 'complete' still cannot be told from 'verified'", "detail": {"fingerprint": "c6da6dc951b6aa28ccb6762f0da4e50239b84d5d5e03b9f47f5e5199fdf26467"}, "priority": "P1", "source": null, "reasoning": "A migration maps every existing status to the canonical four with zero rows left unmapped; the census and gate read one criteria field with a documented legacy fallback; a board written by either writer produces identical counts; the 12-variant count is zero on a re-scan. Evidence: coding-hermes-boardctl/internal/board/validate.go:67 (canonical vocabulary) and :175 (alias warnings); 3,761 non-canonical rows counted across every tasks.jsonl on 2026-10-28; re-measured 6,412 on 2026-10-30 (plus 2,392 unparseable lines) - the count is a moving target, the sweep's dry-run count is authoritative at execution time.", "review_notes": null, "ts": null, "worker_status": "pending", "commit_hash": null, "guard_result": null, "ci_result": null, "worker_summary": null, "foreman_note": null, "completed_at": null, "acceptance_criteria": "CORRECTED PREMISE (2026-10-28, after re-reading our own code): internal/board/validate.go already defines the canonical set {pending,in_progress,review,blocked,complete,failed}, already REJECTS aliases on write, already names the canonical value for a known alias as a WARNING, and already ships 'boardctl update <id> --normalize' as the sanctioned fix. So the vocabulary exists and is enforced at the write path - the earlier claim of a missing canonical set was wrong, and the real gap is that the repair sweep never ran. Measured across every board: 320,045 complete and 51,501 pending canonical rows against 3,761 non-canonical rows still on disk (done 1,562, open 794, null 674, closed 473, superseded 91, completed 80, in-progress 27, duplicate 27, added 9, stale 8). RE-MEASURED 2026-10-30 (staged premise sweep over 1,421 tasks.jsonl, rc 0): 6,412 non-canonical (done 2,022, open 826, closed 619, missing-status 2,540, superseded 116, completed 99, duplicate 56, in-progress 44, plus 8 smaller variants), 396,993 complete, 65,929 pending, and 2,392 unparseable lines the 10-28 census never counted; the sweep's own dry-run count is authoritative at execution time, not these dated snapshots. Deliver two things. (1) Run the normalization: a re-runnable sweep with a dry-run count that drives the 3,761 alias rows to canonical values through boardctl update --normalize, board by board, and then state whether validate should escalate alias warnings to errors per board so the debt cannot re-accumulate. (2) Add the distinction the vocabulary genuinely lacks: reported-done is not verified. A row closing because a lane stopped and a row closing because evidence was checked are the same value today; add a marker that a report can read and count.", "complexity": 2, "created_at": "2026-10-28T04:37:50.054253+00:00", "updated_at": "2026-10-28T04:58:18.316902+00:00", "acceptance": "(A) Agent-safe, dispatchable now - inside the boardctl repo, build and prove the status-normalization sweep and the reported-vs-verified marker. PASS: one re-runnable sweep command (`boardctl normalize-statuses --dry-run`, driving `boardctl update --normalize` board by board in non-dry mode) prints a per-board count of non-canonical status rows and exit 0 without mutating any board; the marker distinguishes reported-done from evidence-checked closes and at least one report prints a count of reported-vs-verified rows on the board-analytics report surface (docs/specs/board-analytics-report.md); the escalate-or-tolerate policy for alias warnings (validate warning vs error per board) is documented as a recommendation in docs/operations.md. (B) Owner-gated remainder - owner: OWNER-BANE; unblock action: owner ruling appended to this row authorizing (i) the fleet-wide apply that drives non-canonical rows across every project's canonical stores to 0 (moving target: 3,761 measured 2026-10-28, 6,412 re-measured 2026-10-30 over 1,421 tasks.jsonl - the apply drives the sweep's own dry-run count to 0 at execution time, not a filed snapshot) and (ii) the canonical-set decision (keep pending/in_progress/review/blocked/complete/failed vs shift to open/in_progress/blocked/closed); workers must not mutate other projects' boards until the ruling lands."}
++{"status": "in_progress", "id": "BT-81", "title": "3,761 rows (measured 2026-10-28; 6,412 re-measured 2026-10-30) sit outside boardctl's own canonical status vocabulary because validation only WARNS; and 'complete' still cannot be told from 'verified'", "detail": {"fingerprint": "c6da6dc951b6aa28ccb6762f0da4e50239b84d5d5e03b9f47f5e5199fdf26467"}, "priority": "P1", "source": null, "reasoning": "A migration maps every existing status to the canonical four with zero rows left unmapped; the census and gate read one criteria field with a documented legacy fallback; a board written by either writer produces identical counts; the 12-variant count is zero on a re-scan. Evidence: coding-hermes-boardctl/internal/board/validate.go:67 (canonical vocabulary) and :175 (alias warnings); 3,761 non-canonical rows counted across every tasks.jsonl on 2026-10-28; re-measured 6,412 on 2026-10-30 (plus 2,392 unparseable lines) - the count is a moving target, the sweep's dry-run count is authoritative at execution time.", "review_notes": null, "ts": null, "worker_status": "pending", "commit_hash": null, "guard_result": null, "ci_result": null, "worker_summary": null, "foreman_note": null, "completed_at": null, "acceptance_criteria": "CORRECTED PREMISE (2026-10-28, after re-reading our own code): internal/board/validate.go already defines the canonical set {pending,in_progress,review,blocked,complete,failed}, already REJECTS aliases on write, already names the canonical value for a known alias as a WARNING, and already ships 'boardctl update <id> --normalize' as the sanctioned fix. So the vocabulary exists and is enforced at the write path - the earlier claim of a missing canonical set was wrong, and the real gap is that the repair sweep never ran. Measured across every board: 320,045 complete and 51,501 pending canonical rows against 3,761 non-canonical rows still on disk (done 1,562, open 794, null 674, closed 473, superseded 91, completed 80, in-progress 27, duplicate 27, added 9, stale 8). RE-MEASURED 2026-10-30 (staged premise sweep over 1,421 tasks.jsonl, rc 0): 6,412 non-canonical (done 2,022, open 826, closed 619, missing-status 2,540, superseded 116, completed 99, duplicate 56, in-progress 44, plus 8 smaller variants), 396,993 complete, 65,929 pending, and 2,392 unparseable lines the 10-28 census never counted; the sweep's own dry-run count is authoritative at execution time, not these dated snapshots. Deliver two things. (1) Run the normalization: a re-runnable sweep with a dry-run count that drives the 3,761 alias rows to canonical values through boardctl update --normalize, board by board, and then state whether validate should escalate alias warnings to errors per board so the debt cannot re-accumulate. (2) Add the distinction the vocabulary genuinely lacks: reported-done is not verified. A row closing because a lane stopped and a row closing because evidence was checked are the same value today; add a marker that a report can read and count.", "complexity": 2, "created_at": "2026-10-28T04:37:50.054253+00:00", "updated_at": "2026-10-30T19:41:08.04584+00:00", "acceptance": "(A) Agent-safe, dispatchable now - inside the boardctl repo, build and prove the status-normalization sweep and the reported-vs-verified marker. PASS: one re-runnable sweep command (`boardctl normalize-statuses --dry-run`, driving `boardctl update --normalize` board by board in non-dry mode) prints a per-board count of non-canonical status rows and exit 0 without mutating any board; the marker distinguishes reported-done from evidence-checked closes and at least one report prints a count of reported-vs-verified rows on the board-analytics report surface (docs/specs/board-analytics-report.md); the escalate-or-tolerate policy for alias warnings (validate warning vs error per board) is documented as a recommendation in docs/operations.md. (B) Owner-gated remainder - owner: OWNER-BANE; unblock action: owner ruling appended to this row authorizing (i) the fleet-wide apply that drives non-canonical rows across every project's canonical stores to 0 (moving target: 3,761 measured 2026-10-28, 6,412 re-measured 2026-10-30 over 1,421 tasks.jsonl - the apply drives the sweep's own dry-run count to 0 at execution time, not a filed snapshot) and (ii) the canonical-set decision (keep pending/in_progress/review/blocked/complete/failed vs shift to open/in_progress/blocked/closed); workers must not mutate other projects' boards until the ruling lands.", "worktree": "/home/kara/worktrees/coding-hermes-boardctl-BT-81", "branch": "wt/BT-81"}
+ {"status": "complete", "id": "BT-82", "title": "boardctl's fingerprint identifies a finding, never the tree: rows cannot cite which bytes were evidence", "detail": {"fingerprint": "4ba37dac3993af9e1047e9330b7e55da2cae8ac22e0a0c1553dc5bc737b240b7", "evidence": [{"run_id":"78ebfe38","ts":"2026-10-28T22:43:28.240539+00:00"}]}, "priority": "P2", "source": null, "reasoning": "The producer is gitreins (GR-153); boardctl is where a human or foreman reads a row, so it must carry a pointer or the digest is unreachable. Zero open rows in this repo touched provenance (measured 2026-10-28); BT-81 covers status vocabulary only, and finding-vs-tree identity is the adjacent confusion that produces the same class of unverifiable claim.", "review_notes": null, "ts": null, "worker_status": "complete", "commit_hash": "8a21b1d8ee2d955eea391a2af54bf8227902171c", "guard_result": "PASS", "ci_result": "GREEN", "worker_summary": "Tree evidence provenance shipped in 9e3723e and test coverage in 8a21b1d; GitReins Tier 2 COMPLETE at .gitreins/history/2026-10-28/78ebfe38/verdict.json. Added validated 64-hex tree_fp, artifacts, run id across create/update/event, preserved finding dedupe, README docs, and 2 CLI regression tests.", "foreman_note": "Serial worker dispatched on authoritative glm-5.3-flash @ zai-glm; worker owns implementation, foreman owns gates, push, judge, and closeout.\n\nForeman verification: go build ./..., go vet ./..., go test ./... -count=1 -short, gitreins guard, focused tree-evidence tests, and independent malformed-fingerprint no-write CLI probe all passed. ch:trace row=BT-82 spec=README.md#finding-fingerprints wave=none:serial test=cmd/boardctl/bt082_tree_evidence_test.go::TestCmdTreeEvidenceRoundTripAndInvalidNoWrite doc=README.md#finding-fingerprints prompt=/tmp/boardctl-BT-82-retry-brief.txt evidence=.gitreins/history/2026-10-28/78ebfe38/verdict.json witness=live:temp-board-tree-evidence-probe verdict=78ebfe38 commit=8a21b1d8ee2d955eea391a2af54bf8227902171c memory=none:not-written STATUS: complete TIER: T3 EVIDENCE: go build/vet/test + guard PASS; focused tests PASS; malformed digest rc=1 with tasks.jsonl byte-identical; push parity 0", "completed_at": "2026-10-28 17:45:00", "acceptance_criteria": "internal/board/fingerprint.go already computes FindingFingerprint(title, reasoning) for dedupe and appendEvidenceEvent carries a fingerprint parameter, so the word 'fingerprint' in this repo means 'is this the same issue', not 'are these the same bytes' - DOC-16 already caught status-vocabulary drift from that ambiguity. That conflates two identities and makes evidence uncitable: a row can say it was evidenced but not against what content. Add a distinct, validated evidence reference to the row/event schema: tree_fp (64 hex chars, the digest produced by gitreins), optional artifact list, and the run id; accept it via '--evidence-fingerprint' and '--evidence-artifact' on create and evidence, reject malformed digests by shape rather than silently storing prose, and render it in the row detail so a reader can tell finding identity from tree identity. Keep existing finding-fingerprint behaviour and dedupe untouched, and document the two identities in the README section DF-BOARDCTL-11 already touched.", "complexity": 3, "created_at": "2026-10-28T13:50:18.805385+00:00", "updated_at": "2026-10-28T22:43:28.240539+00:00", "blocked_reason": null, "acceptance": "A row can cite tree_fp (64 hex) plus optional artifacts; malformed digests are rejected by shape; finding-fingerprint dedupe is unchanged; row detail shows both identities distinctly; README documents finding vs tree identity.", "worktree": "/home/kara/worktrees/boardctl-BT-82", "branch": "wt/BT-82"}
+ {"status":"complete","id":"QA-BOARDCTL-FOREMAN-3","title":"[P1] make install fails at Makefile:201","detail":"rc=2: make install → make: *** [Makefile:201: install] Error 1","priority":"P1","source":"qa-dagger","reasoning":{"note":"QA foreman cycle 2026-10-29 — fresh-system CI pass (bunker cell: fresh-install)"},"review_notes":"rc=2: make install → make: *** [Makefile:201: install] Error 1","ts":"2026-10-29T08:11:43.943Z","acceptance":"Repaired when ALL of these hold, run verbatim from the repository root (read-only checks):\n1) `grep -c '^install:' Makefile` prints 1 — the install target (Makefile:200) exists after the repair.\n2) `grep -c 'SHA256SUMS not found' Makefile` prints a number >= 1 — the missing-assets pre-check that produced the rc=2 at Makefile:201 is the designed loud gate and is still present.\n3) `grep -F -c 'install -m 0755' Makefile` prints 1 — the recipe still installs the checksum-verified asset to INSTALL_BIN ($HOME/.local/bin/boardctl by default).\n4) `grep -rn 'func TestDF12QuickstartSHA256SUMSPublishesBinaryAsset' --include='*_test.go' cmd/` prints exactly 1 matching line — the SHA256SUMS install-gate regression test exists in the tree, proven by NAME (never run here).","updated_at":"2026-10-29T10:00:00Z","worker_status":"complete","commit_hash":"2d6d9d3","guard_result":"DEGRADED-PASS (gitleaks PASS; Go lanes skipped because Makefile-only staged)","ci_result":"PENDING (exact-head CI for the final board closeout push is queued; prior implementation runs green)","worker_summary":"Foreman implemented source-build fallback in Makefile install when dist/SHA256SUMS is absent; release assets remain checksum-verified through install-release. Verification: rm -rf dist && make install INSTALL_DIR=/tmp/boardctl-install-qa3/bin (exit 0), installed binary version dev; synthetic release asset + SHA256SUMS path verified OK; wrong checksum rejected with checksum gate FAILED; go build ./..., go vet ./..., go test -short -p 1 ./... passed. ch:trace row=QA-BOARDCTL-FOREMAN-3 spec=QA-2026-10-29#fresh-install test=cmd/boardctl/df12_readme_quickstart_test.go::TestDF12QuickstartSHA256SUMSPublishesBinaryAsset doc=Makefile evidence=live:make-install+go-tests witness=github:actions-success verdict=none:gitreins task complete produced no readable verdict artifact after Tier-2 process exit commit=2d6d9d3 memory=none:repo-local closeout","foreman_note":"QA finding repaired. Implementation commits 1a5d1cd, d2e38fb, and 2d6d9d3 are pushed; board closeout is pushed with origin/main..HEAD = 0. GitReins task complete ran after the final implementation commit but no readable verdict.json was emitted; evaluator limitation recorded. Exact-head CI is still queued, so CI is intentionally PENDING rather than overstated as GREEN.","completed_at":"2026-10-29T10:00:00Z"}
+ {"status": "complete", "id": "QA-BOARDCTL-FOREMAN-4", "title": "[P2] upgrade from v0.1.10 fails — missing release asset", "detail": "rc=2 cmd=[make install PREFIX=\"$HOME/.local\"] — install: dist/SHA256SUMS not found — download the released asset + SHA256SUMS per README '## Install' first", "priority": "P2", "source": "qa-dagger", "reasoning": {"note": "QA foreman cycle 2026-10-29 — fresh-system CI pass (bunker cell: upgrade)"}, "review_notes": "rc=2 cmd=[make install PREFIX=\"$HOME/.local\"] — install: dist/SHA256SUMS not found — download the released asset + SHA256SUMS per README '## Install' first", "ts": "2026-10-29T08:11:43.943Z", "acceptance": "Repaired when ALL of these hold, run verbatim from the repository root (read-only checks):\n1) `grep -c '^## Install' README.md` prints 1 — the documented install path exists.\n2) `grep -c 'releases/download/' README.md` prints a number >= 2 — README Install documents BOTH the per-release asset URL and the SHA256SUMS URL.\n3) `grep -c 'sha256sum -c --ignore-missing SHA256SUMS' README.md` prints a number >= 1 AND `grep -c 'sha256sum -c --ignore-missing SHA256SUMS' Makefile` prints 1 — the README instructions and the make install gate verify the same checksum file, so an upgrade following README with the v0.1.10-to-current assets staged succeeds instead of exiting 2 with dist/SHA256SUMS not found.\n4) `git tag --list v0.1.11` prints v0.1.11 — the release the README URLs point at exists in this checkout (no network required).", "updated_at": "2026-10-29T00:00:00Z", "worker_status": "complete", "worker_summary": "Verification-only close: all 4 ACs pass at HEAD b6d0227. (1) grep -c '^## Install' README.md = 1. (2) grep -c 'releases/download/' README.md = 3 (>=2). (3) sha256sum -c --ignore-missing SHA256SUMS present in both README (1) and Makefile (1). (4) git tag --list v0.1.11 = v0.1.11. The original rc=2 at Makefile:201 was fixed by QA-BOARDCTL-FOREMAN-3 (commit 2d6d9d3 added source-build fallback when dist/SHA256SUMS is absent). The upgrade path now works: README documents the install, Makefile verifies the same checksum file, and the v0.1.11 tag exists.", "guard_result": "PASS", "ci_result": "GREEN", "foreman_note": "Tick boardctl-foreman-2026-10-30-17-53-07: verification-only close. All ACs pass at HEAD b6d0227. Original failure (dist/SHA256SUMS not found) was repaired by QA-BOARDCTL-FOREMAN-3 (2d6d9d3)."}
+diff --git a/.gitreins/logs/guard-20261016T234428.531068Z.log b/.gitreins/logs/guard-20261016T234428.531068Z.log
+deleted file mode 100644
+index 2d76b1f..0000000
+--- a/.gitreins/logs/guard-20261016T234428.531068Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-16T23:44:28Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T001736.140781Z.log b/.gitreins/logs/guard-20261017T001736.140781Z.log
+deleted file mode 100644
+index 3c5b8bf..0000000
+--- a/.gitreins/logs/guard-20261017T001736.140781Z.log
++++ /dev/null
+@@ -1,69 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:17:36Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (2 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_lint  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-[cmd/boardctl] cmd/boardctl/main.go:1404:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+-			fmt.Fprintf(os.Stdout, "\n=== events.jsonl repair ===\n")
+-			           ^
+-1 issues:
+-* errcheck: 1
+-
+-[internal/board] internal/board/associations.go:1: : # github.com/coding-hermes/boardctl/internal/board [github.com/coding-hermes/boardctl/internal/board.test]
+-internal/board/repair_events_test.go:37:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:101:10: undefined: NewRow
+-internal/board/repair_events_test.go:139:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:174:12: undefined: OpenBoard (typecheck)
+-package board
+-1 issues:
+-* typecheck: 1
+-
+-==============================================================================
+-[FAIL] go_tests  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-# github.com/coding-hermes/boardctl/internal/board [github.com/coding-hermes/boardctl/internal/board.test]
+-internal/board/repair_events_test.go:37:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:101:10: undefined: NewRow
+-internal/board/repair_events_test.go:139:12: undefined: OpenBoard
+-internal/board/repair_events_test.go:174:12: undefined: OpenBoard
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.132s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.019s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.005s
+-FAIL	github.com/coding-hermes/boardctl/internal/board [build failed]
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.008s
+---- FAIL: TestGofmt (0.18s)
+-    fmtcheck_test.go:29: found 1 file(s) not gofmt-clean — run `gofmt -w` (or `make fmt`) on:
+-          internal/board/repair_events.go
+-FAIL
+-FAIL	github.com/coding-hermes/boardctl/internal/fmtcheck	0.181s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.856s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.031s
+-ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.027s
+-ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.010s
+-ok  	github.com/coding-hermes/boardctl/internal/vulncheck	2.971s
+-ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.009s
+-FAIL
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+diff --git a/.gitreins/logs/guard-20261017T002616.180981Z.log b/.gitreins/logs/guard-20261017T002616.180981Z.log
+deleted file mode 100644
+index f9f53dc..0000000
+--- a/.gitreins/logs/guard-20261017T002616.180981Z.log
++++ /dev/null
+@@ -1,47 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:26:16Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: FAIL
+-guards: 4 (1 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[FAIL] go_lint  passed=false  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-[cmd/boardctl] cmd/boardctl/main.go:1406:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+-			fmt.Fprintf(os.Stdout, "\n=== events.jsonl repair ===\n")
+-			           ^
+-1 issues:
+-* errcheck: 1
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.309s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.014s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.903s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.137s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.926s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.027s
+-ok  
+diff --git a/.gitreins/logs/guard-20261017T002647.153571Z.log b/.gitreins/logs/guard-20261017T002647.153571Z.log
+deleted file mode 100644
+index 258f522..0000000
+--- a/.gitreins/logs/guard-20261017T002647.153571Z.log
++++ /dev/null
+@@ -1,43 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T00:26:47Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS
+-guards: 4 (0 failed, 0 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[PASS] go_build  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-go build: ok
+-
+-==============================================================================
+-[PASS] go_lint  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-golangci-lint: clean (2 packages)
+-
+-==============================================================================
+-[PASS] go_tests  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	5.307s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.077s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.011s
+-ok  	github.com/coding-hermes/boardctl/internal/board	4.352s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.012s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.179s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	1.731s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.078s
+-ok  
+diff --git a/cmd/boardctl/board-report.html b/cmd/boardctl/board-report.html
+index 8bbac8b..22331eb 100644
+--- a/cmd/boardctl/board-report.html
++++ b/cmd/boardctl/board-report.html
+@@ -111,7 +111,7 @@ footer ul{margin:4px 0;padding-left:18px}
+ <main id="view-compare" hidden></main>
+ <div id="errbox" hidden></div>
+ <footer id="foot"></footer>
+-<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-19T02:36:05-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
++<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-30T15:08:03-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
+ <script>
+ "use strict";
+ (function(){
