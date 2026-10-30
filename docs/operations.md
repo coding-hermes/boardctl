@@ -31,7 +31,18 @@ README: "### render" → "Damaged-board salvage (DF-BOARDCTL-9)", lines ~301-329
 Related: class 5 (fused lines) — a line carrying SEVERAL records is a
 different failure with a different repair path.
 
-### 1b. Drifted row shapes (keys/depends_on/status outside canon)
+### 1b. Status alias normalization (one board)
+
+Legacy aliases are read-tolerated and warning-producing; new writes must use canonical statuses. To review or repair statuses on one resolved repository-local board:
+
+```bash
+boardctl -C ~/myproject normalize-statuses --dry-run --json
+boardctl -C ~/myproject normalize-statuses --apply
+```
+
+Dry-run is the default and leaves `tasks.jsonl` byte-identical. Apply atomically rewrites only known aliases; unknown or missing statuses are explicitly refused and never guessed. Fleet-wide apply and changes to the canonical status set remain owner-gated and are not performed by this command.
+
+### 1c. Drifted row shapes (keys/depends_on/status outside canon)
 
 Symptom: `validate` census shows many rows off-canon ("drift N row(s)"),
 `render` report excludes most rows from time metrics, or rows carry

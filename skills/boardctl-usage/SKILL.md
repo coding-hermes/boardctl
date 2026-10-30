@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.22.0
-date: 2026-10-26
+version: 1.23.0
+date: 2026-10-30
 category: software-development
 ---
 
@@ -193,6 +193,16 @@ boardctl -C R sweep-status --decide        # machine-checkable re-classification
                                            # --decide --apply does. PENDING and
                                            # unmatched values stay explicit
                                            # decisions.
+
+# status alias normalization, one resolved board (BT-081)
+boardctl -C R normalize-statuses --dry-run --json
+                                           # dry-run is the default and leaves
+                                           # tasks.jsonl byte-identical; --apply
+                                           # atomically canonicalizes known
+                                           # aliases only. Unknown/missing
+                                           # statuses are refused, never guessed.
+                                           # Fleet-wide apply and canonical-set
+                                           # policy changes remain owner-gated.
 
 # drifted row SHAPES, board-wide (DF-BOARDCTL-36)
 boardctl -C R normalize-board              # classify + stage tasks.normalized.jsonl:

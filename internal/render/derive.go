@@ -144,6 +144,11 @@ type Derived struct {
 	PriorityCount map[string]int `json:"priority_counts"`
 	OpenCount     int            `json:"open_count"`
 	CompleteCount int            `json:"complete_count"`
+	// ReportedCompleteCount is the number of non-fixture rows reported complete.
+	// CompleteCount remains the compatibility alias for this same reported count.
+	ReportedCompleteCount   int `json:"reported_complete_count"`
+	VerifiedCompleteCount   int `json:"verified_complete_count"`
+	UnverifiedCompleteCount int `json:"unverified_complete_count"`
 	// BT-076: deferred rows stay in OpenCount's search surface but must not
 	// inflate the actionable numbers — OpenCount here is the actionable
 	// open tally the completion % and burndown headline read, so deferred
@@ -229,6 +234,12 @@ func derive(d *boardData) Derived {
 		der.StatusCounts[t.status]++
 		if t.status == "complete" {
 			der.CompleteCount++
+			der.ReportedCompleteCount++
+			if len(board.RowEvidenceRunIDs(t.row)) > 0 {
+				der.VerifiedCompleteCount++
+			} else {
+				der.UnverifiedCompleteCount++
+			}
 		}
 		if board.RowIsDeferred(t.row) {
 			der.DeferredCount++
