@@ -85,10 +85,15 @@ commands:
            (--apply only; one audit event quotes the preserved text);
            a "duplicate" with no earlier twin is refused. --decide alone
            never writes; only --decide --apply does.
+  normalize-statuses [--apply] [--dry-run] [--json] [-C dir]
+           report status aliases and unknown/missing values on ONE resolved board;
+           dry-run is the default and never writes; --apply atomically canonicalizes
+           known aliases only, while unknown/missing statuses remain refused.
   normalize-board [--apply] [--repair-events] [--json]
            report (and with --apply fix) drifted row SHAPES on ONE board —
            the board-wide twin of 'update --normalize': renames known key
            aliases to their canonical keys, converts string depends_on
+
            values to arrays where the conversion is unambiguous ("[]" and
            "" -> [], a JSON array string -> the array, one bare id ->
            [id]), and canonicalizes alias statuses (open -> pending). Rows
@@ -217,6 +222,8 @@ func run(args []string) int {
 		err = cmdValidate(boardDir, rest)
 	case "sweep-status":
 		err = cmdSweepStatus(boardDir, rest)
+	case "normalize-statuses":
+		err = cmdNormalizeStatuses(boardDir, rest)
 	case "normalize-board":
 		err = cmdNormalizeBoard(boardDir, rest)
 	case "doctor":

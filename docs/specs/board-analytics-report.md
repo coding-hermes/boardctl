@@ -398,6 +398,23 @@ the last element, evaluated per the today-boundary rule in Section 4.3.
   (string form and numeric form are DISTINCT buckets — live boards mix
   `"P1"` and `1`); fixture rows excluded unless the fixtures toggle is on
   (the counts re-render live when the toggle flips).
+- `complete_count` is the reported-done count. The derived payload MUST also
+  expose `reported_complete_count` (same value for compatibility),
+  `verified_complete_count`, and `unverified_complete_count`. A reported
+  complete row is verified when the existing evidence marker resolves to at
+  least one `detail.evidence[].run_id` or top-level `evidence_run_id`; otherwise
+  it is unverified. The three counts partition the reported complete rows.
+
+### 3.9a Status normalization policy
+
+Legacy aliases are tolerated on read and produce warnings. New writes use only
+canonical statuses. `normalize-statuses` is a repository-local, single-board
+command: dry-run is the default; apply canonicalizes known aliases atomically
+and refuses unknown or missing values without guessing. Fleet-wide apply and
+changes to the canonical set are owner-gated and are outside this command.
+
+Unknown or ambiguous values remain explicit for human decision. They are never
+coerced merely because a report or sweep encountered them.
 
 ### 3.10 Multi-board compare
 
