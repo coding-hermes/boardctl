@@ -1,0 +1,52 @@
+commit 2d3f2e6c63d220ab31656f93de3e642f5cde3a37
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 30 15:51:34 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 30 15:51:34 2026 -0500
+
+    release: reconcile v0.2.0 prep — tripwire pin + changelog count
+    
+    The release-pin tripwire test (readme_acceptance_criteria_release_test.go)
+    asserts README's `Current release: **vX**` deliberately, so it moves with each
+    cut: bump its pinned value to v0.2.0 and update the failure message. The
+    DF-BOARDCTL-50 historical contract strings about the v0.1.11 asset are true and
+    stay. CHANGELOG commit count re-derived live (142 at the prior prep commit,
+    143 including this one = v0.1.11..v0.2.0 at the tag).
+    
+    Unblocks the red prep CI (runs 41125609554 / 41125610600 failed only on the
+    stale pin). Addresses RELEASE-2026-10-29-01.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ CHANGELOG.md                                            | 2 +-
+ cmd/boardctl/readme_acceptance_criteria_release_test.go | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index a2a832a..e63e42c 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -6,7 +6,7 @@ Changes for the next release will be recorded here.
+ 
+ ## v0.2.0
+ 
+-This release contains 119 commits since v0.1.11, summarized by the commit
++This release contains 143 commits since v0.1.11, summarized by the commit
+ categories below. The cited short SHAs are taken directly from the release
+ range (`git log v0.1.11..HEAD --oneline`).
+ 
+diff --git a/cmd/boardctl/readme_acceptance_criteria_release_test.go b/cmd/boardctl/readme_acceptance_criteria_release_test.go
+index 3d5a255..ca93c96 100644
+--- a/cmd/boardctl/readme_acceptance_criteria_release_test.go
++++ b/cmd/boardctl/readme_acceptance_criteria_release_test.go
+@@ -28,8 +28,8 @@ func TestREADMEAcceptanceCriteriaPublishedReleaseContract(t *testing.T) {
+ 	}
+ 	doc := string(data)
+ 
+-	if !strings.Contains(doc, "Current release: **v0.1.11**") {
+-		t.Fatal("README release pin changed: expected current release v0.1.11")
++	if !strings.Contains(doc, "Current release: **v0.2.0**") {
++		t.Fatal("README release pin changed: expected current release v0.2.0")
+ 	}
+ 
+ 	sectionStart := strings.Index(doc, "## Acceptance criteria (DF-BOARDCTL-50)")
