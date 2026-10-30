@@ -6,7 +6,7 @@ Changes for the next release will be recorded here.
 
 ## v0.2.0
 
-This release contains 119 commits since v0.1.11, summarized by the commit
+This release contains 143 commits since v0.1.11, summarized by the commit
 categories below. The cited short SHAs are taken directly from the release
 range (`git log v0.1.11..HEAD --oneline`).
 

@@ -28,8 +28,8 @@ func TestREADMEAcceptanceCriteriaPublishedReleaseContract(t *testing.T) {
 	}
 	doc := string(data)
 
-	if !strings.Contains(doc, "Current release: **v0.1.11**") {
-		t.Fatal("README release pin changed: expected current release v0.1.11")
+	if !strings.Contains(doc, "Current release: **v0.2.0**") {
+		t.Fatal("README release pin changed: expected current release v0.2.0")
 	}
 
 	sectionStart := strings.Index(doc, "## Acceptance criteria (DF-BOARDCTL-50)")
