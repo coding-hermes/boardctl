@@ -1,0 +1,109 @@
+{
+  "task_id": "BT-84",
+  "task_title": "Repo hygiene: deterministic report and non-churning guard logs",
+  "task_criteria": [
+    "After two renders and one guard, board-report.html and .gitreins/logs produce no working-tree changes; generated report hashes match; build vet and full tests pass."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "d9251473ff4776a707f9ffe5f06573b6a71cd77d",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n6:29AM INF scanned ~3856811 bytes (3.86 MB) in 3.71s\n6:29AM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 262 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261031T043217.906266Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t7.180s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.222s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t2.679s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.312s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/secretscheck\t0.014s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.118s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t4.416s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261031T043217.906266Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 After two renders and one guard, board-report.html and .gitreins/logs produce no working-tree changes; generated report hashes match; build vet and full tests pass.: Build/vet/tests pass (go build ./... exit 0; go vet ./... exit 0; go test -count=1 ./... exit 0, 13 packages 'ok', no FAIL), but the churn requirement fails outright. `git status --porcelain` shows: `M cmd/boardctl/board-report.html`, `D .gitreins/logs/guard-20261030T201022.554232Z.log`, `?? .gitreins/logs/guard-20261031T043217.906266Z.log` (plus board jsonl). The board-report.html diff is only the timestamp: rendered_at 2026-10-30T23:29:49-05:00 -> 2026-10-31T06:29:54-05:00, because internal/render/report.go:61 sets RenderedAt from time.Now() with no pinning/exclusion, so two renders can never yield matching sha256 (no hashes are recorded anywhere). .gitreins/logs still churns: 20 tracked logs, one deleted and one new untracked log added, and `git check-ignore .gitreins/logs/guard-20261031T043217.906266Z.log` exits 1 \u2014 .gitignore only lists .gitreins/tasks.yaml, tasks.yaml.lock, usage.jsonl (lines 5-7), no logs rule. No fix was committed at all: `git diff --stat` contains only the regenerated HTML line plus board files and the log deletion (no .gitignore/.gitattributes/Go change), and `git diff --stat main wt/BT-84` is empty, so wt/BT-84 is identical to main.\nBuild, vet and the full test suite pass, but the core hygiene goal is unmet: board-report.html still churns on rendered_at, .gitreins/logs still gains/loses tracked files with no ignore rule, and no code change was made or committed.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 After two renders and one guard, board-report.html and .gitreins/logs produce no working-tree changes; generated report hashes match; build vet and full tests pass.: Build/vet/tests pass (go build ./... exit 0; go vet ./... exit 0; go test -count=1 ./... exit 0, 13 packages 'ok', no FAIL), but the churn requirement fails outright. `git status --porcelain` shows: `M cmd/boardctl/board-report.html`, `D .gitreins/logs/guard-20261030T201022.554232Z.log`, `?? .gitreins/logs/guard-20261031T043217.906266Z.log` (plus board jsonl). The board-report.html diff is only the timestamp: rendered_at 2026-10-30T23:29:49-05:00 -> 2026-10-31T06:29:54-05:00, because internal/render/report.go:61 sets RenderedAt from time.Now() with no pinning/exclusion, so two renders can never yield matching sha256 (no hashes are recorded anywhere). .gitreins/logs still churns: 20 tracked logs, one deleted and one new untracked log added, and `git check-ignore .gitreins/logs/guard-20261031T043217.906266Z.log` exits 1 \u2014 .gitignore only lists .gitreins/tasks.yaml, tasks.yaml.lock, usage.jsonl (lines 5-7), no logs rule. No fix was committed at all: `git diff --stat` contains only the regenerated HTML line plus board files and the log deletion (no .gitignore/.gitattributes/Go change), and `git diff --stat main wt/BT-84` is empty, so wt/BT-84 is identical to main.\nBuild, vet and the full test suite pass, but the core hygiene goal is unmet: board-report.html still churns on rendered_at, .gitreins/logs still gains/loses tracked files with no ignore rule, and no code change was made or committed.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "After two renders and one guard, board-report.html and .gitreins/logs produce no working-tree changes; generated report hashes match; build vet and full tests pass.",
+                "status": "FAIL",
+                "detail": "Build/vet/tests pass (go build ./... exit 0; go vet ./... exit 0; go test -count=1 ./... exit 0, 13 packages 'ok', no FAIL), but the churn requirement fails outright. `git status --porcelain` shows: `M cmd/boardctl/board-report.html`, `D .gitreins/logs/guard-20261030T201022.554232Z.log`, `?? .gitreins/logs/guard-20261031T043217.906266Z.log` (plus board jsonl). The board-report.html diff is only the timestamp: rendered_at 2026-10-30T23:29:49-05:00 -> 2026-10-31T06:29:54-05:00, because internal/render/report.go:61 sets RenderedAt from time.Now() with no pinning/exclusion, so two renders can never yield matching sha256 (no hashes are recorded anywhere). .gitreins/logs still churns: 20 tracked logs, one deleted and one new untracked log added, and `git check-ignore .gitreins/logs/guard-20261031T043217.906266Z.log` exits 1 \u2014 .gitignore only lists .gitreins/tasks.yaml, tasks.yaml.lock, usage.jsonl (lines 5-7), no logs rule. No fix was committed at all: `git diff --stat` contains only the regenerated HTML line plus board files and the log deletion (no .gitignore/.gitattributes/Go change), and `git diff --stat main wt/BT-84` is empty, so wt/BT-84 is identical to main."
+              }
+            ],
+            "summary": "Build, vet and the full test suite pass, but the core hygiene goal is unmet: board-report.html still churns on rendered_at, .gitreins/logs still gains/loses tracked files with no ignore rule, and no code change was made or committed.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: BT-84\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 After two renders and one guard, board-report.html and .gitreins/logs produce no working-tree changes; generated report hashes match; build vet and full tests pass.: Build/vet/tests pass (go build ./... exit 0; go vet ./... exit 0; go test -count=1 ./... exit 0, 13 packages 'ok', no FAIL), but the churn requirement fails outright. `git status --porcelain` shows: `M cmd/boardctl/board-report.html`, `D .gitreins/logs/guard-20261030T201022.554232Z.log`, `?? .gitreins/logs/guard-20261031T043217.906266Z.log` (plus board jsonl). The board-report.html diff is only the timestamp: rendered_at 2026-10-30T23:29:49-05:00 -> 2026-10-31T06:29:54-05:00, because internal/render/report.go:61 sets RenderedAt from time.Now() with no pinning/exclusion, so two renders can never yield matching sha256 (no hashes are recorded anywhere). .gitreins/logs still churns: 20 tracked logs, one deleted and one new untracked log added, and `git check-ignore .gitreins/logs/guard-20261031T043217.906266Z.log` exits 1 \u2014 .gitignore only lists .gitreins/tasks.yaml, tasks.yaml.lock, usage.jsonl (lines 5-7), no logs rule. No fix was committed at all: `git diff --stat` contains only the regenerated HTML line plus board files and the log deletion (no .gitignore/.gitattributes/Go change), and `git diff --stat main wt/BT-84` is empty, so wt/BT-84 is identical to main.\nBuild, vet and the full test suite pass, but the core hygiene goal is unmet: board-report.html still churns on rendered_at, .gitreins/logs still gains/loses tracked files with no ignore rule, and no code change was made or committed.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-10-31T11:30:43.251514",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-31T11:30:43.291891+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 108154,
+        "truncated": false,
+        "source": "git show d9251473ff47"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 29047,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-84"
+  }
+}
