@@ -225,6 +225,44 @@ func TestCmdRenderHostileTitleInert(t *testing.T) {
 	}
 }
 
+func TestCmdRenderDemoFixtureIsByteDeterministic(t *testing.T) {
+	// The committed demo report is an actual CLI output path. Render it twice
+	// and compare bytes, then restore the fixture so the test is non-mutating.
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repoRoot := filepath.Join(wd, "..", "..")
+	fixture := filepath.Join(repoRoot, "cmd", "boardctl", "board-report.html")
+	original, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.WriteFile(fixture, original, 0o644); err != nil {
+			t.Errorf("restore demo fixture: %v", err)
+		}
+	})
+
+	if code := run([]string{"-C", repoRoot, "render", "-o", fixture}); code != 0 {
+		t.Fatalf("first demo render exit = %d, want 0", code)
+	}
+	first, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := run([]string{"-C", repoRoot, "render", "-o", fixture}); code != 0 {
+		t.Fatalf("second demo render exit = %d, want 0", code)
+	}
+	second, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sha256.Sum256(first) != sha256.Sum256(second) {
+		t.Fatal("consecutive demo renders have different sha256 hashes")
+	}
+}
+
 func TestCmdRenderDeterministicTZ(t *testing.T) {
 	// AC 7.1.8 at the CLI level: same board + --tz twice differs only in
 	// rendered_at. rendered_at is render-time, so run twice, strip, compare.

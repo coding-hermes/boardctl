@@ -5,6 +5,8 @@ __pycache__/
 .gitreins/tasks.yaml
 .gitreins/tasks.yaml.lock
 .gitreins/usage.jsonl
+# GitReins runtime logs are ephemeral; retain durable evidence under history/.
+.gitreins/logs/
 .coding-hermes/board/.lock
 .coding-hermes/board/*.db
 .coding-hermes/board/*.parquet
