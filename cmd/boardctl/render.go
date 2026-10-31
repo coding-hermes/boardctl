@@ -20,6 +20,10 @@ var (
 
 func isDemoReportPath(path string) bool {
 	clean := filepath.ToSlash(filepath.Clean(path))
+	if clean == "board-report.html" {
+		wd, err := os.Getwd()
+		return err == nil && filepath.Base(filepath.Clean(wd)) == "boardctl"
+	}
 	return clean == "cmd/boardctl/board-report.html" ||
 		strings.HasSuffix(clean, "/cmd/boardctl/board-report.html")
 }

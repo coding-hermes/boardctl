@@ -66,7 +66,8 @@ func TestExportImportRoundTripsAssociations(t *testing.T) {
 		t.Fatal("branch update failed")
 	}
 	exportPath := filepath.Join(t.TempDir(), "export.json")
-	if code := run([]string{"-C", dir, "render", "--json", exportPath}); code != 0 {
+	htmlPath := filepath.Join(t.TempDir(), "report.html")
+	if code := run([]string{"-C", dir, "render", "-o", htmlPath, "--json", exportPath}); code != 0 {
 		t.Fatalf("render --json exit = %d, want 0", code)
 	}
 	raw, err := os.ReadFile(exportPath)
