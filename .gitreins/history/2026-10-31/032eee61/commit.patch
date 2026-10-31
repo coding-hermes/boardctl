@@ -1,0 +1,35 @@
+commit 628d54f090db9088c46ca241017cbd8824b06814
+Merge: a5dafd7 2a7ef7f
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Sat Oct 31 06:51:07 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Sat Oct 31 06:51:07 2026 -0500
+
+    merge: make generated artifacts deterministic (BT-84)
+
+ .gitignore                                       |  2 +
+ .gitreins/logs/guard-20261030T201022.554232Z.log | 39 --------------
+ .gitreins/logs/guard-20261030T201110.105477Z.log | 39 --------------
+ .gitreins/logs/guard-20261030T201209.369642Z.log | 39 --------------
+ .gitreins/logs/guard-20261030T203508.286252Z.log | 39 --------------
+ .gitreins/logs/guard-20261030T203604.595464Z.log | 39 --------------
+ .gitreins/logs/guard-20261030T203626.114351Z.log | 39 --------------
+ .gitreins/logs/guard-20261030T203926.316874Z.log | 39 --------------
+ .gitreins/logs/guard-20261030T204330.342504Z.log | 39 --------------
+ .gitreins/logs/guard-20261030T205139.648389Z.log | 43 ----------------
+ .gitreins/logs/guard-20261030T210710.998681Z.log | 39 --------------
+ .gitreins/logs/guard-20261031T004757.360382Z.log | 65 ------------------------
+ .gitreins/logs/guard-20261031T042606.796423Z.log | 39 --------------
+ .gitreins/logs/guard-20261031T042707.476415Z.log | 47 -----------------
+ .gitreins/logs/guard-20261031T042802.037476Z.log | 43 ----------------
+ .gitreins/logs/guard-20261031T042837.350193Z.log | 43 ----------------
+ .gitreins/logs/guard-20261031T042929.959195Z.log | 39 --------------
+ .gitreins/logs/guard-20261031T042955.351625Z.log | 39 --------------
+ .gitreins/logs/guard-20261031T042956.985600Z.log | 39 --------------
+ .gitreins/logs/guard-20261031T042958.871493Z.log | 39 --------------
+ .gitreins/logs/guard-20261031T043000.530259Z.log | 39 --------------
+ README.md                                        |  5 ++
+ cmd/boardctl/board-report.html                   |  2 +-
+ cmd/boardctl/render.go                           | 23 ++++++++-
+ cmd/boardctl/render_test.go                      | 38 ++++++++++++++
+ 25 files changed, 68 insertions(+), 828 deletions(-)
