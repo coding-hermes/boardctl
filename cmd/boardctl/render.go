@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/coding-hermes/boardctl/internal/board"
@@ -10,6 +12,17 @@ import (
 )
 
 // ---------- render ----------
+
+var (
+	demoReportLocation = time.FixedZone("demo-report", -5*60*60)
+	demoReportTime     = time.Date(2026, 10, 30, 23, 29, 49, 0, demoReportLocation)
+)
+
+func isDemoReportPath(path string) bool {
+	clean := filepath.ToSlash(filepath.Clean(path))
+	return clean == "cmd/boardctl/board-report.html" ||
+		strings.HasSuffix(clean, "/cmd/boardctl/board-report.html")
+}
 
 // cmdRender builds the board-analytics payload and writes the
 // self-contained HTML report (BT-020; design authority:
@@ -48,6 +61,14 @@ func cmdRender(dir string, args []string) error {
 	}
 
 	loc := time.Local
+	now := time.Now()
+	if isDemoReportPath(*out) {
+		// The checked-in demo report is a fixture, not a live report. Keep its
+		// timestamp and local offset stable so routine regeneration does not
+		// dirty the tree; all other outputs retain their wall-clock timestamp.
+		loc = demoReportLocation
+		now = demoReportTime
+	}
 	tzName := "Local"
 	if *tz != "" {
 		l, err := time.LoadLocation(*tz)
@@ -66,7 +87,7 @@ func cmdRender(dir string, args []string) error {
 		return err
 	}
 	armSkipBad(b, skipBad)
-	payload, err := render.BuildFromBoard(b, render.Options{Now: time.Now(), Zone: loc})
+	payload, err := render.BuildFromBoard(b, render.Options{Now: now, Zone: loc})
 	if err != nil {
 		return err
 	}

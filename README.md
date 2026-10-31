@@ -515,6 +515,11 @@ boardctl render -C ~/myproject -o report.html --tz America/Bogota --json report.
 boardctl render -C ~/myproject -o -                # -o - writes the HTML to stdout
 ```
 
+The checked-in `cmd/boardctl/board-report.html` is a deterministic demo fixture;
+rendering that exact path pins its snapshot timestamp so regeneration is byte-stable.
+GitReins runtime logs under `.gitreins/logs/` are ephemeral and ignored; durable
+run evidence remains under `.gitreins/history/`.
+
 - `-o out.html` — output HTML file; `-` writes to stdout.
 - `--tz <IANA zone>` — report timezone for all day bucketing (e.g.
   `America/Bogota`); default is the machine's local zone. Pin it for
