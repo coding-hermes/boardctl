@@ -8,10 +8,11 @@ useDefault = true
 
 # Catch all sk- prefixed API keys (OpenAI, OpenRouter, DeepSeek, etc.)
 # 20+ chars — lower than gitleaks' default 32-char minimum
+# RE2-safe boundary anchor (no lookbehind) to avoid mid-word FP on prose like "task-complete-unavailable"
 [[rules]]
 id = "sk-api-key"
 description = "OpenAI/OpenRouter/DeepSeek API key (sk- prefix)"
-regex = '''(?i)sk-[a-zA-Z0-9_-]{20,}'''
+regex = '''(?i)(?:^|[^a-zA-Z0-9])sk-[a-zA-Z0-9_-]{20,}'''
 
 # GitHub personal access tokens — gitleaks' default rules missed
 # ghp_... PATs in the 2026-08-14 dogfood (DF-012)

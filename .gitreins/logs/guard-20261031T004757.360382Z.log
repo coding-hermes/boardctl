@@ -1,0 +1,65 @@
+GitReins guard run log — full output (the console summary is bounded)
+run_utc: 2026-10-31T00:47:57Z
+workdir: /tmp/pm-boardctl-wt-84
+test_mode: full
+test_targets: all (full mode)
+overall: FAIL (DEGRADED — skipped checks)
+guards: 4 (1 failed, 3 skipped)
+diagnostics:
+  first_failing_test: none detected
+  secrets_scanners: FAIL (gitleaks: 3 findings; builtin cross-check: clean)
+  scanner_nice: scanners: nice=nice -n 10
+skipped_steps:
+  - go_build: No Go files staged
+  - go_lint: No Go files staged
+  - go_tests: No Go files staged
+
+==============================================================================
+[FAIL] secrets  passed=false  exit_code=1
+==============================================================================
+--- output (untruncated) ---
+Finding:     ...ose `verdict=none:ta[1;3;msk-complete-unavailable[0m` (token length 23, ...
+Secret:      [1;3;msk-complete-unavailable[0m
+RuleID:      sk-api-key
+Entropy:     3.816403
+File:        .coding-hermes/board/tasks.jsonl
+Line:        215
+Fingerprint: .coding-hermes/board/tasks.jsonl:sk-api-key:215
+
+Finding:     ...ose `verdict=none:ta[1;3;msk-complete-unavailable[0m` (token length 23, ...
+Secret:      [1;3;msk-complete-unavailable[0m
+RuleID:      sk-api-key
+Entropy:     3.816403
+File:        .coding-hermes/board/tasks.jsonl
+Line:        215
+Fingerprint: .coding-hermes/board/tasks.jsonl:sk-api-key:215
+
+Finding:     ...ose `verdict=none:ta[1;3;msk-complete-unavailable[0m` (token length 23, ...
+Secret:      [1;3;msk-complete-unavailable[0m
+RuleID:      sk-api-key
+Entropy:     3.816403
+File:        .coding-hermes/board/tasks.jsonl
+Line:        215
+Fingerprint: .coding-hermes/board/tasks.jsonl:sk-api-key:215
+
+[90m7:47PM[0m [32mINF[0m [1m0 commits scanned.[0m
+[90m7:47PM[0m [32mINF[0m [1mscanned ~7086 bytes (7.09 KB) in 39.8ms[0m
+[90m7:47PM[0m [33mWRN[0m [1mleaks found: 3[0m
+
+==============================================================================
+[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+==============================================================================
+--- output (untruncated) ---
+No Go files staged
+
+==============================================================================
+[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+==============================================================================
+--- output (untruncated) ---
+No Go files staged
+
+==============================================================================
+[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+==============================================================================
+--- output (untruncated) ---
+No Go files staged
