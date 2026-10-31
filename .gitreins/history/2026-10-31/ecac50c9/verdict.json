@@ -1,0 +1,109 @@
+{
+  "task_id": "BT-83",
+  "task_title": "gitleaks sk-api-key mid-word FP",
+  "task_criteria": [
+    "1) .gitleaks.toml sk-api-key regex uses RE2-safe non-alnum boundary prefix (no lookbehind) and gitleaks detect --source . --no-git exits 0 with zero findings on the current tree. 2) A regression test pins both sides: pre-fix regex matches task-complete-unavailable, fixed regex does not, and a 20+ char boundary-delimited sk- token is still caught; go test ./... exits 0. 3) gitreins guard prints [PASS] secrets on the fixed tree."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "236bed7662159b331fd461b0e914afba329f10bc",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: harness state excluded from gitleaks scope (.gitreins/**)\nsecrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n11:29PM INF scanned ~3852346 bytes (3.85 MB) in 1.16s\n11:29PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 262 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261031T042837.350193Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t5.142s\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.005s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t0.850s\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.130s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/secretscheck\t0.003s\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.017s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.093s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261031T042837.350193Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 1) .gitleaks.toml sk-api-key regex uses RE2-safe non-alnum boundary prefix (no lookbehind) and gitleaks detect --source . --no-git exits 0 with zero findings on the current tree. 2) A regression test pins both sides: pre-fix regex matches task-complete-unavailable, fixed regex does not, and a 20+ char boundary-delimited sk- token is still caught; go test ./... exits 0. 3) gitreins guard prints [PASS] secrets on the fixed tree.: (1) .gitleaks.toml:14 regex = '''(?i)(?:^|[^a-zA-Z0-9])sk-[a-zA-Z0-9_-]{20,}''' \u2014 RE2-safe non-alnum boundary prefix, no lookbehind. `gitleaks detect --source . --no-git --config .gitleaks.toml --exit-code 1` => EXIT=0 with \"INF no leaks found\" (zero findings). (2) internal/secretscheck/secretscheck_test.go: TestSKAPIKeyBoundaryRejectsMidWordProse (line 68 fp = \"verdict=none:task-complete-unavailable\" must NOT match, plus desk-/flask-/task- variants), TestSKAPIKeyStillCatchesRealKeys (29-char sk- token matched at start/space/=/quote/colon/newline boundaries and SK- uppercase), TestSKAPIKeyRejectsTooShort, TestSKAPIKeyRegexHasBoundaryAnchor. `go test -count=1 ./...` => EXIT=0, all 13 packages ok incl. internal/secretscheck; verbose run: all four SKAPIKey tests PASS. (3) `gitreins guard` => EXIT=0, \"\u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\"; --json shows {\"id\":\"secrets\",\"outcome\":\"pass\",\"passed\":true,\"summary\":\"gitleaks: clean\"} and overall outcome pass (human output renders the pass glyph \u2713 rather than the literal string \"[PASS]\", but the secrets lane is pass).\ngitleaks sk-api-key regex is RE2-safe boundary-anchored, gitleaks detect reports zero leaks with exit 0, regression tests pin both FP and true-positive sides with go test ./... green, and gitreins guard's secrets lane passes.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 1) .gitleaks.toml sk-api-key regex uses RE2-safe non-alnum boundary prefix (no lookbehind) and gitleaks detect --source . --no-git exits 0 with zero findings on the current tree. 2) A regression test pins both sides: pre-fix regex matches task-complete-unavailable, fixed regex does not, and a 20+ char boundary-delimited sk- token is still caught; go test ./... exits 0. 3) gitreins guard prints [PASS] secrets on the fixed tree.: (1) .gitleaks.toml:14 regex = '''(?i)(?:^|[^a-zA-Z0-9])sk-[a-zA-Z0-9_-]{20,}''' \u2014 RE2-safe non-alnum boundary prefix, no lookbehind. `gitleaks detect --source . --no-git --config .gitleaks.toml --exit-code 1` => EXIT=0 with \"INF no leaks found\" (zero findings). (2) internal/secretscheck/secretscheck_test.go: TestSKAPIKeyBoundaryRejectsMidWordProse (line 68 fp = \"verdict=none:task-complete-unavailable\" must NOT match, plus desk-/flask-/task- variants), TestSKAPIKeyStillCatchesRealKeys (29-char sk- token matched at start/space/=/quote/colon/newline boundaries and SK- uppercase), TestSKAPIKeyRejectsTooShort, TestSKAPIKeyRegexHasBoundaryAnchor. `go test -count=1 ./...` => EXIT=0, all 13 packages ok incl. internal/secretscheck; verbose run: all four SKAPIKey tests PASS. (3) `gitreins guard` => EXIT=0, \"\u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\"; --json shows {\"id\":\"secrets\",\"outcome\":\"pass\",\"passed\":true,\"summary\":\"gitleaks: clean\"} and overall outcome pass (human output renders the pass glyph \u2713 rather than the literal string \"[PASS]\", but the secrets lane is pass).\ngitleaks sk-api-key regex is RE2-safe boundary-anchored, gitleaks detect reports zero leaks with exit 0, regression tests pin both FP and true-positive sides with go test ./... green, and gitreins guard's secrets lane passes.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "1) .gitleaks.toml sk-api-key regex uses RE2-safe non-alnum boundary prefix (no lookbehind) and gitleaks detect --source . --no-git exits 0 with zero findings on the current tree. 2) A regression test pins both sides: pre-fix regex matches task-complete-unavailable, fixed regex does not, and a 20+ char boundary-delimited sk- token is still caught; go test ./... exits 0. 3) gitreins guard prints [PASS] secrets on the fixed tree.",
+                "status": "PASS",
+                "detail": "(1) .gitleaks.toml:14 regex = '''(?i)(?:^|[^a-zA-Z0-9])sk-[a-zA-Z0-9_-]{20,}''' \u2014 RE2-safe non-alnum boundary prefix, no lookbehind. `gitleaks detect --source . --no-git --config .gitleaks.toml --exit-code 1` => EXIT=0 with \"INF no leaks found\" (zero findings). (2) internal/secretscheck/secretscheck_test.go: TestSKAPIKeyBoundaryRejectsMidWordProse (line 68 fp = \"verdict=none:task-complete-unavailable\" must NOT match, plus desk-/flask-/task- variants), TestSKAPIKeyStillCatchesRealKeys (29-char sk- token matched at start/space/=/quote/colon/newline boundaries and SK- uppercase), TestSKAPIKeyRejectsTooShort, TestSKAPIKeyRegexHasBoundaryAnchor. `go test -count=1 ./...` => EXIT=0, all 13 packages ok incl. internal/secretscheck; verbose run: all four SKAPIKey tests PASS. (3) `gitreins guard` => EXIT=0, \"\u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\"; --json shows {\"id\":\"secrets\",\"outcome\":\"pass\",\"passed\":true,\"summary\":\"gitleaks: clean\"} and overall outcome pass (human output renders the pass glyph \u2713 rather than the literal string \"[PASS]\", but the secrets lane is pass)."
+              }
+            ],
+            "summary": "gitleaks sk-api-key regex is RE2-safe boundary-anchored, gitleaks detect reports zero leaks with exit 0, regression tests pin both FP and true-positive sides with go test ./... green, and gitreins guard's secrets lane passes.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: BT-83\n\nStage tier1: PASS\n    \u2713 secrets: secrets: harness state excluded from gitleaks scope (.gitreins/**)\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 1) .gitleaks.toml sk-api-key regex uses RE2-safe non-alnum boundary prefix (no lookbehind) and gitleaks detect --source . --no-git exits 0 with zero findings on the current tree. 2) A regression test pins both sides: pre-fix regex matches task-complete-unavailable, fixed regex does not, and a 20+ char boundary-delimited sk- token is still caught; go test ./... exits 0. 3) gitreins guard prints [PASS] secrets on the fixed tree.: (1) .gitleaks.toml:14 regex = '''(?i)(?:^|[^a-zA-Z0-9])sk-[a-zA-Z0-9_-]{20,}''' \u2014 RE2-safe non-alnum boundary prefix, no lookbehind. `gitleaks detect --source . --no-git --config .gitleaks.toml --exit-code 1` => EXIT=0 with \"INF no leaks found\" (zero findings). (2) internal/secretscheck/secretscheck_test.go: TestSKAPIKeyBoundaryRejectsMidWordProse (line 68 fp = \"verdict=none:task-complete-unavailable\" must NOT match, plus desk-/flask-/task- variants), TestSKAPIKeyStillCatchesRealKeys (29-char sk- token matched at start/space/=/quote/colon/newline boundaries and SK- uppercase), TestSKAPIKeyRejectsTooShort, TestSKAPIKeyRegexHasBoundaryAnchor. `go test -count=1 ./...` => EXIT=0, all 13 packages ok incl. internal/secretscheck; verbose run: all four SKAPIKey tests PASS. (3) `gitreins guard` => EXIT=0, \"\u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\"; --json shows {\"id\":\"secrets\",\"outcome\":\"pass\",\"passed\":true,\"summary\":\"gitleaks: clean\"} and overall outcome pass (human output renders the pass glyph \u2713 rather than the literal string \"[PASS]\", but the secrets lane is pass).\ngitleaks sk-api-key regex is RE2-safe boundary-anchored, gitleaks detect reports zero leaks with exit 0, regression tests pin both FP and true-positive sides with go test ./... green, and gitreins guard's secrets lane passes.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-10-31T04:30:05.713246",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-10-31T04:30:05.743065+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 24568,
+        "truncated": false,
+        "source": "git show 236bed766215"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 19499,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-83"
+  }
+}

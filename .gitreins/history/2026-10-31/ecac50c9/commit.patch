@@ -1,0 +1,469 @@
+commit 236bed7662159b331fd461b0e914afba329f10bc
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Oct 30 23:28:32 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Oct 30 23:29:53 2026 -0500
+
+    fix: anchor gitleaks sk-api-key regex to non-alnum boundary (BT-83)
+    
+    The sk-api-key rule in .gitleaks.toml matched the sk- substring mid-word,
+    causing tier1 secrets FAIL on board prose like 'verdict=none:task-complete-unavailable'
+    (token length 23, matched at tasks.jsonl:198). The judge misattributed the
+    finding to .gitreins/** harness state; the actual finding was board prose,
+    and the allowlist already covers .gitreins/.
+    
+    Fix: prefix the regex with (?:^|[^a-zA-Z0-9]) (RE2-safe, no lookbehind).
+    Add internal/secretscheck regression test pinning both sides: mid-word
+    prose no longer matches, boundary-delimited 20+ char sk- tokens still do,
+    the 20-char minimum still holds, and the anchor shape is enforced
+    structurally so a future silent drop is caught.
+    
+    Addresses BT-83.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ .gitleaks.toml                                     |   3 +-
+ .gitreins/logs/guard-20261018T145106.360101Z.log   |  39 ------
+ ...1967Z.log => guard-20261030T210710.998681Z.log} |   2 +-
+ .gitreins/logs/guard-20261031T004757.360382Z.log   |  65 +++++++++
+ ...9538Z.log => guard-20261031T042606.796423Z.log} |   2 +-
+ ...7804Z.log => guard-20261031T042707.476415Z.log} |  38 +++---
+ ...9988Z.log => guard-20261031T042802.037476Z.log} |  18 +--
+ cmd/boardctl/board-report.html                     |   2 +-
+ internal/secretscheck/secretscheck_test.go         | 149 +++++++++++++++++++++
+ 9 files changed, 251 insertions(+), 67 deletions(-)
+
+diff --git a/.gitleaks.toml b/.gitleaks.toml
+index d986c08..f80db69 100644
+--- a/.gitleaks.toml
++++ b/.gitleaks.toml
+@@ -8,10 +8,11 @@ useDefault = true
+ 
+ # Catch all sk- prefixed API keys (OpenAI, OpenRouter, DeepSeek, etc.)
+ # 20+ chars — lower than gitleaks' default 32-char minimum
++# RE2-safe boundary anchor (no lookbehind) to avoid mid-word FP on prose like "task-complete-unavailable"
+ [[rules]]
+ id = "sk-api-key"
+ description = "OpenAI/OpenRouter/DeepSeek API key (sk- prefix)"
+-regex = '''(?i)sk-[a-zA-Z0-9_-]{20,}'''
++regex = '''(?i)(?:^|[^a-zA-Z0-9])sk-[a-zA-Z0-9_-]{20,}'''
+ 
+ # GitHub personal access tokens — gitleaks' default rules missed
+ # ghp_... PATs in the 2026-08-14 dogfood (DF-012)
+diff --git a/.gitreins/logs/guard-20261018T145106.360101Z.log b/.gitreins/logs/guard-20261018T145106.360101Z.log
+deleted file mode 100644
+index 7ae76ef..0000000
+--- a/.gitreins/logs/guard-20261018T145106.360101Z.log
++++ /dev/null
+@@ -1,39 +0,0 @@
+-GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-18T14:51:06Z
+-workdir: /home/kara/coding-hermes-boardctl
+-test_mode: full
+-test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
+-diagnostics:
+-  first_failing_test: none detected
+-  secrets_scanners: clean (gitleaks + builtin cross-check)
+-  scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+-
+-==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
+-==============================================================================
+---- output (untruncated) ---
+-gitleaks: clean
+-
+-==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+-
+-==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
+-==============================================================================
+---- output (untruncated) ---
+-No Go files staged
+diff --git a/.gitreins/logs/guard-20261017T224112.241967Z.log b/.gitreins/logs/guard-20261030T210710.998681Z.log
+similarity index 98%
+rename from .gitreins/logs/guard-20261017T224112.241967Z.log
+rename to .gitreins/logs/guard-20261030T210710.998681Z.log
+index 4e61e82..daf7567 100644
+--- a/.gitreins/logs/guard-20261017T224112.241967Z.log
++++ b/.gitreins/logs/guard-20261030T210710.998681Z.log
+@@ -1,5 +1,5 @@
+ GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-17T22:41:12Z
++run_utc: 2026-10-30T21:07:10Z
+ workdir: /home/kara/coding-hermes-boardctl
+ test_mode: full
+ test_targets: all (full mode)
+diff --git a/.gitreins/logs/guard-20261031T004757.360382Z.log b/.gitreins/logs/guard-20261031T004757.360382Z.log
+new file mode 100644
+index 0000000..b04ad5e
+--- /dev/null
++++ b/.gitreins/logs/guard-20261031T004757.360382Z.log
+@@ -0,0 +1,65 @@
++GitReins guard run log — full output (the console summary is bounded)
++run_utc: 2026-10-31T00:47:57Z
++workdir: /tmp/pm-boardctl-wt-84
++test_mode: full
++test_targets: all (full mode)
++overall: FAIL (DEGRADED — skipped checks)
++guards: 4 (1 failed, 3 skipped)
++diagnostics:
++  first_failing_test: none detected
++  secrets_scanners: FAIL (gitleaks: 3 findings; builtin cross-check: clean)
++  scanner_nice: scanners: nice=nice -n 10
++skipped_steps:
++  - go_build: No Go files staged
++  - go_lint: No Go files staged
++  - go_tests: No Go files staged
++
++==============================================================================
++[FAIL] secrets  passed=false  exit_code=1
++==============================================================================
++--- output (untruncated) ---
++Finding:     ...ose `verdict=none:ta[1;3;msk-complete-unavailable[0m` (token length 23, ...
++Secret:      [1;3;msk-complete-unavailable[0m
++RuleID:      sk-api-key
++Entropy:     3.816403
++File:        .coding-hermes/board/tasks.jsonl
++Line:        215
++Fingerprint: .coding-hermes/board/tasks.jsonl:sk-api-key:215
++
++Finding:     ...ose `verdict=none:ta[1;3;msk-complete-unavailable[0m` (token length 23, ...
++Secret:      [1;3;msk-complete-unavailable[0m
++RuleID:      sk-api-key
++Entropy:     3.816403
++File:        .coding-hermes/board/tasks.jsonl
++Line:        215
++Fingerprint: .coding-hermes/board/tasks.jsonl:sk-api-key:215
++
++Finding:     ...ose `verdict=none:ta[1;3;msk-complete-unavailable[0m` (token length 23, ...
++Secret:      [1;3;msk-complete-unavailable[0m
++RuleID:      sk-api-key
++Entropy:     3.816403
++File:        .coding-hermes/board/tasks.jsonl
++Line:        215
++Fingerprint: .coding-hermes/board/tasks.jsonl:sk-api-key:215
++
++[90m7:47PM[0m [32mINF[0m [1m0 commits scanned.[0m
++[90m7:47PM[0m [32mINF[0m [1mscanned ~7086 bytes (7.09 KB) in 39.8ms[0m
++[90m7:47PM[0m [33mWRN[0m [1mleaks found: 3[0m
++
++==============================================================================
++[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++==============================================================================
++--- output (untruncated) ---
++No Go files staged
++
++==============================================================================
++[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++==============================================================================
++--- output (untruncated) ---
++No Go files staged
++
++==============================================================================
++[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++==============================================================================
++--- output (untruncated) ---
++No Go files staged
+diff --git a/.gitreins/logs/guard-20261019T045108.769538Z.log b/.gitreins/logs/guard-20261031T042606.796423Z.log
+similarity index 98%
+rename from .gitreins/logs/guard-20261019T045108.769538Z.log
+rename to .gitreins/logs/guard-20261031T042606.796423Z.log
+index 1743edf..1595451 100644
+--- a/.gitreins/logs/guard-20261019T045108.769538Z.log
++++ b/.gitreins/logs/guard-20261031T042606.796423Z.log
+@@ -1,5 +1,5 @@
+ GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-19T04:51:08Z
++run_utc: 2026-10-31T04:26:06Z
+ workdir: /home/kara/coding-hermes-boardctl
+ test_mode: full
+ test_targets: all (full mode)
+diff --git a/.gitreins/logs/guard-20261018T144851.777804Z.log b/.gitreins/logs/guard-20261031T042707.476415Z.log
+similarity index 54%
+rename from .gitreins/logs/guard-20261018T144851.777804Z.log
+rename to .gitreins/logs/guard-20261031T042707.476415Z.log
+index 30a7b67..b0a010b 100644
+--- a/.gitreins/logs/guard-20261018T144851.777804Z.log
++++ b/.gitreins/logs/guard-20261031T042707.476415Z.log
+@@ -1,39 +1,47 @@
+ GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-18T14:48:51Z
++run_utc: 2026-10-31T04:27:07Z
+ workdir: /home/kara/coding-hermes-boardctl
+ test_mode: full
+ test_targets: all (full mode)
+-overall: PASS (DEGRADED — skipped checks)
+-guards: 4 (0 failed, 3 skipped)
++overall: FAIL
++guards: 4 (1 failed, 0 skipped)
+ diagnostics:
+   first_failing_test: none detected
+   secrets_scanners: clean (gitleaks + builtin cross-check)
+   scanner_nice: scanners: nice=nice -n 10
+-skipped_steps:
+-  - go_build: No Go files staged
+-  - go_lint: No Go files staged
+-  - go_tests: No Go files staged
+ 
+ ==============================================================================
+-[PASS] secrets  passed=true  exit_code=n/a
++[FAIL] go_lint  passed=false  exit_code=n/a
+ ==============================================================================
+ --- output (untruncated) ---
+-gitleaks: clean
++internal/secretscheck/secretscheck_test.go:143:2: S1017: should replace this if statement with an unconditional strings.TrimPrefix (staticcheck)
++	if strings.HasPrefix(shape, "(?i)") {
++	^
++1 issues:
++* staticcheck: 1
+ 
+ ==============================================================================
+-[SKIP] go_build  passed=true  exit_code=n/a  skip_reason=No Go files staged
++[PASS] secrets  passed=true  exit_code=n/a
+ ==============================================================================
+ --- output (untruncated) ---
+-No Go files staged
++gitleaks: clean
+ 
+ ==============================================================================
+-[SKIP] go_lint  passed=true  exit_code=n/a  skip_reason=No Go files staged
++[PASS] go_build  passed=true  exit_code=n/a
+ ==============================================================================
+ --- output (untruncated) ---
+-No Go files staged
++go build: ok
+ 
+ ==============================================================================
+-[SKIP] go_tests  passed=true  exit_code=n/a  skip_reason=No Go files staged
++[PASS] go_tests  passed=true  exit_code=n/a
+ ==============================================================================
+ --- output (untruncated) ---
+-No Go files staged
++ok  	github.com/coding-hermes/boardctl/cmd/boardctl	4.339s
++ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.021s
++ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.005s
++ok  	github.com/coding-hermes/boardctl/internal/board	2.123s
++ok  	github.com/coding-hermes/boardctl/internal/describe	0.003s
++ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.132s
++ok  	github.com/coding-hermes/boardctl/internal/freshness	0.454s
++ok  	github.com/coding-hermes/boardctl/internal/render	0.025s
++ok  
+diff --git a/.gitreins/logs/guard-20261018T143557.019988Z.log b/.gitreins/logs/guard-20261031T042802.037476Z.log
+similarity index 71%
+rename from .gitreins/logs/guard-20261018T143557.019988Z.log
+rename to .gitreins/logs/guard-20261031T042802.037476Z.log
+index 879af30..e28a5aa 100644
+--- a/.gitreins/logs/guard-20261018T143557.019988Z.log
++++ b/.gitreins/logs/guard-20261031T042802.037476Z.log
+@@ -1,5 +1,5 @@
+ GitReins guard run log — full output (the console summary is bounded)
+-run_utc: 2026-10-18T14:35:57Z
++run_utc: 2026-10-31T04:28:02Z
+ workdir: /home/kara/coding-hermes-boardctl
+ test_mode: full
+ test_targets: all (full mode)
+@@ -32,12 +32,12 @@ golangci-lint: clean
+ [PASS] go_tests  passed=true  exit_code=n/a
+ ==============================================================================
+ --- output (untruncated) ---
+-ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.034s
+-ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.016s
+-ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.005s
+-ok  	github.com/coding-hermes/boardctl/internal/board	0.810s
+-ok  	github.com/coding-hermes/boardctl/internal/describe	0.004s
+-ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.154s
+-ok  	github.com/coding-hermes/boardctl/internal/freshness	0.808s
+-ok  	github.com/coding-hermes/boardctl/internal/render	0.030s
++ok  	github.com/coding-hermes/boardctl/cmd/boardctl	2.565s
++ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.022s
++ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.010s
++ok  	github.com/coding-hermes/boardctl/internal/board	0.984s
++ok  	github.com/coding-hermes/boardctl/internal/describe	0.010s
++ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.155s
++ok  	github.com/coding-hermes/boardctl/internal/freshness	0.349s
++ok  	github.com/coding-hermes/boardctl/internal/render	0.034s
+ ok  
+diff --git a/cmd/boardctl/board-report.html b/cmd/boardctl/board-report.html
+index 3441c01..e0192da 100644
+--- a/cmd/boardctl/board-report.html
++++ b/cmd/boardctl/board-report.html
+@@ -111,7 +111,7 @@ footer ul{margin:4px 0;padding-left:18px}
+ <main id="view-compare" hidden></main>
+ <div id="errbox" hidden></div>
+ <footer id="foot"></footer>
+-<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-30T15:59:26-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"reported_complete_count":0,"verified_complete_count":0,"unverified_complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
++<script type="application/json" id="report-data">{"schema":"board-report/v1","rendered_at":"2026-10-30T23:28:00-05:00","report_timezone":"Local","boards":[{"name":"demo","slug":"demo","topology":"A","header":{"project":"demo","namespace":"demo","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null},"tasks":[{"id":"EXIST-1","title":"plain","status":"pending","priority":"P2","depends_on":[],"pull_requests":[{"number":21}],"branches":["feat/x"]},{"id":"EXIST-LEG","title":"legacy singular","status":"pending","priority":"P3","worktree":"/home/me/wt-1","branch":"wt/lg-1","sessions":["s1"]}],"events":[{"id":1,"timestamp":"2026-10-07 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}],"fixture_ids":[],"parse_warnings":{"tasks":0,"events":0,"fixtures":0,"timestamp_excluded":2,"duplicate_ids":0,"notes":["task EXIST-1: unparseable created_at \"\" — excluded from time-based metrics","task EXIST-LEG: unparseable created_at \"\" — excluded from time-based metrics"]},"derived":{"burndown":{"window":null,"open":null},"burnup":{"window":null,"days":null,"cum":null},"velocity":{"weeks":[],"counts":[]},"cycle":{"n":0,"excluded":0,"median_days":null,"p90_days":null,"worst5":[]},"streaks":{"delivery":{"current":0,"current_state":"live","current_since":"","longest":0},"activity":{"current":1,"current_state":"ended","current_since":"2026-10-07","longest":1},"any_tick":{"current":1,"longest":1}},"tick_health":{"days":["2026-10-07"],"completed":[0],"failed":[0],"audit":[1]},"work_clock":{"grid":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],"max":1},"model_share":{"models":[],"counts":[],"completed_n":0},"status_counts":{"pending":2},"priority_counts":{"P2":1,"P3":1},"open_count":2,"complete_count":0,"reported_complete_count":0,"verified_complete_count":0,"unverified_complete_count":0,"deferred_count":0,"total_nonfixture":2,"last_activity_day":"2026-10-07"}}],"generated_by":"boardctl render (board-report/v1)"}</script>
+ <script>
+ "use strict";
+ (function(){
+diff --git a/internal/secretscheck/secretscheck_test.go b/internal/secretscheck/secretscheck_test.go
+new file mode 100644
+index 0000000..1828acb
+--- /dev/null
++++ b/internal/secretscheck/secretscheck_test.go
+@@ -0,0 +1,149 @@
++// Package secretscheck pins the gitleaks sk-api-key regex boundary so the
++// mid-word false positive on prose like "task-complete-unavailable" cannot
++// regress. BT-83.
++package secretscheck
++
++import (
++	"os"
++	"regexp"
++	"strings"
++	"testing"
++)
++
++// readSKRuleRegex extracts the sk-api-key rule's regex literal from the
++// repo-root .gitleaks.toml. The file layout is stable (one [[rules]] block
++// with id = "sk-api-key" followed by a regex = ”'...”' line); the parser
++// here is intentionally narrow — it exists only to keep the regression test
++// honest about which regex is actually deployed.
++func readSKRuleRegex(t *testing.T) string {
++	t.Helper()
++	// Walk up from the test's working directory to find .gitleaks.toml.
++	// `go test ./...` runs with the package dir as cwd, so ../../.gitleaks.toml
++	// from internal/secretscheck/ reaches the repo root.
++	candidates := []string{"../../.gitleaks.toml", ".gitleaks.toml"}
++	var raw []byte
++	var err error
++	for _, p := range candidates {
++		raw, err = os.ReadFile(p)
++		if err == nil {
++			break
++		}
++	}
++	if err != nil {
++		t.Fatalf("read .gitleaks.toml: %v", err)
++	}
++	// Locate the sk-api-key rule block, then the regex = '''...''' line inside it.
++	body := string(raw)
++	idMarker := `id = "sk-api-key"`
++	idIdx := strings.Index(body, idMarker)
++	if idIdx < 0 {
++		t.Fatalf("sk-api-key rule not found in .gitleaks.toml")
++	}
++	// The regex line follows within the same [[rules]] block.
++	tail := body[idIdx:]
++	reMarker := "regex = '''"
++	reIdx := strings.Index(tail, reMarker)
++	if reIdx < 0 {
++		t.Fatalf("regex = '''...''' not found after sk-api-key rule id")
++	}
++	after := tail[reIdx+len(reMarker):]
++	end := strings.Index(after, "'''")
++	if end < 0 {
++		t.Fatalf("closing ''' not found for sk-api-key regex")
++	}
++	return after[:end]
++}
++
++// TestSKAPIKeyBoundaryRejectsMidWordProve is the load-bearing regression:
++// the pre-fix regex `(?i)sk-[a-zA-Z0-9_-]{20,}` matches the tail of
++// "task-complete-unavailable" (token length 23, starts at the 'sk-' inside
++// "task-"). The fixed regex must NOT.
++func TestSKAPIKeyBoundaryRejectsMidWordProse(t *testing.T) {
++	reStr := readSKRuleRegex(t)
++	re, err := regexp.Compile(reStr)
++	if err != nil {
++		t.Fatalf("compile deployed sk-api-key regex: %v (regex=%q)", err, reStr)
++	}
++	// The exact prose that triggered the original FP (BT-83 filing).
++	fp := "verdict=none:task-complete-unavailable"
++	if re.MatchString(fp) {
++		t.Errorf("deployed sk-api-key regex still matches mid-word prose %q — BT-83 regression", fp)
++	}
++	// Same class, different surrounding tokens.
++	for _, s := range []string{
++		"prefix=task-abcdefghijklmnopqrstuvwxyz",
++		"word=desk-abcdefghijklmnopqrstuvwx",
++		"mask=flask-01234567890123456789",
++	} {
++		if re.MatchString(s) {
++			t.Errorf("deployed sk-api-key regex matches mid-word FP candidate %q", s)
++		}
++	}
++}
++
++// TestSKAPIKeyStillCatchesRealKeys is the other half: the boundary fix must
++// not neuter the rule. A real sk- token, 20+ chars, preceded by a
++// non-alphanumeric boundary (start-of-line, space, quote, equals) must still
++// match.
++func TestSKAPIKeyStillCatchesRealKeys(t *testing.T) {
++	reStr := readSKRuleRegex(t)
++	re, err := regexp.Compile(reStr)
++	if err != nil {
++		t.Fatalf("compile deployed sk-api-key regex: %v", err)
++	}
++	realKey := "sk-abcdefghijklmnopqrstuvwxyz" // 29 chars after sk-
++	for _, ctx := range []string{
++		realKey,               // start of string
++		" " + realKey,         // space boundary
++		"=" + realKey,         // punctuation boundary
++		"\"" + realKey + "\"", // quote boundary
++		"token:" + realKey,    // colon boundary
++		"\n" + realKey,        // newline boundary
++	} {
++		if !re.MatchString(ctx) {
++			t.Errorf("deployed sk-api-key regex missed real key in context %q", ctx)
++		}
++	}
++	// Case-insensitive: SK-... must also match.
++	if !re.MatchString("SK-ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
++		t.Errorf("deployed sk-api-key regex is not case-insensitive")
++	}
++}
++
++// TestSKAPIKeyRejectsTooShort ensures the 20-char minimum is still enforced
++// (the rule's other half, independent of the boundary fix).
++func TestSKAPIKeyRejectsTooShort(t *testing.T) {
++	reStr := readSKRuleRegex(t)
++	re, err := regexp.Compile(reStr)
++	if err != nil {
++		t.Fatalf("compile deployed sk-api-key regex: %v", err)
++	}
++	// 19 chars after sk-: must NOT match.
++	short := "sk-1234567890123456789"
++	if got := len(short) - 3; got != 19 {
++		t.Fatalf("test fixture length drift: want 19 after sk-, got %d", got)
++	}
++	if re.MatchString(" " + short) {
++		t.Errorf("deployed sk-api-key regex matches too-short token %q (len after sk- = 19)", short)
++	}
++}
++
++// TestSKAPIKeyRegexHasBoundaryAnchor is a structural guard: the deployed
++// regex must carry a non-alphanumeric boundary prefix before sk- (the BT-83
++// fix). This pins the shape directly so a future edit that silently drops
++// the anchor is caught even if the prose fixtures above are also changed.
++func TestSKAPIKeyRegexHasBoundaryAnchor(t *testing.T) {
++	reStr := readSKRuleRegex(t)
++	// The fix shape is `(?:^|[^a-zA-Z0-9])sk-` (case-insensitive flag may wrap).
++	// Accept either a literal `[^a-zA-Z0-9]` class or a `\b` word-boundary
++	// anchor before `sk-`; reject a regex that begins the match at `sk-`
++	// with no preceding anchor.
++	// Strip an optional leading (?i) flag for the shape check.
++	shape := strings.TrimPrefix(reStr, "(?i)")
++	hasAnchor := strings.Contains(shape, "[^a-zA-Z0-9]") ||
++		strings.Contains(shape, `\b`) ||
++		strings.HasPrefix(shape, "(?:^")
++	if !hasAnchor {
++		t.Errorf("deployed sk-api-key regex %q lacks a non-alnum boundary anchor before sk- (BT-83)", reStr)
++	}
++}
