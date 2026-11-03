@@ -43,5 +43,11 @@ jobs:
       - name: Vulnerability-check
         run: go test -count=1 -run TestVulncheck ./internal/vulncheck
 
+      # BT-085: the coverage floor gate calls the make target itself, so the
+      # floors (total 80%, per-package 60%, exempt internal/secretscheck)
+      # live in the Makefile only and cannot drift between local and CI.
+      - name: Coverage
+        run: make cover-check
+
       - name: Test
         run: go test -short -count=1 ./...

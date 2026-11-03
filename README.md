@@ -1518,7 +1518,7 @@ until the next release; a raw JSONL edit is never the intended workaround.
 | `.coding-hermes/board/` | This repo's own dogfood board (`tasks.jsonl`, `events.jsonl`, `board.jsonl`, `fixtures.jsonl`) |
 | `docs/dogfood/` | Dogfood diagnostics and integration notes |
 | `skills/boardctl-usage/` | Fleet skill: how agents drive `boardctl` |
-| `.github/workflows/ci.yml` | CI (build, vet, gofmt, version-check, spec-check, vuln-check, test) |
+| `.github/workflows/ci.yml` | CI (build, vet, gofmt, version-check, spec-check, vuln-check, cover-check, test) |
 | `.gitreins/` | GitReins config + `history/<date>/<hash>/` judge verdicts (tracked audit records — keep) |
 | `Makefile`, `go.mod` | Build/test/release targets (see [Development](#development)) |
 | `LICENSE`, `README.md`, `.gitleaks.toml`, `.gitignore` | Repo metadata and hygiene |
@@ -1552,6 +1552,7 @@ make fmt-check        # gofmt gate (CI enforces it too); `make fmt` fixes
 make version-check    # README release-pin gate (CI enforces it too)
 make vuln-check       # dependency-vulnerability gate (CI enforces it too)
 make spec-check       # serve/OpenAPI parity gate (CI enforces it too)
+make cover-check      # test-coverage floor gate: total >= 80%, per-package >= 60% (CI enforces it too)
 make release          # cross-compile all targets into dist/ (same asset names + SHA256SUMS the CI cut publishes)
 ```
 
@@ -1589,14 +1590,15 @@ reason in an evidence note under the printed evidence directory. Check executabl
 CLI commands against `boardctl --help` (the fresh-checkout equivalent above is
 `go run ./cmd/boardctl --help`), Makefile commands against `make-targets.txt`,
 workflow commands against `workflow-commands.txt`, and repository paths against
-`repository-paths.txt` plus the referenced file. Preserve the four existing local
-gates in the evidence note and run them exactly as written here:
+`repository-paths.txt` plus the referenced file. Preserve the five existing
+local gates in the evidence note and run them exactly as written here:
 
 ```bash
 make fmt-check
 make version-check VERSION_TAG=v0.1.11
 make spec-check
 make vuln-check
+make cover-check
 ```
 
 Commands that need a populated board, network access or published release assets,
@@ -1649,6 +1651,29 @@ stderr warning naming the unrecognized value and stay permissive — they do
 not silently disable the safety opt-in. Set it in CI environment or local
 shell before running `make vuln-check` to fail the gate on unverified
 binaries instead of warning.
+
+### Test-coverage floor gate (BT-085)
+
+`make cover-check` generates a real coverage profile (`go test ./...
+-count=1 -short -coverprofile=<tmp>`) and evaluates it with the pure
+checker in `internal/covercheck` (via `cmd/covercheck`): the module total
+must reach 80% of statements, and every non-exempt package must reach 60%.
+Floors compare the unrounded percentage, so a package exactly at the floor
+passes; violations fail with exit 1 and findings that name the package and
+its percentage. Usage, IO and parse errors exit 2. CI runs the same make
+target (the `Coverage` step), so the floors live in the Makefile only and
+cannot drift.
+
+A package that emits no profile blocks has zero statements and cannot be
+measured. `internal/secretscheck` is that package today: it is a
+test-only package that pins the gitleaks regex boundary and ships no code,
+so it is exempt by name — on the checker's default `--exempt` list and in
+the Makefile/CI invocation. The exemption is never silent: the checker
+prints every exempt name that matched no profile package, and an exempt
+package that does appear in the profile still contributes its statements
+to the module total (exemption waives only the per-package floor). The
+suite is run from the make shell, never from inside a test — a gate that
+re-ran `go test ./...` from within the suite would recurse.
 
 ### Deployment freshness gate (BT-057)
 

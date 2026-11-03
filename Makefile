@@ -13,7 +13,7 @@ PLATFORMS := \
 	windows/amd64 \
 	freebsd/amd64
 
-.PHONY: build test vet fmt fmt-check version-check vuln-check release install install-release install-check clean
+.PHONY: build test vet fmt fmt-check version-check vuln-check cover-check release install install-release install-check clean
 
 # BT-057: the build commit stamped into every make-built binary. The guard
 # keeps non-git builds working (a tarball without .git yields an empty
@@ -87,6 +87,22 @@ spec-check:
 # Local runs need the tool: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
 vuln-check:
 	go test -count=1 -run TestVulncheck ./internal/vulncheck
+
+# BT-085: test-coverage floor gate. Generates a REAL profile from a full
+# -short suite run and evaluates it with the pure checker in
+# internal/covercheck (via ./cmd/covercheck): module total >= 80% of
+# statements, every non-exempt package >= 60%. internal/secretscheck is
+# exempt BY NAME (zero statements — it is a test-only package that pins the
+# gitleaks regex boundary and ships no code, so it emits no profile blocks
+# to measure); the checker still prints the exemption in its summary, so it
+# is a documented decision, never a silent skip. CI runs this exact target
+# (the Coverage step), so the floors live in ONE place. The suite is run
+# from THIS shell, never from inside a test: a gate that re-runs
+# `go test ./...` from within the suite would recurse.
+cover-check:
+	@tmp=$$(mktemp -d); trap 'rm -rf $$tmp' EXIT; \
+	go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out >/dev/null && \
+	go run ./cmd/covercheck --profile=$$tmp/coverage.out --min-total=80 --min-package=60 --exempt=internal/secretscheck
 
 vet:
 	go vet ./...
