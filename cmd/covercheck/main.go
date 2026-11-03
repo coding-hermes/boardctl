@@ -55,6 +55,13 @@ func run(args []string) int {
 	profile := fs.String("profile", "", "path to the `go test -coverprofile` file (required)")
 	minTotal := fs.Float64("min-total", 80, "module-wide statement floor (percent)")
 	minPackage := fs.Float64("min-package", 60, "per-package statement floor (percent)")
+	minPackageEnv := os.Getenv("MIN_PACKAGE_COVERAGE")
+	if minPackageEnv != "" {
+		if _, err := fmt.Sscanf(minPackageEnv, "%f", minPackage); err != nil {
+			fmt.Fprintf(os.Stderr, "covercheck: invalid MIN_PACKAGE_COVERAGE %q: %v\n", minPackageEnv, err)
+			return 2
+		}
+	}
 	exempt := fs.String("exempt", defaultExempt, "comma-separated import-path substrings exempt from the per-package floor")
 	if err := fs.Parse(args); err != nil {
 		return 2
