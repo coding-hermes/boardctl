@@ -1662,7 +1662,14 @@ Floors compare the unrounded percentage, so a package exactly at the floor
 passes; violations fail with exit 1 and findings that name the package and
 its percentage. Usage, IO and parse errors exit 2. CI runs the same make
 target (the `Coverage` step), so the floors live in the Makefile only and
-cannot drift.
+cannot drift. The checker takes its floors from command-line flags alone —
+it reads no environment variable, so no shell or CI job can move a floor
+without a reviewable diff. To prove the gate is load-bearing (or to retune
+it deliberately), override the make variables:
+
+```bash
+make cover-check COVER_MIN_PACKAGE=95   # exits 1, naming each package below 95%
+```
 
 A package that emits no profile blocks has zero statements and cannot be
 measured. `internal/secretscheck` is that package today: it is a

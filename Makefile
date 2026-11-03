@@ -99,10 +99,18 @@ vuln-check:
 # (the Coverage step), so the floors live in ONE place. The suite is run
 # from THIS shell, never from inside a test: a gate that re-runs
 # `go test ./...` from within the suite would recurse.
+#
+# The floors are make variables so a deliberate retune is a reviewable diff
+# or a command-line override — never a hidden environment bypass inside the
+# checker (cmd/covercheck reads no env; TestCovercheckFloorsComeOnlyFromFlags
+# pins that). Proof the gate is load-bearing:
+#   make cover-check COVER_MIN_PACKAGE=95   # exits 1 naming every package below 95%
+COVER_MIN_TOTAL ?= 80
+COVER_MIN_PACKAGE ?= 60
 cover-check:
 	@tmp=$$(mktemp -d); trap 'rm -rf $$tmp' EXIT; \
 	go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out >/dev/null && \
-	go run ./cmd/covercheck --profile=$$tmp/coverage.out --min-total=80 --min-package=60 --exempt=internal/secretscheck
+	go run ./cmd/covercheck --profile=$$tmp/coverage.out --min-total=$(COVER_MIN_TOTAL) --min-package=$(COVER_MIN_PACKAGE) --exempt=internal/secretscheck
 
 vet:
 	go vet ./...
