@@ -1,0 +1,63 @@
+commit 0b820c225915449d3c5e28500fc0f075d7fcc317
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Tue Nov 3 14:23:08 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Tue Nov 3 14:23:08 2026 -0500
+
+    test: pin the coverage floors to flags only (BT-85)
+    
+    A concurrent worker instance re-introduced an undocumented MIN_PACKAGE_COVERAGE
+    env override twice (d446cf2, then d1bdcc7 + de81cee) while this tick was
+    verifying the row; the async judge caught it and FAILed the row (verdict
+    .gitreins/history/2026-11-03/ee1b48e8 -> INCOMPLETE), and the override is out of
+    the tree. Nothing ever set that variable: no test, Makefile target, CI step or
+    README sentence referenced it, and the README states the floors live in the
+    Makefile only and cannot drift — on a coverage gate an env-provided floor is a
+    hidden bypass: any shell or job exporting the name changes the verdict with no
+    reviewable diff.
+    
+    This commit keeps the rule enforced instead of trusting a revert:
+    TestCovercheckFloorsComeOnlyFromFlags sets MIN_PACKAGE_COVERAGE, MIN_PACKAGE and
+    MIN_PACKAGE_FLOOR and asserts the verdict is unchanged, so a future re-add fails
+    the suite instead of needing a forensic diff. An intentional floor change must be
+    an explicit --min-package flag or a Makefile edit — both reviewable.
+    
+    ch:trace: row=BT-85 test=TestCovercheckFloorsComeOnlyFromFlags evidence=make cover-check verdict=pending
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ cmd/covercheck/no_env_override_test.go | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/cmd/covercheck/no_env_override_test.go b/cmd/covercheck/no_env_override_test.go
+new file mode 100644
+index 0000000..7b2b12c
+--- /dev/null
++++ b/cmd/covercheck/no_env_override_test.go
+@@ -0,0 +1,26 @@
++package main
++
++import (
++	"testing"
++)
++
++// TestCovercheckFloorsComeOnlyFromFlags pins the rejection of an undocumented
++// environment override (BT-85): the per-package floor must be settable ONLY by
++// --min-package, never by an env var, because an env-provided floor is a hidden
++// bypass surface on a coverage gate — any shell or CI job exporting the name
++// would change the verdict without a reviewable diff, and the README states the
++// floors live in the Makefile alone.
++func TestCovercheckFloorsComeOnlyFromFlags(t *testing.T) {
++	// A floor that WOULD fail this profile if it were honoured (board is 50%
++	// against a 95% floor): the verdict must stay 0 because the name is not a
++	// supported input.
++	t.Setenv("MIN_PACKAGE_COVERAGE", "95")
++	t.Setenv("MIN_PACKAGE", "95")
++	t.Setenv("MIN_PACKAGE_FLOOR", "95")
++	if code := run([]string{"--profile", writeProfile(t, lowPackageProfile)}); code != 1 {
++		t.Fatalf("run exit = %d, want 1 (default 60%% floor must still apply)", code)
++	}
++	if code := run([]string{"--profile", writeProfile(t, passingProfile)}); code != 0 {
++		t.Fatalf("run exit = %d, want 0 (env must not raise the floor)", code)
++	}
++}

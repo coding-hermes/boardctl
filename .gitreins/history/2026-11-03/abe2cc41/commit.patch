@@ -1,0 +1,70 @@
+commit 1a579843595913eb16faad63ad5571e5c815ed1a
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Tue Nov 3 14:26:14 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Tue Nov 3 14:26:14 2026 -0500
+
+    chore: make coverage floors reviewable make variables (BT-85)
+    
+    cover-check took --min-total=80 --min-package=60 as literal flags, so the only
+    way to prove the gate is load-bearing was to edit the Makefile. The floors are
+    now COVER_MIN_TOTAL / COVER_MIN_PACKAGE make variables (defaults unchanged),
+    committed to internal/covercheck floors as the single place they live.
+    
+    Verified at this tree:
+    - make cover-check -> total 83.1%, lowest package internal/describe 66.5%, PASS (14 packages), rc=0
+    - make cover-check COVER_MIN_PACKAGE=95 -> rc non-zero, names 13 packages below floor
+    - go build/vet/test -count=1 ./... rc=0; fmt-check, version-check v0.2.0, spec-check, vuln-check rc=0
+    
+    ch:trace row=BT-85 spec=.coding-hermes/board/tasks.jsonl#BT-85 wave=none:serial test=internal/covercheck/covercheck_test.go doc=README.md evidence=make-cover-check+forced-fail witness=none:local-tree verdict=pending commit=none:self
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ Makefile  | 10 +++++++++-
+ README.md |  9 ++++++++-
+ 2 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index d2e57e8..22a77ce 100644
+--- a/Makefile
++++ b/Makefile
+@@ -99,10 +99,18 @@ vuln-check:
+ # (the Coverage step), so the floors live in ONE place. The suite is run
+ # from THIS shell, never from inside a test: a gate that re-runs
+ # `go test ./...` from within the suite would recurse.
++#
++# The floors are make variables so a deliberate retune is a reviewable diff
++# or a command-line override — never a hidden environment bypass inside the
++# checker (cmd/covercheck reads no env; TestCovercheckFloorsComeOnlyFromFlags
++# pins that). Proof the gate is load-bearing:
++#   make cover-check COVER_MIN_PACKAGE=95   # exits 1 naming every package below 95%
++COVER_MIN_TOTAL ?= 80
++COVER_MIN_PACKAGE ?= 60
+ cover-check:
+ 	@tmp=$$(mktemp -d); trap 'rm -rf $$tmp' EXIT; \
+ 	go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out >/dev/null && \
+-	go run ./cmd/covercheck --profile=$$tmp/coverage.out --min-total=80 --min-package=60 --exempt=internal/secretscheck
++	go run ./cmd/covercheck --profile=$$tmp/coverage.out --min-total=$(COVER_MIN_TOTAL) --min-package=$(COVER_MIN_PACKAGE) --exempt=internal/secretscheck
+ 
+ vet:
+ 	go vet ./...
+diff --git a/README.md b/README.md
+index d8a91d3..76febb7 100644
+--- a/README.md
++++ b/README.md
+@@ -1662,7 +1662,14 @@ Floors compare the unrounded percentage, so a package exactly at the floor
+ passes; violations fail with exit 1 and findings that name the package and
+ its percentage. Usage, IO and parse errors exit 2. CI runs the same make
+ target (the `Coverage` step), so the floors live in the Makefile only and
+-cannot drift.
++cannot drift. The checker takes its floors from command-line flags alone —
++it reads no environment variable, so no shell or CI job can move a floor
++without a reviewable diff. To prove the gate is load-bearing (or to retune
++it deliberately), override the make variables:
++
++```bash
++make cover-check COVER_MIN_PACKAGE=95   # exits 1, naming each package below 95%
++```
+ 
+ A package that emits no profile blocks has zero statements and cannot be
+ measured. `internal/secretscheck` is that package today: it is a

@@ -1,0 +1,109 @@
+{
+  "task_id": "BT-85",
+  "task_title": "Coverage floor gate",
+  "task_criteria": [
+    "BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "d1bdcc7b12aee5521c8e2426a719fc77c339e1f7",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n2:14PM INF scanned ~4768818 bytes (4.77 MB) in 2.01s\n2:14PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 266 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261103T191316.106573Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t11.839s\nok  \tgithub.com/coding-hermes/boardctl/cmd/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.004s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t6.186s\nok  \tgithub.com/coding-hermes/boardctl/internal/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.244s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/secretscheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.021s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261103T191316.106573Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2717 BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts.: Most of the acceptance is satisfied: Makefile:102-105 runs `go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out` then `go run ./cmd/covercheck --min-total=80 --min-package=60 --exempt=internal/secretscheck` with a trap-cleaned tmp dir; `make cover-check` passes at current coverage (\"covercheck: total 83.1% of statements (floor 80.0%)\", \"lowest package .../internal/describe 66.5% (floor 60.0%)\", \"exempt internal/secretscheck: not present in profile (zero statements, exempt by policy)\", \"covercheck: PASS: 14 packages evaluated\", exit 0); forced failure with --min-package=95 exits 1 with 13 findings naming packages (\"FAIL package .../internal/describe coverage 66.5% is below floor 95.0%\"); hermetic tests exist for total below floor (internal/covercheck/covercheck_test.go:147), package below floor naming the package (:171), exemption (:197), empty/malformed profile table (:71, 10 cases), exact boundary (:245), plus cmd/covercheck/main_test.go:32-99 \u2014 `go test -count=1 ./internal/covercheck ./cmd/covercheck` -> ok/ok; CI .github/workflows/ci.yml:49-50 runs `make cover-check` and preserves build/vet/gofmt/version-check/spec-check/vuln-check/test steps (lines 19-53); README:1555 and 1655-1675 document the target, 80%/60% floors, unrounded comparison, exit codes and the named reasoned secretscheck exemption; go build ./... OK, go vet ./... OK, `go test -count=1 -short ./...` all 15 packages ok, TestGofmt/TestVersioncheck/speccheck/TestVulncheck ok; no coverage/profile artifacts tracked (git ls-files clean). HOWEVER the gate is not load-bearing as required: HEAD is d1bdcc7 (not the d772169 revert the task states), and cmd/covercheck/main.go:58-63 re-adds an undocumented `MIN_PACKAGE_COVERAGE` env override that mutates the per-package floor default before flag parsing. Nothing in the Makefile, CI, README or tests references it (grep hits only main.go:58,60), and `MIN_PACKAGE_COVERAGE=95 make cover-check` fails with \"make: *** [Makefile:103: cover-check] Error 1\" \u2014 a hidden bypass surface contradicting README:1663-1665 (\"the floors live in the Makefile only and cannot drift\") and the repo's own prior revert commit d772169 which removed this exact code for that reason.\nThe cover-check gate, tests, CI wiring and README docs are all real and verified passing, but the working tree re-introduces an undocumented MIN_PACKAGE_COVERAGE env override in cmd/covercheck/main.go:58-63 that silently changes the per-package floor, so the gate is not load-bearing as the acceptance requires.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2717 BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts.: Most of the acceptance is satisfied: Makefile:102-105 runs `go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out` then `go run ./cmd/covercheck --min-total=80 --min-package=60 --exempt=internal/secretscheck` with a trap-cleaned tmp dir; `make cover-check` passes at current coverage (\"covercheck: total 83.1% of statements (floor 80.0%)\", \"lowest package .../internal/describe 66.5% (floor 60.0%)\", \"exempt internal/secretscheck: not present in profile (zero statements, exempt by policy)\", \"covercheck: PASS: 14 packages evaluated\", exit 0); forced failure with --min-package=95 exits 1 with 13 findings naming packages (\"FAIL package .../internal/describe coverage 66.5% is below floor 95.0%\"); hermetic tests exist for total below floor (internal/covercheck/covercheck_test.go:147), package below floor naming the package (:171), exemption (:197), empty/malformed profile table (:71, 10 cases), exact boundary (:245), plus cmd/covercheck/main_test.go:32-99 \u2014 `go test -count=1 ./internal/covercheck ./cmd/covercheck` -> ok/ok; CI .github/workflows/ci.yml:49-50 runs `make cover-check` and preserves build/vet/gofmt/version-check/spec-check/vuln-check/test steps (lines 19-53); README:1555 and 1655-1675 document the target, 80%/60% floors, unrounded comparison, exit codes and the named reasoned secretscheck exemption; go build ./... OK, go vet ./... OK, `go test -count=1 -short ./...` all 15 packages ok, TestGofmt/TestVersioncheck/speccheck/TestVulncheck ok; no coverage/profile artifacts tracked (git ls-files clean). HOWEVER the gate is not load-bearing as required: HEAD is d1bdcc7 (not the d772169 revert the task states), and cmd/covercheck/main.go:58-63 re-adds an undocumented `MIN_PACKAGE_COVERAGE` env override that mutates the per-package floor default before flag parsing. Nothing in the Makefile, CI, README or tests references it (grep hits only main.go:58,60), and `MIN_PACKAGE_COVERAGE=95 make cover-check` fails with \"make: *** [Makefile:103: cover-check] Error 1\" \u2014 a hidden bypass surface contradicting README:1663-1665 (\"the floors live in the Makefile only and cannot drift\") and the repo's own prior revert commit d772169 which removed this exact code for that reason.\nThe cover-check gate, tests, CI wiring and README docs are all real and verified passing, but the working tree re-introduces an undocumented MIN_PACKAGE_COVERAGE env override in cmd/covercheck/main.go:58-63 that silently changes the per-package floor, so the gate is not load-bearing as the acceptance requires.",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts.",
+                "status": "FAIL",
+                "detail": "Most of the acceptance is satisfied: Makefile:102-105 runs `go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out` then `go run ./cmd/covercheck --min-total=80 --min-package=60 --exempt=internal/secretscheck` with a trap-cleaned tmp dir; `make cover-check` passes at current coverage (\"covercheck: total 83.1% of statements (floor 80.0%)\", \"lowest package .../internal/describe 66.5% (floor 60.0%)\", \"exempt internal/secretscheck: not present in profile (zero statements, exempt by policy)\", \"covercheck: PASS: 14 packages evaluated\", exit 0); forced failure with --min-package=95 exits 1 with 13 findings naming packages (\"FAIL package .../internal/describe coverage 66.5% is below floor 95.0%\"); hermetic tests exist for total below floor (internal/covercheck/covercheck_test.go:147), package below floor naming the package (:171), exemption (:197), empty/malformed profile table (:71, 10 cases), exact boundary (:245), plus cmd/covercheck/main_test.go:32-99 \u2014 `go test -count=1 ./internal/covercheck ./cmd/covercheck` -> ok/ok; CI .github/workflows/ci.yml:49-50 runs `make cover-check` and preserves build/vet/gofmt/version-check/spec-check/vuln-check/test steps (lines 19-53); README:1555 and 1655-1675 document the target, 80%/60% floors, unrounded comparison, exit codes and the named reasoned secretscheck exemption; go build ./... OK, go vet ./... OK, `go test -count=1 -short ./...` all 15 packages ok, TestGofmt/TestVersioncheck/speccheck/TestVulncheck ok; no coverage/profile artifacts tracked (git ls-files clean). HOWEVER the gate is not load-bearing as required: HEAD is d1bdcc7 (not the d772169 revert the task states), and cmd/covercheck/main.go:58-63 re-adds an undocumented `MIN_PACKAGE_COVERAGE` env override that mutates the per-package floor default before flag parsing. Nothing in the Makefile, CI, README or tests references it (grep hits only main.go:58,60), and `MIN_PACKAGE_COVERAGE=95 make cover-check` fails with \"make: *** [Makefile:103: cover-check] Error 1\" \u2014 a hidden bypass surface contradicting README:1663-1665 (\"the floors live in the Makefile only and cannot drift\") and the repo's own prior revert commit d772169 which removed this exact code for that reason."
+              }
+            ],
+            "summary": "The cover-check gate, tests, CI wiring and README docs are all real and verified passing, but the working tree re-introduces an undocumented MIN_PACKAGE_COVERAGE env override in cmd/covercheck/main.go:58-63 that silently changes the per-package floor, so the gate is not load-bearing as the acceptance requires.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: BT-85\n\nStage tier1: PASS\n    \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2717 BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts.: Most of the acceptance is satisfied: Makefile:102-105 runs `go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out` then `go run ./cmd/covercheck --min-total=80 --min-package=60 --exempt=internal/secretscheck` with a trap-cleaned tmp dir; `make cover-check` passes at current coverage (\"covercheck: total 83.1% of statements (floor 80.0%)\", \"lowest package .../internal/describe 66.5% (floor 60.0%)\", \"exempt internal/secretscheck: not present in profile (zero statements, exempt by policy)\", \"covercheck: PASS: 14 packages evaluated\", exit 0); forced failure with --min-package=95 exits 1 with 13 findings naming packages (\"FAIL package .../internal/describe coverage 66.5% is below floor 95.0%\"); hermetic tests exist for total below floor (internal/covercheck/covercheck_test.go:147), package below floor naming the package (:171), exemption (:197), empty/malformed profile table (:71, 10 cases), exact boundary (:245), plus cmd/covercheck/main_test.go:32-99 \u2014 `go test -count=1 ./internal/covercheck ./cmd/covercheck` -> ok/ok; CI .github/workflows/ci.yml:49-50 runs `make cover-check` and preserves build/vet/gofmt/version-check/spec-check/vuln-check/test steps (lines 19-53); README:1555 and 1655-1675 document the target, 80%/60% floors, unrounded comparison, exit codes and the named reasoned secretscheck exemption; go build ./... OK, go vet ./... OK, `go test -count=1 -short ./...` all 15 packages ok, TestGofmt/TestVersioncheck/speccheck/TestVulncheck ok; no coverage/profile artifacts tracked (git ls-files clean). HOWEVER the gate is not load-bearing as required: HEAD is d1bdcc7 (not the d772169 revert the task states), and cmd/covercheck/main.go:58-63 re-adds an undocumented `MIN_PACKAGE_COVERAGE` env override that mutates the per-package floor default before flag parsing. Nothing in the Makefile, CI, README or tests references it (grep hits only main.go:58,60), and `MIN_PACKAGE_COVERAGE=95 make cover-check` fails with \"make: *** [Makefile:103: cover-check] Error 1\" \u2014 a hidden bypass surface contradicting README:1663-1665 (\"the floors live in the Makefile only and cannot drift\") and the repo's own prior revert commit d772169 which removed this exact code for that reason.\nThe cover-check gate, tests, CI wiring and README docs are all real and verified passing, but the working tree re-introduces an undocumented MIN_PACKAGE_COVERAGE env override in cmd/covercheck/main.go:58-63 that silently changes the per-package floor, so the gate is not load-bearing as the acceptance requires.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-11-03T19:16:04.784321",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-11-03T19:16:04.826155+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1308,
+        "truncated": false,
+        "source": "git show d1bdcc7b12ae"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 23622,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-85"
+  }
+}

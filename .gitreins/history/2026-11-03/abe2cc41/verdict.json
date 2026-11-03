@@ -1,0 +1,109 @@
+{
+  "task_id": "BT-85",
+  "task_title": "Coverage floor gate",
+  "task_criteria": [
+    "BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "1a579843595913eb16faad63ad5571e5c815ed1a",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n2:26PM INF scanned ~4774319 bytes (4.77 MB) in 2.24s\n2:26PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 267 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261103T192614.913798Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t9.643s\nok  \tgithub.com/coding-hermes/boardctl/cmd/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.006s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.601s\nok  \tgithub.com/coding-hermes/boardctl/internal/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.220s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t0.538s\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/secretscheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.033s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.018s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t3.901s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.024s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261103T192614.913798Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts.: Gate: Makefile:108-113 defines COVER_MIN_TOTAL ?= 80, COVER_MIN_PACKAGE ?= 60 and cover-check running `go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out` (mktemp -d + trap rm) then `go run ./cmd/covercheck --min-total=$(COVER_MIN_TOTAL) --min-package=$(COVER_MIN_PACKAGE) --exempt=internal/secretscheck`. Load-bearing proof: `make cover-check` -> exit 0, output 'covercheck: total 83.1% of statements (floor 80.0%) / lowest package internal/describe 66.5% (floor 60.0%) / exempt internal/secretscheck: not present in profile (zero statements, exempt by policy) / PASS: 14 packages evaluated'; `make cover-check COVER_MIN_PACKAGE=95` -> exit 1 with 13 findings naming packages (e.g. 'FAIL package github.com/coding-hermes/boardctl/internal/describe coverage 66.5% is below floor 95.0%'). Exemption is named+reasoned in internal/covercheck/covercheck.go package doc and printed via Report.Exemptions (covercheck.go:150-160). Hermetic tests: `go test -count=1 -v ./internal/covercheck ./cmd/covercheck` -> all PASS, covering TestCovercheckEvaluateTotalBelowFloor, TestCovercheckEvaluatePackageBelowFloorNamesPackage (asserts message names pkg + 62.5%), TestCovercheckEvaluateExemptZeroStatementPackage, TestCovercheckParseProfileErrors (empty/whitespace/header-only/missing mode/malformed blocks), TestCovercheckEvaluateExactBoundaryPasses (62.5/81.25 exact pass, one statement short flips both findings), TestCovercheckCommandForcedStrictFloorExitsOne (--min-package 95 -> exit 1), TestCovercheckCommandUsageAndIOErrorsExitTwo, TestCovercheckFloorsComeOnlyFromFlags. CI: .github/workflows/ci.yml 'Coverage' step `run: make cover-check` (same target, floors in one place). README:1555 and README:1655-1685 document the target, 80%/60% floors, the internal/secretscheck exemption and the COVER_MIN_PACKAGE=95 override. Preserved gates verified: `go build ./...` BUILD_OK, `go vet ./...` VET_OK, `go test -count=1 -short ./...` all 15 packages ok, TestGofmt ok, TestVersioncheck ok, ./internal/speccheck ok, TestVulncheck ok. No artifacts: `git status --porcelain` shows only harness files (.coding-hermes/board/*.jsonl, .gitreins/history/); no coverage.out anywhere (profile lives in mktemp dir removed by trap).\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts.: Gate: Makefile:108-113 defines COVER_MIN_TOTAL ?= 80, COVER_MIN_PACKAGE ?= 60 and cover-check running `go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out` (mktemp -d + trap rm) then `go run ./cmd/covercheck --min-total=$(COVER_MIN_TOTAL) --min-package=$(COVER_MIN_PACKAGE) --exempt=internal/secretscheck`. Load-bearing proof: `make cover-check` -> exit 0, output 'covercheck: total 83.1% of statements (floor 80.0%) / lowest package internal/describe 66.5% (floor 60.0%) / exempt internal/secretscheck: not present in profile (zero statements, exempt by policy) / PASS: 14 packages evaluated'; `make cover-check COVER_MIN_PACKAGE=95` -> exit 1 with 13 findings naming packages (e.g. 'FAIL package github.com/coding-hermes/boardctl/internal/describe coverage 66.5% is below floor 95.0%'). Exemption is named+reasoned in internal/covercheck/covercheck.go package doc and printed via Report.Exemptions (covercheck.go:150-160). Hermetic tests: `go test -count=1 -v ./internal/covercheck ./cmd/covercheck` -> all PASS, covering TestCovercheckEvaluateTotalBelowFloor, TestCovercheckEvaluatePackageBelowFloorNamesPackage (asserts message names pkg + 62.5%), TestCovercheckEvaluateExemptZeroStatementPackage, TestCovercheckParseProfileErrors (empty/whitespace/header-only/missing mode/malformed blocks), TestCovercheckEvaluateExactBoundaryPasses (62.5/81.25 exact pass, one statement short flips both findings), TestCovercheckCommandForcedStrictFloorExitsOne (--min-package 95 -> exit 1), TestCovercheckCommandUsageAndIOErrorsExitTwo, TestCovercheckFloorsComeOnlyFromFlags. CI: .github/workflows/ci.yml 'Coverage' step `run: make cover-check` (same target, floors in one place). README:1555 and README:1655-1685 document the target, 80%/60% floors, the internal/secretscheck exemption and the COVER_MIN_PACKAGE=95 override. Preserved gates verified: `go build ./...` BUILD_OK, `go vet ./...` VET_OK, `go test -count=1 -short ./...` all 15 packages ok, TestGofmt ok, TestVersioncheck ok, ./internal/speccheck ok, TestVulncheck ok. No artifacts: `git status --porcelain` shows only harness files (.coding-hermes/board/*.jsonl, .gitreins/history/); no coverage.out anywhere (profile lives in mktemp dir removed by trap).\n",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts.",
+                "status": "PASS",
+                "detail": "Gate: Makefile:108-113 defines COVER_MIN_TOTAL ?= 80, COVER_MIN_PACKAGE ?= 60 and cover-check running `go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out` (mktemp -d + trap rm) then `go run ./cmd/covercheck --min-total=$(COVER_MIN_TOTAL) --min-package=$(COVER_MIN_PACKAGE) --exempt=internal/secretscheck`. Load-bearing proof: `make cover-check` -> exit 0, output 'covercheck: total 83.1% of statements (floor 80.0%) / lowest package internal/describe 66.5% (floor 60.0%) / exempt internal/secretscheck: not present in profile (zero statements, exempt by policy) / PASS: 14 packages evaluated'; `make cover-check COVER_MIN_PACKAGE=95` -> exit 1 with 13 findings naming packages (e.g. 'FAIL package github.com/coding-hermes/boardctl/internal/describe coverage 66.5% is below floor 95.0%'). Exemption is named+reasoned in internal/covercheck/covercheck.go package doc and printed via Report.Exemptions (covercheck.go:150-160). Hermetic tests: `go test -count=1 -v ./internal/covercheck ./cmd/covercheck` -> all PASS, covering TestCovercheckEvaluateTotalBelowFloor, TestCovercheckEvaluatePackageBelowFloorNamesPackage (asserts message names pkg + 62.5%), TestCovercheckEvaluateExemptZeroStatementPackage, TestCovercheckParseProfileErrors (empty/whitespace/header-only/missing mode/malformed blocks), TestCovercheckEvaluateExactBoundaryPasses (62.5/81.25 exact pass, one statement short flips both findings), TestCovercheckCommandForcedStrictFloorExitsOne (--min-package 95 -> exit 1), TestCovercheckCommandUsageAndIOErrorsExitTwo, TestCovercheckFloorsComeOnlyFromFlags. CI: .github/workflows/ci.yml 'Coverage' step `run: make cover-check` (same target, floors in one place). README:1555 and README:1655-1685 document the target, 80%/60% floors, the internal/secretscheck exemption and the COVER_MIN_PACKAGE=95 override. Preserved gates verified: `go build ./...` BUILD_OK, `go vet ./...` VET_OK, `go test -count=1 -short ./...` all 15 packages ok, TestGofmt ok, TestVersioncheck ok, ./internal/speccheck ok, TestVulncheck ok. No artifacts: `git status --porcelain` shows only harness files (.coding-hermes/board/*.jsonl, .gitreins/history/); no coverage.out anywhere (profile lives in mktemp dir removed by trap)."
+              }
+            ],
+            "summary": "",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: BT-85\n\nStage tier1: PASS\n    \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 BT-85 acceptance: add a real make cover-check gate using go test ./... -count=1 -short -coverprofile=<tmp>; enforce total >=80% and every non-exempt package >=60%, with named reasoned exemption for statement-less internal/secretscheck. Make the gate load-bearing: pass at current coverage and forced failure (for example min-package 95) naming the offending package. Add hermetic checker unit tests for total/package below floor, exemption, empty/malformed profile, exact boundary. CI runs the same command as make cover-check, README documents target/floors/exemptions. Preserve all existing build/vet/full-test/fmt/version/spec/vuln gates and leave no generated artifacts.: Gate: Makefile:108-113 defines COVER_MIN_TOTAL ?= 80, COVER_MIN_PACKAGE ?= 60 and cover-check running `go test ./... -count=1 -short -coverprofile=$$tmp/coverage.out` (mktemp -d + trap rm) then `go run ./cmd/covercheck --min-total=$(COVER_MIN_TOTAL) --min-package=$(COVER_MIN_PACKAGE) --exempt=internal/secretscheck`. Load-bearing proof: `make cover-check` -> exit 0, output 'covercheck: total 83.1% of statements (floor 80.0%) / lowest package internal/describe 66.5% (floor 60.0%) / exempt internal/secretscheck: not present in profile (zero statements, exempt by policy) / PASS: 14 packages evaluated'; `make cover-check COVER_MIN_PACKAGE=95` -> exit 1 with 13 findings naming packages (e.g. 'FAIL package github.com/coding-hermes/boardctl/internal/describe coverage 66.5% is below floor 95.0%'). Exemption is named+reasoned in internal/covercheck/covercheck.go package doc and printed via Report.Exemptions (covercheck.go:150-160). Hermetic tests: `go test -count=1 -v ./internal/covercheck ./cmd/covercheck` -> all PASS, covering TestCovercheckEvaluateTotalBelowFloor, TestCovercheckEvaluatePackageBelowFloorNamesPackage (asserts message names pkg + 62.5%), TestCovercheckEvaluateExemptZeroStatementPackage, TestCovercheckParseProfileErrors (empty/whitespace/header-only/missing mode/malformed blocks), TestCovercheckEvaluateExactBoundaryPasses (62.5/81.25 exact pass, one statement short flips both findings), TestCovercheckCommandForcedStrictFloorExitsOne (--min-package 95 -> exit 1), TestCovercheckCommandUsageAndIOErrorsExitTwo, TestCovercheckFloorsComeOnlyFromFlags. CI: .github/workflows/ci.yml 'Coverage' step `run: make cover-check` (same target, floors in one place). README:1555 and README:1655-1685 document the target, 80%/60% floors, the internal/secretscheck exemption and the COVER_MIN_PACKAGE=95 override. Preserved gates verified: `go build ./...` BUILD_OK, `go vet ./...` VET_OK, `go test -count=1 -short ./...` all 15 packages ok, TestGofmt ok, TestVersioncheck ok, ./internal/speccheck ok, TestVulncheck ok. No artifacts: `git status --porcelain` shows only harness files (.coding-hermes/board/*.jsonl, .gitreins/history/); no coverage.out anywhere (profile lives in mktemp dir removed by trap).\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-11-03T19:27:56.558148",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-11-03T19:27:56.583792+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3547,
+        "truncated": false,
+        "source": "git show 1a5798435959"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 27179,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "BT-85"
+  }
+}

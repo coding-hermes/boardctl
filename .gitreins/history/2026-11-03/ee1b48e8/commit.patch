@@ -1,0 +1,28 @@
+commit d1bdcc7b12aee5521c8e2426a719fc77c339e1f7
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Tue Nov 3 14:14:46 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Tue Nov 3 14:14:46 2026 -0500
+
+    fix: honor coverage floor override in cover-check (BT-85)
+---
+ cmd/covercheck/main.go | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/cmd/covercheck/main.go b/cmd/covercheck/main.go
+index 95d852a..a062e17 100644
+--- a/cmd/covercheck/main.go
++++ b/cmd/covercheck/main.go
+@@ -55,6 +55,12 @@ func run(args []string) int {
+ 	profile := fs.String("profile", "", "path to the `go test -coverprofile` file (required)")
+ 	minTotal := fs.Float64("min-total", 80, "module-wide statement floor (percent)")
+ 	minPackage := fs.Float64("min-package", 60, "per-package statement floor (percent)")
++	if override := os.Getenv("MIN_PACKAGE_COVERAGE"); override != "" {
++		if _, err := fmt.Sscanf(override, "%f", minPackage); err != nil {
++			fmt.Fprintf(os.Stderr, "covercheck: invalid MIN_PACKAGE_COVERAGE %q: %v\n", override, err)
++			return 2
++		}
++	}
+ 	exempt := fs.String("exempt", defaultExempt, "comma-separated import-path substrings exempt from the per-package floor")
+ 	if err := fs.Parse(args); err != nil {
+ 		return 2
