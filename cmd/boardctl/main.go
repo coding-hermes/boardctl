@@ -49,6 +49,7 @@ commands:
   init    [-C dir] [--project P] [--namespace NS]   bootstrap a fresh board
   list    [--status S] [--priority P] [--json] [--all] [--skip-bad-lines]
   show    <id> [--events]
+  next-id --family CF [--width N] [--json]   (prints the next free id; read-only)
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
           [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
@@ -214,6 +215,8 @@ func run(args []string) int {
 		err = cmdCreate(boardDir, rest)
 	case "update":
 		err = cmdUpdate(boardDir, rest)
+	case "next-id":
+		err = cmdNextID(boardDir, rest)
 	case "event":
 		err = cmdEvent(boardDir, rest)
 	case "header":

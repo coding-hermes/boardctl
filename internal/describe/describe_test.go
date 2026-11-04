@@ -33,7 +33,7 @@ func TestDeriveCLI_RealMain(t *testing.T) {
 		t.Fatalf("derive from the real main.go: %v", err)
 	}
 	want := []string{
-		"init", "list", "show", "create", "update", "event", "header",
+		"init", "list", "show", "create", "update", "next-id", "event", "header",
 		"validate", "sweep-status", "normalize-statuses", "normalize-board", "doctor", "version", "stats",
 		"render", "import", "serve", "install", "umbrella",
 	}

@@ -47,6 +47,13 @@ blind spot.
   `0` = proceed, `1` = your input was rejected, `2` = wrong invocation or
   no board at the given path.
 - `umbrella` (BT-078): read-only cross-repo view — see Proven commands.
+- `next-id` (2026-11-03): `boardctl next-id --family CF` prints the next free
+  id (max+1, observed width preserved) without writing anything. `create`
+  requires an explicit `--id`, so on a board several lanes work at once
+  (code-factory runs five) every lane computed the same next id, one create
+  won and the rest aborted on "already exists". It does NOT reserve the id: a
+  lost race is a refused create (exit 1), never a duplicate row — re-run
+  `next-id` and retry.
 
 ## The `-C` flag (read this first)
 
