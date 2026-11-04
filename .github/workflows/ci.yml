@@ -34,6 +34,13 @@ jobs:
       - name: Spec-check
         run: go test -count=1 ./internal/speccheck
 
+      # BT-087: no .golangci* file may live under vendor/ — a vendored
+      # upstream config is discovered by golangci-lint when the guard lints
+      # a vendor package directory and aborts go_lint with "unknown
+      # linters". `make vendor-strip` is the remedy after `go mod vendor`.
+      - name: Vendor-check
+        run: go test -count=1 -run TestVendorcheck ./internal/vendorcheck
+
       # BT-033: the dependency-vulnerability gate runs the pinned scanner, so
       # the "Install govulncheck v1.7.0" step must precede it (and the Test
       # step below, which also runs TestVulncheck).

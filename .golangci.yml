@@ -1,0 +1,29 @@
+# BT-087: pin golangci-lint config discovery to the repo root.
+#
+# golangci-lint discovers the nearest config enclosing each analyzed
+# directory. Vendored upstream modules ship their own .golangci.yml (e.g.
+# go-openapi/jsonpointer declares linters this build does not ship, such as
+# exhaustruct_v5), so when the guard lints a vendor package directory
+# (`golangci-lint run --new-from-rev=HEAD~1 vendor/github.com/...`) the
+# VENDORED config won and the whole arm aborted with
+# "unknown linters: 'exhaustruct_v5'" — a hard error, not a finding, which
+# failed go_lint for every commit touching vendor/*.go.
+#
+# With this root config present the root wins over any nested one, so a
+# config inside vendor/ can never be discovered. Deliberately minimal on
+# linters: no `linters:` enable section means golangci-lint v2 applies its
+# default linter set — the same set this repo has always run. Do not add
+# linters here casually; a new set churns unrelated findings across every
+# package.
+#
+# vendor/ is excluded from analysis entirely (BT-087): vendored code is
+# upstream-maintained, so findings there are not actionable in this repo —
+# the bumped kin-openapi ships 5 errcheck + 3 staticcheck findings upstream.
+# The guard lints each changed package directory, and a dependency bump
+# changes vendor dirs wholesale; without the exclusion every bump commit
+# fails go_lint on upstream style. Our own packages are unaffected.
+version: "2"
+linters:
+  exclusions:
+    paths:
+      - vendor/

@@ -234,6 +234,10 @@ var ciGateSteps = []GateStep{
 	// Spec-check gate: the whole package (TestSpeccheck + TestRepoParity),
 	// exactly what `make spec-check` runs.
 	{Name: "Spec-check", Run: "go test -count=1 ./internal/speccheck"},
+	// Vendor-check gate (BT-087): the same in-process test `make
+	// vendor-check` runs — no .golangci* file may live under vendor/, or the
+	// go_lint arm aborts on a vendored config while linting vendor dirs.
+	{Name: "Vendor-check", Run: "go test -count=1 -run TestVendorcheck ./internal/vendorcheck"},
 	// Install step for the vulnerability gate: govulncheck must be installed
 	// at the version internal/vulncheck pins (PinnedToolVersion) before any
 	// step runs TestVulncheck, or the gate would skip on the runner.

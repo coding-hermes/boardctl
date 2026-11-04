@@ -13,7 +13,7 @@ PLATFORMS := \
 	windows/amd64 \
 	freebsd/amd64
 
-.PHONY: build test vet fmt fmt-check version-check vuln-check cover-check release install install-release install-check clean
+.PHONY: build test vet fmt fmt-check version-check vuln-check vendor-check vendor-strip cover-check release install install-release install-check clean
 
 # BT-057: the build commit stamped into every make-built binary. The guard
 # keeps non-git builds working (a tarball without .git yields an empty
@@ -87,6 +87,26 @@ spec-check:
 # Local runs need the tool: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
 vuln-check:
 	go test -count=1 -run TestVulncheck ./internal/vulncheck
+
+# BT-087: check-only vendored-config gate (never rewrites files). It runs the
+# Go checker in internal/vendorcheck, so the Makefile, CI, and
+# `go test ./...` all enforce the exact same rule: no `.golangci*` file may
+# live under vendor/. A vendored upstream config is build tooling, not part
+# of the vendored API — but golangci-lint discovers it when the go_lint arm
+# lints a vendor package directory and aborts with "unknown linters", which
+# is what broke every commit carrying a dependency bump that vendored one
+# (kin-openapi -> go-openapi/jsonpointer declared exhaustruct_v5). The
+# repo-root .golangci.yml is the fix; this gate keeps a future
+# `go mod vendor` from silently reinstating the configs.
+vendor-check:
+	go test -count=1 -run TestVendorcheck ./internal/vendorcheck
+
+# BT-087: the remedy companion to vendor-check. `go mod vendor` copies every
+# file the module ships, including upstream `.golangci*` configs; this
+# deletes any vendor/**/.golangci* file again. Run it after `go mod vendor`
+# and before committing — `make vendor-check` fails until you do.
+vendor-strip:
+	@find vendor -type f -name '.golangci*' -print -delete
 
 # BT-085: test-coverage floor gate. Generates a REAL profile from a full
 # -short suite run and evaluates it with the pure checker in

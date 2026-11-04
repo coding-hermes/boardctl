@@ -347,6 +347,14 @@ func (p *parser) mapping() *Node {
 			n.EndColumn = p.event.end_mark.column + 1
 		} else if len(n.Content) > 0 {
 			last := n.Content[len(n.Content)-1]
+			// An explicit key with no value gets a null the document never
+			// wrote, marked at the start of the line after the key. Ending
+			// there reaches past the key's own text, and past the whole input
+			// when the key is on the last line, so end with the text that is
+			// actually there.
+			if prev := len(n.Content) - 2; prev >= 0 && unwritten(last) && last.Line > n.Content[prev].EndLine {
+				last = n.Content[prev]
+			}
 			n.EndLine, n.EndColumn = last.EndLine, last.EndColumn
 		} else {
 			n.EndLine = p.event.end_mark.line + 1
@@ -355,6 +363,13 @@ func (p *parser) mapping() *Node {
 	}
 	p.expect(yaml_MAPPING_END_EVENT)
 	return n
+}
+
+// unwritten reports whether n stands for a value the document does not contain:
+// a null the parser supplies for a missing value, spanning no text.
+func unwritten(n *Node) bool {
+	return n.Kind == ScalarNode && n.Tag == nullTag && n.Value == "" &&
+		n.Line == n.EndLine && n.Column == n.EndColumn
 }
 
 // ----------------------------------------------------------------------------
@@ -924,10 +939,10 @@ func (d *decoder) mapping(n *Node, out reflect.Value) (good bool) {
 		if d.unmarshal(n.Content[i], k) {
 			if mergedFields != nil {
 				ki := k.Interface()
-				if mergedFields[ki] {
+				if d.getPossiblyUnhashableKey(mergedFields, ki) {
 					continue
 				}
-				mergedFields[ki] = true
+				d.setPossiblyUnhashableKey(mergedFields, ki, true)
 			}
 			kkind := k.Kind()
 			if kkind == reflect.Interface {
@@ -1052,6 +1067,27 @@ func failWantMap() {
 	failf("map merge requires map or sequence of maps as the value")
 }
 
+// A key of a mapping being merged is not checked for hashability before it is
+// looked up, and a map or a sequence key panics when hashed. Report it as a
+// yaml error, like the key check further down the mapping does.
+func (d *decoder) setPossiblyUnhashableKey(m map[interface{}]bool, key interface{}, value bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			failf("%v", err)
+		}
+	}()
+	m[key] = value
+}
+
+func (d *decoder) getPossiblyUnhashableKey(m map[interface{}]bool, key interface{}) bool {
+	defer func() {
+		if err := recover(); err != nil {
+			failf("%v", err)
+		}
+	}()
+	return m[key]
+}
+
 func (d *decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 	mergedFields := d.mergedFields
 	if mergedFields == nil {
@@ -1059,7 +1095,7 @@ func (d *decoder) merge(parent *Node, merge *Node, out reflect.Value) {
 		for i := 0; i < len(parent.Content); i += 2 {
 			k := reflect.New(ifaceType).Elem()
 			if d.unmarshal(parent.Content[i], k) {
-				d.mergedFields[k.Interface()] = true
+				d.setPossiblyUnhashableKey(d.mergedFields, k.Interface(), true)
 			}
 		}
 	}
