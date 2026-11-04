@@ -134,6 +134,17 @@ var sanctionedExtras = []string{
 	"pull_requests",
 	"branches",
 	"worktrees",
+	// The premise probe (census 2026-11-03: 511 rows across 20 project families,
+	// dominated by code-factory and its work/review boards). A probe is a shell
+	// one-liner that PRINTS evidence for the row's own premise — the thing that
+	// turns "the task says X is broken" into "run this and see" — so a foreman can
+	// re-derive the premise in seconds instead of trusting the title. Sanctioned
+	// rather than aliased onto evidence/detail: `detail` is prose about the work and
+	// `evidence` is a pointer to what a CLOSED row proved, while `probe` is an
+	// executable assertion that belongs to an OPEN row and is meant to be run again.
+	// (Timestamped one-offs like probe_2026_10_31_0144 stay drift: 4 rows each in a
+	// single project, which is a worker writing an ad-hoc key, not a convention.)
+	"probe",
 }
 
 // SanctionedTaskRowKeys is the full allowed set: the create schema plus the

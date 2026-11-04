@@ -36,6 +36,17 @@ func TestIsSanctionedTaskKey(t *testing.T) {
 			t.Errorf("key %q should be sanctioned (BT-067 census evidence)", k)
 		}
 	}
+	// The premise probe (census 2026-11-03: 511 rows across 20 project families).
+	// It is an executable assertion on an OPEN row, distinct from `detail` (prose)
+	// and `evidence` (what a closed row proved), so it must not warn — the
+	// code-factory board alone carried 12 of these and every one was noise.
+	if !IsSanctionedTaskKey("probe") {
+		t.Error("key \"probe\" should be sanctioned — it is the premise-probe convention, not drift")
+	}
+	// ...but a timestamped one-off is still a worker writing an ad-hoc key.
+	if IsSanctionedTaskKey("probe_2026_10_31_0144") {
+		t.Error("timestamped probe_<date> keys should stay drift, not widen the canon")
+	}
 	// the mutation-detection pair: near-misses that must stay drift, each one
 	// respelling (or pluralising) a sanctioned key rather than naming a concept.
 	nearMisses := []string{"attribute", "evidences", "judgement", "workers", "asignee"}
