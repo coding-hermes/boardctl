@@ -1,0 +1,103 @@
+{
+  "task_id": "BT-088",
+  "task_title": "guard hook budget: set guards.hook_timeout above guards.test_timeout",
+  "task_criteria": [
+    "ACCEPTANCE: (1) .gitreins/config.yaml carries guards.hook_timeout strictly greater than guards.test_timeout with a comment naming BT-088; (2) a fresh commit/guard run produces NO 'hook_timeout <= test_timeout' warning and the go_tests arm executes in full mode; (3) negative proof: hook_timeout below test_timeout makes the warning reappear and the budget clamp, both quoted; (4) doctor/validate OK and the change committed with repo trailer + ch:trace row=BT-088."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "6cefd6c462ad3d13e4167d2132d7971d31ba9071",
+  "working_tree_content_fingerprint": "ee9b4e764e3533b8f3a021f88ff7fc6887b06648638882db5e807bf25db54281",
+  "working_tree_dirty_path_count": 0,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n1:45PM INF scanned ~4825121 bytes (4.83 MB) in 3.37s\n1:45PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 273 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261104T184456.070326Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t11.302s\nok  \tgithub.com/coding-hermes/boardctl/cmd/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.009s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t3.186s\nok  \tgithub.com/coding-hermes/boardctl/internal/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.505s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/secretscheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.084s\nok  \tgithub.com/coding-hermes/boardctl/internal/vendorcheck\t0.067s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261104T184456.070326Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 ACCEPTANCE: (1) .gitreins/config.yaml carries guards.hook_timeout strictly greater than guards.test_timeout with a comment naming BT-088; (2) a fresh commit/guard run produces NO 'hook_timeout <= test_timeout' warning and the go_tests arm executes in full mode; (3) negative proof: hook_timeout below test_timeout makes the warning reappear and the budget clamp, both quoted; (4) doctor/validate OK and the change committed with repo trailer + ch:trace row=BT-088.: (1) .gitreins/config.yaml:10 `test_timeout: 900`, :15 `hook_timeout: 1020` (1020 > 900), with comment at :11-14 'BT-088: the pre-commit hook budget must exceed test_timeout...'. (2) Fresh run `gitreins guard --full` (exit 0) printed 'Tier 1 Guards: PASS  (test mode: full, whole tree)' with '\u2713 go_tests \u2014 passed' and NO hook_timeout WARN line; log .gitreins/logs/guard-20261104T184557.924889Z.log:32-43 shows the full go test package list (cmd/boardctl, cmd/covercheck, internal/board, ...) i.e. full mode, and `grep -i hook_timeout` on that log returned nothing. (3) Negative proof reproduced live: setting hook_timeout: 300 (test_timeout 900) and re-running `gitreins guard --full` printed verbatim 'WARN: hook_timeout=300s <= test_timeout=900s in /home/kara/coding-hermes-boardctl: the guard would be cut off mid-run and report a fail-open PASS. Raising this run's budget to 1020s \u2014 set guards.hook_timeout above guards.test_timeout to fix it at the source.' \u2014 matching the clamp in engine/guard_manager.py:1585-1598 (`if self._hook_timeout <= self._test_timeout: derived = self._test_timeout + 120 ... self._hook_timeout = derived`). Config restored to 1020 afterwards; `git status --porcelain` clean. (4) `gitreins doctor` exit 0, 'OK: all 5 allowlist path entries compile as Go regexps' (no `validate` subcommand exists in gitreins 0.17.1 \u2014 `gitreins validate` errors 'invalid choice'; doctor is the available validator). Commit 6cefd6c touches only .gitreins/config.yaml (+5) and its message contains 'ch:trace row=BT-088 spec=none test=guards.hook_timeout evidence=guard-full-red-green-negative verdict=pending commit=this' (line 25) plus the repo trailer 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' (line 27).\nAll four acceptance parts verified with live evidence: config sets hook_timeout 1020 > test_timeout 900 with a BT-088 comment, a fresh full guard run is warning-free with go_tests in full mode, the negative arm reproduces the warning and 1020s clamp verbatim, and doctor passes with the commit carrying the ch:trace row=BT-088 and co-author trailer.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 ACCEPTANCE: (1) .gitreins/config.yaml carries guards.hook_timeout strictly greater than guards.test_timeout with a comment naming BT-088; (2) a fresh commit/guard run produces NO 'hook_timeout <= test_timeout' warning and the go_tests arm executes in full mode; (3) negative proof: hook_timeout below test_timeout makes the warning reappear and the budget clamp, both quoted; (4) doctor/validate OK and the change committed with repo trailer + ch:trace row=BT-088.: (1) .gitreins/config.yaml:10 `test_timeout: 900`, :15 `hook_timeout: 1020` (1020 > 900), with comment at :11-14 'BT-088: the pre-commit hook budget must exceed test_timeout...'. (2) Fresh run `gitreins guard --full` (exit 0) printed 'Tier 1 Guards: PASS  (test mode: full, whole tree)' with '\u2713 go_tests \u2014 passed' and NO hook_timeout WARN line; log .gitreins/logs/guard-20261104T184557.924889Z.log:32-43 shows the full go test package list (cmd/boardctl, cmd/covercheck, internal/board, ...) i.e. full mode, and `grep -i hook_timeout` on that log returned nothing. (3) Negative proof reproduced live: setting hook_timeout: 300 (test_timeout 900) and re-running `gitreins guard --full` printed verbatim 'WARN: hook_timeout=300s <= test_timeout=900s in /home/kara/coding-hermes-boardctl: the guard would be cut off mid-run and report a fail-open PASS. Raising this run's budget to 1020s \u2014 set guards.hook_timeout above guards.test_timeout to fix it at the source.' \u2014 matching the clamp in engine/guard_manager.py:1585-1598 (`if self._hook_timeout <= self._test_timeout: derived = self._test_timeout + 120 ... self._hook_timeout = derived`). Config restored to 1020 afterwards; `git status --porcelain` clean. (4) `gitreins doctor` exit 0, 'OK: all 5 allowlist path entries compile as Go regexps' (no `validate` subcommand exists in gitreins 0.17.1 \u2014 `gitreins validate` errors 'invalid choice'; doctor is the available validator). Commit 6cefd6c touches only .gitreins/config.yaml (+5) and its message contains 'ch:trace row=BT-088 spec=none test=guards.hook_timeout evidence=guard-full-red-green-negative verdict=pending commit=this' (line 25) plus the repo trailer 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' (line 27).\nAll four acceptance parts verified with live evidence: config sets hook_timeout 1020 > test_timeout 900 with a BT-088 comment, a fresh full guard run is warning-free with go_tests in full mode, the negative arm reproduces the warning and 1020s clamp verbatim, and doctor passes with the commit carrying the ch:trace row=BT-088 and co-author trailer.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "ACCEPTANCE: (1) .gitreins/config.yaml carries guards.hook_timeout strictly greater than guards.test_timeout with a comment naming BT-088; (2) a fresh commit/guard run produces NO 'hook_timeout <= test_timeout' warning and the go_tests arm executes in full mode; (3) negative proof: hook_timeout below test_timeout makes the warning reappear and the budget clamp, both quoted; (4) doctor/validate OK and the change committed with repo trailer + ch:trace row=BT-088.",
+                "status": "PASS",
+                "detail": "(1) .gitreins/config.yaml:10 `test_timeout: 900`, :15 `hook_timeout: 1020` (1020 > 900), with comment at :11-14 'BT-088: the pre-commit hook budget must exceed test_timeout...'. (2) Fresh run `gitreins guard --full` (exit 0) printed 'Tier 1 Guards: PASS  (test mode: full, whole tree)' with '\u2713 go_tests \u2014 passed' and NO hook_timeout WARN line; log .gitreins/logs/guard-20261104T184557.924889Z.log:32-43 shows the full go test package list (cmd/boardctl, cmd/covercheck, internal/board, ...) i.e. full mode, and `grep -i hook_timeout` on that log returned nothing. (3) Negative proof reproduced live: setting hook_timeout: 300 (test_timeout 900) and re-running `gitreins guard --full` printed verbatim 'WARN: hook_timeout=300s <= test_timeout=900s in /home/kara/coding-hermes-boardctl: the guard would be cut off mid-run and report a fail-open PASS. Raising this run's budget to 1020s \u2014 set guards.hook_timeout above guards.test_timeout to fix it at the source.' \u2014 matching the clamp in engine/guard_manager.py:1585-1598 (`if self._hook_timeout <= self._test_timeout: derived = self._test_timeout + 120 ... self._hook_timeout = derived`). Config restored to 1020 afterwards; `git status --porcelain` clean. (4) `gitreins doctor` exit 0, 'OK: all 5 allowlist path entries compile as Go regexps' (no `validate` subcommand exists in gitreins 0.17.1 \u2014 `gitreins validate` errors 'invalid choice'; doctor is the available validator). Commit 6cefd6c touches only .gitreins/config.yaml (+5) and its message contains 'ch:trace row=BT-088 spec=none test=guards.hook_timeout evidence=guard-full-red-green-negative verdict=pending commit=this' (line 25) plus the repo trailer 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' (line 27)."
+              }
+            ],
+            "summary": "All four acceptance parts verified with live evidence: config sets hook_timeout 1020 > test_timeout 900 with a BT-088 comment, a fresh full guard run is warning-free with go_tests in full mode, the negative arm reproduces the warning and 1020s clamp verbatim, and doctor passes with the commit carrying the ch:trace row=BT-088 and co-author trailer.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: BT-088\n\nStage tier1: PASS\n    \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 ACCEPTANCE: (1) .gitreins/config.yaml carries guards.hook_timeout strictly greater than guards.test_timeout with a comment naming BT-088; (2) a fresh commit/guard run produces NO 'hook_timeout <= test_timeout' warning and the go_tests arm executes in full mode; (3) negative proof: hook_timeout below test_timeout makes the warning reappear and the budget clamp, both quoted; (4) doctor/validate OK and the change committed with repo trailer + ch:trace row=BT-088.: (1) .gitreins/config.yaml:10 `test_timeout: 900`, :15 `hook_timeout: 1020` (1020 > 900), with comment at :11-14 'BT-088: the pre-commit hook budget must exceed test_timeout...'. (2) Fresh run `gitreins guard --full` (exit 0) printed 'Tier 1 Guards: PASS  (test mode: full, whole tree)' with '\u2713 go_tests \u2014 passed' and NO hook_timeout WARN line; log .gitreins/logs/guard-20261104T184557.924889Z.log:32-43 shows the full go test package list (cmd/boardctl, cmd/covercheck, internal/board, ...) i.e. full mode, and `grep -i hook_timeout` on that log returned nothing. (3) Negative proof reproduced live: setting hook_timeout: 300 (test_timeout 900) and re-running `gitreins guard --full` printed verbatim 'WARN: hook_timeout=300s <= test_timeout=900s in /home/kara/coding-hermes-boardctl: the guard would be cut off mid-run and report a fail-open PASS. Raising this run's budget to 1020s \u2014 set guards.hook_timeout above guards.test_timeout to fix it at the source.' \u2014 matching the clamp in engine/guard_manager.py:1585-1598 (`if self._hook_timeout <= self._test_timeout: derived = self._test_timeout + 120 ... self._hook_timeout = derived`). Config restored to 1020 afterwards; `git status --porcelain` clean. (4) `gitreins doctor` exit 0, 'OK: all 5 allowlist path entries compile as Go regexps' (no `validate` subcommand exists in gitreins 0.17.1 \u2014 `gitreins validate` errors 'invalid choice'; doctor is the available validator). Commit 6cefd6c touches only .gitreins/config.yaml (+5) and its message contains 'ch:trace row=BT-088 spec=none test=guards.hook_timeout evidence=guard-full-red-green-negative verdict=pending commit=this' (line 25) plus the repo trailer 'Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>' (line 27).\nAll four acceptance parts verified with live evidence: config sets hook_timeout 1020 > test_timeout 900 with a BT-088 comment, a fresh full guard run is warning-free with go_tests in full mode, the negative arm reproduces the warning and 1020s clamp verbatim, and doctor passes with the commit carrying the ch:trace row=BT-088 and co-author trailer.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-11-04T18:46:48.165239",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-11-04T18:46:48.183870+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 2576,
+        "truncated": false,
+        "source": "git show 6cefd6c462ad"
+      }
+    ],
+    "task_id": "BT-088"
+  }
+}

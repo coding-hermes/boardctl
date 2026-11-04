@@ -1,0 +1,53 @@
+commit 6cefd6c462ad3d13e4167d2132d7971d31ba9071
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Wed Nov 4 13:44:55 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Wed Nov 4 13:44:55 2026 -0500
+
+    fix(guard): set guards.hook_timeout=1020 above test_timeout — BT-088
+    
+    The pre-commit guard hook used the code default hook_timeout (300s) while
+    guards.test_timeout is 900s, so every commit in this repo printed:
+    
+      WARN: hook_timeout=300s <= test_timeout=900s in
+      /home/kara/coding-hermes-boardctl: the guard would be cut off mid-run and
+      report a fail-open PASS. Raising this run's budget to 1020s ...
+    
+    i.e. the hook truncated the run mid-suite and could report a fail-open PASS.
+    Set hook_timeout: 1020 explicitly (900s test budget + 120s for the
+    secrets/build/lint lanes that run before it) so the hook budget is no longer
+    derived by the clamp.
+    
+    Evidence (foreman, on this tree):
+    - RED: `gitreins guard --full` with hook_timeout absent (default 300)
+      -> prints the hook_timeout WARN above, "Tier 1 Guards: PASS (test mode:
+      full, whole tree)", go_tests ✓ (the arm ran, the hook budget did not cover it)
+    - GREEN: hook_timeout: 1020 -> same guard run prints NO hook_timeout WARN,
+      secrets/go_build/go_lint/go_tests all ✓, exit 0
+    - NEGATIVE arm: hook_timeout: 300 restored -> the WARN reappears verbatim with
+      "Raising this run's budget to 1020s", proving the new key is the deciding
+      surface and not an ignored config line
+    
+    ch:trace row=BT-088 spec=none test=guards.hook_timeout evidence=guard-full-red-green-negative verdict=pending commit=this
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ .gitreins/config.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/.gitreins/config.yaml b/.gitreins/config.yaml
+index 42d1842..bbe4de7 100644
+--- a/.gitreins/config.yaml
++++ b/.gitreins/config.yaml
+@@ -8,6 +8,11 @@ guards:
+   # loadavg ~30; the same guard passed at 180s on a quiet host 09-28/30).
+   # Full-mode suite measures 100-205s standalone — 900s gives 4x headroom.
+   test_timeout: 900
++  # BT-088: the pre-commit hook budget must exceed test_timeout. At the code
++  # default (300s) the hook cut the guard off mid-suite and reported a
++  # fail-open PASS, warning on every commit in this repo. 1020s = 900s test
++  # budget + 120s for the secrets/build/lint lanes that run before it.
++  hook_timeout: 1020
+   go:
+     build: true
+     lint: true
