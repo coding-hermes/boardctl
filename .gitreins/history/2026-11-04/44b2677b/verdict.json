@@ -1,0 +1,103 @@
+{
+  "task_id": "BT-087",
+  "task_title": "Vendored golangci config hijacks go_lint \u2014 root config + vendor-config gate",
+  "task_criteria": [
+    "go_lint must exit 0 on a commit touching vendor Go files; a checker must fail if any vendor/**/.golangci* exists; full gate set green; staged kin-openapi bump landed"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "fec2b4a5632ef2accc37d8df531933005c39604d",
+  "working_tree_content_fingerprint": "845d75427aecd0f7608be5b9362d4ff8026183525d9063dfcacd678b3823f821",
+  "working_tree_dirty_path_count": 0,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n1:28PM INF scanned ~4807203 bytes (4.81 MB) in 2.55s\n1:28PM INF no leaks found\nsecrets: gitleaks: clean\nWARN: hook_timeout=300s <= test_timeout=900s in /home/kara/coding-hermes-boardctl: the guard would be cut off mid-run and report a fail-open PASS. Raising this run's budget to 1020s \u2014 set guards.hook_timeout above guards.test_timeout to fix it at the source.\nsecrets: builtin cross-check: Scanned 272 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261104T182342.457692Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t6.680s\nok  \tgithub.com/coding-hermes/boardctl/cmd/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t0.023s\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.025s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.900s\nok  \tgithub.com/coding-hermes/boardctl/internal/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t0.026s\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.284s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t0.054s\nok  \tgithub.com/coding-hermes/boardctl/internal/secretscheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.055s\nok  \tgithub.com/coding-hermes/boardctl/internal/vendorcheck\t0.031s\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t0.012s\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t12.325s\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t0.019s\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261104T182342.457692Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 go_lint must exit 0 on a commit touching vendor Go files; a checker must fail if any vendor/**/.golangci* exists; full gate set green; staged kin-openapi bump landed: (a) go_lint on vendor files: `golangci-lint run --new-from-rev=HEAD~1 vendor/github.com/go-openapi/jsonpointer/...` -> EXIT_VENDOR=0, \"0 issues.\"; also `vendor/...` -> 0, `./...` -> 0, `./internal/board` -> 0, `./internal/vendorcheck` -> 0 (golangci-lint 2.12.2). Root .golangci.yml (version \"2\", linters.exclusions.paths: vendor/) pins config discovery to the root. (b) Gate is RED-capable: planting vendor/github.com/go-openapi/jsonpointer/.golangci.yml made `go test -count=1 -run TestVendorcheck ./internal/vendorcheck` exit 1 with \"found 1 golangci config file(s) under vendor/ ... vendor/github.com/go-openapi/jsonpointer/.golangci.yml\"; after removal it is green (ok 0.002s). Checker at internal/vendorcheck/vendorcheck.go (FindVendoredConfigs walks vendor/ matching \".golangci\" prefix, sorted, errors on missing vendor/), tests in vendorcheck_test.go (planted fixture, clean vendor, missing-vendor error), wired at Makefile:101-102 (vendor-check), .github/workflows/ci.yml:42 (Vendor-check step), and pinned by the workflowcheck gate-step census (TestWorkflowcheck exit 0). (c) Full gate set green: go build ./... EXIT 0; go vet ./... EXIT 0; go test -short -count=1 ./... EXIT 0 (16 ok); go test -count=1 ./... EXIT 0 (16 ok); TestGofmt EXIT 0; TestVersioncheck EXIT 0; speccheck EXIT 0; TestVulncheck EXIT 0; make cover-check EXIT 0 (\"covercheck: PASS: 15 packages evaluated\", total 83.1%); go mod verify \"all modules verified\"; go build -mod=vendor ./... EXIT 0. (d) kin-openapi bump landed: go.mod at HEAD requires github.com/getkin/kin-openapi v0.152.0 (HEAD~1: v0.149.0) plus jsonpointer v1.0.2, oasdiff/yaml v0.1.3, yaml3 v0.0.16, x/text v0.43.0; vendor/modules.txt agrees; vendor tree present and builds; working tree clean (git status empty).\nRoot .golangci.yml pins lint config discovery so go_lint exits 0 on vendor-touching commits, the new internal/vendorcheck gate demonstrably fails when a vendor/**/.golangci* is planted, all gates (build/vet/tests/coverage/vuln/workflowcheck) are green, and the kin-openapi v0.152.0 bump is committed.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 go_lint must exit 0 on a commit touching vendor Go files; a checker must fail if any vendor/**/.golangci* exists; full gate set green; staged kin-openapi bump landed: (a) go_lint on vendor files: `golangci-lint run --new-from-rev=HEAD~1 vendor/github.com/go-openapi/jsonpointer/...` -> EXIT_VENDOR=0, \"0 issues.\"; also `vendor/...` -> 0, `./...` -> 0, `./internal/board` -> 0, `./internal/vendorcheck` -> 0 (golangci-lint 2.12.2). Root .golangci.yml (version \"2\", linters.exclusions.paths: vendor/) pins config discovery to the root. (b) Gate is RED-capable: planting vendor/github.com/go-openapi/jsonpointer/.golangci.yml made `go test -count=1 -run TestVendorcheck ./internal/vendorcheck` exit 1 with \"found 1 golangci config file(s) under vendor/ ... vendor/github.com/go-openapi/jsonpointer/.golangci.yml\"; after removal it is green (ok 0.002s). Checker at internal/vendorcheck/vendorcheck.go (FindVendoredConfigs walks vendor/ matching \".golangci\" prefix, sorted, errors on missing vendor/), tests in vendorcheck_test.go (planted fixture, clean vendor, missing-vendor error), wired at Makefile:101-102 (vendor-check), .github/workflows/ci.yml:42 (Vendor-check step), and pinned by the workflowcheck gate-step census (TestWorkflowcheck exit 0). (c) Full gate set green: go build ./... EXIT 0; go vet ./... EXIT 0; go test -short -count=1 ./... EXIT 0 (16 ok); go test -count=1 ./... EXIT 0 (16 ok); TestGofmt EXIT 0; TestVersioncheck EXIT 0; speccheck EXIT 0; TestVulncheck EXIT 0; make cover-check EXIT 0 (\"covercheck: PASS: 15 packages evaluated\", total 83.1%); go mod verify \"all modules verified\"; go build -mod=vendor ./... EXIT 0. (d) kin-openapi bump landed: go.mod at HEAD requires github.com/getkin/kin-openapi v0.152.0 (HEAD~1: v0.149.0) plus jsonpointer v1.0.2, oasdiff/yaml v0.1.3, yaml3 v0.0.16, x/text v0.43.0; vendor/modules.txt agrees; vendor tree present and builds; working tree clean (git status empty).\nRoot .golangci.yml pins lint config discovery so go_lint exits 0 on vendor-touching commits, the new internal/vendorcheck gate demonstrably fails when a vendor/**/.golangci* is planted, all gates (build/vet/tests/coverage/vuln/workflowcheck) are green, and the kin-openapi v0.152.0 bump is committed.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "go_lint must exit 0 on a commit touching vendor Go files; a checker must fail if any vendor/**/.golangci* exists; full gate set green; staged kin-openapi bump landed",
+                "status": "PASS",
+                "detail": "(a) go_lint on vendor files: `golangci-lint run --new-from-rev=HEAD~1 vendor/github.com/go-openapi/jsonpointer/...` -> EXIT_VENDOR=0, \"0 issues.\"; also `vendor/...` -> 0, `./...` -> 0, `./internal/board` -> 0, `./internal/vendorcheck` -> 0 (golangci-lint 2.12.2). Root .golangci.yml (version \"2\", linters.exclusions.paths: vendor/) pins config discovery to the root. (b) Gate is RED-capable: planting vendor/github.com/go-openapi/jsonpointer/.golangci.yml made `go test -count=1 -run TestVendorcheck ./internal/vendorcheck` exit 1 with \"found 1 golangci config file(s) under vendor/ ... vendor/github.com/go-openapi/jsonpointer/.golangci.yml\"; after removal it is green (ok 0.002s). Checker at internal/vendorcheck/vendorcheck.go (FindVendoredConfigs walks vendor/ matching \".golangci\" prefix, sorted, errors on missing vendor/), tests in vendorcheck_test.go (planted fixture, clean vendor, missing-vendor error), wired at Makefile:101-102 (vendor-check), .github/workflows/ci.yml:42 (Vendor-check step), and pinned by the workflowcheck gate-step census (TestWorkflowcheck exit 0). (c) Full gate set green: go build ./... EXIT 0; go vet ./... EXIT 0; go test -short -count=1 ./... EXIT 0 (16 ok); go test -count=1 ./... EXIT 0 (16 ok); TestGofmt EXIT 0; TestVersioncheck EXIT 0; speccheck EXIT 0; TestVulncheck EXIT 0; make cover-check EXIT 0 (\"covercheck: PASS: 15 packages evaluated\", total 83.1%); go mod verify \"all modules verified\"; go build -mod=vendor ./... EXIT 0. (d) kin-openapi bump landed: go.mod at HEAD requires github.com/getkin/kin-openapi v0.152.0 (HEAD~1: v0.149.0) plus jsonpointer v1.0.2, oasdiff/yaml v0.1.3, yaml3 v0.0.16, x/text v0.43.0; vendor/modules.txt agrees; vendor tree present and builds; working tree clean (git status empty)."
+              }
+            ],
+            "summary": "Root .golangci.yml pins lint config discovery so go_lint exits 0 on vendor-touching commits, the new internal/vendorcheck gate demonstrably fails when a vendor/**/.golangci* is planted, all gates (build/vet/tests/coverage/vuln/workflowcheck) are green, and the kin-openapi v0.152.0 bump is committed.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: BT-087\n\nStage tier1: PASS\n    \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 go_lint must exit 0 on a commit touching vendor Go files; a checker must fail if any vendor/**/.golangci* exists; full gate set green; staged kin-openapi bump landed: (a) go_lint on vendor files: `golangci-lint run --new-from-rev=HEAD~1 vendor/github.com/go-openapi/jsonpointer/...` -> EXIT_VENDOR=0, \"0 issues.\"; also `vendor/...` -> 0, `./...` -> 0, `./internal/board` -> 0, `./internal/vendorcheck` -> 0 (golangci-lint 2.12.2). Root .golangci.yml (version \"2\", linters.exclusions.paths: vendor/) pins config discovery to the root. (b) Gate is RED-capable: planting vendor/github.com/go-openapi/jsonpointer/.golangci.yml made `go test -count=1 -run TestVendorcheck ./internal/vendorcheck` exit 1 with \"found 1 golangci config file(s) under vendor/ ... vendor/github.com/go-openapi/jsonpointer/.golangci.yml\"; after removal it is green (ok 0.002s). Checker at internal/vendorcheck/vendorcheck.go (FindVendoredConfigs walks vendor/ matching \".golangci\" prefix, sorted, errors on missing vendor/), tests in vendorcheck_test.go (planted fixture, clean vendor, missing-vendor error), wired at Makefile:101-102 (vendor-check), .github/workflows/ci.yml:42 (Vendor-check step), and pinned by the workflowcheck gate-step census (TestWorkflowcheck exit 0). (c) Full gate set green: go build ./... EXIT 0; go vet ./... EXIT 0; go test -short -count=1 ./... EXIT 0 (16 ok); go test -count=1 ./... EXIT 0 (16 ok); TestGofmt EXIT 0; TestVersioncheck EXIT 0; speccheck EXIT 0; TestVulncheck EXIT 0; make cover-check EXIT 0 (\"covercheck: PASS: 15 packages evaluated\", total 83.1%); go mod verify \"all modules verified\"; go build -mod=vendor ./... EXIT 0. (d) kin-openapi bump landed: go.mod at HEAD requires github.com/getkin/kin-openapi v0.152.0 (HEAD~1: v0.149.0) plus jsonpointer v1.0.2, oasdiff/yaml v0.1.3, yaml3 v0.0.16, x/text v0.43.0; vendor/modules.txt agrees; vendor tree present and builds; working tree clean (git status empty).\nRoot .golangci.yml pins lint config discovery so go_lint exits 0 on vendor-touching commits, the new internal/vendorcheck gate demonstrably fails when a vendor/**/.golangci* is planted, all gates (build/vet/tests/coverage/vuln/workflowcheck) are green, and the kin-openapi v0.152.0 bump is committed.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-11-04T18:29:35.985845",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-11-04T18:29:36.095764+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 262176,
+        "truncated": true,
+        "source": "git show fec2b4a5632e"
+      }
+    ],
+    "task_id": "BT-087"
+  }
+}
