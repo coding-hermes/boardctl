@@ -8,6 +8,11 @@ guards:
   # loadavg ~30; the same guard passed at 180s on a quiet host 09-28/30).
   # Full-mode suite measures 100-205s standalone — 900s gives 4x headroom.
   test_timeout: 900
+  # BT-088: the pre-commit hook budget must exceed test_timeout. At the code
+  # default (300s) the hook cut the guard off mid-suite and reported a
+  # fail-open PASS, warning on every commit in this repo. 1020s = 900s test
+  # budget + 120s for the secrets/build/lint lanes that run before it.
+  hook_timeout: 1020
   go:
     build: true
     lint: true
