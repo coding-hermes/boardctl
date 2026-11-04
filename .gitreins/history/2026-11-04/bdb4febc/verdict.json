@@ -1,0 +1,97 @@
+{
+  "task_id": "BT-86",
+  "task_title": "BT-86: third-party module currency audit and scheduled-pass follow-up",
+  "task_criteria": [
+    "(1) go list -mod=mod -m -u all re-run at the tick HEAD is quoted and every module that still shows an available upgrade is either upgraded or explicitly justified per module in the row note. (2) Any upgrade lands in ONE commit via targeted go get per module plus go mod tidy and go.sum update, with no new indirect dependency the code does not need (go.mod diff quoted). (3) Full verification on the resulting tree: go build ./... and go vet ./..., go test ./... -count=1 (full, not -short), go test -race ./... -count=1 -short, govulncheck ./... reporting no vulnerabilities, and make fmt-check version-check spec-check vuln-check cover-check all pass. (4) A failure caused by an upgrade is fixed at the call sites, not dodged by pinning back without a stated reason. (5) If a scheduled dependency-currency pass is the right shape, a follow-up board row is filed rather than adding CI configuration silently."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/coding-hermes-boardctl",
+  "branch": "main",
+  "commit": "77b0b5681b1db4abd8053f026f0bbaaa2c56b154",
+  "working_tree_content_fingerprint": "656383a3f7b9781279a9288d5c07352ea3b93e89aef2cbb6760cdea9b7e2f0e3",
+  "working_tree_dirty_path_count": 0,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10",
+      "steps": [
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n2:01PM INF scanned ~4835228 bytes (4.84 MB) in 2.32s\n2:01PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 274 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261104T190108.418468Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        },
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": true,
+          "output": "scanners: nice=nice -n 10\nok  \tgithub.com/coding-hermes/boardctl/cmd/boardctl\t20.034s\nok  \tgithub.com/coding-hermes/boardctl/cmd/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/dedupe-board\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/cmd/gendocs\t0.007s\nok  \tgithub.com/coding-hermes/boardctl/internal/board\t1.288s\nok  \tgithub.com/coding-hermes/boardctl/internal/covercheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/describe\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/fmtcheck\t0.422s\nok  \tgithub.com/coding-hermes/boardctl/internal/freshness\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/render\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/secretscheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/speccheck\t0.049s\nok  \tgithub.com/coding-hermes/boardctl/internal/vendorcheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/versioncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/vulncheck\t(cached)\nok  \tgithub.com/coding-hermes/boardctl/internal/workflowcheck\t(cached)\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/coding-hermes-boardctl/.gitreins/logs/guard-20261104T190108.418468Z.log"
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n\nEvaluator error: LLM call failed: 402 Client Error: Payment Required for url: https://api.deepseek.com/v1/chat/completions (provider=openai model=deepseek-v4-flash url=https://api.deepseek.com/v1/chat/completions key=<GITREINS_LLM_API_KEY>)",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n\nEvaluator error: LLM call failed: 402 Client Error: Payment Required for url: https://api.deepseek.com/v1/chat/completions (provider=openai model=deepseek-v4-flash url=https://api.deepseek.com/v1/chat/completions key=<GITREINS_LLM_API_KEY>)",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [],
+            "summary": "Evaluator error: LLM call failed: 402 Client Error: Payment Required for url: https://api.deepseek.com/v1/chat/completions (provider=openai model=deepseek-v4-flash url=https://api.deepseek.com/v1/chat/completions key=<GITREINS_LLM_API_KEY>)",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "summary": "Judge Result: BT-86\n\nStage tier1: PASS\n    \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n  \u2713 tests: scanners: nice=nice -n 10\n\nStage tier2: FAIL\n  INCOMPLETE\n\nEvaluator error: LLM call failed: 402 Client Error: Payment Required for url: https://api.deepseek.com/v1/chat/completions (provider=openai model=deepseek-v4-flash url=https://api.deepseek.com/v1/chat/completions key=<GITREINS_LLM_API_KEY>)\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-11-04T19:01:56.610415",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-11-04T19:01:56.664472+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 8331,
+        "truncated": false,
+        "source": "git show 77b0b5681b1d"
+      }
+    ],
+    "task_id": "BT-86"
+  }
+}
