@@ -64,6 +64,11 @@ commands:
           branches/worktrees dimension — existing elements, the other
           dimensions, and the singular worktree/branch fields survive)
           [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--deferred true|false] [--normalize] [--force]
+          [--initiative SLUG | --clear-initiative]
+          (--initiative scopes the row into a programme and prints/rolls up under
+          'initiatives'; --clear-initiative REMOVES the key, leaving no empty
+          string to filter on. Together they are a usage error, not a precedence
+          rule. Comparison on read is case-insensitive; writes store lowercase.)
           (--status complete REQUIRES --evidence-run-id: a completion without a
           bound run is REFUSED — TR-251; doctor reports the historic debt as
           verified_complete_share)
@@ -930,6 +935,7 @@ func cmdUpdate(dir string, args []string) error {
 		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--acceptance-criteria TEXT]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--initiative SLUG | --clear-initiative] (mutually exclusive; the clear form REMOVES the key)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--worktree PATH] [--branch NAME]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... (repeatable; each MERGES one element into its dimension — pull_requests/branches/worktrees — never overwriting existing elements or the other dimensions)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--normalize] [--force] [flags] [-C dir]\n")
