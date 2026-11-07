@@ -990,6 +990,28 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		// Checked BEFORE any set() runs, so a refused update writes nothing
 		// and the changed list stays empty. target is still the pre-write
 		// row here (set() has not run for status yet).
+		if s == "complete" {
+			// BOARD-GUARD-003: refuse duplicate completion only when the row is
+			// already complete AND a task_completed event exists. A failed->complete
+			// or pending->complete transition is a fresh completion and is allowed.
+			if RowIsCompleteCanonical(target) {
+				alreadyCompleted, err := b.hasCompletionEvent(id)
+				if err != nil {
+					return nil, err
+				}
+				if alreadyCompleted {
+					return nil, fmt.Errorf("completion REFUSED for %q: task_completed event already exists; refusing duplicate completion", id)
+				}
+			}
+			// BOARD-GUARD-003: validate commit_hash and evidence-run-id provenance
+			commitHash := ""
+			if spec.CommitHash != nil {
+				commitHash = *spec.CommitHash
+			}
+			if err := b.validateCompletionProvenance(commitHash, spec.EvidenceRunID); err != nil {
+				return nil, err
+			}
+		}
 		if err := gateCompletionEvidence(target, s, spec.EvidenceRunID != ""); err != nil {
 			return nil, err
 		}
