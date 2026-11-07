@@ -403,7 +403,7 @@ func TestCmdTopologyBFullWorkflow(t *testing.T) {
 
 	// AC2: update flips the task row and leaves the line-1 drift pointer
 	// alone (BT-024) — commit_hash goes to the TASK row only.
-	if code := run([]string{"-C", dir, "update", "NEW-1", "--status", "complete", "--evidence-run-id", "run-tr251-topob", "--commit-hash", "abc1234"}); code != 0 {
+	if code := run([]string{"-C", dir, "update", "NEW-1", "--status", "complete", "--evidence-run-id", "run-tr251-topob", "--commit-hash", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}); code != 0 {
 		t.Fatalf("update on topology B exit code = %d, want 0", code)
 	}
 	raw, err = os.ReadFile(tasksPath)
@@ -414,7 +414,7 @@ func TestCmdTopologyBFullWorkflow(t *testing.T) {
 	if !strings.Contains(lines[0], `"last_commit":null`) {
 		t.Fatalf("task update leaked into the line-1 drift pointer (BT-024): %s", lines[0])
 	}
-	if !strings.Contains(lines[2], `"status":"complete"`) || !strings.Contains(lines[2], `"commit_hash":"abc1234"`) {
+	if !strings.Contains(lines[2], `"status":"complete"`) || !strings.Contains(lines[2], `"commit_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"`) {
 		t.Fatalf("update did not flip the task row: %s", lines[2])
 	}
 

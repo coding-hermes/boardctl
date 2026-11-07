@@ -118,7 +118,7 @@ func TestAppendEventSequencing(t *testing.T) {
 func TestUpdateTaskRewritesOnlyTargetRow(t *testing.T) {
 	b := newTestBoard(t)
 	status := "complete"
-	commit := "deadbee"
+	commit := strings.Repeat("d", 40)
 	// TR-251: completions bind an evidence run — this test grades row-rewrite
 	// scoping, not the gate, so it binds a run and moves on.
 	if _, err := b.UpdateTask("EXIST-1", UpdateSpec{Status: &status, CommitHash: &commit, EvidenceRunID: "run-tr251-scope"}); err != nil {
@@ -129,7 +129,7 @@ func TestUpdateTaskRewritesOnlyTargetRow(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(raw)
-	if !strings.Contains(body, `"status":"complete"`) || !strings.Contains(body, `"commit_hash":"deadbee"`) {
+	if !strings.Contains(body, `"status":"complete"`) || !strings.Contains(body, `"commit_hash":"`+commit+`"`) {
 		t.Fatalf("update not applied: %s", body)
 	}
 	// the appended NEW row must be gone — only EXIST-1 remains, single line
