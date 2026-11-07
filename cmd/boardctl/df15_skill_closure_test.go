@@ -217,10 +217,13 @@ func TestSkillCoverageParserProvesGatesBite(t *testing.T) {
 			t.Errorf("usageSkillCommands() missed dispatched command %q; got %v", want, cmds)
 		}
 	}
-	// 20 dispatched commands exactly (BT-081 added normalize-statuses; next-id
-	// added 2026-11-03 for the code-factory multi-lane id race) — no phantom extras.
-	if len(cmds) != 20 {
-		t.Errorf("usageSkillCommands() = %v (%d), want the 20 dispatched commands", cmds, len(cmds))
+	// 21 dispatched commands exactly (BT-081 added normalize-statuses; next-id
+	// added 2026-11-03 for the code-factory multi-lane id race; initiatives added
+	// 2026-11-06 as the discovery half of the scoop query — a foreman told to
+	// "work initiative X" needs to confirm the slug exists, because a misspelled
+	// --initiative returns an empty set that reads exactly like "no work left").
+	if len(cmds) != 21 {
+		t.Errorf("usageSkillCommands() = %v (%d), want the 21 dispatched commands", cmds, len(cmds))
 	}
 	// Continuation lines must not leak in as fake commands.
 	for _, bad := range []string{"reasoning", "capability-tags", "set-ticks-total"} {

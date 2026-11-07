@@ -98,7 +98,9 @@ boardctl -C ~/myproduct umbrella --strict   # warnings also fail (exit 1)
 
 # read
 boardctl -C R stats [--json] [--all]       # counts by status/priority
-boardctl -C R list [--status pending] [--priority P1] [--json] [--all]
+boardctl -C R initiatives [--json] [--status S]  # per-initiative rollup:
+                                           # total/actionable/deferred
+boardctl -C R list [--status pending] [--priority P1] [--initiative SLUG] [--json] [--all]
 boardctl -C R show <ID> [--events] [--skip-bad-lines]  # searches tasks AND
                                                        # fixtures; --skip-bad-lines
                                                        # keeps a parseable row

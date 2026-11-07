@@ -249,8 +249,25 @@ type TaskRowSpec struct {
 	// (a fresh row may name its own not-deferred state); on update an
 	// explicit false REMOVES the key entirely (DF-BOARDCTL-29), so the
 	// un-deferred row is byte-identical to a never-deferred one apart
-	// from updated_at.
+	// apart from updated_at.
 	Deferred *bool
+
+	// INITIATIVE — the grouping key that makes "scoop the work for one
+	// initiative" a query instead of a title grep.
+	//
+	// A board is already a PROJECT (its tasks.jsonl lives in that repo);
+	// an initiative is the sub-program INSIDE it that several rows belong
+	// to ("lane-hooks", "xml-spec-graph", "remote-dispatch"). Without this
+	// key the only grouping a caller can express is the id prefix, which is
+	// a naming convention rather than data — SCHED-GAP-16964 and
+	// SCHED-GAP-1718 are the same initiative and nothing on either row
+	// says so.
+	//
+	// Same nil discipline as Deferred/Worktree: nil (flag omitted) writes
+	// NO key, so existing rows and existing callers are untouched. On
+	// update an explicit empty string removes the key, returning the row to
+	// the exact key shape it had before it was ever scoped.
+	Initiative *string
 
 	// DF-BOARDCTL-50: the row's acceptance criteria — the field every fleet
 	// foreman requires before it will dispatch a row, which until now had NO
@@ -599,6 +616,9 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.Deferred != nil {
 		overrides["deferred"] = *spec.Deferred
 	}
+	if spec.Initiative != nil {
+		overrides["initiative"] = *spec.Initiative
+	}
 	// DF-BOARDCTL-50: free-text criteria, written verbatim through the row's
 	// own serializer (encodeValue's string branch JSON-escapes embedded
 	// newlines, so the whole value stays on one physical JSONL line).
@@ -615,7 +635,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 	}
 	// Keys the user asked for but the mirrored schema lacks: append at end.
-	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "acceptance_criteria"} {
+	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "initiative", "acceptance_criteria"} {
 		if v, ok := overrides[k]; ok && !row.Has(k) {
 			if err := set(k, v); err != nil {
 				return "", err
@@ -825,6 +845,11 @@ type UpdateSpec struct {
 	// key at all, byte-identical to a never-deferred row apart from
 	// updated_at.
 	Deferred *bool
+	// --initiative: nil leaves the key alone; a non-nil pointer sets it
+	// (appending the key at the end of the row's order when absent). An
+	// explicit EMPTY string removes the key, so un-scoping a row is the
+	// mirror of scoping it and leaves no empty-string residue to filter on.
+	Initiative *string
 	// DF-BOARDCTL-50: the row's acceptance criteria, same nil-untouched
 	// discipline. nil leaves the key alone; a non-nil pointer REPLACES the
 	// value (the field is one prose blob, never merged) and APPENDS the key
@@ -1088,6 +1113,19 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			changed = append(changed, "deferred")
 		}
 	}
+	// --initiative: set, replace, or (with an explicit empty string) remove
+	// the grouping key. Empty means "unscoped", never "the empty initiative",
+	// so no row can end up carrying initiative:"" and confusing a filter.
+	if spec.Initiative != nil {
+		if *spec.Initiative == "" {
+			if target.Has("initiative") {
+				target.DeleteKey("initiative")
+				changed = append(changed, "initiative")
+			}
+		} else if err := set("initiative", *spec.Initiative); err != nil {
+			return nil, err
+		}
+	}
 	// DF-BOARDCTL-50: --acceptance-criteria replaces the row's criteria —
 	// the missing sanctioned door this field never had (foremen refuse to
 	// dispatch a row without it, so lanes hand-edited tasks.jsonl instead).
@@ -1169,8 +1207,8 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	// above) — the deferred arm appended nothing to `changed`, so the
 	// no-change gate must not refuse it; anything else without a change
 	// flag still fails with the full flag list.
-	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--acceptance-criteria/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
+	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil && spec.Initiative == nil {
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--initiative/--acceptance-criteria/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))

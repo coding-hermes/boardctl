@@ -198,6 +198,12 @@ type TaskFilter struct {
 	// mechanical filter, rejects non-vocabulary spellings. Composes with
 	// Status (both must hold) and leaves the empty list as "any status".
 	Statuses []string
+	// Initiative scopes the result to one initiative slug ("" = any). The
+	// comparison is case-insensitive on the stored value because the slug is
+	// data written by humans and by CLI flags a year apart; a row with no
+	// initiative key never matches a non-empty filter, which is what makes
+	// "scoop this initiative" exact rather than fuzzy.
+	Initiative string
 }
 
 // Match reports whether a task row satisfies the filter.
@@ -225,6 +231,11 @@ func (f TaskFilter) Match(row *Row, fixtureIDs map[string]bool) bool {
 	if f.Priority != "" {
 		got := strings.ToUpper(strings.TrimSpace(row.String("priority")))
 		if got != strings.ToUpper(strings.TrimSpace(f.Priority)) {
+			return false
+		}
+	}
+	if f.Initiative != "" {
+		if !strings.EqualFold(strings.TrimSpace(row.String("initiative")), strings.TrimSpace(f.Initiative)) {
 			return false
 		}
 	}

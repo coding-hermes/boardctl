@@ -47,7 +47,7 @@ usage:
 
 commands:
   init    [-C dir] [--project P] [--namespace NS]   bootstrap a fresh board
-  list    [--status S] [--priority P] [--json] [--all] [--skip-bad-lines]
+  list    [--status S] [--priority P] [--initiative SLUG] [--json] [--all] [--skip-bad-lines]
   show    <id> [--events]
   next-id --family CF [--width N] [--json]   (prints the next free id; read-only)
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
@@ -109,6 +109,7 @@ commands:
   doctor
   version [--json]
   stats   [--json] [--all] [--skip-bad-lines]
+  initiatives [--json] [--status S] [--skip-bad-lines]   list initiative rollups on this board
   render  [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]
   import  <export.json> [--dry-run] [--renumber]
   serve   [-C dir] [--addr 127.0.0.1:8787]
@@ -235,6 +236,8 @@ func run(args []string) int {
 		err = cmdVersion(rest)
 	case "stats":
 		err = cmdStats(boardDir, rest)
+	case "initiatives":
+		err = cmdInitiatives(boardDir, rest)
 	case "render":
 		err = cmdRender(boardDir, rest)
 	case "import":
@@ -516,16 +519,17 @@ func cmdInit(dir string, args []string) error {
 
 func cmdList(dir string, args []string) error {
 	fs := newFlagSet("list")
-	args = reorderArgs(args, valueFlags("C", "status", "priority"))
+	args = reorderArgs(args, valueFlags("C", "status", "priority", "initiative"))
 	status := fs.String("status", "", "filter by status")
 	priority := fs.String("priority", "", "filter by priority (e.g. P1)")
+	initiative := fs.String("initiative", "", "filter to one initiative slug (the scoop query)")
 	asJSON := fs.Bool("json", false, "emit JSON array of full rows")
 	all := fs.Bool("all", false, "include fixture rows (ids in fixtures.jsonl)")
 	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl list [--status S] [--priority P] [--json] [--all] [--skip-bad-lines] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl list [--status S] [--priority P] [--initiative SLUG] [--json] [--all] [--skip-bad-lines] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -551,6 +555,9 @@ func cmdList(dir string, args []string) error {
 	}
 	if *priority != "" {
 		f.Priority = *priority
+	}
+	if *initiative != "" {
+		f.Initiative = *initiative
 	}
 	rows, err := b.ListTasks(f)
 	if err != nil {
@@ -668,7 +675,7 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
@@ -689,6 +696,7 @@ func cmdCreate(dir string, args []string) error {
 	// at all (no empty placeholder), and an empty value is treated as
 	// omitted, like every other string flag here.
 	acceptance := fs.String("acceptance-criteria", "", "acceptance criteria the row must satisfy before it can be dispatched (free text; multi-line allowed; omit = write no key)")
+	initiative := fs.String("initiative", "", "initiative slug this row belongs to (lowercase letters/digits/hyphens; the query key for scooping one programme of work; omit = write no key)")
 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence (SG-126)")
 	evidenceFingerprint := fs.String("evidence-fingerprint", "", "64-hex GitReins tree digest recorded as evidence (BT-82)")
 	var evidenceArtifacts stringListFlag
@@ -769,6 +777,14 @@ func cmdCreate(dir string, args []string) error {
 	if *branch != "" {
 		spec.Branch = branch
 	}
+	// --initiative: validated at the write surface so a non-slug can never
+	// reach a row and quietly become an initiative nobody can query.
+	if *initiative != "" {
+		if err := board.ValidateInitiativeSlug(*initiative); err != nil {
+			return fmt.Errorf("create --initiative: %v", err)
+		}
+		spec.Initiative = initiative
+	}
 	if len(sessions) > 0 {
 		list := []string(sessions)
 		spec.Sessions = &list
@@ -844,7 +860,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "initiative", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "pull-request", "assoc-branch", "assoc-worktree"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -869,6 +885,8 @@ func cmdUpdate(dir string, args []string) error {
 	// appending the key at the end of the row's order when absent. Free
 	// text: embedded newlines are JSON-escaped into the one physical line.
 	acceptance := fs.String("acceptance-criteria", "", "acceptance criteria (free text; multi-line allowed; REPLACES the value; omitted = leave untouched, never an empty key)")
+	initiative := fs.String("initiative", "", "set this row's initiative slug (validated; omitted = leave untouched)")
+	clearInitiative := fs.Bool("clear-initiative", false, "remove the initiative key entirely, returning the row to unscoped")
 	// BT-037: build-location + session audit fields. An omitted flag leaves
 	// the row's key untouched (and never creates it); --session REPLACES the
 	// whole sessions array with the ids given here, in order.
@@ -1006,6 +1024,21 @@ func cmdUpdate(dir string, args []string) error {
 			return fmt.Errorf("--deferred: %q is not a boolean (valid: true, false; strconv.ParseBool spellings accepted: 1, t, T, TRUE, 0, f, F, FALSE)", *deferred)
 		}
 		spec.Deferred = &dv
+	}
+	// --initiative / --clear-initiative: set or remove the grouping key.
+	// Both together is a usage error, not a silent precedence rule.
+	if *initiative != "" && *clearInitiative {
+		return fmt.Errorf("update: --initiative and --clear-initiative are mutually exclusive")
+	}
+	if *initiative != "" {
+		if err := board.ValidateInitiativeSlug(*initiative); err != nil {
+			return fmt.Errorf("update --initiative: %v", err)
+		}
+		spec.Initiative = initiative
+	}
+	if *clearInitiative {
+		empty := ""
+		spec.Initiative = &empty
 	}
 	if *worktree != "" {
 		spec.Worktree = worktree

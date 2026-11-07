@@ -1367,6 +1367,49 @@ boardctl -C ~/myproject update FEAT-3 --deferred false   # un-defer (since v0.1.
 boardctl -C ~/myproject stats    # total, actionable, deferred: separate lines
 ```
 
+### Initiatives — scoping work into scoopable programmes
+
+A board is one **project**. An **initiative** is the sub-program inside it that
+several rows belong to: `lane-hooks`, `xml-spec-graph`, `remote-dispatch`. Rows
+carry it as a first-class `initiative` key, so "give me everything in this
+initiative" is a query instead of a title grep — the thing that was previously
+impossible, because the only grouping a caller could express was the id prefix,
+and `SCHED-GAP-16964` + `SCHED-GAP-1718` being the same programme was knowledge
+that lived only in a human's head.
+
+```bash
+boardctl -C ~/proj create --id FEAT-9 --title "arm the leg" --initiative lane-hooks
+boardctl -C ~/proj update FEAT-9 --initiative lane-hooks     # scope an existing row
+boardctl -C ~/proj update FEAT-9 --clear-initiative          # unscope it again
+boardctl -C ~/proj list --initiative lane-hooks --json       # SCOOP: this programme's rows
+boardctl -C ~/proj initiatives                               # discover: what initiatives exist?
+boardctl -C ~/proj initiatives --json --status pending       # ones with work left
+```
+
+**The slug rule is enforced at the write surface**, because a filter that
+silently matches nothing is indistinguishable from "no work left" — the most
+expensive way to be wrong. Values must be lowercase letters, digits and single
+hyphens (`^[a-z0-9]+(-[a-z0-9]+)*$`, max 64). `Lane-Hooks`, `lane_hooks`,
+`lane hooks`, `-lane`, `lane-` and `lane--hooks` are all refused with the reason
+and a suggested spelling.
+
+**Absence is not a value.** A row with no `initiative` key is *unscoped*, it is
+never bucketed under `""`, and it never matches a non-empty `--initiative`
+filter. `--clear-initiative` **removes** the key (it does not write an empty
+string), so an unscoped row is byte-identical to one that was never scoped
+apart from `updated_at`. Passing `--initiative` and `--clear-initiative`
+together is a usage error rather than a precedence rule.
+
+`initiatives` rolls up per initiative: `total`, `actionable`, `deferred`, and
+the by-status counts. `actionable` excludes `complete`, `failed` and deferred
+rows (the same rule `stats` uses), so an initiative whose whole remainder is
+deferred correctly reports nothing to scoop. Ordering is total-descending then
+slug, so the biggest programmes come first and the output diffs cleanly.
+
+Comparison is case-insensitive on read (a row written a year ago as
+`Lane-Hooks` still matches `--initiative lane-hooks`) while writes are
+normalised to lowercase so the stored key stays byte-stable.
+
 ### Association fields (BT-077)
 
 Task rows can carry three plural association arrays: `pull_requests`,

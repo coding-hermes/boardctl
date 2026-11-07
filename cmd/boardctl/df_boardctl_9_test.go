@@ -114,7 +114,7 @@ func TestDF9CLIListSkipBad(t *testing.T) {
 // The flag must appear in the command's usage output (acceptance 3).
 func TestDF9CLIFlagsInUsage(t *testing.T) {
 	cases := []struct{ cmd, want string }{
-		{"list", "boardctl list [--status S] [--priority P] [--json] [--all] [--skip-bad-lines] [-C dir]"},
+		{"list", "boardctl list [--status S] [--priority P] [--initiative SLUG] [--json] [--all] [--skip-bad-lines] [-C dir]"},
 		{"show", "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]"},
 		{"stats", "boardctl stats [--json] [--all] [--skip-bad-lines] [-C dir]"},
 		{"validate", "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep] [-C dir]"},

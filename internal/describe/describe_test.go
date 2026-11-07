@@ -24,8 +24,8 @@ func (s *serveServer) routes() http.Handler {
 `
 
 // TestDeriveCLI_RealMain pins the CLI verb derivation against the repo's
-// live main.go: the registry must see every run() switch command (17 since
-// BT-078 added umbrella) and none besides, help excluded because
+// live main.go: the registry must see every run() switch command (21 since
+// initiatives joined stats/render) and none besides, help excluded because
 // its case body prints usageText.
 func TestDeriveCLI_RealMain(t *testing.T) {
 	verbs, err := DeriveCLI(filepath.Join("..", "..", "cmd", "boardctl", "main.go"))
@@ -35,6 +35,7 @@ func TestDeriveCLI_RealMain(t *testing.T) {
 	want := []string{
 		"init", "list", "show", "create", "update", "next-id", "event", "header",
 		"validate", "sweep-status", "normalize-statuses", "normalize-board", "doctor", "version", "stats",
+		"initiatives", // the discovery half of the scoop query (side-by-side with stats)
 		"render", "import", "serve", "install", "umbrella",
 	}
 	if len(verbs) != len(want) {
