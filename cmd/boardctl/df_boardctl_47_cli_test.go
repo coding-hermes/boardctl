@@ -81,11 +81,31 @@ func df47Fixture(t *testing.T) (umbrella, childA, childB string, badLine int) {
 	return umbrella, childA, childB, badLine
 }
 
+// df47Canon is the directory boardctl will name in its output. The product
+// canonicalises the board dir with EvalSymlinks, so a host whose temp root is a
+// symlink (GOTMPDIR=/var/tmp/hermes-go-tmp -> .../hermes-go-tmp-real) must
+// compare directories, not spellings — otherwise these tests fail for the
+// harness rather than for the contract they exist to pin.
+func df47Canon(t *testing.T, dir string) string {
+	t.Helper()
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		return resolved
+	}
+	return dir
+}
+
 // df47AssertSkipBlock pins the SKIPPED-LINES evidence block on STDERR: the
 // count, the repo qualifier, the board dir, the file + 1-based line and the
 // parse error.
 func df47AssertSkipBlock(t *testing.T, stderr, childB, badLine string) {
 	t.Helper()
+	// boardctl canonicalises the board dir (EvalSymlinks) before quoting it in
+	// the evidence block, so the assertion must compare directories, not
+	// spellings: on a host whose temp root is a symlink (GOTMPDIR=
+	// /var/tmp/hermes-go-tmp -> .../hermes-go-tmp-real) the unresolved path
+	// never appears in the output and this test failed for the harness, not for
+	// the product.
+	childB = df47Canon(t, childB)
 	tasksPath := filepath.Join(childB, ".coding-hermes", "board", "tasks.jsonl")
 	for _, want := range []string{
 		"SKIPPED-LINES: 1",
@@ -134,6 +154,7 @@ func TestDF47DefaultFailClosedUnchanged(t *testing.T) {
 	if strings.Contains(stdout, "umbrella total:") || strings.Contains(stdout, "repo childA") {
 		t.Fatalf("default mode emitted partial stats before aborting:\n%s", stdout)
 	}
+	childB = df47Canon(t, childB)
 	tasksPath := filepath.Join(childB, ".coding-hermes", "board", "tasks.jsonl")
 	for _, want := range []string{
 		"board childB",

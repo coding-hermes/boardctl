@@ -50,9 +50,20 @@ func bt078Create(t *testing.T, dir, id, title string) {
 
 // bt078Fixture builds the umbrella workspace: umbrella + childA + childB,
 // each a real repo with a real board, linked via .coding-hermes/links.
+// bt078Canon is the spelling the product reports for a directory: the umbrella
+// view canonicalises board paths with filepath.EvalSymlinks while t.TempDir()
+// echoes TMPDIR as given, so fixtures are rooted at the canonical path and
+// assertions compare directories rather than spellings.
+func bt078Canon(dir string) string {
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		return resolved
+	}
+	return dir
+}
+
 func bt078Fixture(t *testing.T) (umbrella, childA, childB string) {
 	t.Helper()
-	root := t.TempDir()
+	root := bt078Canon(t.TempDir())
 	umbrella = filepath.Join(root, "umbrella")
 	childA = filepath.Join(root, "childA")
 	childB = filepath.Join(root, "childB")

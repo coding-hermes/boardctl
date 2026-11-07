@@ -90,9 +90,21 @@ func umbGitInit(t *testing.T, dir string) {
 // umbFixture builds umbrella/ with childA and childB child repos (real git
 // repos), real boards in each, and the links registry pointing at both
 // children's .coding-hermes dirs. Returns the umbrella root and child roots.
+// canonDir is the spelling the product reports for a directory: OpenUmbrella
+// and friends canonicalise with filepath.EvalSymlinks before quoting a board
+// path, while t.TempDir() echoes TMPDIR as given. Fixtures below are built on
+// canonDir so an assertion compares directories, not spellings — otherwise the
+// suite fails for the harness on any host whose temp root is a symlink.
+func canonDir(dir string) string {
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		return resolved
+	}
+	return dir
+}
+
 func umbFixture(t *testing.T) (umbrella, childA, childB string) {
 	t.Helper()
-	root := t.TempDir()
+	root := canonDir(t.TempDir())
 	umbrella = filepath.Join(root, "umbrella")
 	childA = filepath.Join(root, "childA")
 	childB = filepath.Join(root, "childB")
