@@ -89,7 +89,8 @@ func bt076LineID(line string) string {
 func TestCreateDeferredWritesFlag(t *testing.T) {
 	b := seedBT076Board(t)
 	t.Helper()
-	id, err := b.Create(TaskRowSpec{ID: "DF-NEW", Title: "new deferred row", Deferred: boolPtr(true)})
+	// DEFER-EVIDENCE: a create that defers now requires a reason.
+	id, err := b.Create(TaskRowSpec{ID: "DF-NEW", Title: "new deferred row", Deferred: boolPtr(true), DeferReason: strPtr("owner-gated: fixture")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +178,8 @@ func TestUpdateDeferredRoundTrip(t *testing.T) {
 	}
 	// un-deferred -> deferred again via update
 	tv := true
-	if _, err := b.UpdateTask("DF-1", UpdateSpec{Deferred: &tv}); err != nil {
+	reason := "owner-gated: fixture"
+	if _, err := b.UpdateTask("DF-1", UpdateSpec{Deferred: &tv, DeferReason: &reason}); err != nil {
 		t.Fatal(err)
 	}
 	if !RowIsDeferred(bt076Row(t, b, "DF-1")) {
@@ -247,7 +249,10 @@ func TestValidateDeferredNonBooleanWarns(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, f := range rep2.Findings {
-		if strings.Contains(f.Msg, "deferred") {
+		if strings.Contains(f.Msg, "deferred") && !strings.Contains(f.Msg, "no defer_reason") {
+			// The DEFER-EVIDENCE no-reason warn on the bare deferred row
+			// DF-2 is EXPECTED (DEFER-EVIDENCE); any other deferred
+			// mention on boolean/absent shapes is drift.
 			t.Fatalf("boolean/absent deferred flagged:\n%s", f.Msg)
 		}
 	}

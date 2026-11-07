@@ -16,7 +16,8 @@ import (
 // --deferred false — the written line must not mention "deferred" at all.
 func TestUpdateDeferredFalseRemovesKey(t *testing.T) {
 	b := seedBT076Board(t)
-	if _, err := b.Create(TaskRowSpec{ID: "DF-29", Title: "parked then released", Deferred: boolPtr(true)}); err != nil {
+	reason := "owner-gated: test fixture"
+	if _, err := b.Create(TaskRowSpec{ID: "DF-29", Title: "parked then released", Deferred: boolPtr(true), DeferReason: &reason}); err != nil {
 		t.Fatal(err)
 	}
 	line := bt076Raw(t, b, "DF-29")
@@ -45,7 +46,8 @@ func TestUpdateDeferredFalseRemovesKey(t *testing.T) {
 // timestamp fields are stripped (DF-BOARDCTL-29's core promise).
 func TestUpdateDeferredFalseMatchesNeverDeferred(t *testing.T) {
 	b := seedBT076Board(t)
-	if _, err := b.Create(TaskRowSpec{ID: "DF-29D", Title: "same title", Deferred: boolPtr(true)}); err != nil {
+	reasonD := "owner-gated: test fixture"
+	if _, err := b.Create(TaskRowSpec{ID: "DF-29D", Title: "same title", Deferred: boolPtr(true), DeferReason: &reasonD}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := b.Create(TaskRowSpec{ID: "DF-29N", Title: "same title", Force: true}); err != nil {

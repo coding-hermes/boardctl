@@ -124,6 +124,16 @@ var sanctionedExtras = []string{
 	// not aliased onto blocked/complete — because deferral is its own
 	// lifecycle state the status vocabulary has no member for.
 	"deferred",
+	// DEFER-EVIDENCE: the two keys that make a deferral auditable —
+	// defer_reason names WHY the row is parked (required whenever
+	// deferred:true is written: create/update refuse the write without
+	// one, the same refusal discipline as --status complete without
+	// --evidence-run-id), and defer_review_by carries the date the
+	// deferral should be re-triaged. Deliberate spelling: NOT
+	// "deferred_reason" (that stays unsanctioned drift) — the reason
+	// describes the DEFER, so the key names the verb, not the flag.
+	"defer_reason",
+	"defer_review_by",
 	// BT-077: plural work-artifact associations — the multi-value twins of
 	// the singular worktree/branch fields. pull_requests holds validated
 	// association objects ({number}, {url}, or both — GitHub PR identity,

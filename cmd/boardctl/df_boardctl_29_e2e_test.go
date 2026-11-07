@@ -47,7 +47,7 @@ func TestDFBoardctl29UndeferRemovesKeyBinary(t *testing.T) {
 	}
 
 	const id = "DF-E2E-1"
-	run("-C", boardDir, "create", "--id", id, "--title", "parked for e2e", "--deferred")
+	run("-C", boardDir, "create", "--id", id, "--title", "parked for e2e", "--deferred", "--defer-reason", "owner-gated: fixture")
 	run("-C", boardDir, "update", id, "--deferred", "false")
 
 	rows, err := os.ReadFile(tasksPath)

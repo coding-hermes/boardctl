@@ -278,6 +278,16 @@ func (b *Board) validateTasks(rep *Report) {
 				rep.Add("warn", "tasks.jsonl line %d (task %s): deferred is not a boolean (%s) — treated as not deferred (writes store true/false; hand-edit the row or rewrite via boardctl update)",
 					idx+1, id, jsonKindName(raw))
 			}
+			// DEFER-EVIDENCE: a deferred row with no defer_reason is an
+			// unauditable deferral — the next tick can only re-derive why it
+			// was parked. Writes refuse this shape; a hand-edited or legacy
+			// row gets the itemized WARNING (same policy as the boolean check
+			// above) so live boards stay exit-0 while the debt stays visible.
+			if raw != nil && RowIsDeferred(row) &&
+				(row.Get("defer_reason") == nil || len(bytes.TrimSpace(row.Get("defer_reason"))) == 0) {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): deferred row carries no defer_reason — re-point it via boardctl update <id> --defer-reason R (or un-defer with --deferred false)",
+					idx+1, id)
+			}
 		}
 		// BT-077: the plural association dimensions. The write paths
 		// (create/update) validate every element before anything lands,

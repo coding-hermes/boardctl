@@ -53,7 +53,7 @@ commands:
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
           [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
-          [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred]   (a re-detected finding is REFUSED with exit 2)
+          [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
           [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
@@ -63,7 +63,7 @@ commands:
           (repeatable; each merges one element into its pull_requests/
           branches/worktrees dimension — existing elements, the other
           dimensions, and the singular worktree/branch fields survive)
-          [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--deferred true|false] [--normalize] [--force]
+          [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--deferred true|false] [--defer-reason R] [--defer-review-by DATE] [--normalize] [--force]
           [--initiative SLUG | --clear-initiative]
           (--initiative scopes the row into a programme and prints/rolls up under
           'initiatives'; --clear-initiative REMOVES the key, leaving no empty
@@ -680,7 +680,7 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "defer-reason", "defer-review-by", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
@@ -729,11 +729,16 @@ func cmdCreate(dir string, args []string) error {
 	// from the actionable/pending tally (stats). Takes no value, so it must
 	// NOT join the reorderArgs valueFlags list (same as --force).
 	deferred := fs.Bool("deferred", false, "file the task as deferred (stays searchable; excluded from actionable counts)")
+	// DEFER-EVIDENCE: a deferral must name its blocker — create refuses
+	// --deferred without --defer-reason (nothing written), the same
+	// discipline as --status complete without --evidence-run-id.
+	deferReason := fs.String("defer-reason", "", "why the task is deferred (REQUIRED with --deferred; the next tick acts on or re-triages this)")
+	deferReviewBy := fs.String("defer-review-by", "", "date the deferral should be re-triaged (ISO date, e.g. 2026-11-14)")
 	force := fs.Bool("force", false, "write the id even if it violates the fleet id format (also files a duplicate finding as a variant)")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--acceptance-criteria TEXT] [--evidence-run-id id] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--acceptance-criteria TEXT] [--evidence-run-id id] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE] [--force] [flags] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\n          --acceptance-criteria is free text and may span lines (embedded\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          newlines are JSON-escaped into the one physical row line). It is\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          the dispatchability field: a foreman will not dispatch a row\n")
@@ -840,6 +845,15 @@ func cmdCreate(dir string, args []string) error {
 	if *deferred {
 		spec.Deferred = deferred
 	}
+	// DEFER-EVIDENCE: wire the deferral's audit keys. An empty flag is the
+	// omitted sentinel (same discipline as --acceptance-criteria) — the row
+	// then carries no key rather than an empty one.
+	if *deferReason != "" {
+		spec.DeferReason = deferReason
+	}
+	if *deferReviewBy != "" {
+		spec.DeferReviewBy = deferReviewBy
+	}
 	// DF-BOARDCTL-50: an empty --acceptance-criteria is the omitted sentinel
 	// (same discipline as --reasoning/--worktree above) — the row then
 	// carries no acceptance_criteria key at all rather than an empty one.
@@ -865,7 +879,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "initiative", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "pull-request", "assoc-branch", "assoc-worktree"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -913,6 +927,11 @@ func cmdUpdate(dir string, args []string) error {
 	// untouched. Takes a value, so it MUST join the reorderArgs valueFlags
 	// list.
 	deferred := fs.String("deferred", "", "deferred true|false (a deferred row stays searchable but is excluded from actionable counts; omitted = leave untouched)")
+	// DEFER-EVIDENCE: the deferral's audit keys. --defer-reason is
+	// REQUIRED when --deferred true (the update is refused otherwise);
+	// --defer-review-by is the optional re-triage date.
+	deferReason := fs.String("defer-reason", "", "why the task is deferred (required with --deferred true)")
+	deferReviewBy := fs.String("defer-review-by", "", "date the deferral should be re-triaged (ISO date)")
 	// BT-077: the plural association dimensions. Each repeatable flag
 	// appends ONE element to ONE dimension — merge semantics, never a
 	// sibling overwrite: existing PRs/branches/worktrees (and the singular
@@ -934,7 +953,7 @@ func cmdUpdate(dir string, args []string) error {
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
-		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--acceptance-criteria TEXT]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--defer-reason R] [--defer-review-by DATE] [--acceptance-criteria TEXT]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--initiative SLUG | --clear-initiative] (mutually exclusive; the clear form REMOVES the key)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--worktree PATH] [--branch NAME]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... (repeatable; each MERGES one element into its dimension — pull_requests/branches/worktrees — never overwriting existing elements or the other dimensions)\n")
@@ -965,7 +984,7 @@ func cmdUpdate(dir string, args []string) error {
 	// --normalize alone satisfies the change-flag gate and needs no --force
 	// beyond the fleet-id escape hatch.
 	if *normalize {
-		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id"} {
+		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id"} {
 			if fs.Lookup(f).Value.String() != "" {
 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
 			}
@@ -1030,6 +1049,14 @@ func cmdUpdate(dir string, args []string) error {
 			return fmt.Errorf("--deferred: %q is not a boolean (valid: true, false; strconv.ParseBool spellings accepted: 1, t, T, TRUE, 0, f, F, FALSE)", *deferred)
 		}
 		spec.Deferred = &dv
+	}
+	// DEFER-EVIDENCE: wire the deferral's audit keys. An empty flag is the
+	// omitted sentinel — the row's keys are untouched.
+	if *deferReason != "" {
+		spec.DeferReason = deferReason
+	}
+	if *deferReviewBy != "" {
+		spec.DeferReviewBy = deferReviewBy
 	}
 	// --initiative / --clear-initiative: set or remove the grouping key.
 	// Both together is a usage error, not a silent precedence rule.

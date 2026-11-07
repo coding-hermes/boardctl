@@ -102,7 +102,7 @@ func TestCmdUpdateSetsAndClearsInitiative(t *testing.T) {
 func TestCmdInitiativesRollsUpAndFilters(t *testing.T) {
 	dir := seedCLIBoard(t)
 	run([]string{"-C", dir, "create", "--id", "ROLL-1", "--title", "a", "--initiative", "lane-hooks"})
-	run([]string{"-C", dir, "create", "--id", "ROLL-2", "--title", "b", "--initiative", "lane-hooks", "--deferred"})
+	run([]string{"-C", dir, "create", "--id", "ROLL-2", "--title", "b", "--initiative", "lane-hooks", "--deferred", "--defer-reason", "owner-gated: fixture"})
 	run([]string{"-C", dir, "create", "--id", "ROLL-3", "--title", "c", "--initiative", "remote-dispatch"})
 
 	out, _ := captureStdout(func() {

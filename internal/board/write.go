@@ -252,6 +252,15 @@ type TaskRowSpec struct {
 	// apart from updated_at.
 	Deferred *bool
 
+	// DEFER-EVIDENCE (create-path): the deferral's audit keys, same
+	// nil-untouched discipline — nil (flag omitted) writes NO key. A
+	// create that defers the row WITHOUT a reason is REFUSED with nothing
+	// written, the same refusal shape as --status complete without
+	// --evidence-run-id. defer_review_by is optional (an ISO date by
+	// convention).
+	DeferReason   *string
+	DeferReviewBy *string
+
 	// INITIATIVE — the grouping key that makes "scoop the work for one
 	// initiative" a query instead of a title grep.
 	//
@@ -540,6 +549,17 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 			if k == "deferred" && spec.Deferred == nil {
 				continue
 			}
+			// DEFER-EVIDENCE: the deferral's audit keys are NEVER
+			// neutral-mirrored either — a null defer_reason placeholder on
+			// a row that was never deferred is exactly the phantom shape
+			// the flag's absence must not produce. Skipped per key, so a
+			// row that names only one of the two still skips the other.
+			if k == "defer_reason" && spec.DeferReason == nil {
+				continue
+			}
+			if k == "defer_review_by" && spec.DeferReviewBy == nil {
+				continue
+			}
 			// DF-BOARDCTL-50: acceptance_criteria follows the same rule —
 			// never neutral-mirrored. A null placeholder would mean every
 			// create on a board whose rows carry criteria writes the key
@@ -616,6 +636,20 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.Deferred != nil {
 		overrides["deferred"] = *spec.Deferred
 	}
+	// DEFER-EVIDENCE: a deferral with no reason is refused at create time —
+	// nothing is written — exactly like a complete with no evidence run.
+	// The reason rides the row, so the NEXT tick can act on (or re-triage)
+	// the deferral instead of re-deriving why it exists.
+	if spec.Deferred != nil && *spec.Deferred &&
+		(spec.DeferReason == nil || strings.TrimSpace(*spec.DeferReason) == "") {
+		return "", fmt.Errorf("create: --deferred requires --defer-reason (a deferral without a named blocker is a phantom row; nothing written)")
+	}
+	if spec.DeferReason != nil {
+		overrides["defer_reason"] = *spec.DeferReason
+	}
+	if spec.DeferReviewBy != nil {
+		overrides["defer_review_by"] = *spec.DeferReviewBy
+	}
 	if spec.Initiative != nil {
 		overrides["initiative"] = *spec.Initiative
 	}
@@ -635,7 +669,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 	}
 	// Keys the user asked for but the mirrored schema lacks: append at end.
-	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "initiative", "acceptance_criteria"} {
+	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "defer_reason", "defer_review_by", "initiative", "acceptance_criteria"} {
 		if v, ok := overrides[k]; ok && !row.Has(k) {
 			if err := set(k, v); err != nil {
 				return "", err
@@ -845,6 +879,13 @@ type UpdateSpec struct {
 	// key at all, byte-identical to a never-deferred row apart from
 	// updated_at.
 	Deferred *bool
+	// DEFER-EVIDENCE (update-path): the deferral's audit keys, same
+	// nil-untouched discipline. A non-nil pointer sets the key (appending
+	// at the end of the row's order when absent). An update that DEFERS
+	// the row without supplying a reason — here or already on the row —
+	// is REFUSED with nothing written.
+	DeferReason   *string
+	DeferReviewBy *string
 	// --initiative: nil leaves the key alone; a non-nil pointer sets it
 	// (appending the key at the end of the row's order when absent). An
 	// explicit EMPTY string removes the key, so un-scoping a row is the
@@ -1133,7 +1174,41 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		} else if target.Has("deferred") {
 			target.DeleteKey("deferred")
 			changed = append(changed, "deferred")
+			// DEFER-EVIDENCE: un-deferring removes the deferral's audit
+			// keys too — the row returns to the exact shape it had before
+			// it was ever deferred (the DF-BOARDCTL-29 mirror rule).
+			if target.Has("defer_reason") {
+				target.DeleteKey("defer_reason")
+				changed = append(changed, "defer_reason")
+			}
+			if target.Has("defer_review_by") {
+				target.DeleteKey("defer_review_by")
+				changed = append(changed, "defer_review_by")
+			}
 		}
+	}
+	// DEFER-EVIDENCE: --defer-reason sets (or re-points) the deferral's
+	// named blocker; --defer-review-by sets the re-triage date. set()
+	// appends the key at the end of the row's order when absent, in the
+	// row's own style.
+	if spec.DeferReason != nil {
+		if err := set("defer_reason", *spec.DeferReason); err != nil {
+			return nil, err
+		}
+	}
+	if spec.DeferReviewBy != nil {
+		if err := set("defer_review_by", *spec.DeferReviewBy); err != nil {
+			return nil, err
+		}
+	}
+	// DEFER-EVIDENCE refusal: an update that DEFERS the row without a
+	// reason — supplied here, or already carried by the row — is refused
+	// outright with nothing written, the same discipline as --status
+	// complete without --evidence-run-id.
+	if spec.Deferred != nil && *spec.Deferred &&
+		(spec.DeferReason == nil || strings.TrimSpace(*spec.DeferReason) == "") &&
+		!target.Has("defer_reason") {
+		return nil, fmt.Errorf("update: --deferred true requires --defer-reason (a deferral without a named blocker is a phantom row; nothing written)")
 	}
 	// --initiative: set, replace, or (with an explicit empty string) remove
 	// the grouping key. Empty means "unscoped", never "the empty initiative",

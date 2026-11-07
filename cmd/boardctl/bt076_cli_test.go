@@ -55,7 +55,7 @@ func bt076TaskLine(t *testing.T, dir, id string) string {
 // TestCmdCreateDeferredWritesFlag: `create --deferred` writes deferred:true.
 func TestCmdCreateDeferredWritesFlag(t *testing.T) {
 	dir := seedBT076CLIBoard(t)
-	if code := run([]string{"-C", dir, "create", "--id", "DF-C1", "--title", "deferred row", "--deferred"}); code != 0 {
+	if code := run([]string{"-C", dir, "create", "--id", "DF-C1", "--title", "deferred row", "--deferred", "--defer-reason", "owner-gated: fixture"}); code != 0 {
 		t.Fatalf("create --deferred exit = %d, want 0", code)
 	}
 	var row map[string]any
@@ -109,7 +109,7 @@ func TestCmdUpdateDeferredTrueFalse(t *testing.T) {
 		t.Fatalf("omitted update created deferred = %v", v)
 	}
 	// defer a plain row
-	if code := run([]string{"-C", dir, "update", "EXIST-1", "--deferred", "true"}); code != 0 {
+	if code := run([]string{"-C", dir, "update", "EXIST-1", "--deferred", "true", "--defer-reason", "owner-gated: fixture"}); code != 0 {
 		t.Fatalf("update --deferred true exit = %d, want 0", code)
 	}
 	if v := rowOf(bt076TaskLine(t, dir, "EXIST-1"))["deferred"]; v != true {
@@ -133,7 +133,7 @@ func rowOf(line string) map[string]any {
 // actionable picks the row back up).
 func TestCmdCreateThenUndeferRemovesKey(t *testing.T) {
 	dir := seedBT076CLIBoard(t)
-	if code := run([]string{"-C", dir, "create", "--id", "DF-29A", "--title", "parked", "--deferred"}); code != 0 {
+	if code := run([]string{"-C", dir, "create", "--id", "DF-29A", "--title", "parked", "--deferred", "--defer-reason", "owner-gated: fixture"}); code != 0 {
 		t.Fatalf("create --deferred exit = %d, want 0", code)
 	}
 	if v := rowOf(bt076TaskLine(t, dir, "DF-29A"))["deferred"]; v != true {
