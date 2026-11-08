@@ -14,3 +14,9 @@ dagger.db
 dagger.db-shm
 dagger.db-wal
 .vfs/
+
+# Unblock settle: prior-run rescue bundles (164M incident evidence, 2026-11-05)
+# and readme-lane audit artifacts are preserved on disk but never tracked —
+# they are not durable board evidence (durable evidence lives under history/).
+.gitreins/rescued-*/
+.coding-hermes/audits/
