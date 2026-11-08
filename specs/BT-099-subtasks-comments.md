@@ -294,3 +294,15 @@ Each test names the falsifier it kills:
 5. **Umbrella scope**: parent/child and comments are single-repo only (writes
    never cross child symlinks, BT-078). Does `umbrella --list` need a parent
    column in v1, or defer? Opinion: defer.
+
+## PANEL VERDICTS — 2026-11-08 (binding amendments)
+
+CHALLENGED on one point, endorsed otherwise. Binding amendments:
+
+1. **Metadata home RULED: `detail.metadata`.** `expected_files` and `verify_steps` live inside the typed `detail.metadata` object (BT-098's container), NOT as top-level canon keys; `complexity` stays top-level (already canon). Rationale: the `attributes` precedent — one container key keeps the row shape closed; two homes for decomposition metadata re-creates the 230-key drift BT-056 exists to stop. BT-099's "works without types.jsonl" argument is void — `detail` is sanctioned and carries nested objects today.
+2. **decompose default is `--parallel`** (independent children); `--sequential` (dep-chained) is the opt-in matching the Axiom baby-steps flow. The fleet's wave doctrine dispatches parallel workers in isolated worktrees — a sequential chain absorbs exactly 1 worker per wave, the single-file bottleneck. If sequential is chosen, decompose MUST print `wave absorbs 1 worker (sequential chain — use --parallel for N)` so the cost is visible at scaffold time.
+3. **Suppression lives in the SHARED ENGINE** (per BT-097 amendment 1): BT-099's parent-withholding composes into `GraphReport` (`Withheld` set), so `ready` AND `next` both honour it. When suppression lands, BT-097's T8/T9 goldens are amended IN THE SAME COMMIT.
+4. **Write-time parent-cycle walk gets a visited set / depth cap ≤ row count** — a hand-edited pre-existing cycle must not hang the create/update path. T2 gains a two-cycles-share-a-node fixture (single-DFS under-reporting).
+5. **Q4 rewritten (premise was wrong):** `write.go` bumps the header `ticks_total` only when `spec.Tick != nil`; a plain comment event (Tick nil) gets NO bump by default. The question is whether comments SHOULD bump (they are not ticks — default: no bump, say so in the spec).
+6. **decompose × template titles defined:** children inherit the parent type's `title_prefix` exactly once; the final title is set directly and never re-checked (see BT-098 amendment 6).
+7. **Comment events are never rewritten by repair/normalize tooling**; retention/compaction doctrine tracked on BT-100.

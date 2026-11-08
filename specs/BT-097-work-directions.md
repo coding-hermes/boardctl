@@ -429,3 +429,16 @@ bt055_depends_shape_test.go uses) — no hand-rolled JSONL in tests.
    complete is class `status`, not dispatchable. Should `direction` count it
    in `blocked` (chosen here — it is remaining work with a named reason) or
    in a separate "parked" bucket so wave math ignores it?
+
+## PANEL VERDICTS — 2026-11-08 (binding amendments)
+
+Endorsed with fixes. The following override or amend the body of this spec:
+
+1. **Export the per-row predicate NOW (was deferred to BT-099).** `AnalyzeDispatchability` ships with a named, testable per-row `Dispatchable(row, board)` alongside the batch report — BT-099's suppression composes into THE ENGINE (a `Withheld` set in `GraphReport`), not into the `ready` CLI, so BT-096's `next` inherits suppression and can never dispatch a withheld parent.
+2. **T8 is a FULL-DOCUMENT golden** (values AND types) on fixtures — a key-presence test cannot pin nil-as-`[]` (Go marshals nil slices as `null` with the key present).
+3. **T6 drops the fixed wall clock.** Assert the SCALING RATIO (10k rows vs 100 rows < 20×) with the measured time logged; strict bound skipped under `-short`. Load on the shared box (measured 13.9/15.4) makes a fixed 2s assertion a flake. Keep the size-assertion control.
+4. **`blocked` schema divergence named explicitly** in §2.3: `ready` emits the blocker array; `direction` emits per-initiative counts. Consumers are told which shape each verb returns — or both emit the array (implementer's choice, documented either way).
+5. **Routing note:** `blocker_class` `deps` folds waiting vs failed ancestors; routing uses class + `unsatisfied[].status` (a pending ancestor = waiting; a failed ancestor = rework). Splitting into `deps_waiting`/`deps_failed` is sanctioned if cleaner. Owner-gated rows are outside boardctl's field set — name that boundary in the help text.
+6. **Phrasing:** "absorbs N workers" → "could absorb N workers" (board-pending ≠ unowned; sibling lanes hold rows mid-dispatch).
+7. **Comment events (BT-099) are never rewritten by repair/normalize tooling** — state in the repair-path docs. Comment-event retention/compaction doctrine tracked on BT-100.
+8. **Initiative sparsity:** only 5 of 73 dep-carrying rows name an initiative — `direction` is near-empty at launch. Backfill of `initiative` keys on the live boards is filed as its own row (BT-102).

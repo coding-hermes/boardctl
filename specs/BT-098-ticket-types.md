@@ -332,3 +332,15 @@ triple that makes "refused" unforgeable. The zero-migration control (AC-9) is
 the board-level falsifier for "built-in defaults change nothing": run the full
 new-command battery on a copy of the live repo board and diff SHA-256 of all
 four board files before/after.
+
+## PANEL VERDICTS — 2026-11-08 (binding amendments)
+
+CHALLENGED and amended as follows:
+
+1. **AC-9 control replaced (BLOCKER fix).** The four-file SHA-256 "unchanged" control is unpassable as written (a working create appends to tasks.jsonl AND emits task_created — the hash MUST change). Replacement: (a) a READ-ONLY battery (`types`, `validate`) on a PINNED testdata board snapshot asserting byte-identity, and (b) a diff test asserting create/update change EXACTLY the expected lines (one row + one event, no serialization churn). Never copy the live board at test runtime — sibling lanes write it; the baseline would move daily.
+2. **Equal-rev duplicate slug = last-line-wins + a validate WARNING, not a load refusal.** The strict-increasing-rev load rule bricks the whole registry after any two-lane git merge (flock serializes writers, not merges). Corrupt rows (unparseable) still refuse; conflict rows degrade to last-line-wins with a named finding. Recovery verb `boardctl types --doctor` names offending lines.
+3. **Legacy-type cliff grandfathered at WARNING grade.** Rows carrying a `type` value an operator's new types.jsonl does not declare produce a WARNING with a census (n rows, which values), never a hard error, and never block create/update on OTHER rows.
+4. **BT-097 dependency dropped — BT-098 is INDEPENDENT** (types.jsonl needs no graph-engine groundwork; `type` and `detail` are pre-sanctioned keys). Sequencing: BT-097 and BT-098 run in PARALLEL waves; BT-099 after BT-097.
+5. **Type changes after creation: ALLOWED via `update --type`** with full re-validation (new type's required metadata satisfied atomically or refused — a row can never sit unfileable), a `task_type_changed` event recording old→new, NO in-row `type_history` (events.jsonl is the history; a second mutable structure loses under rebase).
+6. **Template × title-prefix:** child/decomposed titles inherit the parent type's `title_prefix` exactly once — the prefix check strips an existing prefix before applying; decompose sets the final title directly and never re-triggers the check. One rule, stated in the spec body when amended.
+7. **Finding-class field added to the validate model** (`{Level, Class, Msg}`) so `--fail-on <class>` has something to match (needed by BT-099's `--fail-on parent-cycle`).
