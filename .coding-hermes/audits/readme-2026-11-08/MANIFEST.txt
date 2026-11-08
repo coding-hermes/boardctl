@@ -1,0 +1,9 @@
+README health sweep — boardctl (tick boardctl-readme-2026-11-08-04-02-17)
+
+artifact: readme-sweep-2026-11-08.txt
+sha256:   4550598f5bf8106ab5062f36257150568f6ee9da595b253c42f551e997349c11
+rows:     README-013 README-014 README-015 README-016 README-017
+probed tip: 1cda136f85e753ea1de006ca79e3966ba9db5034 (origin/main, re-read 2026-11-08T04:23:28Z)
+
+This directory is a frozen evidence product: the artifact records every command run
+and its exit status. Do not edit it; re-run the sweep instead.
