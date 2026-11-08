@@ -761,3 +761,64 @@ Real view = boardctl's own board + warpfs's board via the links registry
 3. `stats --json` cost 7.693 ms cold and 7.512 ms warm p50 over 10 runs (4.786–25.891 ms); this is below a user-noticeable threshold, so no PERF row or profile was justified.
 4. The fresh-machine battery collected 20 rows on `bunker-mvp` agent `7274a462` and then destroyed it; the follow-up `bunker info` returned `not_found`. The source-build install and act CI pass were OK, resource/error paths passed, while upgrade failed at the documented missing-assets gate and network-cut failed on an uncached Go module download. Those failures are already owned by QA-BOARDCTL-FOREMAN-4 and QA-BOARDCTL-FOREMAN-5; the CLI/API UI-probe INFO is owned by QA-BOARDCTL-FOREMAN-6.
 5. No new row was filed because the dogfood lane is read-only and the exact failure classes already have owner rows.
+
+
+## Run-28 addendum (2026-11-08; tick boardctl-dogfood-2026-11-08-04-06-52) — the two new write guards, used
+
+1. **Target identity.** `1cda136f85e753ea1de006ca79e3966ba9db5034` on origin/main (0 ahead / 0 behind),
+   clean tree, HEAD-built binary (`go build ./cmd/boardctl`, 1.21 s). Released v0.1.11 was not the
+   surface: `--defer-reason` and the provenance checks are HEAD-only by construction.
+
+2. **DEFER-EVIDENCE works where its tests point, and fails at the docs.** Create/update refuse
+   `--deferred` without `--defer-reason` and write nothing; the audit keys land, un-defer removes all
+   three keys, an already-present reason is reused when a row is later deferred, and a hand-edited
+   legacy deferred row earns a `validate` WARN with `RESULT: OK` (rc=0) exactly as designed. What it
+   does not have is a self-description: `grep -rn 'defer-reason|defer_reason|defer-review-by|
+   defer_review_by' README.md docs/ skills/` returns zero hits, and the README's own recipe
+   (`README:1365`, bare `--deferred`) is now REFUSED with rc=1 (DF-BOARDCTL-54).
+
+3. **BOARD-GUARD-003's provenance half is dead in production.** On a no-hardlinks clone of the
+   published HEAD — real `.git`, real `.gitreins/history/` — a completion carrying `--commit-hash`
+   `0000…0` (40 zeros) and `--evidence-run-id deadbeef` completed at rc=0. Mechanism:
+   `isTestEnvironment()` (`internal/board/evidence_gate.go:134-143`) returns "test" unless the
+   **board directory itself** contains `.git`, and the board dir is always
+   `<repo>/.coding-hermes/board` — so the git checks at `:88` (resolvable commit) and `:126`
+   (run-id exists under `.gitreins/history/`) short-circuit on every real board. Only the 40/64-hex
+   regex at `:82` fires, which is why `HEAD` and `abc1234` are refused while a fabricated 40-hex
+   passes. The discriminating arm: planting a `.git` directory INSIDE the board dir flips the
+   classifier and both refusals fire verbatim. Filed as DF-BOARDCTL-52 (P1).
+
+4. **A retried closeout is now a red exit.** The identical successful
+   `update <id> --status complete --evidence-run-id … --commit-hash …` re-run exits 1
+   (`task_completed event already exists; refusing duplicate completion`) — while
+   `evidence_gate.go:26-30` documents that exact re-write as an idempotent, ungated no-op. `--force`
+   does not bypass it; the escape (a hash-only update without `--status`) is undocumented and unnamed
+   in the refusal. Any wrapper that retries a closeout after a timeout now reports a completed row as
+   failed. Filed as DF-BOARDCTL-53 (P2).
+
+5. **The asymmetric deferral guard.** `--defer-reason` / `--defer-review-by` are accepted on rows that
+   are NOT deferred, so `create --defer-reason R` alone yields an actionable row (dispatched by a
+   foreman, counted in `stats` actionable) that every `--json` consumer reads as parked, with no
+   `validate` finding — the inverse of the direction the guard enforces. Filed as DF-BOARDCTL-55 (P3).
+
+6. **Verified clean in the same pass.** Deferral refusal writes nothing (board byte-identical);
+   un-defer restores the pre-deferral shape; initiative scoop/rollup/slug rule and
+   deferred-exclusion from `actionable` all as documented; the board write path itself is
+   append-only and self-consistent (228 → 232 rows, pre-image byte-prefix preserved, 0 duplicate ids,
+   one `task_created` event per row, `validate` OK with the same 44 pre-existing warnings).
+   `list --deferred` still does not exist (BT-091 re-proven at this HEAD: rc=1,
+   `flag provided but not defined: -deferred`); `list --json` + `jq` is the workaround.
+
+7. **Performance.** Warm `stats` 24.5 ms / `list --json` 32.4 ms / `initiatives` 22.9 ms /
+   `next-id` 22.4 ms on this 228-row board; on the 1443-row hermes-dagger board `stats` 116 ms,
+   `list --json` 133 ms, `initiatives` 99 ms, `validate` 182 ms (hyperfine, 10-20 runs). Nothing a
+   user feels at the scale boardctl runs at, so no PERF row. Cold (page-cache-cold) is unmeasured —
+   dropping caches needs root here.
+
+8. **Install leg.** `bunker-mvp` agent `fc323100`, 23 cells, destroyed and verified `not_found`.
+   Graded **install-proven / isolation-UNVERIFIED**: the host reports `/tmp: private` but
+   `Net mode: shared — NOT tenant isolation`, and no registered host was isolation-eligible
+   (`bunker-las-02` reports `/tmp: HOST-SHARED` and `net: not reported`; las-01/03/04 and cube-las-00
+   answered nothing on `/health`). Cells: fresh-install OK, tests OK, ci-pass OK, upgrade OK
+   (v0.1.11 → HEAD), chaos-disconnect OK, chaos-resource PASS, chaos-errorpath OK; `lint` INFO because
+   `golangci-lint` is absent on the agent — an INFO cell, not a pass.

@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.23.0
-date: 2026-10-30
+version: 1.24.0
+date: 2026-11-08
 category: software-development
 ---
 
@@ -148,10 +148,12 @@ boardctl -C R update FEAT-2 --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
 # update metadata: --worker-status is separate from task --status;
 # --note appends; --blocked-reason records the blocking explanation;
 # --completed-at sets the completion timestamp (use the board timestamp format);
-# --deferred parks a row as not-yet-actionable: create takes a bare flag,
-# update takes true|false (--deferred false REMOVES the key; HEAD-only
-# until the next release — see Run-20 lessons below).
-boardctl -C R create --id FEAT-3 --title "T" --deferred
+# --deferred parks a row as not-yet-actionable. At HEAD (DEFER-EVIDENCE,
+# 1cda136) a deferral MUST name its blocker: `--deferred` without
+# `--defer-reason` is REFUSED and nothing is written. --defer-review-by carries
+# the re-triage date. `--deferred false` REMOVES `deferred` + both audit keys.
+boardctl -C R create --id FEAT-3 --title "T" --deferred \
+    --defer-reason "owner-gated: budget ruling" --defer-review-by 2026-11-30
 boardctl -C R update FEAT-2 --worker-status complete \
     --completed-at "2026-10-10 19:30:00"
 boardctl -C R update FEAT-2 --note "Verified on the staging board"
@@ -684,7 +686,9 @@ Boards are tiny; there is no need to batch or cache.
 - `create --deferred` / `update --deferred true|false` are HEAD-only until the next
   release; the README quickstart's Current-release pin (v0.1.10) rejects both flags.
   On any checkout, verify flag availability against `boardctl <cmd> --help`, not the
-  README.
+  README. **Superseded at HEAD by run 28:** a bare `--deferred` is now REFUSED —
+  the flag requires `--defer-reason` (DEFER-EVIDENCE, 1cda136); the recipe above
+  this section is the working one.
 - Plural association flags (`--pull-request`, `--assoc-branch`, `--assoc-worktree`)
   merge ONE dimension per invocation; combining dimensions in a single update is a
   usage error. Repeatable: each flag instance appends/merges one element; duplicate
@@ -845,3 +849,35 @@ Boards are tiny; there is no need to batch or cache.
 - The real-user path is: `init` → `create --acceptance-criteria` → `update --evidence-run-id` → `show --events` → `event --tick` → `stats --json` → `validate` → `doctor`. On a fresh scratch board, all returned rc=0 and `validate` reported 0 warnings.
 - The current fresh-machine battery can install from source and pass the act CI/resource/error legs while still failing upgrade and network-cut cells. Grade each cell independently; an install OK is not an aggregate battery pass.
 - `stats --json` was single-digit milliseconds (7.693 ms cold, 7.512 ms warm p50 over 10 runs on three records), below a user-noticeable threshold; no performance finding was warranted.
+
+## Run-28 (2026-11-08; tick boardctl-dogfood-2026-11-08-04-06-52) — DEFER-EVIDENCE and BOARD-GUARD-003 under real use
+
+Target `1cda136f85e753ea1de006ca79e3966ba9db5034`, HEAD build. Rows filed: DF-BOARDCTL-52..55.
+
+- **A deferral now owes a reason.** `--deferred` on `create`, and `--deferred true` on `update`, are
+  REFUSED unless a `--defer-reason` is supplied — nothing is written, rc=1. `--defer-review-by DATE` is
+  optional and is NOT validated (any string lands). Un-deferring removes `deferred` + both audit keys.
+  Re-deferring a row that already carries a reason works without retyping it.
+- **The reason can be set without the deferral.** `create --defer-reason R` (no `--deferred`) succeeds
+  and leaves an ACTIONABLE row carrying a reason + re-triage date; `stats` counts it actionable and
+  `validate` says nothing. Treat "reason present" as advisory, never as parked — ask `deferred == true`.
+  Filed DF-BOARDCTL-55.
+- **Completion provenance: only the HEX FORMAT is enforced.** `--commit-hash HEAD` and `abc1234` are
+  refused, but any 40/64-hex string is accepted — including 40 zeros — and `--evidence-run-id` accepts a
+  run id that exists nowhere under `.gitreins/history/`. Verified at HEAD on a real clone: both
+  completed rc=0. Do not treat a completed row's `commit_hash` or `evidence` as proof; resolve the sha
+  (`git cat-file -e <sha>^{commit}`) and the run dir yourself. Filed DF-BOARDCTL-52.
+- **Do not re-run a closeout.** The identical `update --status complete …` command exits 1 the second
+  time (`task_completed event already exists; refusing duplicate completion`), and `--force` does not
+  bypass it. If a retry lands anyway, drop `--status` and fix the field you actually need
+  (`update <id> --commit-hash <sha>`, `--note`, `--summary`) — that path works and exits 0. Filed
+  DF-BOARDCTL-53.
+- **Docs lag the guards.** `README:136` still shows `--commit-hash abc1234` and `README:1365` still
+  shows a bare `--deferred`; neither DEFER-EVIDENCE flag appears anywhere in README/`docs/`. Run the
+  fence you are copying before quoting it (DF-BOARDCTL-54; this skill's own recipe was corrected in the
+  same commit).
+- **Fresh-machine battery is now green on the cells that used to fail**: upgrade (v0.1.11 → HEAD) and
+  network-cut both OK on `bunker-mvp`; `lint` stays INFO because `golangci-lint` is absent on the agent,
+  which is NOT a lint pass.
+- **Perf still a non-issue**: `stats` 24.5 ms / `list --json` 32.4 ms / `initiatives` 22.9 ms on this
+  228-row board; `validate` 182 ms on the 1443-row hermes-dagger board (hyperfine warm). No PERF row.
