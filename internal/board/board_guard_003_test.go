@@ -2,6 +2,8 @@ package board
 
 import (
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -67,6 +69,93 @@ func TestBoardGuard003AcceptsFullCommitHashWithoutGitRepo(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("full hash and synthetic evidence run should pass without a git repo: %v", err)
+	}
+}
+
+func TestBoardGuard003RealRepoRejectsUnprovenProvenance(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	scratch := filepath.Join(wd, "..", "..", ".tick-cache")
+	if err := os.MkdirAll(scratch, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repo, err := os.MkdirTemp(scratch, "board-guard-003-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(repo) })
+	boardDir := filepath.Join(repo, ".coding-hermes", "board")
+	writeBoardFiles(t, boardDir, map[string]string{
+		"tasks.jsonl":  tr251Board(),
+		"events.jsonl": boardGuard003Audit,
+	})
+	if out, err := exec.Command("git", "-C", repo, "init").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	b, err := Resolve(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = b.UpdateTask("TR-901", UpdateSpec{
+		Status:        strPtr("complete"),
+		CommitHash:    strPtr(strings.Repeat("0", 40)),
+		EvidenceRunID: "deadbeef",
+	})
+	if err == nil {
+		t.Fatal("real-repo completion with unresolvable provenance must be refused")
+	}
+	if !strings.Contains(err.Error(), "not a resolvable commit") || !strings.Contains(err.Error(), "0000000000000000000000000000000000000000") {
+		t.Fatalf("refusal must include the git resolution error, got: %v", err)
+	}
+
+	_, err = b.UpdateTask("TR-901", UpdateSpec{
+		Status:        strPtr("complete"),
+		EvidenceRunID: "deadbeef",
+	})
+	if err == nil || !strings.Contains(err.Error(), ".gitreins/history") {
+		t.Fatalf("missing evidence run must be refused on a real repo, got: %v", err)
+	}
+}
+
+func TestIsTestEnvironmentUsesRepositoryRoot(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	scratch := filepath.Join(wd, "..", "..", ".tick-cache")
+	if err := os.MkdirAll(scratch, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repo, err := os.MkdirTemp(scratch, "board-guard-003-classifier-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(repo) })
+	boardDir := filepath.Join(repo, ".coding-hermes", "board")
+	if err := os.MkdirAll(boardDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "-C", repo, "init").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	tests := []struct {
+		name string
+		dir  string
+		want bool
+	}{
+		{name: "repo-root board", dir: boardDir, want: false},
+		{name: "board dir directly", dir: repo, want: false},
+		{name: "tmp fixture", dir: filepath.Join(t.TempDir(), "board"), want: true},
+		{name: "testdata fixture", dir: filepath.Join(repo, "testdata", "board"), want: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isTestEnvironment(tc.dir); got != tc.want {
+				t.Fatalf("isTestEnvironment(%q) = %v, want %v", tc.dir, got, tc.want)
+			}
+		})
 	}
 }
 

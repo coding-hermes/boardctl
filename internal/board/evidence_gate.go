@@ -129,17 +129,27 @@ func (b *Board) validateCompletionProvenance(commitHash, runID string) error {
 	return nil
 }
 
-// isTestEnvironment returns true if the board directory is under /tmp or contains
-// test fixtures (no .git directory or scratch paths).
+// isTestEnvironment returns true for the explicit /tmp and testdata fixture
+// exemptions, or when git cannot identify a repository from the board path.
+// A real board lives below <repo>/.coding-hermes/board, so checking for a .git
+// entry inside dir would classify every production board as a test fixture.
 func isTestEnvironment(dir string) bool {
-	if strings.Contains(dir, "/tmp/") || strings.Contains(dir, "testdata") {
+	if strings.Contains(dir, "testdata") {
 		return true
 	}
-	gitDir := filepath.Join(dir, ".git")
-	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
-		return true
+	absDir, err := filepath.Abs(dir)
+	if err == nil {
+		tmpRoot, tmpErr := filepath.Abs(os.TempDir())
+		if tmpErr == nil {
+			rel, relErr := filepath.Rel(tmpRoot, absDir)
+			if relErr == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				return true
+			}
+		}
 	}
-	return false
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel")
+	_, err = cmd.Output()
+	return err != nil
 }
 
 // completionStatuses are the statuses the evidence gate treats as completion.
