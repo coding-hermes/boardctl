@@ -700,6 +700,61 @@ Operator notes:
   the managed block must be present. `install --dry-run` prints the block an
   existing install should match.
 
+## Git-hook intake to crier (BOARDCTL-HOOK-001)
+
+`boardctl hook` is the git-hook half of the crier always-working pipeline
+(the crier repo's `specs/CRIER-GITHOOK-DISPATCH.md`): a board row that lands by commit or pull
+is detected, signed and POSTed to crier's webhook ingest, which queues it for
+the registered agent. The hook is a dumb, signed doorbell — crier's
+reconciliation sweep remains the durable path, so a missed hook is never a
+lost row.
+
+```bash
+# preview the exact managed block (nothing written)
+boardctl -C ~/myproject hook install --hook post-commit \
+    --crier-url http://127.0.0.1:8080 \
+    --secret-file ~/.config/crier/boardctl.secret --dry-run
+
+# arm it: appends a delimited managed block to .git/hooks/post-commit
+boardctl -C ~/myproject hook install --hook post-commit \
+    --crier-url http://127.0.0.1:8080 --secret-file ~/.config/crier/boardctl.secret
+
+boardctl -C ~/myproject hook doctor        # per-hook health + spool + dead letters
+boardctl -C ~/myproject hook flush         # drain the spool on demand
+boardctl -C ~/myproject hook uninstall --hook post-commit
+```
+
+Operator notes:
+
+- **Managed block.** `install` appends a block delimited by
+  `# >>> boardctl-dispatch BEGIN (hook=…)` / `# >>> boardctl-dispatch END` and
+  records the absolute path of the installing binary (falling back to
+  `boardctl` on `PATH`). An existing hook body is never rewritten; the block is
+  inserted BEFORE a trailing top-level `exit`/`exec` so it is reachable
+  (DF-CRIER-433), and `doctor` refuses a marker that sits behind one.
+- **Uninstall is exact.** It removes ONLY the managed block: a sibling body is
+  restored byte-identically (including the "did the body end in a newline"
+  fact). A hook left with nothing but a shebang is removed entirely; a second
+  uninstall exits 1 naming the hook.
+- **Detection.** `post-commit` diffs `HEAD^..HEAD`, `post-merge` diffs
+  `ORIG_HEAD..HEAD` (no `ORIG_HEAD` ⇒ named no-op, exit 0). Only rows that are
+  `pending` and not fixtures are dispatched; everything else is a named `SKIP`.
+- **Signing.** Each row POSTs to `<crier-url>/ingress/webhooks/<source-id>`
+  with `X-Crier-Timestamp`, `X-Crier-Signature: sha256=HMAC(secret,
+  timestamp + "." + body)` and `Idempotency-Key:
+  boardctl:<row-id>:<content-hash>` — the hash covers the row WITHOUT its id
+  (spec §10.3), so SEEN+ADDED collapse to one logical event while an edit with
+  new content is a new one. The secret file must be mode `0600`, is re-read per
+  dispatch, never baked into the hook body and never logged.
+- **Never blocks git.** Every dispatch path exits 0. A failed POST spools the
+  row under `<board-dir>/.dispatch-spool/` (created `0700`, gitignored at
+  install); the next hook fire or `hook flush` retries it, and after 3 attempts
+  the batch becomes a `dead-letter.jsonl` record naming the row ids and the
+  last failure — `hook doctor` prints the census. Nothing is dropped silently.
+- **Batch cap.** `--batch-cap` (default 50) bounds rows per fire (R16); rows
+  beyond it spool instead of being dropped. `--budget` (default 10s) bounds
+  total wall time.
+
 ## Start a board
 
 A fresh project has no board yet. `init` bootstraps one — it writes the four

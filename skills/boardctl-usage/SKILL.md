@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.24.0
-date: 2026-11-08
+version: 1.25.0
+date: 2026-11-09
 category: software-development
 ---
 
@@ -47,6 +47,10 @@ blind spot.
   `0` = proceed, `1` = your input was rejected, `2` = wrong invocation or
   no board at the given path.
 - `umbrella` (BT-078): read-only cross-repo view — see Proven commands.
+- `hook` (BOARDCTL-HOOK-001): the git-hook intake family
+  (`install|uninstall|doctor|dispatch|flush`) that POSTs newly landed board
+  rows to crier's webhook ingest — see Proven commands. The post-commit /
+  post-merge hook NEVER blocks the commit.
 - `next-id` (2026-11-03): `boardctl next-id --family CF` prints the next free
   id (max+1, observed width preserved) without writing anything. `create`
   requires an explicit `--id`, so on a board several lanes work at once
@@ -277,6 +281,43 @@ boardctl -C R install [--hook-path P] [--timeout S] [--dry-run]
                                            # enforce blocks); the mode is
                                            # written into every hook, unknown
                                            # values are a usage error.
+
+# crier git-hook intake (BOARDCTL-HOOK-001, spec CRIER-GITHOOK-DISPATCH.md)
+boardctl -C R hook install --hook post-commit --crier-url URL \
+       --secret-file ~/.config/crier/boardctl.secret [--source-id boardctl]
+                                           # appends a delimited managed block
+                                           # to .git/hooks/post-commit (never
+                                           # rewrites a sibling body; placed
+                                           # BEFORE a trailing top-level exit
+                                           # so it is reachable). The secret
+                                           # file must be 0600 and is re-read
+                                           # per dispatch; it is never in the
+                                           # hook body and never logged.
+boardctl -C R hook install --hook post-merge ... --dry-run
+                                           # print the exact block, write nothing
+boardctl -C R hook doctor                   # per hook: installed / marker
+                                           # present / marker reachable /
+                                           # crier reachable / secret 0600,
+                                           # plus spool depth, last delivery
+                                           # and the dead-letter census.
+                                           # exit 1 names every failure.
+boardctl -C R hook dispatch --hook post-commit
+                                           # post-commit diffs HEAD^..HEAD,
+                                           # post-merge diffs ORIG_HEAD..HEAD;
+                                           # each ADDED/SEEN pending non-fixture
+                                           # row POSTs signed (X-Crier-Timestamp
+                                           # + sha256=HMAC(secret, timestamp.body))
+                                           # with Idempotency-Key
+                                           # boardctl:<id>:<content-hash>.
+                                           # ALWAYS exits 0: failures spool;
+                                           # after 3 attempts a row becomes a
+                                           # dead-letter record (never silent).
+boardctl -C R hook flush [--dry-run]        # drain the spool on demand
+boardctl -C R hook uninstall --hook post-commit
+                                           # removes ONLY the managed block;
+                                           # the sibling body is restored
+                                           # byte-identically. A second
+                                           # uninstall exits 1.
 
 # report surface (BT-020..022 — details + pitfalls in "Report surface" below)
 boardctl -C R render -o report.html        # self-contained HTML report:

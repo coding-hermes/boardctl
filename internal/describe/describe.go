@@ -83,6 +83,7 @@ var cliSummaries = map[string]string{
 	"import":             "import a board export.json",
 	"serve":              "run the loopback uploader/report HTTP server",
 	"install":            "install the board-lint pre-commit hook",
+	"hook":               "git-hook intake for the crier pipeline: install/uninstall/doctor/dispatch/flush (BOARDCTL-HOOK-001)",
 	"umbrella":           "read-only unified view over an umbrella repo's linked child boards",
 }
 

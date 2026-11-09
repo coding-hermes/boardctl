@@ -131,6 +131,26 @@ commands:
           same evidence behind a WARN-ONLY banner and allows it (a
           re-install flips the mode in place; --fleet carries the mode
           into every hook it writes)
+  hook    install|uninstall|doctor|dispatch|flush
+          install --hook <post-commit|post-merge> --crier-url URL --secret-file PATH
+          [--source-id ID] [--self BIN] [--hook-path P] [--dry-run];
+          uninstall --hook <post-commit|post-merge> [--hook-path P];
+          doctor [--probe-timeout 2s];
+          dispatch --hook <post-commit|post-merge> [--crier-url URL] [--secret-file PATH]
+          [--source-id ID] [--batch-cap N] [--budget 10s] [--dry-run];
+          flush [--dry-run]
+          git-hook intake for the crier pipeline (BOARDCTL-HOOK-001). install
+          appends a delimited managed block to .git/hooks/<hook> (never
+          replacing a sibling body); uninstall removes ONLY that block and
+          restores the pre-install bytes exactly. dispatch diffs HEAD^..HEAD
+          (post-commit) or ORIG_HEAD..HEAD (post-merge), and POSTs each newly
+          added/seen pending row to <crier-url>/ingress/webhooks/<source-id>
+          signed with X-Crier-Timestamp + sha256=HMAC(secret, timestamp.body)
+          and Idempotency-Key boardctl:<row-id>:<content-hash> (the hash
+          excludes the row id). It NEVER blocks the commit: every failure exits
+          0, undelivered rows spool beside the board and, after 3 attempts,
+          become an operator-visible dead-letter record. doctor names every
+          failing condition (exit 1); flush drains the spool on demand.
   umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict]
            [--skip-bad-lines] [-C dir]
           read-only unified view over this repo and every child board
@@ -251,6 +271,8 @@ func run(args []string) int {
 		err = cmdServe(boardDir, rest)
 	case "install":
 		err = cmdInstall(boardDir, rest)
+	case "hook":
+		err = cmdHook(boardDir, rest)
 	case "umbrella":
 		err = cmdUmbrella(boardDir, rest)
 	case "help", "-h", "--help":

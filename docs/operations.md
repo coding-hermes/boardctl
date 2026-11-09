@@ -135,5 +135,7 @@ keep the first object and silently drop the rest — so it must be split first.
 
 - Pre-commit board-lint hook install/retarget → README "Board-lint pre-commit
   hook (BT-054)".
+- Crier git-hook intake (post-commit/post-merge row dispatch, spool,
+  dead-letter) → README "Git-hook intake to crier (BOARDCTL-HOOK-001)".
 - Row key/status vocabulary and alias canonicalization (`update --normalize`)
   → README "Status vocabulary and read aliases (BT-025)".
