@@ -51,6 +51,8 @@ commands:
   show    <id> [--events]
   next-id --family CF [--width N] [--json]   (prints the next free id; read-only)
   next    [-C dir]   (prints the highest-priority dispatchable row; read-only)
+  ready   [-C dir] [--initiative SLUG] [--json] [--blocked] [--skip-bad-lines]
+  direction [-C dir] [--json] [--skip-bad-lines]
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
           [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
@@ -246,6 +248,10 @@ func run(args []string) int {
 		err = cmdNextID(boardDir, rest)
 	case "next":
 		err = cmdNext(boardDir, rest)
+	case "ready":
+		err = cmdReady(boardDir, rest)
+	case "direction":
+		err = cmdDirection(boardDir, rest)
 	case "event":
 		err = cmdEvent(boardDir, rest)
 	case "header":

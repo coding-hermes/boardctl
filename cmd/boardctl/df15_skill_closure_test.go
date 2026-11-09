@@ -217,14 +217,11 @@ func TestSkillCoverageParserProvesGatesBite(t *testing.T) {
 			t.Errorf("usageSkillCommands() missed dispatched command %q; got %v", want, cmds)
 		}
 	}
-	// 22 dispatched commands exactly (BT-081 added normalize-statuses; next-id
-	// added 2026-11-03 for the code-factory multi-lane id race; initiatives added
-	// 2026-11-06 as the discovery half of the scoop query — a foreman told to
-	// "work initiative X" needs to confirm the slug exists, because a misspelled
-	// --initiative returns an empty set that reads exactly like "no work left";
-	// hook added 2026-11-09 as the git-hook intake family of BOARDCTL-HOOK-001).
-	if len(cmds) != 23 {
-		t.Errorf("usageSkillCommands() = %v (%d), want the 23 dispatched commands", cmds, len(cmds))
+	// 25 dispatched commands exactly: ready and direction are the graph-aware
+	// wave verbs; the earlier additions are retained in the comment for audit
+	// context.
+	if len(cmds) != 25 {
+		t.Errorf("usageSkillCommands() = %v (%d), want the 25 dispatched commands", cmds, len(cmds))
 	}
 	// Continuation lines must not leak in as fake commands.
 	for _, bad := range []string{"reasoning", "capability-tags", "set-ticks-total"} {

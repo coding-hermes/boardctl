@@ -67,6 +67,8 @@ type HTTPRoute struct {
 var cliSummaries = map[string]string{
 	"init":               "bootstrap a fresh board (tasks.jsonl + events.jsonl + header)",
 	"list":               "list task rows",
+	"ready":              "list dispatchable rows grouped by initiative (graph-aware wave sizing)",
+	"direction":          "per-initiative direction view: remaining, ready now, wave projection",
 	"show":               "show one task row",
 	"create":             "create a task row",
 	"update":             "update one task row",

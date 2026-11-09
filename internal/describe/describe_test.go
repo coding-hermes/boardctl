@@ -33,7 +33,7 @@ func TestDeriveCLI_RealMain(t *testing.T) {
 		t.Fatalf("derive from the real main.go: %v", err)
 	}
 	want := []string{
-		"init", "list", "show", "create", "update", "next-id", "next", "event", "header",
+		"init", "list", "show", "create", "update", "next-id", "next", "ready", "direction", "event", "header",
 		"validate", "sweep-status", "normalize-statuses", "normalize-board", "doctor", "version", "stats",
 		"initiatives", // the discovery half of the scoop query (side-by-side with stats)
 		"render", "import", "serve", "install",
