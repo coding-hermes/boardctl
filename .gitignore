@@ -20,3 +20,8 @@ dagger.db-wal
 # they are not durable board evidence (durable evidence lives under history/).
 .gitreins/rescued-*/
 .coding-hermes/audits/
+
+# gitreins judge history bundles — 2026-11-09+ verdicts embed guard secrets-scan
+# transcripts carrying unmasked tokens; GitHub push protection blocks the push.
+# Evidence stays machine-local (unblock settle 2026-11-09).
+.gitreins/history/
