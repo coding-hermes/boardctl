@@ -25,6 +25,16 @@ func writeNextBoard(t *testing.T, rows string) string {
 	return dir
 }
 
+func writeNextBoardWithFixtures(t *testing.T, rows, fixtures string) string {
+	t.Helper()
+	dir := writeNextBoard(t, rows)
+	boardDir := filepath.Join(dir, ".coding-hermes", "board")
+	if err := os.WriteFile(filepath.Join(boardDir, "fixtures.jsonl"), []byte(fixtures), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 func nextTestRow(id, status, priority string, extra string) string {
 	return fmt.Sprintf(`{"id":"%s","title":"title %s","status":"%s","priority":"%s","acceptance_criteria":"criteria %s"%s}`+"\n", id, id, status, priority, id, extra)
 }
@@ -108,5 +118,43 @@ func TestCmdNextPerformance(t *testing.T) {
 	}
 	if !strings.Contains(out, "id: BT-LAST\n") {
 		t.Fatalf("output does not select pending row: %q", out)
+	}
+}
+
+func TestCmdNextExcludesFixtureRows(t *testing.T) {
+	tests := []struct {
+		name     string
+		tasks    string
+		fixtures string
+		want     string
+		code     int
+	}{
+		{
+			name:     "fixture excluded, real work returned",
+			tasks:    nextTestRow("BT-REAL", "pending", "P2", "") + nextTestRow("NEVER-DONE", "pending", "P3", ""),
+			fixtures: nextTestRow("NEVER-DONE", "pending", "P3", ""),
+			want:     "id: BT-REAL\npriority: P2\ntitle: title BT-REAL\nacceptance_criteria: criteria BT-REAL\n",
+		},
+		{
+			name:     "only fixture yields no work",
+			tasks:    nextTestRow("NEVER-DONE", "pending", "P3", ""),
+			fixtures: nextTestRow("NEVER-DONE", "pending", "P3", ""),
+			code:     3,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := writeNextBoardWithFixtures(t, tc.tasks, tc.fixtures)
+			var got string
+			got, _ = captureStdout(func() {
+				code := run([]string{"next", "-C", dir})
+				if code != tc.code {
+					t.Errorf("exit code = %d, want %d", code, tc.code)
+				}
+			})
+			if tc.want != "" && got != tc.want {
+				t.Fatalf("output = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

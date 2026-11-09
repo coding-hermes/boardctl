@@ -42,6 +42,10 @@ func cmdNext(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
+	fixtureIDs, err := b.FixtureIDs()
+	if err != nil {
+		return err
+	}
 
 	byID := make(map[string]*board.Row, len(rows))
 	for _, row := range rows {
@@ -62,6 +66,9 @@ func cmdNext(dir string, args []string) error {
 				blocked++
 			}
 			continue
+		}
+		if fixtureIDs[row.String("id")] {
+			continue // perpetual fixture: not dispatchable work
 		}
 		if board.RowIsDeferred(row) {
 			deferred++
