@@ -445,8 +445,15 @@ func RowIsDeferred(r *Row) bool {
 	if raw == nil {
 		return false
 	}
-	return bytes.Equal(bytes.TrimSpace(raw), []byte("true")) ||
-		bytes.Equal(bytes.TrimSpace(raw), []byte("True"))
+	var b bool
+	if err := json.Unmarshal(raw, &b); err == nil {
+		return b
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return strings.EqualFold(strings.TrimSpace(s), "true")
+	}
+	return false
 }
 
 // priorityLabel renders a row's priority as its display string: strings as-is

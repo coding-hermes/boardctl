@@ -65,6 +65,11 @@ func TestCmdNextDispatchableRows(t *testing.T) {
 			rows: nextTestRow("BT-WAIT", "pending", "P1", `,"depends_on":["BT-MISSING"]`) + nextTestRow("BT-READY", "pending", "P2", ""),
 			want: "id: BT-READY\npriority: P2\ntitle: title BT-READY\nacceptance_criteria: criteria BT-READY\n",
 		},
+		{
+			name: "string-deferred excluded",
+			rows: nextTestRow("BT-STRDEF", "pending", "P0", `,"deferred":"true"`) + nextTestRow("BT-READY", "pending", "P2", ""),
+			want: "id: BT-READY\npriority: P2\ntitle: title BT-READY\nacceptance_criteria: criteria BT-READY\n",
+		},
 	}
 
 	for _, tc := range tests {

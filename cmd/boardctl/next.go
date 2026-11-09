@@ -63,7 +63,7 @@ func cmdNext(dir string, args []string) error {
 			}
 			continue
 		}
-		if nextRowDeferred(row) {
+		if board.RowIsDeferred(row) {
 			deferred++
 			continue
 		}
@@ -104,15 +104,6 @@ func nextPriority(priority string) int {
 		return int(priority[1] - '0')
 	}
 	return 6
-}
-
-func nextRowDeferred(row *board.Row) bool {
-	raw := row.Get("deferred")
-	if raw == nil {
-		return false
-	}
-	var deferred bool
-	return json.Unmarshal(raw, &deferred) == nil && deferred
 }
 
 func nextDependenciesSatisfied(row *board.Row, byID map[string]*board.Row) bool {
