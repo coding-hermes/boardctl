@@ -68,6 +68,7 @@ go build ./cmd/boardctl
 #   -C ~/myproject/.coding-hermes/board -> the board dir itself
 boardctl -C ~/myproject stats
 boardctl -C ~/myproject list --status pending
+boardctl next -C ~/myproject                 # print one highest-priority dispatchable row
 boardctl -C ~/myproject list --all       # include fixture rows (hidden by default)
 boardctl -C ~/myproject show DF-MYPROJECT-1 --events
 boardctl -C ~/myproject show DF-MYPROJECT-1 --skip-bad-lines   # degraded read: healthy

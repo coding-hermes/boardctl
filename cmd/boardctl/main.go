@@ -50,6 +50,7 @@ commands:
   list    [--status S] [--priority P] [--initiative SLUG] [--json] [--all] [--skip-bad-lines]
   show    <id> [--events]
   next-id --family CF [--width N] [--json]   (prints the next free id; read-only)
+  next    [-C dir]   (prints the highest-priority dispatchable row; read-only)
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
           [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
@@ -243,6 +244,8 @@ func run(args []string) int {
 		err = cmdUpdate(boardDir, rest)
 	case "next-id":
 		err = cmdNextID(boardDir, rest)
+	case "next":
+		err = cmdNext(boardDir, rest)
 	case "event":
 		err = cmdEvent(boardDir, rest)
 	case "header":
@@ -283,6 +286,10 @@ func run(args []string) int {
 		return 2
 	}
 	if err != nil {
+		if errors.Is(err, errNextNoWork) {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 3
+		}
 		// BT-041: a help request printed its usage to stdout already and
 		// must read as success (exit 0) — never as a validation failure.
 		if errors.Is(err, errHelpShown) {

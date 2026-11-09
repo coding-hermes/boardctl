@@ -32,7 +32,7 @@ import (
 // than only on the commands that happened to be measured when the defect
 // was filed.
 var bt041Subcommands = []string{
-	"init", "list", "show", "create", "update", "event", "header",
+	"init", "list", "show", "create", "update", "next-id", "next", "event", "header",
 	"validate", "sweep-status", "doctor", "version", "stats", "render",
 	"import", "serve", "install", "umbrella",
 }
