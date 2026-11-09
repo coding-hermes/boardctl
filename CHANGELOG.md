@@ -4,6 +4,61 @@
 
 Changes for the next release will be recorded here.
 
+## v0.3.0 — 2026-11-09
+
+This release contains 53 commits since v0.2.0 (51 non-merge, 12 material),
+summarized by the commit categories below. The cited short SHAs are taken
+directly from the release range (`git log v0.2.0..HEAD --oneline`).
+
+### Features
+
+- `boardctl next-id` allocates the next free board id without a read-then-write
+  race (`5a4fbda`).
+- DEFER-EVIDENCE: a deferral now carries `defer_reason` and
+  `defer_review_by`, the audit keys a deferral owes (`1cda136`).
+- Initiative: a first-class grouping key so work can be scoped and rolled up
+  across a board (`cbd817a`).
+- Coverage floor gate (`make cover-check`) with reviewable floors — total 80%,
+  per-package 60%, `internal/secretscheck` exempt (`56418f5`, `1a57984`,
+  `0b820c2`).
+- Canon: sanction the premise-probe key, which accounted for 52 of 55
+  warnings on the code-factory board (`39eb2f7`).
+
+### Fixes
+
+- BOARD-GUARD-003: refuse a symbolic commit hash and validate evidence-run-id
+  provenance before a row is accepted (`79ebc73`).
+- Guard: raise `guards.hook_timeout` to 1020s so it sits above
+  `test_timeout` (fail-open risk, BT-088) (`6cefd6c`).
+- Lint: pin the golangci config to the repo root and gate vendored configs, so
+  `go_lint` no longer aborts on `vendor/*.go` commits (BT-087) (`fec2b4a`).
+- Coverage: honor the coverage-floor override in `cover-check` and drop the
+  undocumented `MIN_PACKAGE_COVERAGE` override in `cmd/covercheck`
+  (`d446cf2`, `d772169`).
+- Generated artifacts (render fixture, tests) are deterministic and no longer
+  churn the tree (BT-84) (`2a7ef7f`, `d7ea140`).
+- Gitleaks: anchor the `sk-api-key` regex to a non-alnum boundary so mid-word
+  matches stop raising false findings (BT-83) (`236bed7`).
+- Tests: stop the suite pinning the host's temp-root spelling (`d051111`).
+
+### Documentation
+
+- `docs/cli`: name `--initiative`/`--clear-initiative` in both usage surfaces
+  (`6268f6f`).
+- Dependency-currency audit: the build set is current; graph residue is
+  justified (`77b0b56`).
+- README-health findings filed from a read-through of the install, release and
+  command surfaces (`779325c`).
+
+### Maintenance
+
+- Board, QA, dogfood, specification and release-readiness evidence across the
+  release range, including BT-083 through BT-102 filings, the 2026-11-08 QA
+  battery, dogfood run 28 (DEFER-EVIDENCE + BOARD-GUARD-003), and the
+  `[ci skip]` gitignore rescue classes (`037835f`, `9482755`, `abfa33d`,
+  `fc60955`, `67328f1`, `f251101`, `39efb5b`).
+- Board/harness bookkeeping commits are not listed individually.
+
 ## v0.2.0
 
 This release contains 143 commits since v0.1.11, summarized by the commit
