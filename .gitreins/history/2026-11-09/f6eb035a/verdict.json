@@ -1,0 +1,143 @@
+{
+  "task_id": "DF-BOARDCTL-52",
+  "task_title": "Fix boardctl completion provenance gate on real boards",
+  "task_criteria": [
+    "Real-repo boards must reject nonexistent completion commit hashes and evidence run ids; preserve fixture exemptions; focused regression tests and go test ./... pass."
+  ],
+  "passed": false,
+  "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-52",
+  "branch": "wt/DF-BOARDCTL-52",
+  "commit": "965247671bf1bcb589249dd963abaf5ac941ec0d",
+  "pass_class": "judged",
+  "tier2_skipped": false,
+  "working_tree_content_fingerprint": "179fec97b4034c7e86127749a8a172206a56bb01b57e50bea01943bb8368e02a",
+  "working_tree_dirty_path_count": 0,
+  "items": [
+    {
+      "criterion": "Real-repo boards must reject nonexistent completion commit hashes and evidence run ids; preserve fixture exemptions; focused regression tests and go test ./... pass.",
+      "status": "PASS",
+      "detail": "Real-repo probe on a fresh git repo (/tmp/probe-real-repo with .gitreins/history/2026-11-01/real-run-1): (A) phantom commit 40 zeros + phantom run => rc=1, 'boardctl: completion REFUSED: --commit-hash \"0000000000000000000000000000000000000000\" is not a resolvable commit: fatal: Needed a single revision'; (B) phantom run only => rc=1, 'completion REFUSED: --evidence-run-id \"deadbeef\" is not an existing directory under .gitreins/history/'; (C) real HEAD + real-run-1 => rc=0 and row written with commit_hash + detail.evidence[run_id]. Fixture exemptions preserved: (D) tmp fixture with no git => rc=0; (E) testdata/board inside a real repo => rc=0. Refusal writes nothing: md5 of tasks.jsonl/events.jsonl identical before and after (5ce26086e6f1f6c4db2fbacfda0e8934 / 39a3241b02a76a87c25c2b341ca7733c). Root cause fixed at internal/board/evidence_gate.go:136-155 (isTestEnvironment now uses `git -C dir rev-parse --show-toplevel` instead of stat'ing <boarddir>/.git, which no real layout has). Tests: `go test ./internal/board/ -run 'TestBoardGuard003|TestIsTestEnvironment' -count=1 -v` => PASS, 'ok github.com/coding-hermes/boardctl/internal/board 0.045s' (all 6 tests incl. TestBoardGuard003RealRepoRejectsUnprovenProvenance and TestIsTestEnvironmentUsesRepositoryRoot subtests); `go test ./... -count=1` => every package 'ok' (cmd/boardctl 5.652s, internal/board 1.398s, ...), exit_code 0. go vet ./internal/board/ clean, gofmt -l reports nothing, LSP diagnostics empty."
+    }
+  ],
+  "merge_recommendation": "no_concerns_found",
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 tests: scanners: nice=nice -n 10\n  \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check",
+      "steps": [
+        {
+          "id": "tests",
+          "type": "script",
+          "passed": false,
+          "output": "scanners: nice=nice -n 10\ngo: go: could not create module cache: mkdir /var/tmp/hermes-go-mod: file exists\n",
+          "error": "",
+          "data": {
+            "exit_code": 1,
+            "guard_log": "/home/kara/worktrees/boardctl-DF-BOARDCTL-52/.gitreins/logs/guard-20261109T201612.733347Z.log"
+          }
+        },
+        {
+          "id": "secrets",
+          "type": "script",
+          "passed": true,
+          "output": "secrets: scanners=gitleaks+builtin cross-check\nscanners: nice=nice -n 10\n3:17PM INF scanned ~5319791 bytes (5.32 MB) in 1.37s\n3:17PM INF no leaks found\nsecrets: gitleaks: clean\nsecrets: builtin cross-check: Scanned 289 files \u2014 clean (excluded harness state: .gitreins/**)\nsecrets: builtin cross-check status: clean\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/worktrees/boardctl-DF-BOARDCTL-52/.gitreins/logs/guard-20261109T201612.733347Z.log",
+            "secrets_scanners": [
+              "gitleaks",
+              "builtin"
+            ]
+          }
+        }
+      ],
+      "coverage": "secrets+tests"
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Real-repo boards must reject nonexistent completion commit hashes and evidence run ids; preserve fixture exemptions; focused regression tests and go test ./... pass.: Real-repo probe on a fresh git repo (/tmp/probe-real-repo with .gitreins/history/2026-11-01/real-run-1): (A) phantom commit 40 zeros + phantom run => rc=1, 'boardctl: completion REFUSED: --commit-hash \"0000000000000000000000000000000000000000\" is not a resolvable commit: fatal: Needed a single revision'; (B) phantom run only => rc=1, 'completion REFUSED: --evidence-run-id \"deadbeef\" is not an existing directory under .gitreins/history/'; (C) real HEAD + real-run-1 => rc=0 and row written with commit_hash + detail.evidence[run_id]. Fixture exemptions preserved: (D) tmp fixture with no git => rc=0; (E) testdata/board inside a real repo => rc=0. Refusal writes nothing: md5 of tasks.jsonl/events.jsonl identical before and after (5ce26086e6f1f6c4db2fbacfda0e8934 / 39a3241b02a76a87c25c2b341ca7733c). Root cause fixed at internal/board/evidence_gate.go:136-155 (isTestEnvironment now uses `git -C dir rev-parse --show-toplevel` instead of stat'ing <boarddir>/.git, which no real layout has). Tests: `go test ./internal/board/ -run 'TestBoardGuard003|TestIsTestEnvironment' -count=1 -v` => PASS, 'ok github.com/coding-hermes/boardctl/internal/board 0.045s' (all 6 tests incl. TestBoardGuard003RealRepoRejectsUnprovenProvenance and TestIsTestEnvironmentUsesRepositoryRoot subtests); `go test ./... -count=1` => every package 'ok' (cmd/boardctl 5.652s, internal/board 1.398s, ...), exit_code 0. go vet ./internal/board/ clean, gofmt -l reports nothing, LSP diagnostics empty.\nThe provenance gate now fires on real repo boards (phantom commit hash and phantom evidence run both refused at rc=1 with nothing written), fixture exemptions for /tmp and testdata still pass, and both the focused regression tests and the full `go test ./...` suite are green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Real-repo boards must reject nonexistent completion commit hashes and evidence run ids; preserve fixture exemptions; focused regression tests and go test ./... pass.: Real-repo probe on a fresh git repo (/tmp/probe-real-repo with .gitreins/history/2026-11-01/real-run-1): (A) phantom commit 40 zeros + phantom run => rc=1, 'boardctl: completion REFUSED: --commit-hash \"0000000000000000000000000000000000000000\" is not a resolvable commit: fatal: Needed a single revision'; (B) phantom run only => rc=1, 'completion REFUSED: --evidence-run-id \"deadbeef\" is not an existing directory under .gitreins/history/'; (C) real HEAD + real-run-1 => rc=0 and row written with commit_hash + detail.evidence[run_id]. Fixture exemptions preserved: (D) tmp fixture with no git => rc=0; (E) testdata/board inside a real repo => rc=0. Refusal writes nothing: md5 of tasks.jsonl/events.jsonl identical before and after (5ce26086e6f1f6c4db2fbacfda0e8934 / 39a3241b02a76a87c25c2b341ca7733c). Root cause fixed at internal/board/evidence_gate.go:136-155 (isTestEnvironment now uses `git -C dir rev-parse --show-toplevel` instead of stat'ing <boarddir>/.git, which no real layout has). Tests: `go test ./internal/board/ -run 'TestBoardGuard003|TestIsTestEnvironment' -count=1 -v` => PASS, 'ok github.com/coding-hermes/boardctl/internal/board 0.045s' (all 6 tests incl. TestBoardGuard003RealRepoRejectsUnprovenProvenance and TestIsTestEnvironmentUsesRepositoryRoot subtests); `go test ./... -count=1` => every package 'ok' (cmd/boardctl 5.652s, internal/board 1.398s, ...), exit_code 0. go vet ./internal/board/ clean, gofmt -l reports nothing, LSP diagnostics empty.\nThe provenance gate now fires on real repo boards (phantom commit hash and phantom evidence run both refused at rc=1 with nothing written), fixture exemptions for /tmp and testdata still pass, and both the focused regression tests and the full `go test ./...` suite are green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Real-repo boards must reject nonexistent completion commit hashes and evidence run ids; preserve fixture exemptions; focused regression tests and go test ./... pass.",
+                "status": "PASS",
+                "detail": "Real-repo probe on a fresh git repo (/tmp/probe-real-repo with .gitreins/history/2026-11-01/real-run-1): (A) phantom commit 40 zeros + phantom run => rc=1, 'boardctl: completion REFUSED: --commit-hash \"0000000000000000000000000000000000000000\" is not a resolvable commit: fatal: Needed a single revision'; (B) phantom run only => rc=1, 'completion REFUSED: --evidence-run-id \"deadbeef\" is not an existing directory under .gitreins/history/'; (C) real HEAD + real-run-1 => rc=0 and row written with commit_hash + detail.evidence[run_id]. Fixture exemptions preserved: (D) tmp fixture with no git => rc=0; (E) testdata/board inside a real repo => rc=0. Refusal writes nothing: md5 of tasks.jsonl/events.jsonl identical before and after (5ce26086e6f1f6c4db2fbacfda0e8934 / 39a3241b02a76a87c25c2b341ca7733c). Root cause fixed at internal/board/evidence_gate.go:136-155 (isTestEnvironment now uses `git -C dir rev-parse --show-toplevel` instead of stat'ing <boarddir>/.git, which no real layout has). Tests: `go test ./internal/board/ -run 'TestBoardGuard003|TestIsTestEnvironment' -count=1 -v` => PASS, 'ok github.com/coding-hermes/boardctl/internal/board 0.045s' (all 6 tests incl. TestBoardGuard003RealRepoRejectsUnprovenProvenance and TestIsTestEnvironmentUsesRepositoryRoot subtests); `go test ./... -count=1` => every package 'ok' (cmd/boardctl 5.652s, internal/board 1.398s, ...), exit_code 0. go vet ./internal/board/ clean, gofmt -l reports nothing, LSP diagnostics empty."
+              }
+            ],
+            "summary": "The provenance gate now fires on real repo boards (phantom commit hash and phantom evidence run both refused at rc=1 with nothing written), fixture exemptions for /tmp and testdata still pass, and both the focused regression tests and the full `go test ./...` suite are green.",
+            "provenance": {
+              "model": "deepseek-v4-flash",
+              "base_url_source": "GITREINS_LLM_BASE_URL",
+              "api_key_source": "GITREINS_LLM_API_KEY"
+            }
+          }
+        }
+      ],
+      "model": "deepseek-v4-flash",
+      "base_url_source": "GITREINS_LLM_BASE_URL",
+      "api_key_source": "GITREINS_LLM_API_KEY"
+    }
+  },
+  "review": {
+    "reviewer_email": "totalwindupflightsystems@gmail.com",
+    "reviewer_name": "totalwindupflightsystems",
+    "commit_author_email": "totalwindupflightsystems@gmail.com",
+    "commit_author_name": "totalwindupflightsystems",
+    "self_review": true,
+    "findings": [
+      {
+        "severity": "high",
+        "file": "internal/board/evidence_gate.go",
+        "line": 147,
+        "detection": "new symbol `exec` used but no import added in this diff",
+        "detail": "isTestEnvironment now calls exec.Command, but the diff adds no `os/exec` import to evidence_gate.go (only the test file gained it), so the package will not compile unless the import already existed \u2014 the diff shows no such addition."
+      },
+      {
+        "severity": "medium",
+        "file": "internal/board/evidence_gate.go",
+        "line": 147,
+        "detection": "git invocation has no timeout and no error-path test for git-missing/git-failure",
+        "detail": "isTestEnvironment shells out to `git rev-parse` on every call and treats any error (including git not installed or a hung process) as 'test environment', silently disabling the provenance gate; the new tests only cover a real repo and tmp/testdata dirs, never the git-unavailable failure path."
+      },
+      {
+        "severity": "low",
+        "file": "internal/board/board_guard_003_test.go",
+        "line": 82,
+        "detection": "test writes scratch dirs into repo-relative `.tick-cache` instead of t.TempDir()",
+        "detail": "Both new tests create fixtures under `<wd>/../../.tick-cache` rather than using t.TempDir(), diverging from the existing fixture helpers and leaving artifacts in the working tree if cleanup fails."
+      }
+    ],
+    "summary": "The classifier rewrite shells out to git without adding the os/exec import to evidence_gate.go and without a failure-path test, plus tests use a non-standard scratch location."
+  },
+  "summary": "Stage tier1: FAIL\n    \u2717 tests: scanners: nice=nice -n 10\n  \u2713 secrets: secrets: scanners=gitleaks+builtin cross-check\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Real-repo boards must reject nonexistent completion commit hashes and evidence run ids; preserve fixture exemptions; focused regression tests and go test ./... pass.: Real-repo probe on a fresh git repo (/tmp/probe-real-repo with .gitreins/history/2026-11-01/real-run-1): (A) phantom commit 40 zeros + phantom run => rc=1, 'boardctl: completion REFUSED: --commit-hash \"0000000000000000000000000000000000000000\" is not a resolvable commit: fatal: Needed a single revision'; (B) phantom run only => rc=1, 'completion REFUSED: --evidence-run-id \"deadbeef\" is not an existing directory under .gitreins/history/'; (C) real HEAD + real-run-1 => rc=0 and row written with commit_hash + detail.evidence[run_id]. Fixture exemptions preserved: (D) tmp fixture with no git => rc=0; (E) testdata/board inside a real repo => rc=0. Refusal writes nothing: md5 of tasks.jsonl/events.jsonl identical before and after (5ce26086e6f1f6c4db2fbacfda0e8934 / 39a3241b02a76a87c25c2b341ca7733c). Root cause fixed at internal/board/evidence_gate.go:136-155 (isTestEnvironment now uses `git -C dir rev-parse --show-toplevel` instead of stat'ing <boarddir>/.git, which no real layout has). Tests: `go test ./internal/board/ -run 'TestBoardGuard003|TestIsTestEnvironment' -count=1 -v` => PASS, 'ok github.com/coding-hermes/boardctl/internal/board 0.045s' (all 6 tests incl. TestBoardGuard003RealRepoRejectsUnprovenProvenance and TestIsTestEnvironmentUsesRepositoryRoot subtests); `go test ./... -count=1` => every package 'ok' (cmd/boardctl 5.652s, internal/board 1.398s, ...), exit_code 0. go vet ./internal/board/ clean, gofmt -l reports nothing, LSP diagnostics empty.\nThe provenance gate now fires on real repo boards (phantom commit hash and phantom evidence run both refused at rc=1 with nothing written), fixture exemptions for /tmp and testdata still pass, and both the focused regression tests and the full `go test ./...` suite are green.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-11-09T20:18:47.587022",
+  "supersedes": null,
+  "superseded_by": null,
+  "evidence": {
+    "collected_at": "2026-11-09T20:18:47.605133+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 6160,
+        "truncated": false,
+        "source": "git show 965247671bf1"
+      }
+    ],
+    "task_id": "DF-BOARDCTL-52"
+  }
+}
