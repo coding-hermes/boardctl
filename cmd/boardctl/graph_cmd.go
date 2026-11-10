@@ -118,7 +118,8 @@ func cmdReady(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	filter := strings.ToLower(strings.TrimSpace(*initiative))
+	rawFilter := strings.TrimSpace(*initiative)
+	filter := strings.ToLower(rawFilter)
 	payload := buildReadyJSON(b, report, filter)
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
@@ -127,6 +128,9 @@ func cmdReady(dir string, args []string) error {
 			return err
 		}
 	} else {
+		if rawFilter != "" && !initiativePresent(report.Rows, filter) {
+			_, _ = fmt.Fprintf(os.Stdout, "no rows carry initiative %q on this board\n", rawFilter)
+		}
 		printReady(b, payload, *blocked)
 	}
 	if b.HasSkipped() {
@@ -183,38 +187,38 @@ func buildReadyJSON(b *board.Board, report *board.GraphReport, filter string) re
 }
 
 func printReady(b *board.Board, payload readyJSON, showBlocked bool) {
-	fmt.Fprintf(os.Stdout, "board: %s\nready now: %d row(s) across %d initiative group(s)\n\n", payload.Board, payload.TotalReady, len(payload.Groups))
+	_, _ = fmt.Fprintf(os.Stdout, "board: %s\nready now: %d row(s) across %d initiative group(s)\n\n", payload.Board, payload.TotalReady, len(payload.Groups))
 	for _, group := range payload.Groups {
 		name := group.Initiative
 		if name == "" {
 			name = "(no initiative)"
 		}
-		fmt.Fprintf(os.Stdout, "  %s (%d ready — could absorb %d workers)\n", name, group.Count, group.Count)
+		_, _ = fmt.Fprintf(os.Stdout, "  %s (%d ready — could absorb %d workers)\n", name, group.Count, group.Count)
 		for _, row := range group.Rows {
-			fmt.Fprintf(os.Stdout, "    %s  %s  %s\n", row.ID, row.Priority, row.Title)
+			_, _ = fmt.Fprintf(os.Stdout, "    %s  %s  %s\n", row.ID, row.Priority, row.Title)
 		}
 	}
-	fmt.Fprintf(os.Stdout, "blocked: %d row(s)", len(payload.Blocked))
+	_, _ = fmt.Fprintf(os.Stdout, "blocked: %d row(s)", len(payload.Blocked))
 	if !showBlocked {
-		fmt.Fprintln(os.Stdout, " — re-run with --blocked to name each blocker chain")
+		_, _ = fmt.Fprintln(os.Stdout, " — re-run with --blocked to name each blocker chain")
 		return
 	}
-	fmt.Fprintln(os.Stdout, "")
+	_, _ = fmt.Fprintln(os.Stdout, "")
 	for _, item := range payload.Blocked {
-		fmt.Fprintf(os.Stdout, "  %s  %s: %s\n", item.ID, item.BlockerClass, item.ChainText)
+		_, _ = fmt.Fprintf(os.Stdout, "  %s  %s: %s\n", item.ID, item.BlockerClass, item.ChainText)
 	}
 }
 
 func printDirection(payload directionJSON) {
-	fmt.Fprintf(os.Stdout, "board: %s\n%d open initiative(s)\n\n", payload.Board, len(payload.Initiatives))
+	_, _ = fmt.Fprintf(os.Stdout, "board: %s\n%d open initiative(s)\n\n", payload.Board, len(payload.Initiatives))
 	for _, item := range payload.Initiatives {
-		fmt.Fprintf(os.Stdout, "  %-16s total %d | complete %d | failed %d | deferred %d | remaining %d\n", item.Initiative, item.Total, item.Complete, item.Failed, item.Deferred, item.Remaining)
-		fmt.Fprintf(os.Stdout, "                 ready now: %d (%s)\n", item.ReadyNow, strings.Join(item.ReadyIDs, ", "))
-		fmt.Fprintf(os.Stdout, "                 blocked:   %d\n", item.Blocked)
-		fmt.Fprintf(os.Stdout, "                 wave projection: %v\n\n", item.WaveProjection)
+		_, _ = fmt.Fprintf(os.Stdout, "  %-16s total %d | complete %d | failed %d | deferred %d | remaining %d\n", item.Initiative, item.Total, item.Complete, item.Failed, item.Deferred, item.Remaining)
+		_, _ = fmt.Fprintf(os.Stdout, "                 ready now: %d (%s)\n", item.ReadyNow, strings.Join(item.ReadyIDs, ", "))
+		_, _ = fmt.Fprintf(os.Stdout, "                 blocked:   %d\n", item.Blocked)
+		_, _ = fmt.Fprintf(os.Stdout, "                 wave projection: %v\n\n", item.WaveProjection)
 	}
 	if payload.Unscoped.Total > 0 {
-		fmt.Fprintf(os.Stdout, "  (no initiative)  total %d | remaining %d | ready now %d | wave projection: %v\n", payload.Unscoped.Total, payload.Unscoped.Remaining, payload.Unscoped.ReadyNow, payload.Unscoped.WaveProjection)
+		_, _ = fmt.Fprintf(os.Stdout, "  (no initiative)  total %d | remaining %d | ready now %d | wave projection: %v\n", payload.Unscoped.Total, payload.Unscoped.Remaining, payload.Unscoped.ReadyNow, payload.Unscoped.WaveProjection)
 	}
 }
 
@@ -279,18 +283,19 @@ func buildDirectionJSON(b *board.Board, report *board.GraphReport) directionJSON
 	out := directionJSON{Board: b.Dir + "/tasks.jsonl", Verb: "direction", Initiatives: []directionInitiativeJSON{}, Cycles: nonNilCycles(report.Cycles), Dangling: nonNilDangling(report.Dangling), Unscoped: directionUnscopedJSON{WaveProjection: []int{}}, Stats: directionStatsJSON{TotalReady: len(report.Ready)}}
 	for slug, rows := range groups {
 		if slug == "" {
-			out.Unscoped = directionUnscoped(rows, readyBy[slug])
+			out.Unscoped = directionUnscoped(rows, readyBy[slug], report.WaveLevels)
 			continue
 		}
-		item := directionInitiativeJSON{Initiative: slug, ReadyIDs: sortedStrings(readyBy[slug]), WaveProjection: waveProjection(rows)}
+		item := directionInitiativeJSON{Initiative: slug, ReadyIDs: sortedStrings(readyBy[slug]), WaveProjection: waveProjection(rows, report.WaveLevels)}
 		for _, row := range rows {
 			st := board.NormalizeStatus(row.String("status"))
 			item.Total++
-			if st == "complete" {
+			switch st {
+			case "complete":
 				item.Complete++
-			} else if st == "failed" {
+			case "failed":
 				item.Failed++
-			} else {
+			default:
 				item.Remaining++
 			}
 			if board.RowIsDeferred(row) {
@@ -308,8 +313,8 @@ func buildDirectionJSON(b *board.Board, report *board.GraphReport) directionJSON
 	return out
 }
 
-func directionUnscoped(rows []*board.Row, ready []string) directionUnscopedJSON {
-	out := directionUnscopedJSON{Total: len(rows), ReadyNow: len(ready), WaveProjection: waveProjection(rows)}
+func directionUnscoped(rows []*board.Row, ready []string, levels map[string]int) directionUnscopedJSON {
+	out := directionUnscopedJSON{Total: len(rows), ReadyNow: len(ready), WaveProjection: waveProjection(rows, levels)}
 	for _, row := range rows {
 		st := board.NormalizeStatus(row.String("status"))
 		if st != "complete" && st != "failed" {
@@ -318,61 +323,29 @@ func directionUnscoped(rows []*board.Row, ready []string) directionUnscopedJSON 
 	}
 	return out
 }
-func waveProjection(rows []*board.Row) []int {
-	levels := map[string]int{}
-	for _, row := range rows {
-		if board.NormalizeStatus(row.String("status")) == "complete" {
-			levels[row.String("id")] = 0
-		}
-	}
-	changed := true
-	for changed {
-		changed = false
+func waveProjection(rows []*board.Row, sharedLevels map[string]int) []int {
+	levels := sharedLevels
+	if levels == nil {
+		levels = make(map[string]int, len(rows))
 		for _, row := range rows {
-			id := row.String("id")
-			if levels[id] > 0 || board.NormalizeStatus(row.String("status")) != "pending" || board.RowIsDeferred(row) {
-				continue
-			}
-			deps := boardDeps(row)
-			max, ok := 0, true
-			for _, dep := range deps {
-				level, exists := levels[dep]
-				if !exists {
-					ok = false
-					break
-				}
-				if level > max {
-					max = level
-				}
-			}
-			if ok {
-				levels[id] = max + 1
-				changed = true
+			if board.NormalizeStatus(row.String("status")) == "complete" {
+				levels[row.String("id")] = 0
 			}
 		}
 	}
-	counts := map[int]int{}
+	counts := make(map[int]int)
 	max := 0
-	for _, level := range levels {
-		if level > max {
-			max = level
+	for _, row := range rows {
+		if level := levels[row.String("id")]; level > 0 {
+			counts[level]++
+			if level > max {
+				max = level
+			}
 		}
 	}
 	out := make([]int, max)
 	for level, count := range counts {
-		if level > 0 {
-			out[level-1] = count
-		}
-	}
-	for _, row := range rows {
-		if level := levels[row.String("id")]; level > 0 {
-			counts[level]++
-		}
-	}
-	for level, count := range counts {
-		if level > 0 {
-			out[level-1] = count
-		}
+		out[level-1] = count
 	}
 	return out
 }
@@ -384,6 +357,15 @@ func boardDeps(row *board.Row) []string {
 }
 func initiativeOf(row *board.Row) string {
 	return strings.ToLower(strings.TrimSpace(row.String("initiative")))
+}
+
+func initiativePresent(rows []*board.Row, want string) bool {
+	for _, row := range rows {
+		if initiativeOf(row) == want {
+			return true
+		}
+	}
+	return false
 }
 func readyRow(row *board.Row) readyRowJSON {
 	deps := boardDeps(row)

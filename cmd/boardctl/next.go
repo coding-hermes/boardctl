@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -38,47 +36,34 @@ func cmdNext(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	rows, err := b.TaskRows()
+	report, err := b.AnalyzeDispatchability()
 	if err != nil {
 		return err
-	}
-	fixtureIDs, err := b.FixtureIDs()
-	if err != nil {
-		return err
-	}
-
-	byID := make(map[string]*board.Row, len(rows))
-	for _, row := range rows {
-		if id := row.String("id"); id != "" {
-			byID[id] = row
-		}
 	}
 
 	type candidate struct {
 		row   *board.Row
 		order int
 	}
-	candidates := make([]candidate, 0, len(rows))
+	orderByID := make(map[string]int, len(report.Rows))
+	for order, row := range report.Rows {
+		orderByID[row.String("id")] = order
+	}
+	candidates := make([]candidate, 0, len(report.Ready))
+	for _, row := range report.Ready {
+		candidates = append(candidates, candidate{row: row, order: orderByID[row.String("id")]})
+	}
 	deferred, blocked := 0, 0
-	for order, row := range rows {
-		if board.NormalizeStatus(row.String("status")) != "pending" {
-			if board.NormalizeStatus(row.String("status")) == "blocked" {
-				blocked++
-			}
+	for _, row := range report.Rows {
+		status := board.NormalizeStatus(row.String("status"))
+		if status == "complete" || status == "failed" {
 			continue
 		}
-		if fixtureIDs[row.String("id")] {
-			continue // perpetual fixture: not dispatchable work
-		}
-		if board.RowIsDeferred(row) {
+		if board.RowIsDeferred(row) && status == "pending" {
 			deferred++
-			continue
-		}
-		if !nextDependenciesSatisfied(row, byID) {
+		} else if !report.IsReady(row) {
 			blocked++
-			continue
 		}
-		candidates = append(candidates, candidate{row: row, order: order})
 	}
 	if len(candidates) == 0 {
 		switch {
@@ -111,22 +96,4 @@ func nextPriority(priority string) int {
 		return int(priority[1] - '0')
 	}
 	return 6
-}
-
-func nextDependenciesSatisfied(row *board.Row, byID map[string]*board.Row) bool {
-	raw := row.Get("depends_on")
-	if raw == nil || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-		return true
-	}
-	var deps []string
-	if err := json.Unmarshal(raw, &deps); err != nil {
-		return false
-	}
-	for _, depID := range deps {
-		dep, ok := byID[depID]
-		if !ok || board.NormalizeStatus(dep.String("status")) != "complete" {
-			return false
-		}
-	}
-	return true
 }

@@ -54,10 +54,6 @@ blind spot.
 - `ready` (BT-097): graph-aware dispatchability wave view; `direction` is the
   per-initiative reverse view. Both are read-only and use transitive dependencies.
 
-ch:trace row=BT-097 spec=specs/BT-097-work-directions.md#2 wave=none:serial test=internal/board/ready_test.go::TestAnalyzeDispatchabilityTransitiveAndBlocked doc=skills/boardctl-usage/SKILL.md evidence=none:worker-branch-pending witness=none:control-host-no-persistent-external-witness verdict=none:worker-branch-pending-judge commit=none:integration-sha-pending memory=none:foreman-writes-after-publish
-STATUS: complete
-TIER: T1
-EVIDENCE: focused Go tests and CLI wiring are run by the foreman closeout.
 
 - `next-id` (2026-11-03): `boardctl next-id --family CF` prints the next free
   id (max+1, observed width preserved) without writing anything. `create`
@@ -113,9 +109,12 @@ boardctl -C R ready [--initiative SLUG] [--blocked] [--json]
                                             # dispatchable rows (pending, not
                                             # deferred, TRANSITIVE deps complete)
                                             # grouped by initiative; each group
-                                            # says how many workers it could absorb
+                                            # says how many workers it could absorb;
+                                            # a missing slug says no rows carry it
 boardctl -C R direction [--json]            # per-initiative remaining / ready
                                             # now / wave projection
+boardctl -C R next                          # one highest-priority row using the same
+                                            # graph-aware dispatchability predicate
 
 # read
 boardctl -C R stats [--json] [--all]       # counts by status/priority
