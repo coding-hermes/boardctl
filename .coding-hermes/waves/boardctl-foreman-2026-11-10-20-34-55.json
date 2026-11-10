@@ -1,0 +1,10 @@
+{
+  "tick_id": "boardctl-foreman-2026-11-10-20-34-55",
+  "project": "boardctl",
+  "base": "9919712d852be05ecaa1d2b37be0ba91f587cd24",
+  "wave_size": 0,
+  "mode": "serial-fallback",
+  "selected": "RELEASE-2026-11-10-01",
+  "workers": [],
+  "decision": "verification-only landed-drift closeout; prior implementation is already on origin/main; no worker dispatched"
+}
