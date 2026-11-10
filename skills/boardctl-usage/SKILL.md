@@ -53,6 +53,8 @@ blind spot.
   post-merge hook NEVER blocks the commit.
 - `ready` (BT-097): graph-aware dispatchability wave view; `direction` is the
   per-initiative reverse view. Both are read-only and use transitive dependencies.
+- `evidence baseline --record`: records current completion debt and enables
+  FAIL-on-new-debt completion checks; without a baseline, debt is WARN-only.
 
 
 - `next-id` (2026-11-03): `boardctl next-id --family CF` prints the next free

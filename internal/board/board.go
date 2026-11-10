@@ -46,6 +46,11 @@ type Board struct {
 	// (nil when no write is in flight on this value). Write verbs take it
 	// for their whole check-then-act window; see lock.go.
 	lock *boardLock
+
+	// completionWarnings is populated by the most recent successful write.
+	// The CLI renders these warnings after UpdateTask returns; keeping them on
+	// the Board preserves the existing UpdateTask signature for library callers.
+	completionWarnings []CompletionWarning
 }
 
 // ErrBoardNotFound is wrapped with the directories probed. It is also the

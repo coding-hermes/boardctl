@@ -928,7 +928,8 @@ type UpdateSpec struct {
 	// already-canonical row is a no-op (reporting "already canonical" at the
 	// caller). --normalize alone satisfies the change-flag gate and never
 	// requires --force.
-	Normalize bool
+	Normalize  bool
+	RecordDebt bool
 }
 
 // UpdateTask surgically updates ONE task row. Every untouched line of
@@ -1050,6 +1051,9 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 				commitHash = *spec.CommitHash
 			}
 			if err := b.validateCompletionProvenance(commitHash, spec.EvidenceRunID); err != nil {
+				return nil, err
+			}
+			if err := b.gateCompletionCommit(id, commitHash, spec.RecordDebt); err != nil {
 				return nil, err
 			}
 		}

@@ -50,6 +50,206 @@ var ErrEvidenceRunRequired = errors.New("evidence run required")
 
 var commitObjectID = regexp.MustCompile(`^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$`)
 
+const completionEvidenceBaselineFile = "evidence-baseline.json"
+
+// CompletionDebt records a completion whose commit could not prove a product
+// change. It is retained in the baseline so historic debt can be tolerated,
+// counted, and never mistaken for a verified completion.
+type CompletionDebt struct {
+	CommitHash string   `json:"commit_hash"`
+	TaskIDs    []string `json:"task_ids,omitempty"`
+	Reason     string   `json:"reason"`
+}
+
+type completionEvidenceBaseline struct {
+	Version int              `json:"version"`
+	Debt    []CompletionDebt `json:"debt"`
+}
+
+// CompletionWarning is an operator-visible WARN-mode finding.
+type CompletionWarning struct {
+	TaskID string
+	Hash   string
+	Reason string
+}
+
+// CompletionWarnings returns warnings emitted by the most recent completion
+// write. The returned slice is a copy.
+func (b *Board) CompletionWarnings() []CompletionWarning {
+	out := make([]CompletionWarning, len(b.completionWarnings))
+	copy(out, b.completionWarnings)
+	return out
+}
+
+// completionBaselinePath is deliberately board-local: a board can opt into
+// enforcement without adding a second repository configuration surface.
+func (b *Board) completionBaselinePath() string {
+	return filepath.Join(b.Dir, completionEvidenceBaselineFile)
+}
+
+func readCompletionBaseline(path string) (completionEvidenceBaseline, bool, error) {
+	content, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return completionEvidenceBaseline{}, false, nil
+	}
+	if err != nil {
+		return completionEvidenceBaseline{}, false, err
+	}
+	var baseline completionEvidenceBaseline
+	if err := json.Unmarshal(content, &baseline); err != nil {
+		return completionEvidenceBaseline{}, true, fmt.Errorf("%s: invalid completion evidence baseline: %w", filepath.Base(path), err)
+	}
+	if baseline.Version == 0 {
+		baseline.Version = 1
+	}
+	return baseline, true, nil
+}
+
+func completionDebtKey(hash string) string {
+	if hash == "" {
+		return "<missing>"
+	}
+	return hash
+}
+
+func baselineContainsDebt(baseline completionEvidenceBaseline, taskID, hash string) bool {
+	for _, debt := range baseline.Debt {
+		if completionDebtKey(debt.CommitHash) == completionDebtKey(hash) {
+			for _, id := range debt.TaskIDs {
+				if id == taskID {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func completionProductPaths(repo, hash string) ([]string, error) {
+	cmd := exec.Command("git", "-C", repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", hash+"^{commit}")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("commit %q is not a resolvable commit: %w", hash, err)
+	}
+	var product []string
+	for _, path := range strings.Split(string(output), "\n") {
+		path = strings.TrimSpace(path)
+		if path == "" || strings.HasPrefix(path, ".coding-hermes/") || strings.HasPrefix(path, ".gitreins/") || strings.HasPrefix(path, "prompts/") {
+			continue
+		}
+		product = append(product, path)
+	}
+	return product, nil
+}
+
+func completionCommitDebt(b *Board, taskID, hash string) (CompletionWarning, bool, error) {
+	rootCmd := exec.Command("git", "-C", b.Dir, "rev-parse", "--show-toplevel")
+	rootOut, rootErr := rootCmd.Output()
+	if rootErr != nil {
+		if isTestEnvironment(b.Dir) {
+			return CompletionWarning{TaskID: taskID, Hash: hash, Reason: "repository unavailable; commit product paths could not be measured"}, true, nil
+		}
+		return CompletionWarning{}, false, fmt.Errorf("completion REFUSED: cannot resolve repository for commit %q: %w", hash, rootErr)
+	}
+	root := strings.TrimSpace(string(rootOut))
+	if hash == "" {
+		return CompletionWarning{TaskID: taskID, Hash: hash, Reason: "commit_hash is missing"}, true, nil
+	}
+	if !commitObjectID.MatchString(hash) {
+		return CompletionWarning{}, false, fmt.Errorf("completion REFUSED: --commit-hash %q must be a full 40- or 64-hex commit id", hash)
+	}
+	paths, err := completionProductPaths(root, hash)
+	if err != nil {
+		return CompletionWarning{}, false, fmt.Errorf("completion REFUSED: %w", err)
+	}
+	if len(paths) > 0 {
+		return CompletionWarning{}, false, nil
+	}
+	return CompletionWarning{TaskID: taskID, Hash: hash, Reason: "commit touches zero product files (only bookkeeping paths or an empty commit)"}, true, nil
+}
+
+// gateCompletionCommit enforces the baseline policy before any row mutation.
+// Without a baseline it warns and permits historic/new debt. A recorded
+// baseline turns new debt into a refusal while allowing already-recorded debt.
+func (b *Board) gateCompletionCommit(taskID, hash string, recordDebt bool) error {
+	warning, debt, err := completionCommitDebt(b, taskID, hash)
+	if err != nil {
+		return err
+	}
+	if !debt {
+		return nil
+	}
+	baseline, recorded, err := readCompletionBaseline(b.completionBaselinePath())
+	if err != nil {
+		return fmt.Errorf("completion REFUSED: %w", err)
+	}
+	if recorded && !baselineContainsDebt(baseline, taskID, hash) && !recordDebt {
+		return fmt.Errorf("completion REFUSED for %q: %s; use a real commit, bind an evidence run, or deliberately record this id with --record-debt", taskID, warning.Reason)
+	}
+	if recordDebt && recorded && !baselineContainsDebt(baseline, taskID, hash) {
+		baseline.Debt = append(baseline.Debt, CompletionDebt{CommitHash: hash, TaskIDs: []string{taskID}, Reason: warning.Reason})
+		content, marshalErr := json.MarshalIndent(baseline, "", "  ")
+		if marshalErr != nil {
+			return marshalErr
+		}
+		if rewriteErr := atomicRewrite(b.completionBaselinePath(), append(content, '\n')); rewriteErr != nil {
+			return rewriteErr
+		}
+	}
+	b.completionWarnings = append(b.completionWarnings, warning)
+	return nil
+}
+
+// RecordCompletionBaseline records current completion debt and establishes the
+// board's FAIL-on-new-debt mode. It is atomic: a failed census leaves no file.
+func (b *Board) RecordCompletionBaseline() (int, error) {
+	rows, err := b.TaskRows()
+	if err != nil {
+		return 0, err
+	}
+	baseline := completionEvidenceBaseline{Version: 1}
+	seen := map[string]bool{}
+	for _, row := range rows {
+		if !RowIsCompleteCanonical(row) {
+			continue
+		}
+		hash := strings.TrimSpace(row.String("commit_hash"))
+		warning, debt, err := completionCommitDebt(b, row.String("id"), hash)
+		if err != nil {
+			// A malformed or unknown existing hash is historic debt and is
+			// recorded rather than preventing the baseline from being created.
+			if hash == "" || !strings.Contains(err.Error(), "not a resolvable commit") {
+				return 0, err
+			}
+			warning = CompletionWarning{TaskID: row.String("id"), Hash: hash, Reason: "commit_hash is not a resolvable commit"}
+			debt = true
+		}
+		if !debt {
+			continue
+		}
+		key := completionDebtKey(hash)
+		if seen[key] {
+			for i := range baseline.Debt {
+				if completionDebtKey(baseline.Debt[i].CommitHash) == key {
+					baseline.Debt[i].TaskIDs = append(baseline.Debt[i].TaskIDs, row.String("id"))
+				}
+			}
+			continue
+		}
+		seen[key] = true
+		baseline.Debt = append(baseline.Debt, CompletionDebt{CommitHash: hash, TaskIDs: []string{row.String("id")}, Reason: warning.Reason})
+	}
+	content, err := json.MarshalIndent(baseline, "", "  ")
+	if err != nil {
+		return 0, err
+	}
+	content = append(content, '\n')
+	if err := atomicRewrite(b.completionBaselinePath(), content); err != nil {
+		return 0, err
+	}
+	return len(baseline.Debt), nil
+}
+
 // hasCompletionEvent scans events.jsonl for a task_completed event for the given task.
 func (b *Board) hasCompletionEvent(taskID string) (bool, error) {
 	lines, err := ReadJSONLLines(b.eventsPath)

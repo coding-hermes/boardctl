@@ -217,11 +217,10 @@ func TestSkillCoverageParserProvesGatesBite(t *testing.T) {
 			t.Errorf("usageSkillCommands() missed dispatched command %q; got %v", want, cmds)
 		}
 	}
-	// 25 dispatched commands exactly: ready and direction are the graph-aware
-	// wave verbs; the earlier additions are retained in the comment for audit
-	// context.
-	if len(cmds) != 25 {
-		t.Errorf("usageSkillCommands() = %v (%d), want the 25 dispatched commands", cmds, len(cmds))
+	// 26 dispatched commands exactly: evidence is the completion-debt baseline
+	// surface alongside the graph-aware ready/direction verbs.
+	if len(cmds) != 26 {
+		t.Errorf("usageSkillCommands() = %v (%d), want the 26 dispatched commands", cmds, len(cmds))
 	}
 	// Continuation lines must not leak in as fake commands.
 	for _, bad := range []string{"reasoning", "capability-tags", "set-ticks-total"} {

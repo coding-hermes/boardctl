@@ -58,7 +58,7 @@ commands:
           [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
           [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
-          [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
+          [--commit-hash SHA] [--record-debt] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
           [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
           [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
           [--acceptance-criteria TEXT]
@@ -115,6 +115,7 @@ commands:
            tasks.jsonl in ONE guarded atomic pass (all repairs or nothing).
 
   doctor
+  evidence baseline --record   record completion debt and enable FAIL-on-new-debt
   version [--json]
   stats   [--json] [--all] [--skip-bad-lines]
   initiatives [--json] [--status S] [--skip-bad-lines]   list initiative rollups on this board
@@ -244,6 +245,8 @@ func run(args []string) int {
 		err = cmdCreate(boardDir, rest)
 	case "update":
 		err = cmdUpdate(boardDir, rest)
+	case "evidence":
+		err = cmdEvidence(boardDir, rest)
 	case "next-id":
 		err = cmdNextID(boardDir, rest)
 	case "next":
@@ -914,7 +917,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "record-debt", "pull-request", "assoc-branch", "assoc-worktree"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -922,6 +925,7 @@ func cmdUpdate(dir string, args []string) error {
 	title := fs.String("title", "", "task title (free text; omitted = leave untouched)")
 	workerStatus := fs.String("worker-status", "", "worker_status")
 	commitHash := fs.String("commit-hash", "", "commit_hash")
+	recordDebt := fs.Bool("record-debt", false, "record a debt commit in the completion evidence baseline")
 	guard := fs.String("guard", "", "guard_result: PASS|FAIL|SKIP")
 	ci := fs.String("ci", "", "ci_result: GREEN|RED|SKIP")
 	summary := fs.String("summary", "", "worker_summary")
@@ -986,7 +990,7 @@ func cmdUpdate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA] [--record-debt]\n")
 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--defer-reason R] [--defer-review-by DATE] [--acceptance-criteria TEXT]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--initiative SLUG | --clear-initiative] (mutually exclusive; the clear form REMOVES the key)\n")
@@ -1067,6 +1071,7 @@ func cmdUpdate(dir string, args []string) error {
 		EvidenceFingerprint:  *evidenceFingerprint,
 		EvidenceArtifacts:    []string(evidenceArtifacts),
 		HasEvidenceArtifacts: len(evidenceArtifacts) > 0,
+		RecordDebt:           *recordDebt,
 	}
 	if *priority != "" {
 		spec.Priority = priority
@@ -1166,11 +1171,12 @@ func cmdUpdate(dir string, args []string) error {
 		spec.AssocDim = board.WorktreesKey
 		spec.AssocValues = []string(wtFlags)
 	}
-	changed, err := b.UpdateTask(fs.Arg(0), spec)
+	changes, err := b.UpdateTask(fs.Arg(0), spec)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "updated task %s: %s\n", fs.Arg(0), strings.Join(changed, ", "))
+	renderCompletionWarnings(b)
+	fmt.Fprintf(os.Stdout, "updated task %s: %s\n", fs.Arg(0), strings.Join(changes, ", "))
 	return nil
 }
 
