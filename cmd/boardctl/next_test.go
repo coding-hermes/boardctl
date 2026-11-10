@@ -100,6 +100,42 @@ func TestCmdNextDispatchableRows(t *testing.T) {
 	}
 }
 
+func TestCmdNextDeferredTieBreak(t *testing.T) {
+	tests := []struct {
+		name string
+		rows string
+		want string
+	}{
+		{
+			name: "earlier deferred selects later equal-priority row",
+			rows: nextTestRow("BT-DEFERRED-P1", "pending", "P1", `,"deferred":true`) + nextTestRow("BT-LATER-P1", "pending", "P1", ""),
+			want: "BT-LATER-P1",
+		},
+		{
+			name: "both live retain physical-order tie break",
+			rows: nextTestRow("BT-EARLIER-P1", "pending", "P1", "") + nextTestRow("BT-LATER-P1", "pending", "P1", ""),
+			want: "BT-EARLIER-P1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := writeNextBoard(t, tc.rows)
+			got, err := captureStdout(func() {
+				if code := run([]string{"next", "-C", dir}); code != 0 {
+					t.Fatalf("next exit code = %d, want 0", code)
+				}
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(got, "id: "+tc.want+"\n") {
+				t.Fatalf("output = %q, want selected id %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestCmdNextPerformance(t *testing.T) {
 	var rows strings.Builder
 	for i := 0; i < 10000; i++ {
