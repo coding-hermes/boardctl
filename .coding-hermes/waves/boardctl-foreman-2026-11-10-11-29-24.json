@@ -10,11 +10,15 @@
       "task_id": "RELEASE-2026-11-10-01",
       "worktree": "/home/kara/worktrees/boardctl-BT-094",
       "branch": "wt/BT-094",
-      "base_sha": "a97aa4153ee68a917b9d35b3156063f2adcf131f"
+      "base_sha": "a97aa4153ee68a917b9d35b3156063f2adcf131f",
+      "tip_sha": "0cb76fb2db235605eb124f5b6f419b6de2423882",
+      "disposition": "superseded: implementation merged on canonical main via b1fc8c6; branch preserved as evidence; branch gates PASS"
     }
   ],
-  "wave_budget": 12,
+  "wave_budget": 2,
   "wave_size": 1,
   "dispatch_mode": "serial-fallback",
-  "owner_gated_context": "BT-094 cross-repo Hermes gateway runtime; not dispatched"
+  "owner_gated_context": "BT-094 cross-repo Hermes gateway runtime; not dispatched",
+  "finished_at": "2026-11-10T12:09:16-05:00",
+  "recovery_evidence": "branch tip 0cb76fb is an ancestor of canonical main c0b164e; canonical main already contains the implementation; no merge or fixup was performed"
 }
