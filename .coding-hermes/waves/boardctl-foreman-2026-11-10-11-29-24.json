@@ -1,0 +1,20 @@
+{
+  "tick_id": "boardctl-foreman-2026-11-10-11-29-24",
+  "project": "boardctl",
+  "base_sha": "a97aa4153ee68a917b9d35b3156063f2adcf131f",
+  "selected_row": "RELEASE-2026-11-10-01",
+  "selection": "highest executable P1 pending row; BT-094 is cross-repo owner-gated and remains pending",
+  "eligible_independent": 1,
+  "workers": [
+    {
+      "task_id": "RELEASE-2026-11-10-01",
+      "worktree": "/home/kara/worktrees/boardctl-BT-094",
+      "branch": "wt/BT-094",
+      "base_sha": "a97aa4153ee68a917b9d35b3156063f2adcf131f"
+    }
+  ],
+  "wave_budget": 12,
+  "wave_size": 1,
+  "dispatch_mode": "serial-fallback",
+  "owner_gated_context": "BT-094 cross-repo Hermes gateway runtime; not dispatched"
+}
