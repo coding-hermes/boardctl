@@ -1,0 +1,17 @@
+{
+  "tick": "boardctl-foreman-2026-11-10-05-07-11",
+  "mode": "verification-only",
+  "project": "boardctl",
+  "base_commit": "7c8ed8d1d38545e9aab32fd0e1f4cb78d5b7ec74",
+  "selected": "BT-094",
+  "board_census": {
+    "pending_non_fixture": 29,
+    "pending_p1": 5,
+    "eligible_independent": 0
+  },
+  "workers": [],
+  "blocker": "BT-094 acceptance targets the Hermes gateway runtime and source outside the boardctl repository; this repository cannot implement or restart that service without crossing the ownership boundary.",
+  "next_owner_action": "The Hermes gateway owner must fix the executor lifecycle in the gateway repository, expose the live mem-sync thread metric, restart the gateway, and run the two-hour stability probe.",
+  "evidence": ".coding-hermes/waves/BT-094-2026-11-10-evidence.json",
+  "ci_health": "Recent boardctl CI includes a known Coverage failure already tracked by RELEASE-2026-11-09-07; no duplicate row filed."
+}

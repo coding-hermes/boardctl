@@ -1,0 +1,22 @@
+{
+  "row": "BT-094",
+  "tick": "boardctl-foreman-2026-11-10-05-07-11",
+  "tested_commit": "7c8ed8d1d38545e9aab32fd0e1f4cb78d5b7ec74",
+  "status": "BLOCKED",
+  "tier": "T3",
+  "evidence": [
+    "board row acceptance explicitly requires a live gateway process and a two-hour post-restart probe",
+    "live probe found 408 mem-sync_0 threads across the gateway processes (ps -eLo comm= | grep -Ec '^mem-sync'), not <=1",
+    "the selected row's fix surface is the Hermes gateway runtime, not this boardctl repository"
+  ],
+  "commands": {
+    "live_thread_probe": "ps -eLo comm= | grep -Ec '^mem-sync'",
+    "result": "408",
+    "presolve_discovery": "curl -sS --max-time 5 -X POST http://localhost:8766/api/v1/problems/discover -H 'Content-Type: application/json' -d '{\"problem_class\":\"gateway-mem-sync-executor-recreation-thread-leak\"}'",
+    "presolve_result": "not_found"
+  },
+  "witness": "live:gateway-process-thread-census",
+  "next_owner_action": "Gateway owner implements the executor lifecycle fix, metric, restart, and >=2h stability probe.",
+  "verdict": "none:cross-repo-owner-gated",
+  "trace": "ch:trace row=BT-094 spec=none:gateway-runtime-owner test=none:cross-repo-live-gateway-probe doc=none:owner-gated evidence=.coding-hermes/waves/BT-094-2026-11-10-evidence.json witness=live:mem-sync-thread-census verdict=none:cross-repo-owner-gated commit=none:pending-board-closeout memory=none:not-written"
+}
