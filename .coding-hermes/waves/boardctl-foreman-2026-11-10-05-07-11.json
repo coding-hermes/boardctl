@@ -13,5 +13,5 @@
   "blocker": "BT-094 acceptance targets the Hermes gateway runtime and source outside the boardctl repository; this repository cannot implement or restart that service without crossing the ownership boundary.",
   "next_owner_action": "The Hermes gateway owner must fix the executor lifecycle in the gateway repository, expose the live mem-sync thread metric, restart the gateway, and run the two-hour stability probe.",
   "evidence": ".coding-hermes/waves/BT-094-2026-11-10-evidence.json",
-  "ci_health": "Recent boardctl CI includes a known Coverage failure already tracked by RELEASE-2026-11-09-07; no duplicate row filed."
+  "ci_health": "Exact-head CI for 70bb143 is in_progress; recent pre-tick Coverage failure was already tracked by RELEASE-2026-11-09-07, so no duplicate row was filed."
 }
