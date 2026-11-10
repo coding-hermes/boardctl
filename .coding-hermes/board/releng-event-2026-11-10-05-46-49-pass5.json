@@ -35,6 +35,10 @@
     "multiarch_conclusion": "success",
     "local_reproduction": "detached worktree at b8f9b5d: go test ./... -coverprofile then go run ./cmd/covercheck --min-total=80 --min-package=60 -> rc=1, 'total coverage 78.5% is below floor 80.0%' (identical to CI)"
   },
+  "post_push_ci": {
+    "sha": "228c610",
+    "note": "board-only commit (this pass) also fails the same step: CI run 42773816839, job Build & Test, failed step Coverage; Multi-Arch 42773817714 success. The red is source-bound, not a flake of one sha."
+  },
   "coverage_arithmetic": {
     "measured_at": "b8f9b5d",
     "total_statements": 9872,
