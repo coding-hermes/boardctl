@@ -1,0 +1,132 @@
+{
+  "sweep_id": "boardctl-releng-2026-11-10-05-46-49",
+  "pass": "pass-5-shortfall-arithmetic-and-dispatch-starvation",
+  "project": "boardctl",
+  "repository": "coding-hermes/boardctl",
+  "canonical_checkout": "/home/kara/coding-hermes-boardctl",
+  "candidate_sha": "b8f9b5d28a4c37b45830a78c8117af996b6c5d66",
+  "remote_default": "main",
+  "remote_parity": true,
+  "release_baseline": "v0.3.0",
+  "delta": {
+    "total_commits": 33,
+    "nonmerge": 33,
+    "feat": 3,
+    "fix": 4,
+    "perf": 0,
+    "non_material": 26,
+    "breaking": 0,
+    "source_paths_changed": 20
+  },
+  "semver": {
+    "proposal": "v0.4.0",
+    "basis": "3 feat commits since v0.3.0 (BT-097 graph views among them); minor per release policy",
+    "decision": "NO CUT",
+    "rule": "Decision 1 rule 2: exact-SHA hosted CI is red"
+  },
+  "ci": {
+    "candidate_sha": "b8f9b5d28a4c37b45830a78c8117af996b6c5d66",
+    "ci_run": 42772960617,
+    "ci_conclusion": "failure",
+    "failing_job": "Build & Test",
+    "failing_step": "Coverage",
+    "coverage": "78.5% < 80.0%",
+    "multiarch_run": 42772961595,
+    "multiarch_conclusion": "success",
+    "local_reproduction": "detached worktree at b8f9b5d: go test ./... -coverprofile then go run ./cmd/covercheck --min-total=80 --min-package=60 -> rc=1, 'total coverage 78.5% is below floor 80.0%' (identical to CI)"
+  },
+  "coverage_arithmetic": {
+    "measured_at": "b8f9b5d",
+    "total_statements": 9872,
+    "covered": 7749,
+    "uncovered": 2123,
+    "percent": 78.495,
+    "statements_needed_for_80pct": 7898,
+    "shortfall_statements": 149,
+    "single_file_route": {
+      "file": "cmd/boardctl/graph_cmd.go",
+      "statements": 208,
+      "covered": 0,
+      "untested_functions": 16,
+      "function_names": [
+        "cmdReady",
+        "buildReadyJSON",
+        "printReady",
+        "printDirection",
+        "cmdDirection",
+        "buildDirectionJSON",
+        "directionUnscoped",
+        "waveProjection",
+        "boardDeps",
+        "initiativeOf",
+        "initiativePresent",
+        "readyRow",
+        "countGroupRows",
+        "sortedStrings",
+        "nonNilCycles",
+        "nonNilDangling"
+      ],
+      "result_if_fully_covered": "7957/9872 = 80.60% (59 statements of margin)"
+    },
+    "second_route": {
+      "file": "cmd/boardctl/hook.go",
+      "statements_total": 884,
+      "statements_uncovered": 416,
+      "note": "the route RELEASE-2026-11-09-07 currently names (BOARDCTL-HOOK-001 paths landed at 2667a63)"
+    },
+    "why_this_matters": "The floor needs 149 statements; a single untested CLI file of 208 statements clears it. The blocker is not a large coverage debt, it is one file nobody has been pointed at."
+  },
+  "gitreins": {
+    "candidate_binding": "UNVERIFIED",
+    "latest_verdict_file": ".gitreins/history/2026-11-10/847048c9/verdict.json",
+    "task": "BT-094-verification-20261110",
+    "passed": false,
+    "pass_class": "judged",
+    "tier1": "FAIL (tests, secrets)",
+    "tier2": "INCOMPLETE",
+    "bound_commit": "7c8ed8d1d38545e9aab32fd0e1f4cb78d5b7ec74",
+    "working_tree_dirty_path_count": 2,
+    "note": "latest verdict is bound to a board bookkeeping commit with a dirty working tree, not to b8f9b5d"
+  },
+  "dogfood": {
+    "latest": "run 28, 2026-11-08",
+    "verdict": "PROMISING-BUT-ROUGH",
+    "stale_relative_to_candidate": true,
+    "open_findings": ["DF-BOARDCTL-52 in_progress", "DF-BOARDCTL-53 pending", "DF-BOARDCTL-54 pending", "DF-BOARDCTL-55 pending"]
+  },
+  "previous_artifact": {
+    "release": "v0.3.0",
+    "published": "2026-11-09T05:13:12Z",
+    "assets": 8
+  },
+  "deployed_staleness": {
+    "path_binary": "~/.local/bin/boardctl mod v0.2.1-0.20261107042801-875df2c428bd+dirty, vcs.revision 875df2c, vcs.modified=true, built 2026-11-07; 'boardctl version' prints 'dev'",
+    "go_bin": "/home/kara/go/bin/boardctl v0.1.8, built 2026-09-26",
+    "usr_local_bin": "absent this pass (prior pass measured a binary there)",
+    "verdict": "STALE: no installed binary carries v0.3.0, let alone the v0.4.0 candidate"
+  },
+  "version_hygiene": {
+    "status": "DIRTY",
+    "current_release": "v0.3.0",
+    "changelog": "Unreleased section is empty; no v0.4.0 section",
+    "readme_pin": "v0.3.0 at README.md:17 and download URLs at :20-21, :35-36"
+  },
+  "public_posture": {
+    "visibility": "public",
+    "license": "MIT",
+    "branch_protection": "404 branch not protected"
+  },
+  "tooling": {
+    "make_release": "present",
+    "tag_publisher": ".github/workflows/multiarch.yml tag trigger (Multi-Arch green on candidate sha)"
+  },
+  "dispatch_starvation": {
+    "finding": "boardctl next breaks equal-priority ties by physical row order (cmd/boardctl/next.go:79-85, orderByID from report.Rows). BT-094 sits at tasks.jsonl:226 and RELEASE-2026-11-09-07 at tasks.jsonl:252, so BT-094 wins every P1 tie.",
+    "bt094_gate": "cross-repo owner-gated: its own foreman_note states 'The fix surface is the Hermes gateway runtime outside this repository; keep pending for gateway owner. verdict=none:cross-repo-owner-gated'",
+    "evidence_baseline": "boardctl next -C <board> -> id: BT-094",
+    "evidence_after_defer": "scratch copy of the board, boardctl update BT-094 --deferred true --defer-reason '...' -> boardctl next -> id: RELEASE-2026-11-09-07",
+    "wasted_foreman_ticks": ["00d7d9e chore: board tick 2026-11-10 — BT-094 owner-gated verification", "70bb143 chore: board tick 2026-11-10 — BT-094 owner-gated verification"],
+    "not_a_duplicate": "no existing row covers BT-094 deferral; BT-076 built the deferred flag (complete), DF-BOARDCTL-55 is about defer flags accepted on non-deferred rows (different defect)"
+  },
+  "action_taken": "filed RELEASE-2026-11-10-01 for the BT-094 dispatch starvation; refreshed RELEASE-2026-11-09-07 with the measured shortfall arithmetic and an additive second accepted coverage route"
+}
