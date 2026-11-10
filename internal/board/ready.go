@@ -40,6 +40,13 @@ type GraphReport struct {
 	Blocked  []BlockedRow
 	Cycles   [][]string
 	Dangling []DanglingRef
+	// WaveLevels contains the topological completion wave for rows that can
+	// eventually be dispatched (complete rows are level zero). It is shared by
+	// direction so that projection does not repeatedly rescan the graph.
+	WaveLevels   map[string]int
+	readyByID    map[string]struct{}
+	statusByID   map[string]string
+	deferredByID map[string]bool
 }
 
 // Dispatchable is the exported per-row predicate. Callers that already have a
@@ -62,6 +69,10 @@ func (r *GraphReport) IsReady(row *Row) bool {
 		return false
 	}
 	id := row.String("id")
+	if r.readyByID != nil {
+		_, ok := r.readyByID[id]
+		return ok
+	}
 	for _, candidate := range r.Ready {
 		if candidate == row || candidate.String("id") == id {
 			return true
@@ -81,17 +92,30 @@ func (b *Board) AnalyzeDispatchability() (*GraphReport, error) {
 	if err != nil {
 		return nil, err
 	}
+	return analyzeDispatchabilityRows(rows, fixtures)
+}
+
+// analyzeDispatchabilityRows contains the graph engine separate from board I/O;
+// tests and consumers that already have parsed rows can measure graph scaling
+// without charging JSONL parsing and fixture discovery to the graph predicate.
+func analyzeDispatchabilityRows(rows []*Row, fixtures map[string]bool) (*GraphReport, error) {
 	kept := make([]*Row, 0, len(rows))
 	for _, row := range rows {
-		if id := row.String("id"); id != "" && fixtures[id] {
+		if id := row.String("id"); id != "" && fixtures != nil && fixtures[id] {
 			continue
 		}
 		kept = append(kept, row)
 	}
 
+	return analyzeDispatchabilityRowsCore(kept)
+}
+
+func analyzeDispatchabilityRowsCore(kept []*Row) (*GraphReport, error) {
 	byID := make(map[string]*Row, len(kept))
 	order := make(map[string]int, len(kept))
 	deps := make(map[string][]string, len(kept))
+	statusByID := make(map[string]string, len(kept))
+	deferredByID := make(map[string]bool, len(kept))
 	for i, row := range kept {
 		id := row.String("id")
 		if id == "" {
@@ -102,6 +126,8 @@ func (b *Board) AnalyzeDispatchability() (*GraphReport, error) {
 		}
 		byID[id] = row
 		order[id] = i
+		statusByID[id] = NormalizeStatus(row.String("status"))
+		deferredByID[id] = RowIsDeferred(row)
 		values, err := dependencies(row)
 		if err != nil {
 			return nil, fmt.Errorf("task %s: %w", id, err)
@@ -126,36 +152,38 @@ func (b *Board) AnalyzeDispatchability() (*GraphReport, error) {
 		}
 	}
 
-	report := &GraphReport{Rows: kept, Cycles: cycles, Dangling: dangling}
+	report := &GraphReport{Rows: kept, Cycles: cycles, Dangling: dangling, WaveLevels: dispatchWaveLevels(kept, byID, deps, cycleRows, danglingByRow, statusByID, deferredByID), readyByID: make(map[string]struct{}, len(kept)), statusByID: statusByID, deferredByID: deferredByID}
 	readySet := make(map[string]bool, len(kept))
 	for _, row := range kept {
 		id := row.String("id")
-		if cycleRows[id] || NormalizeStatus(row.String("status")) != "pending" || RowIsDeferred(row) || len(danglingByRow[id]) > 0 {
+		if cycleRows[id] || statusByID[id] != "pending" || deferredByID[id] || len(danglingByRow[id]) > 0 {
 			continue
 		}
 		ready := true
 		for _, dep := range deps[id] {
-			parent, exists := byID[dep]
-			if !exists || NormalizeStatus(parent.String("status")) != "complete" {
+			_, exists := byID[dep]
+			if !exists || statusByID[dep] != "complete" {
 				ready = false
 				break
 			}
 		}
 		if ready {
 			readySet[id] = true
+			report.readyByID[id] = struct{}{}
 			report.Ready = append(report.Ready, row)
 		}
 	}
+	chainMemo := make(map[string][]string, len(kept))
 	for _, row := range kept {
 		id := row.String("id")
-		status := NormalizeStatus(row.String("status"))
+		status := statusByID[id]
 		if status == "complete" || status == "failed" {
 			continue
 		}
 		if readySet[id] {
 			continue
 		}
-		report.Blocked = append(report.Blocked, classifyBlocked(row, byID, deps, danglingByRow, cycleRows, cycles, order))
+		report.Blocked = append(report.Blocked, classifyBlocked(row, byID, deps, danglingByRow, cycleRows, cycles, order, chainMemo, statusByID, deferredByID))
 	}
 	return report, nil
 }
@@ -243,9 +271,9 @@ func detectCycles(rows []*Row, deps map[string][]string, order map[string]int) (
 	return cycles, cycleRows
 }
 
-func classifyBlocked(row *Row, byID map[string]*Row, deps map[string][]string, dangling map[string]map[string]bool, cycleRows map[string]bool, cycles [][]string, order map[string]int) BlockedRow {
+func classifyBlocked(row *Row, byID map[string]*Row, deps map[string][]string, dangling map[string]map[string]bool, cycleRows map[string]bool, cycles [][]string, order map[string]int, memo map[string][]string, statusByID map[string]string, deferredByID map[string]bool) BlockedRow {
 	id := row.String("id")
-	status := NormalizeStatus(row.String("status"))
+	status := statusByID[id]
 	out := BlockedRow{Row: row, Unsatisfied: []UnsatisfiedDep{}}
 	if cycleRows[id] {
 		out.Class = "cycle"
@@ -253,13 +281,13 @@ func classifyBlocked(row *Row, byID map[string]*Row, deps map[string][]string, d
 			for _, member := range cycle[:len(cycle)-1] {
 				if member == id {
 					out.Chain = append([]string{}, cycle...)
-					out.ChainText = cycleText(cycle, byID)
+					out.ChainText = chainTextWithStatusMap(cycle, byID, statusByID, deferredByID)
 					return out
 				}
 			}
 		}
 	}
-	if RowIsDeferred(row) && status == "pending" {
+	if deferredByID[id] && status == "pending" {
 		out.Class = "deferred"
 		out.Chain = []string{id}
 		out.ChainText = id + " (pending, deferred)"
@@ -272,12 +300,11 @@ func classifyBlocked(row *Row, byID map[string]*Row, deps map[string][]string, d
 		return out
 	}
 	for _, dep := range deps[id] {
-		parent, ok := byID[dep]
-		if !ok {
+		if _, ok := byID[dep]; !ok {
 			out.Unsatisfied = append(out.Unsatisfied, UnsatisfiedDep{ID: dep, Status: "missing"})
 			continue
 		}
-		parentStatus := NormalizeStatus(parent.String("status"))
+		parentStatus := statusByID[dep]
 		if parentStatus != "complete" {
 			out.Unsatisfied = append(out.Unsatisfied, UnsatisfiedDep{ID: dep, Status: statusOrUnknown(parentStatus)})
 		}
@@ -287,41 +314,117 @@ func classifyBlocked(row *Row, byID map[string]*Row, deps map[string][]string, d
 	} else {
 		out.Class = "deps"
 	}
-	out.Chain = blockerChain(id, byID, deps, order, map[string]bool{})
-	out.ChainText = chainTextWithStatuses(out.Chain, byID)
+	// Memoize the deterministic first blocker path. Without this, a chain of
+	// N blocked rows is walked from every row (and rendered as quadratic work).
+	out.Chain = blockerChainMemo(id, byID, deps, order, memo, map[string]bool{}, statusByID)
+	out.ChainText = chainTextWithStatusMap(out.Chain, byID, statusByID, deferredByID)
 	return out
 }
 
-func blockerChain(id string, byID map[string]*Row, deps map[string][]string, order map[string]int, visited map[string]bool) []string {
-	if visited[id] {
-		return []string{id}
+const maxBlockerChain = 32
+
+func blockerChainMemo(id string, byID map[string]*Row, deps map[string][]string, order map[string]int, memo map[string][]string, visiting map[string]bool, statusByID map[string]string) []string {
+	if path, ok := memo[id]; ok {
+		return path
 	}
-	visited[id] = true
-	for _, dep := range deps[id] {
-		parent, ok := byID[dep]
-		if !ok || NormalizeStatus(parent.String("status")) != "complete" {
-			path := []string{id}
-			if ok {
-				path = append(path, blockerChain(dep, byID, deps, order, visited)...)
-			} else {
-				path = append(path, dep)
+	path := make([]string, 0, maxBlockerChain)
+	current := id
+	for len(path) < maxBlockerChain {
+		if visiting[current] {
+			path = append(path, current)
+			break
+		}
+		if suffix, ok := memo[current]; ok && current != id {
+			path = append(path, suffix...)
+			break
+		}
+		path = append(path, current)
+		visiting[current] = true
+		next := ""
+		for _, dep := range deps[current] {
+			_, ok := byID[dep]
+			if ok && statusByID[dep] == "complete" {
+				continue
 			}
-			return path
+			next = dep
+			break
+		}
+		if next == "" {
+			break
+		}
+		current = next
+	}
+	for key := range visiting {
+		delete(visiting, key)
+	}
+	for i := range path {
+		end := i + maxBlockerChain
+		if end > len(path) {
+			end = len(path)
+		}
+		if _, ok := memo[path[i]]; !ok {
+			memo[path[i]] = append([]string(nil), path[i:end]...)
 		}
 	}
-	return []string{id}
+	return path
 }
 
-func cycleText(cycle []string, byID map[string]*Row) string {
-	return chainTextWithStatuses(cycle, byID)
+// dispatchWaveLevels computes topological completion levels once for the whole
+// graph. Level zero is a completed row; pending rows start at level one.
+func dispatchWaveLevels(rows []*Row, byID map[string]*Row, deps map[string][]string, cycleRows map[string]bool, dangling map[string]map[string]bool, statusByID map[string]string, deferredByID map[string]bool) map[string]int {
+	levels := make(map[string]int, len(rows))
+	remaining := make(map[string]int, len(rows))
+	maxDep := make(map[string]int, len(rows))
+	children := make(map[string][]string)
+	queue := make([]string, 0, len(rows))
+	for _, row := range rows {
+		id := row.String("id")
+		if statusByID[row.String("id")] == "complete" {
+			levels[id] = 0
+			queue = append(queue, id)
+			continue
+		}
+		if statusByID[id] != "pending" || deferredByID[id] || cycleRows[id] || len(dangling[id]) > 0 {
+			continue
+		}
+		for _, dep := range deps[id] {
+			_, ok := byID[dep]
+			if !ok || statusByID[dep] != "complete" {
+				remaining[id]++
+				children[dep] = append(children[dep], id)
+				continue
+			}
+			if levels[dep] > maxDep[id] {
+				maxDep[id] = levels[dep]
+			}
+		}
+		if remaining[id] == 0 {
+			levels[id] = maxDep[id] + 1
+			queue = append(queue, id)
+		}
+	}
+	for head := 0; head < len(queue); head++ {
+		parent := queue[head]
+		for _, child := range children[parent] {
+			if levels[parent] > maxDep[child] {
+				maxDep[child] = levels[parent]
+			}
+			remaining[child]--
+			if remaining[child] == 0 {
+				levels[child] = maxDep[child] + 1
+				queue = append(queue, child)
+			}
+		}
+	}
+	return levels
 }
 
-func chainTextWithStatuses(chain []string, byID map[string]*Row) string {
+func chainTextWithStatusMap(chain []string, byID map[string]*Row, statusByID map[string]string, deferredByID map[string]bool) string {
 	parts := make([]string, 0, len(chain))
 	for _, id := range chain {
-		if row, ok := byID[id]; ok {
-			status := NormalizeStatus(row.String("status"))
-			if RowIsDeferred(row) {
+		if _, ok := byID[id]; ok {
+			status := statusByID[id]
+			if deferredByID[id] {
 				status += ", deferred"
 			}
 			parts = append(parts, id+" ("+statusOrUnknown(status)+")")
