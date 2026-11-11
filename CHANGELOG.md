@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## v0.4.0
 
-Changes for the next release will be recorded here.
+- graph-aware ready/direction dispatchability views (BT-097) and next-selection starvation fix (deferred rows)
+- hook support, evidence enforcement, initiative metadata (BT-098 wave), QA battery and releng hardening
 
 ## v0.3.0 — 2026-11-09
 

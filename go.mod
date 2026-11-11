@@ -2,6 +2,8 @@ module github.com/coding-hermes/boardctl
 
 go 1.26.10
 
+toolchain go1.26.11
+
 require (
 	github.com/getkin/kin-openapi v0.152.0
 	gopkg.in/yaml.v3 v3.0.1
