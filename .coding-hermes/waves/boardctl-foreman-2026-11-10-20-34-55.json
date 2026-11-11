@@ -6,5 +6,23 @@
   "mode": "serial-fallback",
   "selected": "RELEASE-2026-11-10-01",
   "workers": [],
-  "decision": "verification-only landed-drift closeout; prior implementation is already on origin/main; no worker dispatched"
+  "decision": "verification-only landed-drift closeout; prior implementation is already on origin/main; no worker dispatched",
+  "finished_at": "2026-11-11T03:21:01-05:00",
+  "recovery": {
+    "status": "complete",
+    "branch": "wt/RELEASE-2026-11-10-01-R2",
+    "worktree": "/home/kara/worktrees/boardctl-RELEASE-2026-11-10-01-R2",
+    "tip": "25a745203540da3a9010a2851af0a5a66af3d031",
+    "base_check": "ancestor of current main f8bf33c44eea6125c29cdad13db1e32657d0ad96; no merge required",
+    "changed_paths": [],
+    "dirty_paths": [],
+    "gates": {
+      "go_build": "PASS",
+      "go_vet": "PASS",
+      "go_test": "PASS",
+      "focused_test": "PASS: TestCmdNextDeferredTieBreak"
+    },
+    "board_mixed_diff": false,
+    "cleanup": "worktree removed and branch deleted"
+  }
 }
