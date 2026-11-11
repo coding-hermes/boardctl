@@ -4,6 +4,29 @@
 
 Changes for the next release will be recorded here.
 
+## v0.4.0 — 2026-11-11
+
+This release contains the graph-aware dispatch views and git-hook intake
+surface added since v0.3.0. The release also restores the committed coverage
+contract: `make cover-check` reports 80.2% total coverage with the existing
+80.0% total and 60.0% per-package floors unchanged.
+
+### Features
+
+- Graph-aware `ready` and `direction` views expose dependency and initiative
+  relationships in both human-readable and JSON output (`d6d9fa3`, `135d336`,
+  `c7d394c`).
+- BOARDCTL-HOOK-001 adds hook install, uninstall, doctor, dispatch and flush
+  commands for git-hook intake, including spool and dead-letter handling
+  (`2667a63`).
+
+### Release preparation
+
+- README install URLs and the release identity are pinned to `v0.4.0`.
+- The release remains pending until exact-head CI and Multi-Arch are green and
+  the tag-triggered publication has produced all seven platform assets plus
+  `SHA256SUMS`.
+
 ## v0.3.0 — 2026-11-09
 
 This release contains 53 commits since v0.2.0 (51 non-merge, 12 material),

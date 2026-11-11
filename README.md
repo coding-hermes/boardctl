@@ -14,11 +14,11 @@ The zero-dependency path: grab a static binary from
 amd64, freebsd amd64) — no Go toolchain needed. Verify the binary's checksum
 before running it:
 
-Current release: **v0.3.0**.
+Current release: **v0.4.0**.
 
 ```bash
-curl -sL -o boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.3.0/boardctl_linux_amd64
-curl -sL -o SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/v0.3.0/SHA256SUMS
+curl -sL -o boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/v0.4.0/boardctl_linux_amd64
+curl -sL -o SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/v0.4.0/SHA256SUMS
 sha256sum -c --ignore-missing SHA256SUMS   # verify the binary you downloaded
 chmod +x boardctl_linux_amd64 && ./boardctl_linux_amd64 version
 ```
@@ -32,8 +32,8 @@ paths emit exactly these names: the tag-push CI cut and the offline
 ones you did not download (without it, `sha256sum -c` exits 1 on the absent
 files). The downloaded binary must keep its release filename for this to verify.
 
-The last line prints the binary's release identity — for a v0.3.0 asset it
-prints `boardctl version v0.3.0`. Release binaries are stamped from the release
+The last line prints the binary's release identity — for a v0.4.0 asset it
+prints `boardctl version v0.4.0`. Release binaries are stamped from the release
 tag, so the printed version must match the release you downloaded; a bare date
 stamp (e.g. `20260915`) or `dev` means the binary was not cut from a tagged
 checkout (see [Development](#development)).
@@ -102,9 +102,8 @@ boardctl version --json            # {"version":"v0.1.11","build":"v0.1.11"}
 # "Finding fingerprints" below.
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" --priority 1 \
     --reasoning "Idempotent retry with backoff" --capability-tags go,net
-# SOURCE BUILD / NEXT RELEASE ONLY: the published v0.1.11 asset does not
-# accept --acceptance-criteria. Build from current HEAD (or use the next
-# release) before running the following acceptance-criteria example.
+# The published v0.4.0 asset accepts --acceptance-criteria. Verify the
+# downloaded release asset before running the following example.
 # --acceptance-criteria carries the row's dispatchability contract: the field
 # every fleet foreman requires before it will dispatch the row. Free text —
 # multi-line values are ONE JSON string, so the row stays one physical JSONL
@@ -140,9 +139,8 @@ boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
 boardctl -C ~/myproject update FEAT-1 --title "Add retry with backoff"
 boardctl -C ~/myproject update FEAT-1 --worktree /home/me/wt/ft-1 \
     --branch wt/ft-1 --session 2f8c41a0
-# SOURCE BUILD / NEXT RELEASE ONLY: the published v0.1.11 asset does not
-# accept --acceptance-criteria. Build from current HEAD (or use the next
-# release) before running the following acceptance-criteria example.
+# The published v0.4.0 asset accepts --acceptance-criteria. Verify the
+# downloaded release asset before running the following example.
 # DF-BOARDCTL-50: --acceptance-criteria authors or repairs the dispatchability
 # field on a row that already exists (create's twin flag). The value REPLACES
 # the row's criteria, multi-line text included (one JSON string, one physical
@@ -1513,10 +1511,8 @@ guards AND the BT-050 write lock (see [Board topology](#board-topology)). That
 bypass is the known source of duplicate-id corruption on fleet boards, so a
 required field with no sanctioned door guaranteed the unsanctioned one.
 
-Current HEAD and the next release add `--acceptance-criteria TEXT` to both
-verbs. The published v0.1.11 asset does not accept this flag; use a
-current-HEAD/source build or wait for the next release before running these
-examples:
+The published v0.4.0 asset accepts `--acceptance-criteria TEXT` on both
+verbs. Verify the downloaded release asset before running these examples:
 
 ```bash
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
@@ -1543,15 +1539,11 @@ boardctl -C ~/myproject update FEAT-1 \
   reports `RESULT: OK`; missing criteria is a dispatchability gap for the
   foreman, not board corruption.
 
-> **Published v0.1.11 limitation:** the release asset rejects this flag with
-> "flag provided but not defined". The flag is available from current HEAD and
-> is targeted for the next release; do not use these examples with v0.1.11.
-
-For the published v0.1.11 binary, create and update rows without this flag, or
-write the field only through a current-HEAD/source build until the next release
-is published. The P4 dispatchability policy is unchanged: a row without
-`acceptance_criteria` remains a foreman dispatchability gap, not a validation
-error.
+> **Published v0.4.0 contract:** the release asset accepts this flag on both
+> verbs. If an older asset rejects it with "flag provided but not defined",
+> download the v0.4.0 asset and verify its checksum before retrying. The P4
+> dispatchability policy is unchanged: a row without `acceptance_criteria`
+> remains a foreman dispatchability gap, not a validation error.
 
 ## Board topology
 
