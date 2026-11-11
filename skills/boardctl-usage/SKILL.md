@@ -940,3 +940,10 @@ Target `1cda136f85e753ea1de006ca79e3966ba9db5034`, HEAD build. Rows filed: DF-BO
   which is NOT a lint pass.
 - **Perf still a non-issue**: `stats` 24.5 ms / `list --json` 32.4 ms / `initiatives` 22.9 ms on this
   228-row board; `validate` 182 ms on the 1443-row hermes-dagger board (hyperfine warm). No PERF row.
+
+## Run-29 (2026-11-11; tick boardctl-dogfood-2026-11-11-04-58-53)
+
+- A source-built binary drove a fresh board through `init`, `create`, deferred `create`, `list`, `stats`, `show --events`, `update --note`, `next`, `ready --json`, `direction --json`, `validate`, `doctor`, `render`, and `version --json`; every command exited 0. Deferred work stayed out of `ready` and `actionable` while remaining visible in list/stats.
+- The README's literal `--commit-hash abc1234` and bare `--deferred` examples are refused by current guards; both remain covered by DF-BOARDCTL-54 rather than being re-filed.
+- Fresh-install source build was proven on bunker-mvp, but the host's shared network namespace/open egress means the install result is isolation-UNVERIFIED. A direct probe observed 21 agent-side rows, including ci-act UNVERIFIED on the vulnerability-check step, but the wrapper's local evidence file retained only two launch rows before teardown; the complete ledger was not persisted. Destroy completed and `info` returned `not_found`.
+- `stats --json` completed at 0.00s displayed precision under warm and isolated-HOME arms; the operation was below a user-noticeable threshold, so no PERF row was warranted.

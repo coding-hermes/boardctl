@@ -821,4 +821,14 @@ Real view = boardctl's own board + warpfs's board via the links registry
    (`bunker-las-02` reports `/tmp: HOST-SHARED` and `net: not reported`; las-01/03/04 and cube-las-00
    answered nothing on `/health`). Cells: fresh-install OK, tests OK, ci-pass OK, upgrade OK
    (v0.1.11 → HEAD), chaos-disconnect OK, chaos-resource PASS, chaos-errorpath OK; `lint` INFO because
-   `golangci-lint` is absent on the agent — an INFO cell, not a pass.
+   `lint` INFO because `golangci-lint` is absent on the agent — an INFO cell, not a pass.
+
+   ## 2026-11-11 run 29 addendum — current CLI path and install battery
+
+   Target HEAD was `1a582091c2b9117c6358277a15a9c6dc4fe8d074`, equal to `origin/main`. A source-built binary drove a fresh scratch board through `init`, `create`, deferred `create`, `list`, `stats`, `show --events`, `update --note`, `next`, `ready --json`, `direction --json`, `validate`, `doctor`, `render`, and `version --json`; every command exited 0. The board reported 3 tasks including the fixture, 2 events, deferred=1, actionable=2, ready_rows=1, and blocked_rows=1. `render` emitted a 69,447-byte HTML report and 4,816-byte JSON payload.
+
+   The README's current literal examples were not all executable at HEAD: `--commit-hash abc1234` is refused by the full-hash guard, and bare `--deferred` is refused because current code requires `--defer-reason`. These are already owned by DF-BOARDCTL-54; no duplicate was filed.
+
+   The fresh bunker leg ran on bunker-mvp agent `e3a6786d`. After the wrapper collect call remained `RUNNING`, a direct probe observed a present `qa-run.finished` marker and 21 agent-side JSONL rows, but the wrapper's local evidence file retained only its two launch rows; the complete agent ledger was not persisted before teardown. Fresh-install, native ci-pass, upgrade, chaos-disconnect, chaos-resource, and chaos-errorpath were positive; ci-act was UNVERIFIED because the vulnerability-check step exited 1; UI was INFO; Docker, shutdown, and corruption were N/A by repository shape. The host reports shared network mode/open egress, so this is install-proven / isolation-UNVERIFIED. The run-owned agent was destroyed and `bunker info` returned `not_found`.
+
+   The performance operation `stats --json` completed under warm and isolated-HOME arms with rc=0 and 0.00s at `/usr/bin/time -p` display precision; five repeated warm samples were also 0.00s at that precision. The path is below a user-noticeable threshold, so no PERF row or profile was justified. A hyperfine attempt was blocked before execution and is not performance evidence.
