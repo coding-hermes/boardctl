@@ -6,6 +6,7 @@
   "budget": 5,
   "eligible_independent": 0,
   "selected_row": "BT-094",
+  "row_id": "BT-094",
   "workers": [],
   "blocker": "cross-repo owner-gated Hermes gateway runtime; no implementation surface in boardctl",
   "next_owner_action": "Hermes gateway owner schedules runtime fix and >=2h restarted-gateway verification",
