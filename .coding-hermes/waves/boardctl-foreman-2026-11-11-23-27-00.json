@@ -9,7 +9,7 @@
   "workers": [],
   "blocker": "cross-repo owner-gated Hermes gateway runtime; no implementation surface in boardctl",
   "next_owner_action": "Hermes gateway owner schedules runtime fix and >=2h restarted-gateway verification",
-  "evidence": "BT-094-evidence.json",
+  "evidence": ".coding-hermes/waves/BT-094-evidence-2026-11-11-23-27-00.json",
   "verdict": "none:cross-repo-owner-gated",
-  "trace": "ch:trace row=BT-094 spec=.coding-hermes/board/tasks.jsonl#BT-094 wave=.coding-hermes/waves/boardctl-foreman-2026-11-11-23-27-00.json#selected test=live:mem-sync-thread-census doc=.coding-hermes/board/tasks.jsonl evidence=.coding-hermes/waves/boardctl-foreman-2026-11-11-23-27-00/BT-094-evidence.json witness=none:gateway-runtime-not-present-on-control-host verdict=none:cross-repo-owner-gated commit=none:cross-repo-owner-gated memory=none:tick-local"
+  "trace": "ch:trace row=BT-094 spec=.coding-hermes/board/tasks.jsonl#BT-094 wave=.coding-hermes/waves/boardctl-foreman-2026-11-11-23-27-00.json#selected test=live:mem-sync-thread-census doc=.coding-hermes/board/tasks.jsonl evidence=.coding-hermes/waves/BT-094-evidence-2026-11-11-23-27-00.json witness=none:gateway-runtime-not-present-on-control-host verdict=none:cross-repo-owner-gated commit=none:cross-repo-owner-gated memory=none:tick-local"
 }
