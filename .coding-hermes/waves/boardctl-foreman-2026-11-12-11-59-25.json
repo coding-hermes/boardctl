@@ -1,0 +1,20 @@
+{
+  "tick_id": "boardctl-foreman-2026-11-12-11-59-25",
+  "project": "boardctl",
+  "base_sha": "fd9966451182ad5947e90980903b8bd4d25627f6",
+  "mode": "verification-only",
+  "budget": 12,
+  "eligible_independent": 0,
+  "selected_row": "BT-094",
+  "row_id": "BT-094",
+  "workers": [],
+  "status": "complete",
+  "finished_at": "2026-11-12T07:07:29-05:00",
+  "recovery_of": "boardctl-foreman-2026-11-11-23-27-00",
+  "recovery": "Recovered the prior zero-worker verification wave before normal selection; no branch gates, merges, fixups, or worktree cleanup were required.",
+  "blocker": "cross-repo owner-gated Hermes gateway runtime; no implementation surface in boardctl",
+  "next_owner_action": "Hermes gateway owner schedules executor reuse, exposes live mem-sync thread count, and proves <=1 after >=2h on a restarted gateway",
+  "evidence": ".coding-hermes/waves/BT-094-evidence-2026-11-12-11-59-25.json",
+  "verdict": "none:cross-repo-owner-gated",
+  "trace": "ch:trace row=BT-094 spec=.coding-hermes/board/tasks.jsonl#BT-094 wave=.coding-hermes/waves/boardctl-foreman-2026-11-12-11-59-25.json#selected test=live:mem-sync-thread-census doc=.coding-hermes/board/tasks.jsonl evidence=.coding-hermes/waves/BT-094-evidence-2026-11-12-11-59-25.json witness=none:gateway-runtime-not-present-on-control-host verdict=none:cross-repo-owner-gated commit=none:cross-repo-owner-gated memory=none:tick-local"
+}
