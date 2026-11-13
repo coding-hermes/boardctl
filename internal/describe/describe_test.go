@@ -34,7 +34,9 @@ func TestDeriveCLI_RealMain(t *testing.T) {
 	}
 	want := []string{
 		"init", "list", "show", "create", "update", "next-id", "event", "header",
-		"validate", "sweep-status", "normalize-statuses", "normalize-board", "doctor", "version", "stats",
+		"validate", "sweep-status", "normalize-statuses", "normalize-board", "doctor",
+		"types", // BT-098: the ticket-type registry listing (read-only)
+		"version", "stats",
 		"initiatives", // the discovery half of the scoop query (side-by-side with stats)
 		"render", "import", "serve", "install", "umbrella",
 	}

@@ -123,6 +123,7 @@ var EventTypeVocabulary = map[string]bool{
 	"task_dispatched":   true,
 	"task_evidence":     true,
 	"task_started":      true,
+	"task_type_changed": true, // BT-098: update --type records old->new (panel amendment 5)
 	"task_updated":      true,
 	"task_verified":     true,
 	"tick":              true,

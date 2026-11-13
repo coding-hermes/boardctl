@@ -47,6 +47,8 @@ blind spot.
   `0` = proceed, `1` = your input was rejected, `2` = wrong invocation or
   no board at the given path.
 - `umbrella` (BT-078): read-only cross-repo view — see Proven commands.
+- `types` (BT-098): read-only configured ticket types and required metadata;
+  use `--doctor` to name duplicate-slug conflict lines.
 - `next-id` (2026-11-03): `boardctl next-id --family CF` prints the next free
   id (max+1, observed width preserved) without writing anything. `create`
   requires an explicit `--id`, so on a board several lanes work at once
@@ -145,6 +147,17 @@ boardctl -C R create --id FEAT-2 --title "T" \
     --session <hermes-session-id> --session <second-session-id>
 boardctl -C R update FEAT-2 --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
     --session <hermes-session-id>
+# configured ticket types and required metadata (types.jsonl is append-only,
+# git-backed JSONL; absent or empty means built-in task|bug|feat|chore).
+boardctl -C R types
+boardctl -C R types --json
+boardctl -C R types --doctor
+# typed filing: explicit title/priority/acceptance flags override the type
+# template; --meta values are stored under detail.metadata.
+boardctl -C R create --id REL-1 --title "R1" --type release \
+    --meta channel=beta --meta source_commit=abc
+# type and metadata updates are atomic; required metadata cannot be removed.
+boardctl -C R update REL-1 --type release --meta channel=stable
 # update metadata: --worker-status is separate from task --status;
 # --note appends; --blocked-reason records the blocking explanation;
 # --completed-at sets the completion timestamp (use the board timestamp format);
@@ -327,7 +340,7 @@ boardctl serve --addr 127.0.0.1:8787       # loopback-only report uploader
   never neutral-mirrors it from the preceding row); on `update` a named flag
   REPLACES the row's criteria. This is the sanctioned path for the field —
   do not hand-edit tasks.jsonl for it.
-- `event --type`: must be one of the 18 enumerated event types (DOC-27 —
+- `event --type`: must be one of the 19 enumerated event types (DOC-27 —
   the complete vocabulary, alphabetical; the CLI refuses unknown values
   with `not in vocabulary {…}`):
   - Board lifecycle: `board_bootstrap`, `board_init`, `board_migration`

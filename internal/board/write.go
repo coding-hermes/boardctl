@@ -316,6 +316,21 @@ type TaskRowSpec struct {
 	// values while still speaking create's whole write contract. The raw
 	// line always lands as its own '\n'-terminated line, append-only.
 	Raw []byte
+
+	// BT-098: the ticket type slug (--type). "" writes NO type key and runs
+	// NO type checks (behavior identical to pre-BT-098 — zero migration).
+	// A non-empty slug is resolved against the board's registry inside the
+	// write lock: unknown/retired slugs refuse; the type's template fills
+	// only what the caller omitted (explicit flags always win); required
+	// metadata is checked field-by-field before anything is written.
+	Type string
+
+	// BT-098: --meta key=value entries in CLI order. They land as a typed
+	// object at detail.metadata (never loose top-level keys). Without --type
+	// they are written without type checks (create is the filing gate only
+	// when a type names the row).
+	Meta    []MetaKV
+	HasMeta bool
 }
 
 // Create appends a new task row, deep-copying the CANON-SANCTIONED part of
@@ -383,6 +398,53 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.Title == "" {
 		return "", fmt.Errorf("create requires --title")
 	}
+	// BT-098 §3.2 steps 1-3: load the registry, resolve the slug, apply the
+	// template — all BEFORE any priority/status vocabulary check, because the
+	// template fills exactly what the caller omitted (explicit flags ALWAYS
+	// win, BT-071 precedence). Runs inside the write lock (registry reads ride
+	// the same lock window as row reads). Every refusal here writes nothing.
+	var tt *TicketType
+	var reg *TypeRegistry
+	if spec.Type != "" || (spec.HasMeta && fileExists(b.TypesPath())) {
+		var err error
+		reg, err = b.LoadTypes()
+		if err != nil {
+			return "", fmt.Errorf("create refused: %v (nothing written)", err)
+		}
+	}
+	if spec.Type == "" && spec.HasMeta && reg != nil && reg.Source != "" {
+		return "", fmt.Errorf("create refused: --meta requires --type when types.jsonl is configured — nothing was written")
+	}
+	if spec.Type != "" {
+		tt = reg.Active(spec.Type)
+		if tt == nil {
+			return "", fmt.Errorf("create refused: unknown ticket type %q — configured types: %s (run 'boardctl types' to list them)",
+				spec.Type, strings.Join(reg.ActiveSlugs(), ", "))
+		}
+		if tt.Retired {
+			return "", fmt.Errorf("create refused: ticket type %q is retired in types.jsonl — pick an active type", spec.Type)
+		}
+		if tt.Template != nil {
+			// title_prefix: strip-then-apply (panel amendment 6) — a title
+			// that already starts with the prefix is NEVER doubled, and an
+			// explicit --title is never rewritten beyond prefixing.
+			if tt.Template.TitlePrefix != "" && !strings.HasPrefix(spec.Title, tt.Template.TitlePrefix) {
+				spec.Title = tt.Template.TitlePrefix + spec.Title
+			}
+			// ac_skeleton: applied when --acceptance-criteria is OMITTED
+			// (DF-BOARDCTL-50: omitted = no key; the template makes the
+			// skeleton the value instead). An explicit flag replaces the
+			// skeleton entirely.
+			if spec.AcceptanceCriteria == nil && tt.Template.ACSkeleton != "" {
+				skel := tt.Template.ACSkeleton
+				spec.AcceptanceCriteria = &skel
+			}
+			// default_priority: applied when --priority is omitted.
+			if spec.Priority == "" && tt.Template.DefaultPriority != "" {
+				spec.Priority = tt.Template.DefaultPriority
+			}
+		}
+	}
 	status := spec.Status
 	if status == "" {
 		status = "pending"
@@ -443,6 +505,45 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 		if len(missing) > 0 {
 			return "", fmt.Errorf("depends_on references nonexistent task id(s): %s — create aborted (create the dependency task first)", strings.Join(missing, ", "))
+		}
+	}
+
+	// BT-098 §3.2 steps 4-5: required metadata (field-by-field, ALL missing
+	// fields listed in types.jsonl declaration order — never fail-first) and
+	// value conformance (enum membership, ref: task_id resolution). Every
+	// refusal here writes NOTHING. Runs only when a type names the row:
+	// omitting --type runs NO type checks (behavior identical to today).
+	if tt != nil {
+		var missing []string
+		for _, f := range tt.Metadata {
+			if !f.Required {
+				continue
+			}
+			if _, ok := metaProvided(spec.Meta, f.Name); !ok {
+				missing = append(missing, metaMissingLine(f))
+			}
+		}
+		if len(missing) > 0 {
+			return "", fmt.Errorf("create refused: type %q requires metadata fields that are missing:\n  - %s\nsupply each with --meta field=value (repeat the flag per field); nothing was written",
+				spec.Type, strings.Join(missing, "\n  - "))
+		}
+		// Unknown metadata keys are REFUSED at create (warn-and-write is NOT
+		// granted at create — create is the filing gate, spec §3.2/AC-6).
+		for _, kv := range spec.Meta {
+			if _, declared := tt.Field(kv.Key); !declared {
+				return "", fmt.Errorf("create refused: metadata key %q is not declared by type %q — declare it in types.jsonl or drop the flag; nothing was written", kv.Key, spec.Type)
+			}
+		}
+		fixtureIDs, ferr := b.FixtureIDs()
+		if ferr != nil {
+			return "", ferr
+		}
+		taskIDs := knownTaskIDs(rows)
+		for _, kv := range spec.Meta {
+			f, _ := tt.Field(kv.Key)
+			if line := metaConformanceLine(f, kv, spec.ID, taskIDs, fixtureIDs); line != "" {
+				return "", fmt.Errorf("create refused: %s — nothing was written", line)
+			}
 		}
 	}
 
@@ -653,6 +754,11 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.Initiative != nil {
 		overrides["initiative"] = *spec.Initiative
 	}
+	// BT-098: the type is the row's top-level `type` key (pre-sanctioned by
+	// sanctionedExtras — no canon change).
+	if spec.Type != "" {
+		overrides["type"] = spec.Type
+	}
 	// DF-BOARDCTL-50: free-text criteria, written verbatim through the row's
 	// own serializer (encodeValue's string branch JSON-escapes embedded
 	// newlines, so the whole value stays on one physical JSONL line).
@@ -669,7 +775,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 	}
 	// Keys the user asked for but the mirrored schema lacks: append at end.
-	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "defer_reason", "defer_review_by", "initiative", "acceptance_criteria"} {
+	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "defer_reason", "defer_review_by", "initiative", "acceptance_criteria", "type"} {
 		if v, ok := overrides[k]; ok && !row.Has(k) {
 			if err := set(k, v); err != nil {
 				return "", err
@@ -693,6 +799,21 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	pd = pd.withFingerprint(FindingFingerprint(spec.Title, spec.Reasoning))
 	if spec.EvidenceRunID != "" {
 		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: nowStr, TreeFP: spec.EvidenceFingerprint, Artifacts: spec.EvidenceArtifacts}})
+	}
+	// BT-098: metadata lands as a typed object at detail.metadata (never
+	// loose top-level keys — canon-drift doctrine, BT-056). Create builds a
+	// fresh row, so there is no pre-existing metadata to merge: the pairs
+	// encode once, in CLI order.
+	if spec.HasMeta {
+		metaBytes, merr := encodeMetadataObject(spec.Meta, tt, style)
+		if merr != nil {
+			return "", merr
+		}
+		pd.Object = true
+		if pd.Extra == nil {
+			pd.Extra = map[string]json.RawMessage{}
+		}
+		pd.Extra["metadata"] = metaBytes
 	}
 	enc, encErr := EncodeFindingDetail(pd, style)
 	if encErr != nil {
@@ -929,6 +1050,25 @@ type UpdateSpec struct {
 	// caller). --normalize alone satisfies the change-flag gate and never
 	// requires --force.
 	Normalize bool
+
+	// BT-098: --type (panel amendment 5 — type changes ARE allowed) re-files
+	// the row under a new type with FULL atomic re-validation: the new type's
+	// required metadata must be satisfied by the row's final state in this
+	// same update or the whole update is refused (a row can never sit
+	// unfileable). A real old->new change appends a task_type_changed event.
+	Type string
+
+	// BT-098: --meta key=value pairs in CLI order, merged into the row's
+	// detail.metadata (never loose top-level keys). Removing a required
+	// field is refused (empty value on a required field); an undeclared key
+	// is warn-and-write (canon-drift doctrine), reported through
+	// OnMetaWarning so the CLI prints it on stderr.
+	Meta    []MetaKV
+	HasMeta bool
+
+	// OnMetaWarning receives one line per warn-and-write outcome (nil = the
+	// warning is dropped; the CLI always sets it to print on stderr).
+	OnMetaWarning func(msg string)
 }
 
 // UpdateTask surgically updates ONE task row. Every untouched line of
@@ -1294,6 +1434,140 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
+	// BT-098: --type (panel amendment 5 — allowed, with atomic re-validation
+	// and a task_type_changed event) and --meta writes (required-field
+	// protection, unknown-key warn-and-write). The registry is read INSIDE
+	// the write-lock window, same as row reads (spec §6).
+	oldType := target.String("type")
+	typeChanged := false
+	if spec.Type != "" || spec.HasMeta {
+		effective := spec.Type
+		if effective == "" {
+			effective = oldType
+		}
+		var tt *TicketType
+		needsRegistry := spec.Type != "" || (effective != "" && fileExists(b.TypesPath()))
+		if needsRegistry {
+			reg, lerr := b.LoadTypes()
+			if lerr != nil {
+				return nil, fmt.Errorf("update refused: %v (nothing written)", lerr)
+			}
+			if spec.Type != "" {
+				t := reg.Active(spec.Type)
+				if t == nil {
+					return nil, fmt.Errorf("update refused: unknown ticket type %q — configured types: %s (run 'boardctl types' to list them)",
+						spec.Type, strings.Join(reg.ActiveSlugs(), ", "))
+				}
+				if t.Retired {
+					return nil, fmt.Errorf("update refused: ticket type %q is retired in types.jsonl — pick an active type", spec.Type)
+				}
+				tt = t
+			} else if t := reg.Active(effective); t != nil {
+				tt = t
+			}
+		}
+		// Ref/task ids resolve against the live board (lazily; only when a
+		// ref field can be evaluated).
+		var taskIDs, fixtureIDs map[string]bool
+		resolveIDs := func() {
+			if taskIDs != nil {
+				return
+			}
+			taskIDs = map[string]bool{}
+			_ = IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+				if b.skipTaskLine(lines, idx) {
+					return nil
+				}
+				if rid := row.String("id"); rid != "" {
+					taskIDs[rid] = true
+				}
+				return nil
+			})
+			fixtureIDs = map[string]bool{}
+			if fid, err := b.FixtureIDs(); err == nil {
+				fixtureIDs = fid
+			}
+		}
+		// Per-pair gates: an empty value on a REQUIRED field is refused
+		// (there is no --clear-meta in v1; the empty write is the only way
+		// update could drop a required field). A value outside its declared
+		// enum or a non-resolving ref is refused the same way.
+		for _, kv := range spec.Meta {
+			var f MetaField
+			declared := false
+			if tt != nil {
+				if fld, ok := tt.Field(kv.Key); ok {
+					f, declared = fld, true
+				}
+			}
+			switch {
+			case declared && f.Required && strings.TrimSpace(kv.Value) == "":
+				return nil, fmt.Errorf("update refused: %q is REQUIRED by type %q (%s) — supply a value or change the row's type first",
+					kv.Key, effective, f.Constraint())
+			case declared && f.Type == "ref":
+				resolveIDs()
+				if line := metaConformanceLine(f, kv, id, taskIDs, fixtureIDs); line != "" {
+					return nil, fmt.Errorf("update refused: %s — nothing was written", line)
+				}
+			case declared && f.Type == "enum":
+				if line := metaConformanceLine(f, kv, id, taskIDs, fixtureIDs); line != "" {
+					return nil, fmt.Errorf("update refused: %s — nothing was written", line)
+				}
+			case !declared:
+				if spec.OnMetaWarning != nil {
+					if effective != "" {
+						spec.OnMetaWarning(fmt.Sprintf("warning: metadata key %q is not declared by type %q — it was written, but 'boardctl validate' will report it", kv.Key, effective))
+					} else {
+						spec.OnMetaWarning(fmt.Sprintf("warning: metadata key %q is not declared by any type (the row carries no type) — it was written, but 'boardctl validate' will report it", kv.Key))
+					}
+				}
+			}
+		}
+		// Type change: the row's FINAL state (existing metadata + this
+		// update's pairs) must satisfy the new type atomically — refuse
+		// field-by-field, nothing written, a row can never sit unfileable.
+		if spec.Type != "" && spec.Type != oldType && tt != nil {
+			final := metaState(target, spec.Meta)
+			var missing []string
+			for _, f := range tt.Metadata {
+				if !f.Required {
+					continue
+				}
+				if _, ok := metaProvided(final, f.Name); !ok {
+					missing = append(missing, metaMissingLine(f))
+				}
+			}
+			if len(missing) > 0 {
+				return nil, fmt.Errorf("update refused: type %q requires metadata fields that are missing:\n  - %s\nnothing was written (a row can never sit unfileable)",
+					spec.Type, strings.Join(missing, "\n  - "))
+			}
+			for _, kv := range final {
+				f, _ := tt.Field(kv.Key)
+				if f.Type != "enum" && f.Type != "ref" {
+					continue
+				}
+				resolveIDs()
+				if line := metaConformanceLine(f, kv, id, taskIDs, fixtureIDs); line != "" {
+					return nil, fmt.Errorf("update refused: %s — nothing was written", line)
+				}
+			}
+		}
+		if spec.Type != "" && spec.Type != oldType {
+			if err := set("type", spec.Type); err != nil {
+				return nil, err
+			}
+			typeChanged = true
+		}
+		if spec.HasMeta {
+			before := target.Get("detail")
+			if err := setRowMetadata(target, tt, spec.Meta, style); err != nil {
+				return nil, err
+			}
+			if !bytes.Equal(before, target.Get("detail")) {
+				changed = append(changed, "detail")
+			}
+		}
+	}
 	if target.Has("updated_at") {
 		if err := set("updated_at", now); err != nil {
 			return nil, err
@@ -1304,8 +1578,8 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	// above) — the deferred arm appended nothing to `changed`, so the
 	// no-change gate must not refuse it; anything else without a change
 	// flag still fails with the full flag list.
-	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil && spec.Initiative == nil {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--initiative/--acceptance-criteria/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
+	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil && spec.Initiative == nil && !spec.HasMeta && spec.Type == "" {
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--initiative/--acceptance-criteria/--pull-request/--assoc-branch/--assoc-worktree/--type/--meta) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))
@@ -1350,6 +1624,18 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			Detail: []byte(fmt.Sprintf(`{"title":%q}`, *spec.Title)),
 		}); err != nil {
 			return changed, fmt.Errorf("task row updated but task_updated event failed: %w", err)
+		}
+	}
+	// BT-098 (panel amendment 5): a type change records old->new as its own
+	// task_type_changed event — events.jsonl IS the history (no in-row
+	// type_history: a second mutable structure loses under rebase).
+	if typeChanged {
+		if _, err := b.AppendEvent(EventSpec{
+			Type:   "task_type_changed",
+			TaskID: id,
+			Detail: []byte(fmt.Sprintf(`{"id":%q,"old_type":%q,"new_type":%q}`, id, oldType, spec.Type)),
+		}); err != nil {
+			return changed, fmt.Errorf("task row updated but task_type_changed event failed: %w", err)
 		}
 	}
 	return changed, nil

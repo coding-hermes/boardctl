@@ -77,6 +77,7 @@ var cliSummaries = map[string]string{
 	"normalize-statuses": "report and atomically canonicalize status aliases on one resolved board",
 	"normalize-board":    "report (and with --apply fix) drifted row shapes: key aliases, string depends_on, alias statuses (DF-BOARDCTL-36)",
 	"doctor":             "report board health",
+	"types":              "list configured ticket types + their required metadata fields",
 	"version":            "print version and build commit",
 	"stats":              "board task statistics",
 	"render":             "render the self-contained HTML analytics report",

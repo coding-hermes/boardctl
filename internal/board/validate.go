@@ -13,6 +13,11 @@ import (
 // Finding is one itemized validate result.
 type Finding struct {
 	Level string // "error" or "warn"
+	// Class names the finding class for programmatic matching (BT-098,
+	// panel amendment 7: --fail-on <class> needs something to match; e.g.
+	// "type-conformance" on the BT-098 findings). Existing findings keep a
+	// zero-value Class — the model only GAINED a field, never renamed one.
+	Class string
 	Msg   string
 }
 
@@ -37,6 +42,23 @@ type Report struct {
 // Add appends a finding.
 func (r *Report) Add(level, format string, args ...any) {
 	r.Findings = append(r.Findings, Finding{Level: level, Msg: fmt.Sprintf(format, args...)})
+}
+
+// AddClass appends a finding carrying a named class (BT-098: the finding
+// model is {Level, Class, Msg} so --fail-on <class> has something to match).
+func (r *Report) AddClass(level, class, format string, args ...any) {
+	r.Findings = append(r.Findings, Finding{Level: level, Class: class, Msg: fmt.Sprintf(format, args...)})
+}
+
+// CountClass returns the number of findings in a class.
+func (r *Report) CountClass(class string) int {
+	n := 0
+	for _, f := range r.Findings {
+		if f.Class == class {
+			n++
+		}
+	}
+	return n
 }
 
 // Errors returns the count of error-level findings.
@@ -97,6 +119,12 @@ func (b *Board) Validate() (*Report, error) {
 	}
 	if fp := b.FixturesPath(); fp != "" {
 		b.validateFixtures(rep, fp)
+	}
+	// BT-098: type-conformance — runs only when a valid types.jsonl exists
+	// (built-ins have no required fields, so a registry-less board adds zero
+	// findings).
+	if err := b.validateTypesConformance(rep); err != nil {
+		return nil, err
 	}
 	return rep, nil
 }

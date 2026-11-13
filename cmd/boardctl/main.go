@@ -52,11 +52,13 @@ commands:
   next-id --family CF [--width N] [--json]   (prints the next free id; read-only)
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
-          [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
+          [--acceptance-criteria TEXT] [--type SLUG] [--meta k=v]...
+          [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
           [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
           [--commit-hash SHA] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
           [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
+          [--acceptance-criteria TEXT] [--type SLUG] [--meta k=v]...
           [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
           [--acceptance-criteria TEXT]
           [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]...
@@ -112,6 +114,9 @@ commands:
            tasks.jsonl in ONE guarded atomic pass (all repairs or nothing).
 
   doctor
+  types   [-C dir] [--json] [--doctor]   list configured ticket types + their
+          required metadata fields (types.jsonl; absent file = built-ins
+          task|bug|feat|chore); --doctor names offending lines
   version [--json]
   stats   [--json] [--all] [--skip-bad-lines]
   initiatives [--json] [--status S] [--skip-bad-lines]   list initiative rollups on this board
@@ -237,6 +242,8 @@ func run(args []string) int {
 		err = cmdNormalizeBoard(boardDir, rest)
 	case "doctor":
 		err = cmdDoctor(boardDir, rest)
+	case "types":
+		err = cmdTypes(boardDir, rest)
 	case "version":
 		err = cmdVersion(rest)
 	case "stats":
@@ -680,7 +687,7 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "defer-reason", "defer-review-by", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "defer-reason", "defer-review-by", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree", "type", "meta"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
@@ -734,11 +741,20 @@ func cmdCreate(dir string, args []string) error {
 	// discipline as --status complete without --evidence-run-id.
 	deferReason := fs.String("defer-reason", "", "why the task is deferred (REQUIRED with --deferred; the next tick acts on or re-triages this)")
 	deferReviewBy := fs.String("defer-review-by", "", "date the deferral should be re-triaged (ISO date, e.g. 2026-11-14)")
+	// BT-098: the ticket type + its metadata. --type resolves against the
+	// board's types.jsonl (built-ins task|bug|feat|chore when absent); the
+	// type's template fills ONLY what the caller omitted (explicit flags
+	// always win) and its required metadata is enforced field-by-field.
+	// --meta is repeatable `--meta key=value` (split on the FIRST '=');
+	// values land as a typed object at detail.metadata.
+	typeSlug := fs.String("type", "", "ticket type slug (resolved against types.jsonl; run 'boardctl types' to list them; omit = write no type key and run no type checks)")
+	var metaFlags stringListFlag
+	fs.Var(&metaFlags, "meta", "typed metadata for the row's type, key=value (repeatable; split on the first '='; written to detail.metadata)")
 	force := fs.Bool("force", false, "write the id even if it violates the fleet id format (also files a duplicate finding as a variant)")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--acceptance-criteria TEXT] [--evidence-run-id id] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--acceptance-criteria TEXT] [--evidence-run-id id] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--type SLUG] [--meta k=v]... [--deferred] [--defer-reason R] [--defer-review-by DATE] [--force] [flags] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\n          --acceptance-criteria is free text and may span lines (embedded\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          newlines are JSON-escaped into the one physical row line). It is\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          the dispatchability field: a foreman will not dispatch a row\n")
@@ -747,6 +763,14 @@ func cmdCreate(dir string, args []string) error {
 		fmt.Fprintf(fs.Output(), "\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n")
 		fmt.Fprintf(fs.Output(), "          -review → P4, -docs/-readme → P5. An explicit --priority\n")
 		fmt.Fprintf(fs.Output(), "          always wins (BT-071).\n")
+		_, _ = fmt.Fprintf(fs.Output(), "\n          --type SLUG resolves against the board's types.jsonl (built-ins\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          task|bug|feat|chore when absent). The type's template fills\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          ONLY what the caller omitted — an explicit --title/--priority/\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          --acceptance-criteria ALWAYS wins, and a title already carrying\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          the template's prefix is never doubled (BT-098). Required\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          metadata is enforced: a refusal names EVERY missing field.\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          --meta key=value (repeatable) writes detail.metadata; keys not\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          declared by the type are refused at create.\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -756,6 +780,13 @@ func cmdCreate(dir string, args []string) error {
 	}
 	if dir == "" {
 		dir = cdir
+	}
+	// BT-098: --meta parsing (key=value split on the FIRST '=', duplicate
+	// keys refused) happens BEFORE the board opens — a usage error writes
+	// nothing anywhere.
+	metaKVs, err := board.ParseMetaKVs(metaFlags)
+	if err != nil {
+		return fmt.Errorf("create: %v", err)
 	}
 	b, err := openBoard(dir)
 	if err != nil {
@@ -774,6 +805,9 @@ func cmdCreate(dir string, args []string) error {
 		EvidenceFingerprint:  *evidenceFingerprint,
 		EvidenceArtifacts:    []string(evidenceArtifacts),
 		HasEvidenceArtifacts: len(evidenceArtifacts) > 0,
+		Type:                 *typeSlug,
+		Meta:                 metaKVs,
+		HasMeta:              len(metaKVs) > 0,
 	}
 	if spec.HasDependsOn {
 		spec.DependsOn = splitCSV(*dependsOn)
@@ -879,7 +913,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "pull-request", "assoc-branch", "assoc-worktree", "type", "meta"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -947,6 +981,13 @@ func cmdUpdate(dir string, args []string) error {
 	// to their canonical forms (read-alias fix path). Takes no value, so it
 	// must NOT join the reorderArgs valueFlags list.
 	normalize := fs.Bool("normalize", false, "rewrite status/guard_result/ci_result to canonical forms (read-alias fix path)")
+	// BT-098: --type changes the row's type (panel amendment 5) with atomic
+	// re-validation and a task_type_changed event; --meta merges
+	// key=value pairs into detail.metadata (an empty value on a required
+	// field is refused; an undeclared key warns and writes).
+	typeSlug := fs.String("type", "", "change the row's ticket type (validated against types.jsonl; the new type's required metadata must be satisfied atomically or the update is refused; records a task_type_changed event)")
+	var metaFlags stringListFlag
+	fs.Var(&metaFlags, "meta", "metadata key=value merged into detail.metadata (repeatable; split on the first '='; a required field refuses an empty value; an undeclared key warns and writes)")
 	force := fs.Bool("force", false, "allow updating rows whose id violates the fleet id format")
 	var cdir string
 	addCFlag(fs, &cdir)
@@ -957,11 +998,14 @@ func cmdUpdate(dir string, args []string) error {
 		_, _ = fmt.Fprintf(fs.Output(), "          [--initiative SLUG | --clear-initiative] (mutually exclusive; the clear form REMOVES the key)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--worktree PATH] [--branch NAME]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... (repeatable; each MERGES one element into its dimension — pull_requests/branches/worktrees — never overwriting existing elements or the other dimensions)\n")
-		_, _ = fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--normalize] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--session ID]... [--type SLUG] [--meta k=v]... [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--normalize] [--force] [flags] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\n          --acceptance-criteria is free text and may span lines (embedded\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          newlines are JSON-escaped into the one physical row line). It\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          replaces the row's criteria, so a foreman can dispatch the row;\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          an omitted flag leaves the key untouched (never an empty one).\n")
+		_, _ = fmt.Fprintf(fs.Output(), "\n          --type SLUG changes the row's configured ticket type atomically;\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          --meta key=value merges detail.metadata. Required fields cannot\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          be removed, and a type change appends task_type_changed.\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -971,6 +1015,13 @@ func cmdUpdate(dir string, args []string) error {
 	}
 	if fs.NArg() != 1 {
 		return fmt.Errorf("update requires exactly one task id")
+	}
+	// BT-098: --meta parsing (key=value split on the FIRST '=', duplicate
+	// keys refused) happens BEFORE the board opens — a usage error writes
+	// nothing anywhere.
+	metaKVs, err := board.ParseMetaKVs(metaFlags)
+	if err != nil {
+		return fmt.Errorf("update: %v", err)
 	}
 	b, err := openBoard(dir)
 	if err != nil {
@@ -984,7 +1035,7 @@ func cmdUpdate(dir string, args []string) error {
 	// --normalize alone satisfies the change-flag gate and needs no --force
 	// beyond the fleet-id escape hatch.
 	if *normalize {
-		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id"} {
+		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "type", "meta"} {
 			if fs.Lookup(f).Value.String() != "" {
 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
 			}
@@ -1035,6 +1086,19 @@ func cmdUpdate(dir string, args []string) error {
 	}
 	if *priority != "" {
 		spec.Priority = priority
+	}
+	// BT-098: --type / --meta wiring. The undeclared-key warning goes to
+	// stderr (warn-and-write — canon drift is named and counted, never
+	// silent).
+	if *typeSlug != "" {
+		spec.Type = *typeSlug
+	}
+	if len(metaKVs) > 0 {
+		spec.Meta = metaKVs
+		spec.HasMeta = true
+		spec.OnMetaWarning = func(msg string) {
+			fmt.Fprintln(os.Stderr, msg)
+		}
 	}
 	if *evidenceRunID != "" {
 		spec.EvidenceRunID = *evidenceRunID

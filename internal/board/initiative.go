@@ -2,7 +2,6 @@ package board
 
 import (
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"sort"
 	"strings"
@@ -23,31 +22,12 @@ var initiativeSlugRE = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 // key. It is applied at the WRITE surfaces (create/update) so a bad value can
 // never reach a row; the READ surfaces only ever compare, so historical rows are
 // never broken by a change to this rule.
+//
+// BT-098: the grammar is shared with the ticket-type slug rule
+// (ValidateBoardSlug) so both surfaces speak one slug shape and one "did you
+// mean" hint.
 func ValidateInitiativeSlug(s string) error {
-	if s == "" {
-		return fmt.Errorf("initiative must not be empty (omit the flag to leave a row unscoped; pass --clear-initiative to remove an existing one)")
-	}
-	if len(s) > 64 {
-		return fmt.Errorf("initiative %q is %d chars; the limit is 64", s, len(s))
-	}
-	if initiativeSlugRE.MatchString(s) {
-		return nil
-	}
-	// One suggestion, computed the way a human would fix it: lowercase and
-	// collapse every run of non-slug characters into a single hyphen. Suggesting
-	// only strings.ToLower would offer "lane hooks" for "Lane Hooks" — a value
-	// that is still rejected, which teaches the caller nothing.
-	suggestion := strings.ToLower(strings.Trim(s, " -_"))
-	for _, r := range []string{" ", "_", "--", "..", "/", "\\"} {
-		for strings.Contains(suggestion, r) {
-			suggestion = strings.ReplaceAll(suggestion, r, "-")
-		}
-	}
-	suggestion = strings.Trim(suggestion, "-")
-	if suggestion == "" || len(suggestion) > 64 || !initiativeSlugRE.MatchString(suggestion) {
-		return fmt.Errorf("initiative %q is not a slug: use lowercase letters, digits and single hyphens, starting and ending with a letter or digit (e.g. \"lane-hooks\")", s)
-	}
-	return fmt.Errorf("initiative %q is not a slug: use lowercase letters, digits and single hyphens, starting and ending with a letter or digit — did you mean %q?", s, suggestion)
+	return ValidateBoardSlug("initiative", s)
 }
 
 // InitiativeSummary is one initiative's rollup: how much work is grouped under
