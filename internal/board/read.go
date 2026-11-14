@@ -188,6 +188,9 @@ type TaskFilter struct {
 	Status   string // "" = any; canonicalized via NormalizeStatus
 	Priority string // "" = any; compared case-insensitively on string form
 	All      bool   // include tasks whose id lives in fixtures.jsonl
+	// Actionable keeps only rows counted by Stats.Actionable: pending rows
+	// that are not deferred. It composes with the other filters.
+	Actionable bool
 	// Statuses is the multi-status OR filter (DF-BOARDCTL-37, behind
 	// `umbrella --list --status s1,s2`): when non-empty, a row matches when
 	// its NORMALIZED status equals any listed value, so a stored alias row
@@ -238,6 +241,9 @@ func (f TaskFilter) Match(row *Row, fixtureIDs map[string]bool) bool {
 		if !strings.EqualFold(strings.TrimSpace(row.String("initiative")), strings.TrimSpace(f.Initiative)) {
 			return false
 		}
+	}
+	if f.Actionable && !RowIsActionable(row) {
+		return false
 	}
 	return true
 }
@@ -420,7 +426,8 @@ func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
 		st.Total++
 		if RowIsDeferred(r) {
 			st.Deferred++
-		} else if NormalizeStatus(r.String("status")) == "pending" {
+		}
+		if RowIsActionable(r) {
 			st.Actionable++
 		}
 		status := NormalizeStatus(r.String("status"))
@@ -433,6 +440,12 @@ func (b *Board) ComputeStats(f TaskFilter) (*Stats, error) {
 		}
 	}
 	return st, nil
+}
+
+// RowIsActionable is the shared predicate used by stats and actionable list
+// views: pending rows that are not deferred.
+func RowIsActionable(r *Row) bool {
+	return !RowIsDeferred(r) && NormalizeStatus(r.String("status")) == "pending"
 }
 
 // RowIsDeferred reports whether a task row carries the BT-076 deferred flag

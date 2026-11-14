@@ -122,7 +122,7 @@ boardctl -C R next                          # one highest-priority row using the
 boardctl -C R stats [--json] [--all]       # counts by status/priority
 boardctl -C R initiatives [--json] [--status S]  # per-initiative rollup:
                                            # total/actionable/deferred
-boardctl -C R list [--status pending] [--priority P1] [--initiative SLUG] [--json] [--all]
+boardctl -C R list [--status pending] [--priority P1] [--initiative SLUG] [--actionable] [--json] [--all]
 boardctl -C R show <ID> [--events] [--skip-bad-lines]  # searches tasks AND
                                                        # fixtures; --skip-bad-lines
                                                        # keeps a parseable row
