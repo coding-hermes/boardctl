@@ -47,7 +47,7 @@ usage:
 
 commands:
   init    [-C dir] [--project P] [--namespace NS]   bootstrap a fresh board
-  list    [--status S] [--priority P] [--initiative SLUG] [--json] [--all] [--skip-bad-lines]
+  list    [--status S] [--priority P] [--initiative SLUG] [--actionable] [--json] [--all] [--skip-bad-lines]
   show    <id> [--events]
   next-id --family CF [--width N] [--json]   (prints the next free id; read-only)
   next    [-C dir]   (prints the highest-priority dispatchable row; read-only)
@@ -566,13 +566,14 @@ func cmdList(dir string, args []string) error {
 	status := fs.String("status", "", "filter by status")
 	priority := fs.String("priority", "", "filter by priority (e.g. P1)")
 	initiative := fs.String("initiative", "", "filter to one initiative slug (the scoop query)")
+	actionable := fs.Bool("actionable", false, "only rows counted as actionable by stats (pending and not deferred)")
 	asJSON := fs.Bool("json", false, "emit JSON array of full rows")
 	all := fs.Bool("all", false, "include fixture rows (ids in fixtures.jsonl)")
 	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl list [--status S] [--priority P] [--initiative SLUG] [--json] [--all] [--skip-bad-lines] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl list [--status S] [--priority P] [--initiative SLUG] [--actionable] [--json] [--all] [--skip-bad-lines] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -602,6 +603,7 @@ func cmdList(dir string, args []string) error {
 	if *initiative != "" {
 		f.Initiative = *initiative
 	}
+	f.Actionable = *actionable
 	rows, err := b.ListTasks(f)
 	if err != nil {
 		return err
