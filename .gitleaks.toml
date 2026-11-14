@@ -44,3 +44,15 @@ paths = [
   '''vendor/''',
 ]
 
+# False positive, not a credential: an audit event's witness string literally
+# reads "gitreins-tier2-iteration-cap-and-tier1-baseline-secrets commit=<sha>",
+# so the default generic-api-key rule treats "secrets commit=" as key=value and
+# reports the following sha. The match is our own tooling label, never a key,
+# so allowlist the label prefix. regexTarget="match" is required: the rule's
+# captured secret is the trailing sha, and the label only appears in the match
+# text. Keep every future regex here written against the MATCH, not the secret.
+regexTarget = "match"
+regexes = [
+  '''gitreins-tier2-[A-Za-z0-9_-]{10,}''',
+]
+
