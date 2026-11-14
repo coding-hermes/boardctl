@@ -1,0 +1,18 @@
+{
+  "tick_id": "boardctl-foreman-2026-11-14-22-23-50",
+  "project": "boardctl",
+  "selected_row": "RELEASE-2026-11-09-07",
+  "mode": "verification-only-landed-drift",
+  "wave": "verification-only",
+  "wave_size": 0,
+  "eligible_independent": 0,
+  "workers": [],
+  "tested_commit": "84d50024fbc3b83766c075ed621859d3e60793e6",
+  "owner_block": "No new release is due; release-row closure requires a commit-bound GitReins verification artifact.",
+  "sha_roles": {
+    "source_sha": "9ebf7ad3d449022eb6d04de493c0070644854ce9",
+    "verified_code_commit": "84d50024fbc3b83766c075ed621859d3e60793e6",
+    "evidence_commit": "to-be-set-by-commit"
+  },
+  "trace": "ch:trace row=RELEASE-2026-11-09-07 spec=.coding-hermes/board/tasks.jsonl#RELEASE-2026-11-09-07 wave=.coding-hermes/waves/boardctl-foreman-2026-11-14-22-23-50.json#selected test=make test; make vet; make vuln-check; make cover-check; make version-check VERSION_TAG=v0.4.0 doc=.coding-hermes/board/evidence/boardctl-foreman-2026-11-14-22-23-50.md evidence=.coding-hermes/board/evidence/boardctl-foreman-2026-11-14-22-23-50.md witness=none:release-reconciliation-is-repo-and-ci-bound verdict=none:verification-task-pending commit=84d50024fbc3b83766c075ed621859d3e60793e6 memory=none:not-written"
+}
