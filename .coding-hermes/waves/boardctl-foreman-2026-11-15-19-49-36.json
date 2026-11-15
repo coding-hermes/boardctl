@@ -37,7 +37,7 @@
   "sha_roles": {
     "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067",
     "evidence_commit": "d1c36d5714bceccab261edf31005b33db8f2fd65",
-    "board_closeout_commit": "cea621f23003eed3d287866ac128a3b915d2fd65"
+    "first_published_bookkeeping_sha": "cea621f23003eed3d287866ac128a3b915d2fd65"
   },
   "trace": "ch:trace row=BT-094 spec=none:gateway-runtime-owner wave=.coding-hermes/waves/boardctl-foreman-2026-11-15-19-49-36.json#selected test=none:cross-repo-live-gateway-probe doc=none:owner-gated evidence=.coding-hermes/board/evidence/boardctl-foreman-2026-11-15-19-49-36-BT-094.json witness=none:gateway-runtime-outside-boardctl verdict=none:cross-repo-owner-gated commit=49c03504c14d2447a771f3aa7139ea27528ee067 memory=none:deferred-wrapper-rejected-required-payload"
 }
