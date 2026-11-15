@@ -15,10 +15,23 @@
   "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067",
   "tested_commit": "49c03504c14d2447a771f3aa7139ea27528ee067",
   "owner_gated_context": "BT-094 requires changing and restarting the Hermes gateway runtime, outside the boardctl repository.",
-  "direct_gates": {},
+  "direct_gates": {
+    "build": "PASS: go build -o bin/boardctl ./cmd/boardctl",
+    "vet": "PASS: go vet ./...",
+    "tests": "PASS: go test -short -p 1 ./... -count=1",
+    "fmt_check": "PASS: make fmt-check",
+    "version_check": "PASS: make version-check",
+    "spec_check": "PASS: make spec-check",
+    "vendor_check": "PASS: make vendor-check",
+    "vuln_check": "PASS: make vuln-check",
+    "validate": "PASS: ./bin/boardctl validate -> RESULT: OK (44 warnings)",
+    "doctor": "PASS: ./bin/boardctl doctor -> RESULT: OK (45 warnings)"
+  },
+  "live_probe": "Not run: the gateway runtime is outside boardctl and the prior owner-gate evidence is unchanged.",
+  "owner_action": "Hermes gateway owner must fix executor recreation, expose the mem-sync thread-count metric, restart the gateway, and provide the >=2h one-thread witness.",
   "verdict": "none:cross-repo-owner-gated",
-  "status_note": "The gateway owner must fix executor recreation, expose the mem-sync thread-count metric, restart the gateway, and provide the >=2h one-thread witness. BT-094 remains pending.",
   "sha_roles": {
-    "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067"
+    "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067",
+    "evidence_commit": "d1c36d5714bceccab261edf31005b33db8f2fd65"
   }
 }
