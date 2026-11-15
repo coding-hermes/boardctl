@@ -1232,7 +1232,7 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		for key, value := range *spec.Metadata {
 			if value == "" {
 				if f, declared := typ.Field(key); declared && f.Required {
-					return nil, fmt.Errorf("update refused: %q is REQUIRED by type %q — supply a value or change the row's type first", key, typeName)
+					return nil, fmt.Errorf("update refused: %q is REQUIRED by type %q (%s) — supply a value or change the row's type first", key, typeName, metadataFieldSpec(f))
 				}
 				delete(values, key)
 				continue

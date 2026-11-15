@@ -198,6 +198,23 @@ func (typ TicketType) Field(name string) (MetadataField, bool) {
 	return MetadataField{}, false
 }
 
+// metadataFieldSpec renders a field's TYPE contract alone — `string`,
+// `enum: stable|beta|nightly`, `ref: task_id` — for the messages that already
+// name the field themselves (refusals, validate findings). The spec's shape is
+// `channel (enum: stable|beta|nightly)`, so the name must not appear twice and
+// the ", required" suffix belongs to the `types` census, not to a refusal.
+func metadataFieldSpec(f MetadataField) string {
+	switch f.Type {
+	case "enum":
+		return "enum: " + strings.Join(f.Values, "|")
+	case "ref":
+		if f.Ref != "" {
+			return "ref: " + f.Ref
+		}
+	}
+	return f.Type
+}
+
 func metadataFieldSummary(f MetadataField) string {
 	extra := ""
 	if f.Type == "enum" {
@@ -284,7 +301,7 @@ func (r TypeRegistry) ValidateRow(row *Row, allIDs map[string]bool) []Finding {
 		raw, present := metadata[field.Name]
 		if !present || bytes.Equal(bytes.TrimSpace(raw), []byte(`""`)) || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 			if field.Required {
-				findings = append(findings, Finding{Level: "error", Class: "type-conformance", Msg: fmt.Sprintf("BT-098: row %s (type %q) is missing required metadata field %q (%s)", row.String("id"), typeName, field.Name, metadataFieldSummary(field))})
+				findings = append(findings, Finding{Level: "error", Class: "type-conformance", Msg: fmt.Sprintf("BT-098: row %s (type %q) is missing required metadata field %q (%s)", row.String("id"), typeName, field.Name, metadataFieldSpec(field))})
 			}
 			continue
 		}
@@ -322,7 +339,7 @@ func (r TypeRegistry) ValidateMetadata(typeName string, metadata map[string]stri
 	for _, field := range typ.Metadata {
 		value, present := metadata[field.Name]
 		if (!present || strings.TrimSpace(value) == "") && field.Required {
-			missing = append(missing, fmt.Sprintf("%s (%s) — required: %s", field.Name, metadataFieldSummary(field), field.Description))
+			missing = append(missing, fmt.Sprintf("%s (%s) — required: %s", field.Name, metadataFieldSpec(field), field.Description))
 			continue
 		}
 		if !present || strings.TrimSpace(value) == "" {

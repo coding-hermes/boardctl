@@ -1256,6 +1256,7 @@ func cmdUpdate(dir string, args []string) error {
 		return err
 	}
 	renderCompletionWarnings(b)
+	renderMetadataWarnings(b)
 	fmt.Fprintf(os.Stdout, "updated task %s: %s\n", fs.Arg(0), strings.Join(changes, ", "))
 	return nil
 }

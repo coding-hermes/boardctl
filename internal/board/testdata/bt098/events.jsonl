@@ -1,0 +1,2 @@
+{"id":1,"timestamp":"2026-11-01 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}
+{"id":2,"timestamp":"2026-11-01 00:00:01","event_type":"task_created","task_id":"REL-100","actor":"foreman","detail":null,"tick_number":null}

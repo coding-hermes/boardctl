@@ -43,3 +43,9 @@ func renderCompletionWarnings(b *board.Board) {
 		fmt.Fprintf(os.Stderr, "boardctl: WARN completion debt for %q (%s): %s; use a real commit, bind an evidence run, or deliberately record this id with --record-debt\n", warning.TaskID, warning.Hash, warning.Reason)
 	}
 }
+
+func renderMetadataWarnings(b *board.Board) {
+	for _, warning := range b.MetadataWarnings() {
+		fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
+	}
+}
