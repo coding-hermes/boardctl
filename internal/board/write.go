@@ -753,7 +753,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 	}
 	// Keys the user asked for but the mirrored schema lacks: append at end.
-	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "defer_reason", "defer_review_by", "initiative", InitiativeRefsKey, "acceptance_criteria"} {
+	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "type", "worktree", "branch", "sessions", "deferred", "defer_reason", "defer_review_by", "initiative", InitiativeRefsKey, "acceptance_criteria"} {
 		if v, ok := overrides[k]; ok && !row.Has(k) {
 			if err := set(k, v); err != nil {
 				return "", err
