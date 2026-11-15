@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.5.0 — 2026-11-15
+
+This release contains 60 commits since v0.4.0 (60 non-merge, 2 material),
+summarized by the commit categories below. The cited short SHAs are taken
+directly from the release range (`git log v0.4.0..HEAD --oneline`).
+
+### Features
+
+- `boardctl list --actionable` adds an actionable work view, backed by the same
+  pending-and-not-deferred predicate `stats` uses; plain `list` output is
+  unchanged, and the new view is documented in the CLI usage, the README, and
+  the `boardctl-usage` skill (`c119774`).
+
+### Internal
+
+- Tier-1 secret scanning unblocked so GitReins can judge board rows cleanly
+  (`.gitleaks.toml`) (`93b50bf`).
+
+### Excluded from these notes
+
+As bookkeeping, not release surface: 28 `chore`, 9 `qa`, 9 `board`, 6 `docs`,
+4 remaining `ops`, and 2 harness-evidence commits (59 of the 60). The release
+itself contains every commit reachable from the tag.
+
+### Notes
+
+- No breaking changes. Rollback target: `v0.4.0`.
+
 ## v0.4.0
 
 - graph-aware ready/direction dispatchability views (BT-097) and next-selection starvation fix (deferred rows)
