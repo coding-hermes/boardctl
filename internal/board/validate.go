@@ -316,6 +316,24 @@ func (b *Board) validateTasks(rep *Report) {
 					idx+1, id, dim, bad)
 			}
 		}
+		// BT-092: hand-edited initiative refs are warnings, not validation errors;
+		// legacy boards remain readable while malformed locations are visible.
+		if raw := row.Get(InitiativeRefsKey); raw != nil {
+			if jsonKindName(raw) != "array" {
+				rep.Add("warn", "tasks.jsonl line %d (task %s): %s is not an array of REPO:PATH#ANCHOR refs", idx+1, id, InitiativeRefsKey)
+			} else {
+				var refs []string
+				if err := json.Unmarshal(raw, &refs); err != nil {
+					rep.Add("warn", "tasks.jsonl line %d (task %s): %s is not an array of strings: %v", idx+1, id, InitiativeRefsKey, err)
+				} else {
+					for _, ref := range refs {
+						if err := ValidateInitiativeRef(ref); err != nil {
+							rep.Add("warn", "tasks.jsonl line %d (task %s): %s ref %q is invalid: %v", idx+1, id, InitiativeRefsKey, ref, err)
+						}
+					}
+				}
+			}
+		}
 		// DF-BOARDCTL-27: the report parser (internal/render load.go buildTaskRec)
 		// excludes rows from time-based metrics when created_at/completed_at (and
 		// the other task timestamp fields) are absent, null, non-string, empty,

@@ -144,6 +144,9 @@ var sanctionedExtras = []string{
 	"pull_requests",
 	"branches",
 	"worktrees",
+	// BT-092: cross-repository initiative locations, stored as ordered
+	// REPO:PATH#ANCHOR strings.
+	"initiative_refs",
 	// The premise probe (census 2026-11-03: 511 rows across 20 project families,
 	// dominated by code-factory and its work/review boards). A probe is a shell
 	// one-liner that PRINTS evidence for the row's own premise — the thing that
