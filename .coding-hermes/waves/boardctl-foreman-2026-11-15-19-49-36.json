@@ -1,0 +1,43 @@
+{
+  "tick_id": "boardctl-foreman-2026-11-15-19-49-36",
+  "project": "boardctl",
+  "row_id": "BT-094",
+  "status": "closed",
+  "finished_at": "2026-11-15T20:05:34Z",
+  "tier": "T3",
+  "wave": "verification-only",
+  "wave_budget": 11,
+  "wave_size": 0,
+  "recovery": {
+    "prior_tick": "boardctl-foreman-2026-11-15-17-47-55",
+    "prior_manifest_closed": true,
+    "workers_recovered": 0,
+    "branches_merged": 0,
+    "branches_preserved": 0,
+    "disposition": "recovered zero-worker owner-gated manifest before normal tick"
+  },
+  "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067",
+  "tested_commit": "49c03504c14d2447a771f3aa7139ea27528ee067",
+  "owner_gated_context": "BT-094 requires changing and restarting the Hermes gateway runtime, outside the boardctl repository.",
+  "direct_gates": {
+    "build": "PASS: go build -o bin/boardctl ./cmd/boardctl",
+    "vet": "PASS: go vet ./...",
+    "tests": "PASS: go test -short -p 1 ./... -count=1",
+    "fmt_check": "PASS: make fmt-check",
+    "version_check": "PASS: make version-check",
+    "spec_check": "PASS: make spec-check",
+    "vendor_check": "PASS: make vendor-check",
+    "vuln_check": "PASS: make vuln-check",
+    "validate": "PASS: ./bin/boardctl validate -> RESULT: OK (44 warnings)",
+    "doctor": "PASS: ./bin/boardctl doctor -> RESULT: OK (45 warnings)"
+  },
+  "live_probe": "Not run: the gateway runtime is outside boardctl and the prior owner-gate evidence is unchanged.",
+  "owner_action": "Hermes gateway owner must fix executor recreation, expose the mem-sync thread-count metric, restart the gateway, and provide the >=2h one-thread witness.",
+  "verdict": "none:cross-repo-owner-gated",
+  "sha_roles": {
+    "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067",
+    "evidence_commit": "d1c36d5714bceccab261edf31005b33db8f2fd65",
+    "board_closeout_commit": "pending: this manifest is committed by the next reconciliation commit"
+  },
+  "trace": "ch:trace row=BT-094 spec=none:gateway-runtime-owner wave=.coding-hermes/waves/boardctl-foreman-2026-11-15-19-49-36.json#selected test=none:cross-repo-live-gateway-probe doc=none:owner-gated evidence=.coding-hermes/board/evidence/boardctl-foreman-2026-11-15-19-49-36-BT-094.json witness=none:gateway-runtime-outside-boardctl verdict=none:cross-repo-owner-gated commit=49c03504c14d2447a771f3aa7139ea27528ee067 memory=none:deferred-wrapper-rejected-required-payload"
+}
