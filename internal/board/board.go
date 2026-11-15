@@ -51,7 +51,11 @@ type Board struct {
 	// The CLI renders these warnings after UpdateTask returns; keeping them on
 	// the Board preserves the existing UpdateTask signature for library callers.
 	completionWarnings []CompletionWarning
+	metadataWarnings   []string
 }
+
+// MetadataWarnings returns warnings from the most recent typed update.
+func (b *Board) MetadataWarnings() []string { return append([]string(nil), b.metadataWarnings...) }
 
 // ErrBoardNotFound is wrapped with the directories probed. It is also the
 // sentinel for a PARTIAL board (tasks.jsonl or events.jsonl present, its pair

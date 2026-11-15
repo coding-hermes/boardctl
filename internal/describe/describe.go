@@ -72,6 +72,7 @@ var cliSummaries = map[string]string{
 	"show":               "show one task row",
 	"create":             "create a task row",
 	"update":             "update one task row",
+	"types":              "list configured ticket types + their required metadata fields",
 	"event":              "append a board event row",
 	"header":             "show or set board header fields",
 	"validate":           "validate board files (key uniformity, dangling deps)",

@@ -53,7 +53,7 @@ commands:
   next    [-C dir]   (prints the highest-priority dispatchable row; read-only)
   ready   [-C dir] [--initiative SLUG] [--json] [--blocked] [--skip-bad-lines]
   direction [-C dir] [--json] [--skip-bad-lines]
-  create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
+  create  --id ID --title T [--type SLUG] [--meta k=v]... [--priority P] [--complexity N] [--depends-on a,b]
           [--reasoning R] [--capability-tags a,b] [--initiative-ref REPO:PATH#ANCHOR]... [--status pending] [--force]
           [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
           [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE]   (a re-detected finding is REFUSED with exit 2)
@@ -245,6 +245,8 @@ func run(args []string) int {
 		err = cmdCreate(boardDir, rest)
 	case "update":
 		err = cmdUpdate(boardDir, rest)
+	case "types":
+		err = cmdTypes(boardDir, rest)
 	case "evidence":
 		err = cmdEvidence(boardDir, rest)
 	case "next-id":
@@ -728,9 +730,12 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "initiative-ref", "defer-reason", "defer-review-by", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "type", "meta", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "initiative-ref", "defer-reason", "defer-review-by", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
+	ticketType := fs.String("type", "", "ticket type slug")
+	var metadataFlags stringListFlag
+	fs.Var(&metadataFlags, "meta", "typed metadata key=value (repeatable)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
 	// BT-071: the default is lane-dependent — P2 on every non-paperwork
 	// lane, P4 on -review and P5 on -docs/-readme (see PaperworkLaneDefault).
@@ -788,7 +793,7 @@ func cmdCreate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--initiative-ref REPO:PATH#ANCHOR]... [--acceptance-criteria TEXT] [--evidence-run-id id] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--type SLUG] [--meta k=v]... [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--initiative-ref REPO:PATH#ANCHOR]... [--acceptance-criteria TEXT] [--evidence-run-id id] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE] [--force] [flags] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\n          --acceptance-criteria is free text and may span lines (embedded\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          newlines are JSON-escaped into the one physical row line). It is\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          the dispatchability field: a foreman will not dispatch a row\n")
@@ -811,9 +816,23 @@ func cmdCreate(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
+	meta := map[string]string{}
+	for _, item := range metadataFlags {
+		key, value, ok := strings.Cut(item, "=")
+		if !ok || key == "" {
+			return fmt.Errorf("--meta must be key=value")
+		}
+		if _, exists := meta[key]; exists {
+			return fmt.Errorf("--meta %q given twice — one value per field", key)
+		}
+		meta[key] = value
+	}
 	spec := board.TaskRowSpec{
 		ID:                   *id,
 		Title:                *title,
+		Type:                 *ticketType,
+		Metadata:             meta,
+		HasType:              *ticketType != "",
 		Status:               *status,
 		Priority:             *priority,
 		Reasoning:            *reasoning,
@@ -936,7 +955,10 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "initiative-ref", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "record-debt", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "type", "meta", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "initiative-ref", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "record-debt", "pull-request", "assoc-branch", "assoc-worktree"))
+	ticketType := fs.String("type", "", "new ticket type slug (atomic re-validation)")
+	var metadataFlags stringListFlag
+	fs.Var(&metadataFlags, "meta", "typed metadata key=value (repeatable)")
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -1073,7 +1095,28 @@ func cmdUpdate(dir string, args []string) error {
 	// nil-untouched discipline as every other optional field) — mirror
 	// create's default-P2 is deliberately NOT applied here: update repairs
 	// existing rows, it never invents a default.
+	meta := map[string]string{}
+	for _, item := range metadataFlags {
+		key, value, ok := strings.Cut(item, "=")
+		if !ok || key == "" {
+			return fmt.Errorf("--meta must be key=value")
+		}
+		if _, exists := meta[key]; exists {
+			return fmt.Errorf("--meta %q given twice — one value per field", key)
+		}
+		meta[key] = value
+	}
+	var typePtr *string
+	if *ticketType != "" {
+		typePtr = ticketType
+	}
+	var metaPtr *map[string]string
+	if len(meta) > 0 {
+		metaPtr = &meta
+	}
 	spec := board.UpdateSpec{
+		Type:          typePtr,
+		Metadata:      metaPtr,
 		Status:        ptr(*status),
 		Title:         ptr(*title),
 		WorkerStatus:  ptr(*workerStatus),

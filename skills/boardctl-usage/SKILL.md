@@ -55,6 +55,8 @@ blind spot.
   per-initiative reverse view. Both are read-only and use transitive dependencies.
 - `evidence baseline --record`: records current completion debt and enables
   FAIL-on-new-debt completion checks; without a baseline, debt is WARN-only.
+- `types`: lists configured ticket types and required metadata; `types --doctor`
+  reports the append-only `types.jsonl` configuration health.
 
 
 - `next-id` (2026-11-03): `boardctl next-id --family CF` prints the next free
@@ -156,6 +158,10 @@ boardctl -C R doctor                       # validate + git tracked-set (no
 boardctl -C R create --id FEAT-1 --title "T" --priority P1 \
     --complexity 2 --depends-on A,B --reasoning "why" \
     --capability-tags go,cli
+boardctl -C R types                # configured ticket types + required metadata fields
+boardctl -C R create --id REL-1 --type release --meta channel=stable --meta source_commit=abc
+# --type SLUG and repeatable --meta k=v are explicit filing controls; explicit
+# --title/--priority/--acceptance-criteria values always beat type templates.
 boardctl -C R update FEAT-1 --status complete \
     --commit-hash <sha> --guard PASS --ci GREEN --summary "done (+80/-12)"
 boardctl -C R update FEAT-1 --title "renamed: retry with backoff"  # BT-060

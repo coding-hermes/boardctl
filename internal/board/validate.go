@@ -13,6 +13,7 @@ import (
 // Finding is one itemized validate result.
 type Finding struct {
 	Level string // "error" or "warn"
+	Class string // stable machine-readable warning/error class
 	Msg   string
 }
 
@@ -36,7 +37,7 @@ type Report struct {
 
 // Add appends a finding.
 func (r *Report) Add(level, format string, args ...any) {
-	r.Findings = append(r.Findings, Finding{Level: level, Msg: fmt.Sprintf(format, args...)})
+	r.Findings = append(r.Findings, Finding{Level: level, Class: "general", Msg: fmt.Sprintf(format, args...)})
 }
 
 // Errors returns the count of error-level findings.
@@ -314,6 +315,16 @@ func (b *Board) validateTasks(rep *Report) {
 				bad := AssociationBadIndex(row, dim)
 				rep.Add("warn", "tasks.jsonl line %d (task %s): %s element [%d] fails the association schema — pull_requests elements must be a GitHub PR URL or a bare PR number (normalized to {\"number\"[,\"url\"]}); branches/worktrees elements must be non-empty strings; the malformed element is treated as absent (hand-edit the row or rewrite via boardctl update)",
 					idx+1, id, dim, bad)
+			}
+		}
+		if reg, err := LoadTicketTypes(b.Dir); err == nil && reg.Present {
+			ids := map[string]bool{}
+			for known := range seen {
+				ids[known] = true
+			}
+			rep.Findings = append(rep.Findings, reg.ValidateRow(row, ids)...)
+			for _, warning := range reg.Warnings {
+				rep.Add("warn", "%s", warning)
 			}
 		}
 		// BT-092: hand-edited initiative refs are warnings, not validation errors;

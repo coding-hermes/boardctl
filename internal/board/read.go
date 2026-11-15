@@ -124,6 +124,7 @@ var EventTypeVocabulary = map[string]bool{
 	"task_evidence":     true,
 	"task_started":      true,
 	"task_updated":      true,
+	"task_type_changed": true,
 	"task_verified":     true,
 	"tick":              true,
 	"worker_dispatched": true,

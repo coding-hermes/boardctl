@@ -209,6 +209,9 @@ func atomicRewrite(path string, content []byte) error {
 type TaskRowSpec struct {
 	ID             string
 	Title          string
+	Type           string
+	Metadata       map[string]string
+	HasType        bool
 	Status         string
 	Priority       string
 	Complexity     *int64
@@ -374,6 +377,46 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 
 // createLocked is Create's body, running under the write guard.
 func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
+	if spec.HasType {
+		reg, err := LoadTicketTypes(b.Dir)
+		if err != nil {
+			return "", err
+		}
+		typ, ok := reg.Types[spec.Type]
+		if !ok {
+			return "", fmt.Errorf("create refused: unknown ticket type %q — configured types: %s (run 'boardctl types' to list them)", spec.Type, reg.Names())
+		}
+		if typ.Retired {
+			return "", fmt.Errorf("create refused: ticket type %q is retired in types.jsonl — pick an active type", spec.Type)
+		}
+		rows, _, err := b.lastTaskRow()
+		if err != nil {
+			return "", err
+		}
+		ids := map[string]bool{}
+		for _, row := range rows {
+			ids[row.String("id")] = true
+		}
+		missing, invalid := reg.ValidateMetadata(spec.Type, spec.Metadata, ids)
+		if len(missing) > 0 {
+			return "", fmt.Errorf("create refused: type %q requires metadata fields that are missing:\n  - %s\nsupply each with --meta field=value (repeat the flag per field); nothing was written", spec.Type, strings.Join(missing, "\n  - "))
+		}
+		if len(invalid) > 0 {
+			return "", fmt.Errorf("create refused: type %q metadata values are invalid:\n  - %s\nnothing was written", spec.Type, strings.Join(invalid, "\n  - "))
+		}
+		if typ.Template != nil {
+			if typ.Template.TitlePrefix != "" && !strings.HasPrefix(spec.Title, typ.Template.TitlePrefix) {
+				spec.Title = typ.Template.TitlePrefix + spec.Title
+			}
+			if typ.Template.ACSkeleton != "" && spec.AcceptanceCriteria == nil {
+				ac := typ.Template.ACSkeleton
+				spec.AcceptanceCriteria = &ac
+			}
+			if spec.Priority == "" && typ.Template.DefaultPriority != "" {
+				spec.Priority = typ.Template.DefaultPriority
+			}
+		}
+	}
 	// BT-023: ids are machine keys — task-router chains and board-scan
 	// dedupe (keep-LAST by id) parse them, so a junk id ("bad id!")
 	// wedges downstream parsers. Enforce the fleet format at write time;
@@ -618,6 +661,33 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.Reasoning != "" {
 		overrides["reasoning"] = spec.Reasoning
 	}
+	if spec.HasType {
+		overrides["type"] = spec.Type
+		if typ, ok := func() (TicketType, bool) {
+			reg, err := LoadTicketTypes(b.Dir)
+			if err != nil {
+				return TicketType{}, false
+			}
+			t, ok := reg.Types[spec.Type]
+			return t, ok
+		}(); ok {
+			metadata, err := encodeMetadata(spec.Metadata, typ, style)
+			if err != nil {
+				return "", err
+			}
+			pd := ParseFindingDetail(row.Get("detail"))
+			pd.Object = true
+			if pd.Extra == nil {
+				pd.Extra = map[string]json.RawMessage{}
+			}
+			pd.Extra["metadata"] = metadata
+			enc, err := EncodeFindingDetail(pd, style)
+			if err != nil {
+				return "", err
+			}
+			overrides["detail"] = json.RawMessage(enc)
+		}
+	}
 	// BT-037: build-location + session fields ride the same table — set in
 	// place when the mirrored schema already carries the key, appended at the
 	// end of the row when it does not (see the append list below).
@@ -704,6 +774,20 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	// suppressed instead of refiled. An object-form detail keeps every unknown
 	// key verbatim; a prose detail is carried under "text" so nothing is lost.
 	pd := ParseFindingDetail(row.Get("detail"))
+	if spec.HasType {
+		if pd.Extra == nil {
+			pd.Extra = map[string]json.RawMessage{}
+		}
+		reg, _ := LoadTicketTypes(b.Dir)
+		if typ, ok := reg.Types[spec.Type]; ok {
+			metadata, err := encodeMetadata(spec.Metadata, typ, style)
+			if err != nil {
+				return "", err
+			}
+			pd.Object = true
+			pd.Extra["metadata"] = metadata
+		}
+	}
 	pd = pd.withFingerprint(FindingFingerprint(spec.Title, spec.Reasoning))
 	if spec.EvidenceRunID != "" {
 		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: nowStr, TreeFP: spec.EvidenceFingerprint, Artifacts: spec.EvidenceArtifacts}})
@@ -912,6 +996,8 @@ type UpdateSpec struct {
 	// Multi-line text is written through the row's own serializer, so it
 	// stays one physical JSONL line with the newlines JSON-escaped.
 	AcceptanceCriteria *string
+	Type               *string
+	Metadata           *map[string]string
 	// BT-077: the update-path association elements, same nil-untouched
 	// discipline. AssocDim names the dimension (pull_requests, branches,
 	// worktrees); AssocValues carries ONE OR MORE raw CLI strings (one
@@ -991,6 +1077,7 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 
 // updateTaskLocked is UpdateTask's body, running under the write guard.
 func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
+	b.metadataWarnings = nil
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
 		return nil, err
@@ -1087,6 +1174,93 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	// cross-check is where a drift tell gets surfaced, not here.
 	if spec.Title != nil {
 		if err := set("title", *spec.Title); err != nil {
+			return nil, err
+		}
+	}
+	if spec.Type != nil {
+		reg, err := LoadTicketTypes(b.Dir)
+		if err != nil {
+			return nil, err
+		}
+		oldType := target.String("type")
+		nextType := *spec.Type
+		if nextType == "" {
+			return nil, fmt.Errorf("update refused: --type must not be empty")
+		}
+		if _, ok := reg.Types[nextType]; !ok {
+			return nil, fmt.Errorf("update refused: unknown ticket type %q — configured types: %s", nextType, reg.Names())
+		}
+		metadata := map[string]string{}
+		if raw := target.Get("detail"); len(raw) > 0 {
+			pd := ParseFindingDetail(raw)
+			if pd.Object && pd.Extra != nil {
+				var vals map[string]string
+				_ = json.Unmarshal(pd.Extra["metadata"], &vals)
+				for key, value := range vals {
+					metadata[key] = value
+				}
+			}
+		}
+		missing, invalid := reg.ValidateMetadata(nextType, metadata, map[string]bool{})
+		if len(missing) > 0 || len(invalid) > 0 {
+			return nil, fmt.Errorf("update refused: type %q is not conformant; missing=%s invalid=%s", nextType, strings.Join(missing, ", "), strings.Join(invalid, ", "))
+		}
+		if err := set("type", nextType); err != nil {
+			return nil, err
+		}
+		if _, err := b.AppendEvent(EventSpec{Type: "task_type_changed", TaskID: id, Detail: []byte(fmt.Sprintf(`{"old_type":%q,"new_type":%q}`, oldType, nextType))}); err != nil {
+			return nil, err
+		}
+	}
+	if spec.Metadata != nil {
+		reg, err := LoadTicketTypes(b.Dir)
+		if err != nil {
+			return nil, err
+		}
+		typeName := target.String("type")
+		typ, ok := reg.Types[typeName]
+		if !ok {
+			return nil, fmt.Errorf("update refused: row type %q is not configured", typeName)
+		}
+		values := map[string]string{}
+		if raw := target.Get("detail"); len(raw) > 0 {
+			pd := ParseFindingDetail(raw)
+			if pd.Object && pd.Extra != nil {
+				_ = json.Unmarshal(pd.Extra["metadata"], &values)
+			}
+		}
+		for key, value := range *spec.Metadata {
+			if value == "" {
+				if f, declared := typ.Field(key); declared && f.Required {
+					return nil, fmt.Errorf("update refused: %q is REQUIRED by type %q — supply a value or change the row's type first", key, typeName)
+				}
+				delete(values, key)
+				continue
+			}
+			if _, declared := typ.Field(key); !declared {
+				b.metadataWarnings = append(b.metadataWarnings, fmt.Sprintf("metadata key %q is not declared by type %q — it was written, but 'boardctl validate' will report it", key, typeName))
+			}
+			values[key] = value
+		}
+		missing, invalid := reg.ValidateMetadata(typeName, values, map[string]bool{})
+		if len(missing) > 0 || len(invalid) > 0 {
+			return nil, fmt.Errorf("update refused: type %q is not conformant; missing=%s invalid=%s", typeName, strings.Join(missing, ", "), strings.Join(invalid, ", "))
+		}
+		enc, err := encodeMetadata(values, typ, style)
+		if err != nil {
+			return nil, err
+		}
+		pd := ParseFindingDetail(target.Get("detail"))
+		pd.Object = true
+		if pd.Extra == nil {
+			pd.Extra = map[string]json.RawMessage{}
+		}
+		pd.Extra["metadata"] = enc
+		detail, err := EncodeFindingDetail(pd, style)
+		if err != nil {
+			return nil, err
+		}
+		if err := set("detail", json.RawMessage(detail)); err != nil {
 			return nil, err
 		}
 	}
