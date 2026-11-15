@@ -9,6 +9,8 @@
   "workers": [],
   "tested_commit": "84d50024fbc3b83766c075ed621859d3e60793e6",
   "owner_block": "No new release is due; release-row closure requires a commit-bound GitReins verification artifact.",
+  "status": "complete",
+  "finished_at": "2026-11-15T00:34:24-05:00",
   "sha_roles": {
     "source_sha": "9ebf7ad3d449022eb6d04de493c0070644854ce9",
     "verified_code_commit": "84d50024fbc3b83766c075ed621859d3e60793e6",
