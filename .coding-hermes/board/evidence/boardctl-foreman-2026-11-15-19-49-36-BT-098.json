@@ -36,7 +36,11 @@
   },
   "judge_history": {
     "first_run": ".gitreins/history/2026-11-15/347e7acc — tier1 PASS, tier2 FAIL/INCOMPLETE: single compound criterion covering 8 ACs hit the 200-iteration cap, 0 of 1 criteria graded. Instrument artifact (one-proof rule), not a code finding.",
-    "action": "row closed on direct gate + acceptance evidence; task re-created with narrow one-proof criteria on the same merged commit"
+    "final_run": ".gitreins/history/2026-11-15/9d0814a4 — passed=true, pass_class=judged, merge_recommendation=no_concerns_found, 8 of 8 criterion items PASS at commit 16c0f84 (code tree identical to merged 2585c27); task re-created with narrow per-proof criteria after the compound-criterion cap.",
+    "action": "row closed on direct gate + acceptance evidence; re-judged with narrow one-proof criteria on the same merged commit"
   },
+  "board_closeout_commit": "16c0f84463ed5a1b864c16064834ab8f8e6d64a5",
+  "verdict": "PASS:judged:8of8:no_concerns_found",
+  "cleanup": "worktrees /home/kara/worktrees/boardctl-BT-098 and -BT-098-fixup removed; merged branches wt/BT-098 and wt/BT-098-fixup deleted (git branch -d proved containment in main)",
   "trace": "ch:trace row=BT-098 spec=specs/BT-098-ticket-types.md wave=boardctl-foreman-2026-11-15-19-49-36 commit=2585c2701b1e8f16d50da08073c87f5551145bb1"
 }
