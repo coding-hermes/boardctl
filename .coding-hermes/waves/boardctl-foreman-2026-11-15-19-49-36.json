@@ -17,7 +17,7 @@
     "disposition": "recovered zero-worker owner-gated manifest before normal tick"
   },
   "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067",
-  "tested_commit": "49c03504c14d2447a771f3aa7139ea27528ee067",
+  "tested_commit": "d1c36d5714bceccab261edf31005b33db8f2fd65",
   "owner_gated_context": "BT-094 requires changing and restarting the Hermes gateway runtime, outside the boardctl repository.",
   "direct_gates": {
     "build": "PASS: go build -o bin/boardctl ./cmd/boardctl",
@@ -36,8 +36,16 @@
   "verdict": "none:cross-repo-owner-gated",
   "sha_roles": {
     "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067",
-    "evidence_commit": "d1c36d5714bceccab261edf31005b33db8f2fd65",
-    "first_published_bookkeeping_sha": "cea621f23003eed3d287866ac128a3b915d2fd65"
+    "tested_commit": "d1c36d5714bceccab261edf31005b33db8f2fd65",
+    "bookkeeping_commits": [
+      "d1c36d5",
+      "9667ee4",
+      "cea621f",
+      "0689dd5",
+      "18c12ba",
+      "78d50a3"
+    ]
   },
-  "trace": "ch:trace row=BT-094 spec=none:gateway-runtime-owner wave=.coding-hermes/waves/boardctl-foreman-2026-11-15-19-49-36.json#selected test=none:cross-repo-live-gateway-probe doc=none:owner-gated evidence=.coding-hermes/board/evidence/boardctl-foreman-2026-11-15-19-49-36-BT-094.json witness=none:gateway-runtime-outside-boardctl verdict=none:cross-repo-owner-gated commit=49c03504c14d2447a771f3aa7139ea27528ee067 memory=none:deferred-wrapper-rejected-required-payload"
+  "trace": "ch:trace row=BT-094 spec=none:gateway-runtime-owner wave=.coding-hermes/waves/boardctl-foreman-2026-11-15-19-49-36.json#selected test=none:cross-repo-live-gateway-probe doc=none:owner-gated evidence=.coding-hermes/board/evidence/boardctl-foreman-2026-11-15-19-49-36-BT-094.json witness=none:gateway-runtime-outside-boardctl verdict=none:cross-repo-owner-gated commit=d1c36d5714bceccab261edf31005b33db8f2fd65 memory=none:deferred-wrapper-rejected-required-payload",
+  "tested_tree_note": "gates ran at d1c36d5; tracked code tree identical to source_sha 49c0350 (only a repo-root bookkeeping JSON differed, later removed)"
 }
