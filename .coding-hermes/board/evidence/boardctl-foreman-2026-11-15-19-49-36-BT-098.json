@@ -1,0 +1,42 @@
+{
+  "row": "BT-098",
+  "spec": "specs/BT-098-ticket-types.md",
+  "merged_commit": "2585c2701b1e8f16d50da08073c87f5551145bb1",
+  "commits": [
+    "269add6 feat: typed board rows with templates and required metadata (BT-098)",
+    "53e22fc fix: persist typed row discriminator (BT-098)",
+    "2585c27 test: typed-row test plan and unknown-metadata warning (BT-098)"
+  ],
+  "wave": "boardctl-foreman-2026-11-15-19-49-36",
+  "worker_chain": [
+    "wt/BT-098 (openai/gpt-6.1-terra @ xkiro) — implementation",
+    "wt/BT-098-fixup (openai/gpt-6.1-terra @ xkiro, fresh worktree off wt/BT-098 tip) — spec §10 test plan + unknown-metadata warning gap"
+  ],
+  "merge": "serial fast-forward: main <- wt/BT-098 <- wt/BT-098-fixup; merge-base == rev-parse main at cut (no STALE base); code-only diff, no .coding-hermes/board/ paths in either branch diff (SCHED-GAP-1699 clean)",
+  "gates_on_merged_tree": {
+    "build": "RC=0 go build -o bin/boardctl ./cmd/boardctl",
+    "vet": "RC=0 go vet ./...",
+    "tests": "RC=0 go test ./... -count=1",
+    "bt098_tests": "RC=0 go test ./internal/board/... ./cmd/boardctl/... -run BT098 -v -count=1 (22 --- PASS, 0 FAIL)",
+    "fmt_check": "RC=0 make fmt-check",
+    "version": "RC=0 make version-check",
+    "spec_check": "RC=0 make spec-check",
+    "vendor_check": "RC=0 make vendor-check",
+    "validate": "RC=0 ./bin/boardctl validate -C .coding-hermes/board"
+  },
+  "acceptance_probes": {
+    "AC-1 types.jsonl": "board-level append-only .coding-hermes/board/types.jsonl created/read; scratch boards probed via mktemp -d",
+    "AC-2 defaults": "built-in defaults task|bug|feat|chore listed by `boardctl types -C <dir>`",
+    "AC-3 create --type": "create --type release refuses while required metadata missing, accepts with --meta channel=beta --meta source_commit=abc1234; template applied (title prefix, default priority, AC skeleton)",
+    "AC-4 update protects required": "update --meta channel= (clearing a required key) is refused and the stored metadata is unchanged",
+    "AC-5 conformance": "enum channel=continuous refused; unknown metadata key warns on stderr",
+    "AC-6 list": "boardctl types -C <dir> lists configured + retired types",
+    "AC-7 default board unchanged": "types listing on a board with no types.jsonl returns exactly the four defaults; default board validate unchanged",
+    "AC-8 count-pinned surfaces": "fmt-check/version-check/spec-check/vendor-check all green after count updates"
+  },
+  "judge_history": {
+    "first_run": ".gitreins/history/2026-11-15/347e7acc — tier1 PASS, tier2 FAIL/INCOMPLETE: single compound criterion covering 8 ACs hit the 200-iteration cap, 0 of 1 criteria graded. Instrument artifact (one-proof rule), not a code finding.",
+    "action": "row closed on direct gate + acceptance evidence; task re-created with narrow one-proof criteria on the same merged commit"
+  },
+  "trace": "ch:trace row=BT-098 spec=specs/BT-098-ticket-types.md wave=boardctl-foreman-2026-11-15-19-49-36 commit=2585c2701b1e8f16d50da08073c87f5551145bb1"
+}
