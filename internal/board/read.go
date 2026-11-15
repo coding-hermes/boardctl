@@ -201,12 +201,11 @@ type TaskFilter struct {
 	// mechanical filter, rejects non-vocabulary spellings. Composes with
 	// Status (both must hold) and leaves the empty list as "any status".
 	Statuses []string
-	// Initiative scopes the result to one initiative slug ("" = any). The
-	// comparison is case-insensitive on the stored value because the slug is
-	// data written by humans and by CLI flags a year apart; a row with no
-	// initiative key never matches a non-empty filter, which is what makes
-	// "scoop this initiative" exact rather than fuzzy.
+	// Initiative scopes the result to one initiative slug ("" = any).
 	Initiative string
+	// InitiativeRefRepo matches rows carrying at least one valid ref for the
+	// named repository ("" = any). It intentionally ignores PATH/ANCHOR.
+	InitiativeRefRepo string
 }
 
 // Match reports whether a task row satisfies the filter.
@@ -241,6 +240,9 @@ func (f TaskFilter) Match(row *Row, fixtureIDs map[string]bool) bool {
 		if !strings.EqualFold(strings.TrimSpace(row.String("initiative")), strings.TrimSpace(f.Initiative)) {
 			return false
 		}
+	}
+	if f.InitiativeRefRepo != "" && !InitiativeRefsMatchRepo(row, f.InitiativeRefRepo) {
+		return false
 	}
 	if f.Actionable && !RowIsActionable(row) {
 		return false

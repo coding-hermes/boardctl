@@ -47,14 +47,14 @@ usage:
 
 commands:
   init    [-C dir] [--project P] [--namespace NS]   bootstrap a fresh board
-  list    [--status S] [--priority P] [--initiative SLUG] [--actionable] [--json] [--all] [--skip-bad-lines]
+  list    [--status S] [--priority P] [--initiative SLUG] [--initiative-ref-repo REPO] [--actionable] [--json] [--all] [--skip-bad-lines]
   show    <id> [--events]
   next-id --family CF [--width N] [--json]   (prints the next free id; read-only)
   next    [-C dir]   (prints the highest-priority dispatchable row; read-only)
   ready   [-C dir] [--initiative SLUG] [--json] [--blocked] [--skip-bad-lines]
   direction [-C dir] [--json] [--skip-bad-lines]
   create  --id ID --title T [--priority P] [--complexity N] [--depends-on a,b]
-          [--reasoning R] [--capability-tags a,b] [--status pending] [--force]
+          [--reasoning R] [--capability-tags a,b] [--initiative-ref REPO:PATH#ANCHOR]... [--status pending] [--force]
           [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
           [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
@@ -67,7 +67,7 @@ commands:
           branches/worktrees dimension — existing elements, the other
           dimensions, and the singular worktree/branch fields survive)
           [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--deferred true|false] [--defer-reason R] [--defer-review-by DATE] [--normalize] [--force]
-          [--initiative SLUG | --clear-initiative]
+          [--initiative SLUG | --clear-initiative] [--initiative-ref REPO:PATH#ANCHOR]... [--clear-initiative-refs]
           (--initiative scopes the row into a programme and prints/rolls up under
           'initiatives'; --clear-initiative REMOVES the key, leaving no empty
           string to filter on. Together they are a usage error, not a precedence
@@ -562,10 +562,11 @@ func cmdInit(dir string, args []string) error {
 
 func cmdList(dir string, args []string) error {
 	fs := newFlagSet("list")
-	args = reorderArgs(args, valueFlags("C", "status", "priority", "initiative"))
+	args = reorderArgs(args, valueFlags("C", "status", "priority", "initiative", "initiative-ref-repo"))
 	status := fs.String("status", "", "filter by status")
 	priority := fs.String("priority", "", "filter by priority (e.g. P1)")
 	initiative := fs.String("initiative", "", "filter to one initiative slug (the scoop query)")
+	initiativeRefRepo := fs.String("initiative-ref-repo", "", "filter rows carrying a ref for this repository")
 	actionable := fs.Bool("actionable", false, "only rows counted as actionable by stats (pending and not deferred)")
 	asJSON := fs.Bool("json", false, "emit JSON array of full rows")
 	all := fs.Bool("all", false, "include fixture rows (ids in fixtures.jsonl)")
@@ -573,7 +574,7 @@ func cmdList(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl list [--status S] [--priority P] [--initiative SLUG] [--actionable] [--json] [--all] [--skip-bad-lines] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl list [--status S] [--priority P] [--initiative SLUG] [--initiative-ref-repo REPO] [--actionable] [--json] [--all] [--skip-bad-lines] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -602,6 +603,12 @@ func cmdList(dir string, args []string) error {
 	}
 	if *initiative != "" {
 		f.Initiative = *initiative
+	}
+	if *initiativeRefRepo != "" {
+		if !board.InitiativeRefRepoValid(*initiativeRefRepo) {
+			return fmt.Errorf("--initiative-ref-repo %q is not a valid repository name", *initiativeRefRepo)
+		}
+		f.InitiativeRefRepo = *initiativeRefRepo
 	}
 	f.Actionable = *actionable
 	rows, err := b.ListTasks(f)
@@ -637,14 +644,15 @@ func cmdList(dir string, args []string) error {
 		// match" success.
 		return exitError(reportSkipped(b))
 	}
-	// Aligned text columns: id, priority, status, truncated title.
-	fmt.Fprintln(os.Stdout, fmt.Sprintf("%-16s %-4s %-11s %s", "ID", "PRI", "STATUS", "TITLE"))
+	// Aligned text columns: id, priority, status, initiative refs, truncated title.
+	_, _ = fmt.Fprintf(os.Stdout, "%-16s %-4s %-11s %-40s %s\n", "ID", "PRI", "STATUS", "INITIATIVE REFS", "TITLE")
 	for _, r := range rows {
 		title := r.String("title")
 		title = truncateRunes(title, 100)
 		prio := r.String("priority")
 		status := board.NormalizeStatus(r.String("status"))
-		fmt.Fprintln(os.Stdout, fmt.Sprintf("%-16s %-4s %-11s %s", r.String("id"), prio, status, title))
+		refs := strings.Join(board.InitiativeRefsDisplay(r), ",")
+		_, _ = fmt.Fprintf(os.Stdout, "%-16s %-4s %-11s %-40s %s\n", r.String("id"), prio, status, refs, title)
 	}
 	return exitError(reportSkipped(b))
 }
@@ -720,7 +728,7 @@ func cmdShow(dir string, args []string) error {
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "defer-reason", "defer-review-by", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "initiative-ref", "defer-reason", "defer-review-by", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	status := fs.String("status", "pending", "status (write vocabulary)")
@@ -742,6 +750,8 @@ func cmdCreate(dir string, args []string) error {
 	// omitted, like every other string flag here.
 	acceptance := fs.String("acceptance-criteria", "", "acceptance criteria the row must satisfy before it can be dispatched (free text; multi-line allowed; omit = write no key)")
 	initiative := fs.String("initiative", "", "initiative slug this row belongs to (lowercase letters/digits/hyphens; the query key for scooping one programme of work; omit = write no key)")
+	var initiativeRefs stringListFlag
+	fs.Var(&initiativeRefs, "initiative-ref", "cross-repository initiative location REPO:PATH#ANCHOR (repeatable; preserves order)")
 	evidenceRunID := fs.String("evidence-run-id", "", "run identifier recorded as evidence (SG-126)")
 	evidenceFingerprint := fs.String("evidence-fingerprint", "", "64-hex GitReins tree digest recorded as evidence (BT-82)")
 	var evidenceArtifacts stringListFlag
@@ -778,7 +788,7 @@ func cmdCreate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--acceptance-criteria TEXT] [--evidence-run-id id] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE] [--force] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl create --id ID --title T [--status S] [--priority P] [--complexity N] [--depends-on a,b] [--reasoning R] [--capability-tags tags] [--initiative-ref REPO:PATH#ANCHOR]... [--acceptance-criteria TEXT] [--evidence-run-id id] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME] [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE] [--force] [flags] [-C dir]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "\n          --acceptance-criteria is free text and may span lines (embedded\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          newlines are JSON-escaped into the one physical row line). It is\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          the dispatchability field: a foreman will not dispatch a row\n")
@@ -834,6 +844,13 @@ func cmdCreate(dir string, args []string) error {
 			return fmt.Errorf("create --initiative: %v", err)
 		}
 		spec.Initiative = initiative
+	}
+	if len(initiativeRefs) > 0 {
+		refs, err := board.ParseInitiativeRefStrings([]string(initiativeRefs))
+		if err != nil {
+			return fmt.Errorf("create --initiative-ref: %v", err)
+		}
+		spec.InitiativeRefs = &refs
 	}
 	if len(sessions) > 0 {
 		list := []string(sessions)
@@ -919,7 +936,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "record-debt", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "initiative-ref", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "record-debt", "pull-request", "assoc-branch", "assoc-worktree"))
 	status := fs.String("status", "", "status (write vocabulary)")
 	// BT-060: create has always accepted --title; update could only rewrite
 	// the title by hand-editing the row. Same shape as every other optional
@@ -946,7 +963,10 @@ func cmdUpdate(dir string, args []string) error {
 	// text: embedded newlines are JSON-escaped into the one physical line.
 	acceptance := fs.String("acceptance-criteria", "", "acceptance criteria (free text; multi-line allowed; REPLACES the value; omitted = leave untouched, never an empty key)")
 	initiative := fs.String("initiative", "", "set this row's initiative slug (validated; omitted = leave untouched)")
+	var initiativeRefs stringListFlag
+	fs.Var(&initiativeRefs, "initiative-ref", "cross-repository initiative location REPO:PATH#ANCHOR (repeatable; replaces refs in order)")
 	clearInitiative := fs.Bool("clear-initiative", false, "remove the initiative key entirely, returning the row to unscoped")
+	clearInitiativeRefs := fs.Bool("clear-initiative-refs", false, "remove initiative_refs entirely")
 	// BT-037: build-location + session audit fields. An omitted flag leaves
 	// the row's key untouched (and never creates it); --session REPLACES the
 	// whole sessions array with the ids given here, in order.
@@ -995,7 +1015,7 @@ func cmdUpdate(dir string, args []string) error {
 		_, _ = fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA] [--record-debt]\n")
 		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--defer-reason R] [--defer-review-by DATE] [--acceptance-criteria TEXT]\n")
-		_, _ = fmt.Fprintf(fs.Output(), "          [--initiative SLUG | --clear-initiative] (mutually exclusive; the clear form REMOVES the key)\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--initiative SLUG | --clear-initiative] [--initiative-ref REPO:PATH#ANCHOR]... [--clear-initiative-refs] (each ref is REPO:PATH#ANCHOR; clear removes the array)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--worktree PATH] [--branch NAME]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... (repeatable; each MERGES one element into its dimension — pull_requests/branches/worktrees — never overwriting existing elements or the other dimensions)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--session ID]... [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--normalize] [--force] [flags] [-C dir]\n")
@@ -1070,6 +1090,7 @@ func cmdUpdate(dir string, args []string) error {
 		// row never gains an empty acceptance_criteria key.
 		AcceptanceCriteria:   ptr(*acceptance),
 		Force:                *force,
+		InitiativeRefs:       nil,
 		EvidenceFingerprint:  *evidenceFingerprint,
 		EvidenceArtifacts:    []string(evidenceArtifacts),
 		HasEvidenceArtifacts: len(evidenceArtifacts) > 0,
@@ -1114,6 +1135,20 @@ func cmdUpdate(dir string, args []string) error {
 	if *clearInitiative {
 		empty := ""
 		spec.Initiative = &empty
+	}
+	if len(initiativeRefs) > 0 && *clearInitiativeRefs {
+		return fmt.Errorf("update: --initiative-ref and --clear-initiative-refs are mutually exclusive")
+	}
+	if len(initiativeRefs) > 0 {
+		refs, err := board.ParseInitiativeRefStrings([]string(initiativeRefs))
+		if err != nil {
+			return fmt.Errorf("update --initiative-ref: %v", err)
+		}
+		spec.InitiativeRefs = &refs
+	}
+	if *clearInitiativeRefs {
+		emptyRefs := []string{}
+		spec.InitiativeRefs = &emptyRefs
 	}
 	if *worktree != "" {
 		spec.Worktree = worktree

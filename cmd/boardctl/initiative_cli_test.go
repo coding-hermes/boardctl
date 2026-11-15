@@ -12,11 +12,13 @@ import (
 // refusals that keep the key queryable. The board-level rules (slug shape,
 // filter semantics, rollup counting) are pinned in internal/board/initiative_test.go;
 // these tests pin the surfaces an operator or foreman actually types.
+//
+// ch:trace row=BT-092 spec=.coding-hermes/board/tasks.jsonl#BT-092 test=internal/board/initiative_refs_test.go::TestParseInitiativeRef,cmd/boardctl/initiative_cli_test.go::TestCmdCreateAndListByInitiativeRefs doc=README.md,skills/boardctl-usage/SKILL.md evidence=cmd/boardctl/initiative_cli_test.go witness=none:local-e2e-verification verdict=none:open-finding commit=none:open memory=none:unresolved-namespace
 
 func cliRowHasInitiativeKey(t *testing.T, dir, id string) (string, bool) {
 	t.Helper()
 	var row map[string]any
-	if err := json.Unmarshal([]byte(cliTaskLine(t, dir, id)), &row); err != nil {
+	if err := json.Unmarshal([]byte(cliLineOrEmpty(t, dir, id)), &row); err != nil {
 		t.Fatal(err)
 	}
 	v, ok := row["initiative"]
@@ -25,6 +27,31 @@ func cliRowHasInitiativeKey(t *testing.T, dir, id string) (string, bool) {
 	}
 	s, _ := v.(string)
 	return s, true
+}
+
+func TestCmdCreateAndListByInitiativeRefs(t *testing.T) {
+	dir := seedCLIBoard(t)
+	if code := run([]string{"-C", dir, "create", "--id", "REF-1", "--title", "refs", "--initiative-ref", "repo-a:docs/spec.md#One", "--initiative-ref", "repo-b:internal/board#Two"}); code != 0 {
+		t.Fatalf("create refs exit = %d", code)
+	}
+	line := cliLineOrEmpty(t, dir, "REF-1")
+	if !strings.Contains(line, "repo-a:docs/spec.md#One") || !strings.Contains(line, "repo-b:internal/board#Two") || strings.Index(line, "repo-a") > strings.Index(line, "repo-b") {
+		t.Fatalf("refs did not round-trip in order: %s", line)
+	}
+	out, _ := captureStdout(func() {
+		if code := run([]string{"-C", dir, "list", "--initiative-ref-repo", "repo-b", "--json"}); code != 0 {
+			t.Errorf("repo filter exit = %d", code)
+		}
+	})
+	if !strings.Contains(out, "REF-1") || !strings.Contains(out, "repo-b:internal/board#Two") {
+		t.Fatalf("repo filter omitted ref: %s", out)
+	}
+	if code := run([]string{"-C", dir, "update", "REF-1", "--clear-initiative-refs"}); code != 0 {
+		t.Fatalf("clear refs exit = %d", code)
+	}
+	if strings.Contains(cliLineOrEmpty(t, dir, "REF-1"), "initiative_refs") {
+		t.Fatal("clear refs left initiative_refs key")
+	}
 }
 
 func TestCmdCreateAndListByInitiative(t *testing.T) {

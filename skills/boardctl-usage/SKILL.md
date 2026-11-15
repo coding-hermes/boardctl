@@ -120,6 +120,7 @@ boardctl -C R next                          # one highest-priority row using the
 
 # read
 boardctl -C R stats [--json] [--all]       # counts by status/priority
+boardctl -C R list --initiative-ref-repo REPO --json  # rows referencing REPO
 boardctl -C R initiatives [--json] [--status S]  # per-initiative rollup:
                                            # total/actionable/deferred
 boardctl -C R list [--status pending] [--priority P1] [--initiative SLUG] [--actionable] [--json] [--all]
@@ -158,6 +159,16 @@ boardctl -C R create --id FEAT-1 --title "T" --priority P1 \
 boardctl -C R update FEAT-1 --status complete \
     --commit-hash <sha> --guard PASS --ci GREEN --summary "done (+80/-12)"
 boardctl -C R update FEAT-1 --title "renamed: retry with backoff"  # BT-060
+
+# cross-repository initiative refs (BT-092): ordered REPO:PATH#ANCHOR locations
+boardctl -C R create --id FEAT-10 --title "cross-repo work" \
+    --initiative-ref code-factory:internal/board#TaskFilter \
+    --initiative-ref hermes-dagger:docs/design.md#Acceptance
+boardctl -C R update FEAT-10 --clear-initiative-refs
+boardctl -C R list --initiative-ref-repo code-factory --json
+# REPO matches ^[a-z0-9][a-z0-9._-]*$, PATH is normalized repo-relative with no .. segment,
+# and ANCHOR matches ^[A-Za-z0-9._:-]+$. Invalid refs are refused before writing;
+# validate warns on malformed hand-edited refs.
 
 # worktree / branch / Hermes session audit trail (first-class row fields).
 # Omitted flag = NO key written (main-checkout work has no worktree);

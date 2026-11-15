@@ -407,7 +407,7 @@ func TestCreateHelpListsFieldFlags(t *testing.T) {
 	}
 	for _, flag := range []string{
 		"--status", "--priority", "--complexity", "--depends-on",
-		"--reasoning", "--capability-tags", "--evidence-run-id",
+		"--reasoning", "--capability-tags", "--initiative-ref", "--evidence-run-id",
 	} {
 		if !strings.Contains(got, flag) {
 			t.Errorf("create --help usage output missing %q; got:\n%q", flag, got)

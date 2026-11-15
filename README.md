@@ -1467,6 +1467,23 @@ Comparison is case-insensitive on read (a row written a year ago as
 `Lane-Hooks` still matches `--initiative lane-hooks`) while writes are
 normalised to lowercase so the stored key stays byte-stable.
 
+### Cross-repository initiative refs (BT-092)
+
+An initiative slug groups rows on one board. `initiative_refs` adds ordered locations in sibling repositories using `REPO:PATH#ANCHOR`; REPO, PATH, and ANCHOR are validated before a write.
+
+```bash
+boardctl -C ~/proj create --id FEAT-10 --title "cross-repo work" \
+  --initiative initiative-tracking \
+  --initiative-ref code-factory:internal/board#TaskFilter \
+  --initiative-ref hermes-dagger:docs/design.md#Acceptance
+boardctl -C ~/proj update FEAT-10 --initiative-ref code-factory:internal/board#TaskFilter
+boardctl -C ~/proj update FEAT-10 --clear-initiative-refs
+boardctl -C ~/proj list --initiative-ref-repo code-factory --json
+boardctl -C ~/proj show FEAT-10
+```
+
+`--initiative-ref` is repeatable and preserves order. Omit it to leave the key untouched; `--clear-initiative-refs` removes `initiative_refs` entirely. Invalid repository, path, or anchor input is refused with nothing written. `validate` warns on malformed hand-edited refs.
+
 ### Association fields (BT-077)
 
 Task rows can carry three plural association arrays: `pull_requests`,

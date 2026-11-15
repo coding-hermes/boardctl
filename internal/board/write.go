@@ -307,6 +307,9 @@ type TaskRowSpec struct {
 	// each validated and merged onto the row in CLI order.
 	AssocDim    string
 	AssocValues []string
+	// BT-092: ordered cross-repository initiative locations. nil means the
+	// flag was omitted; a non-nil empty slice is the explicit clear form.
+	InitiativeRefs *[]string
 
 	// BT-022: prevalidated raw row for the import path. When Raw is set,
 	// Create still performs every check below (id format, duplicate id,
@@ -570,6 +573,14 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 			if k == "acceptance_criteria" && spec.AcceptanceCriteria == nil {
 				continue
 			}
+			// BT-092: initiative_refs follows the same rule. A null (or empty
+			// array) placeholder would put the key on every create that reuses
+			// a ref-bearing board's key order, breaking the contract that an
+			// omitted --initiative-ref writes NO key at all. The key is
+			// appended only through the user-keys path when refs were given.
+			if k == InitiativeRefsKey && (spec.InitiativeRefs == nil || len(*spec.InitiativeRefs) == 0) {
+				continue
+			}
 			row.Keys = append(row.Keys, k)
 			row.Vals[k] = neutral(k)
 		}
@@ -653,6 +664,9 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.Initiative != nil {
 		overrides["initiative"] = *spec.Initiative
 	}
+	if spec.InitiativeRefs != nil && len(*spec.InitiativeRefs) > 0 {
+		overrides[InitiativeRefsKey] = *spec.InitiativeRefs
+	}
 	// DF-BOARDCTL-50: free-text criteria, written verbatim through the row's
 	// own serializer (encodeValue's string branch JSON-escapes embedded
 	// newlines, so the whole value stays on one physical JSONL line).
@@ -669,7 +683,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 	}
 	// Keys the user asked for but the mirrored schema lacks: append at end.
-	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "defer_reason", "defer_review_by", "initiative", "acceptance_criteria"} {
+	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "worktree", "branch", "sessions", "deferred", "defer_reason", "defer_review_by", "initiative", InitiativeRefsKey, "acceptance_criteria"} {
 		if v, ok := overrides[k]; ok && !row.Has(k) {
 			if err := set(k, v); err != nil {
 				return "", err
@@ -908,6 +922,9 @@ type UpdateSpec struct {
 	// no-op reporting no change.
 	AssocDim    string
 	AssocValues []string
+	// BT-092: ordered cross-repository initiative locations. A non-nil empty
+	// slice is the explicit clear form.
+	InitiativeRefs *[]string
 	// DF-BOARDCTL-13: priority + SG-126 run evidence, same nil-untouched
 	// discipline. Priority rides create's BT-007 write-time gate verbatim
 	// (normalize bare digits/case variants, reject the rest) — BT-060 left
@@ -1227,6 +1244,18 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
+	if spec.InitiativeRefs != nil {
+		if len(*spec.InitiativeRefs) == 0 {
+			if target.Has(InitiativeRefsKey) {
+				target.DeleteKey(InitiativeRefsKey)
+				changed = append(changed, InitiativeRefsKey)
+			}
+		} else if err := set(InitiativeRefsKey, *spec.InitiativeRefs); err != nil {
+			return nil, err
+		} else {
+			changed = append(changed, InitiativeRefsKey)
+		}
+	}
 	// DF-BOARDCTL-50: --acceptance-criteria replaces the row's criteria —
 	// the missing sanctioned door this field never had (foremen refuse to
 	// dispatch a row without it, so lanes hand-edited tasks.jsonl instead).
@@ -1296,6 +1325,18 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		}
 		if err := set("detail", json.RawMessage(enc)); err != nil {
 			return nil, err
+		}
+	}
+	if spec.InitiativeRefs != nil {
+		seenRefChange := false
+		for _, key := range changed {
+			if key == InitiativeRefsKey {
+				seenRefChange = true
+				break
+			}
+		}
+		if !seenRefChange {
+			changed = append(changed, InitiativeRefsKey)
 		}
 	}
 	if target.Has("updated_at") {
