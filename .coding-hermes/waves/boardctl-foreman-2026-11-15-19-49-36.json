@@ -1,13 +1,15 @@
 {
   "tick_id": "boardctl-foreman-2026-11-15-19-49-36",
   "project": "boardctl",
-  "row_id": "BT-094",
+  "row_id": "BT-098",
+  "rows_touched": ["BT-094", "BT-098"],
   "status": "closed",
-  "finished_at": "2026-11-15T20:05:34Z",
+  "finished_at": "2026-11-15T22:02:30Z",
   "tier": "T3",
-  "wave": "verification-only",
+  "wave": "serial",
   "wave_budget": 11,
-  "wave_size": 0,
+  "wave_size": 1,
+  "wave_note": "one row dispatched (BT-098) plus one fresh-worktree fixup worker; fewer than 2 mutually independent pending rows with specs exist, so the serial path applied",
   "recovery": {
     "prior_tick": "boardctl-foreman-2026-11-15-17-47-55",
     "prior_manifest_closed": true,
@@ -16,36 +18,68 @@
     "branches_preserved": 0,
     "disposition": "recovered zero-worker owner-gated manifest before normal tick"
   },
-  "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067",
-  "tested_commit": "d1c36d5714bceccab261edf31005b33db8f2fd65",
-  "owner_gated_context": "BT-094 requires changing and restarting the Hermes gateway runtime, outside the boardctl repository.",
+  "workers": [
+    {
+      "row": "BT-098",
+      "branch": "wt/BT-098",
+      "worktree": "/home/kara/worktrees/boardctl-BT-098",
+      "model": "openai/gpt-6.1-terra",
+      "provider": "xkiro",
+      "commits": ["269add6", "53e22fc"],
+      "gate_verdict": "green",
+      "merged": true
+    },
+    {
+      "row": "BT-098",
+      "branch": "wt/BT-098-fixup",
+      "worktree": "/home/kara/worktrees/boardctl-BT-098-fixup",
+      "model": "openai/gpt-6.1-terra",
+      "provider": "xkiro",
+      "base": "wt/BT-098 tip 53e22fc",
+      "reason": "spec section 10 test plan missing + unknown-metadata warning behaviour absent on the worker tip",
+      "commits": ["2585c27"],
+      "gate_verdict": "green",
+      "merged": true
+    }
+  ],
+  "merge": {
+    "order": ["wt/BT-098", "wt/BT-098-fixup"],
+    "method": "git merge --ff-only, serial",
+    "stale_base_check": "merge-base main wt/BT-098 equalled rev-parse main before the first merge; the fixup branch was cut from the post-merge tip",
+    "board_rule_check": "no .coding-hermes/board/ paths in either branch diff (SCHED-GAP-1699 clean)",
+    "cleanup": "worktrees removed and both merged branches deleted with git branch -d after containment proved"
+  },
+  "merged_commit": "2585c2701b1e8f16d50da08073c87f5551145bb1",
+  "board_closeout_commits": ["16c0f84463ed5a1b864c16064834ab8f8e6d64a5", "718aabc18d4ed8971e8583dd555e79d7084972dd"],
   "direct_gates": {
     "build": "PASS: go build -o bin/boardctl ./cmd/boardctl",
     "vet": "PASS: go vet ./...",
-    "tests": "PASS: go test -short -p 1 ./... -count=1",
+    "tests": "PASS: go test ./... -count=1 on the merged tree",
+    "bt098_tests": "PASS: go test ./internal/board/... ./cmd/boardctl/... -run BT098 -v -count=1 -> 22 PASS, 0 FAIL",
     "fmt_check": "PASS: make fmt-check",
     "version_check": "PASS: make version-check",
     "spec_check": "PASS: make spec-check",
     "vendor_check": "PASS: make vendor-check",
-    "vuln_check": "PASS: make vuln-check",
-    "validate": "PASS: ./bin/boardctl validate -> RESULT: OK (44 warnings)",
-    "doctor": "PASS: ./bin/boardctl doctor -> RESULT: OK (45 warnings)"
+    "validate": "PASS: ./bin/boardctl validate -C .coding-hermes/board"
   },
-  "live_probe": "Not run: the gateway runtime is outside boardctl and the prior owner-gate evidence is unchanged.",
-  "owner_action": "Hermes gateway owner must fix executor recreation, expose the mem-sync thread-count metric, restart the gateway, and provide the >=2h one-thread witness.",
-  "verdict": "none:cross-repo-owner-gated",
-  "sha_roles": {
+  "judge": {
+    "first_run": ".gitreins/history/2026-11-15/347e7acc — tier1 PASS, tier2 FAIL/INCOMPLETE (one compound criterion over 8 ACs hit the 200-iteration cap, 0 of 1 graded = instrument artifact)",
+    "final_run": ".gitreins/history/2026-11-15/9d0814a4 — passed=true, pass_class=judged, merge_recommendation=no_concerns_found, 8 of 8 items PASS"
+  },
+  "verdict": "BT-094 none:cross-repo-owner-gated; BT-098 PASS:judged:8of8:no_concerns_found",
+  "ci": "gh run list on coding-hermes/boardctl: latest runs on main at 2585c27 and 16c0f84 both conclusion=success; no unowned red to file",
+  "phase1_owner_gated": {
+    "row": "BT-094",
     "source_sha": "49c03504c14d2447a771f3aa7139ea27528ee067",
     "tested_commit": "d1c36d5714bceccab261edf31005b33db8f2fd65",
-    "bookkeeping_commits": [
-      "d1c36d5",
-      "9667ee4",
-      "cea621f",
-      "0689dd5",
-      "18c12ba",
-      "78d50a3"
-    ]
+    "owner_gated_context": "BT-094 requires changing and restarting the Hermes gateway runtime, outside the boardctl repository.",
+    "owner_action": "Hermes gateway owner must fix executor recreation, expose the mem-sync thread-count metric, restart the gateway, and provide the >=2h one-thread witness.",
+    "verdict": "none:cross-repo-owner-gated",
+    "validate": "RESULT: OK (44 warnings)",
+    "doctor": "RESULT: OK (45 warnings)",
+    "evidence": ".coding-hermes/board/evidence/boardctl-foreman-2026-11-15-17-47-55-BT-094.json",
+    "tested_tree_note": "gates ran at d1c36d5; tracked code tree identical to source_sha 49c0350"
   },
-  "trace": "ch:trace row=BT-094 spec=none:gateway-runtime-owner wave=.coding-hermes/waves/boardctl-foreman-2026-11-15-19-49-36.json#selected test=none:cross-repo-live-gateway-probe doc=none:owner-gated evidence=.coding-hermes/board/evidence/boardctl-foreman-2026-11-15-19-49-36-BT-094.json witness=none:gateway-runtime-outside-boardctl verdict=none:cross-repo-owner-gated commit=d1c36d5714bceccab261edf31005b33db8f2fd65 memory=none:deferred-wrapper-rejected-required-payload",
-  "tested_tree_note": "gates ran at d1c36d5; tracked code tree identical to source_sha 49c0350 (only a repo-root bookkeeping JSON differed, later removed)"
+  "trace": "ch:trace row=BT-098 spec=specs/BT-098-ticket-types.md wave=.coding-hermes/waves/boardctl-foreman-2026-11-15-19-49-36.json#BT-098 test=bt098_tests doc=specs/BT-098-ticket-types.md evidence=.coding-hermes/board/evidence/boardctl-foreman-2026-11-15-19-49-36-BT-098.json witness=gitreins:9d0814a4 verdict=PASS:judged:8of8 commit=2585c2701b1e8f16d50da08073c87f5551145bb1",
+  "trace_phase1": "ch:trace row=BT-094 spec=none:gateway-runtime-owner wave=.coding-hermes/waves/boardctl-foreman-2026-11-15-19-49-36.json#selected test=none:cross-repo-live-gateway-probe doc=none:owner-gated evidence=.coding-hermes/board/evidence/boardctl-foreman-2026-11-15-17-47-55-BT-094.json witness=none:gateway-runtime-outside-boardctl verdict=none:cross-repo-owner-gated commit=d1c36d5714bceccab261edf31005b33db8f2fd65"
 }
