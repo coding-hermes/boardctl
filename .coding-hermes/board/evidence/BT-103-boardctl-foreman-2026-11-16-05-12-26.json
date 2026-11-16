@@ -1,0 +1,37 @@
+{
+  "task_id": "BT-103",
+  "tick": "boardctl-foreman-2026-11-16-05-12-26",
+  "kind": "verification-only-closeout",
+  "implementation_repository": "coding-hermes/skills",
+  "implementation_commit": "cc8810175d6ed403930d7f6fa6e4d52ff94b0dd8",
+  "implementation_commit_is_ancestor_of_skills_origin_main": true,
+  "skills_origin_main": "4b9dd910e7efc6ece7792b5b90f8bcd65bdfa11c",
+  "source_skill": "/home/kara/coding-hermes-skills/coding-hermes-foreman/SKILL.md",
+  "deployed_skill": "/home/kara/.hermes/skills/coding-hermes-foreman/SKILL.md",
+  "source_sha256": "643d83e1f1db3b2c7423011b0659bf3c62c8b983ee21870f880d78729315d24c",
+  "deployed_sha256": "643d83e1f1db3b2c7423011b0659bf3c62c8b983ee21870f880d78729315d24c",
+  "source_deployed_byte_identical": true,
+  "clause_grep_counts": {
+    "clause_11_boardctl_selection": 1,
+    "clause_12_anti_drift_work_order": 1,
+    "clause_13_inline_board_chores": 1,
+    "clause_14_parent_verifies": 1
+  },
+  "deployed_clause_grep_counts": {
+    "clause_11_boardctl_selection": 1,
+    "clause_12_anti_drift_work_order": 1,
+    "clause_13_inline_board_chores": 1,
+    "clause_14_parent_verifies": 1
+  },
+  "skills_ci": {
+    "repository": "coding-hermes/skills",
+    "recent_runs": "success",
+    "observed_runs": 3
+  },
+  "boardctl_repository_commit_before_closeout": "c7133663c65dbfcd832bdff191e34e76331dcbb8",
+  "boardctl_local_validation": "RESULT: OK (44 warning(s))",
+  "worker_dispatched": false,
+  "guard_result": "SKIP",
+  "ci_result": "GREEN",
+  "notes": "The pending board row was stale: the named doctrine had already landed in the skills repository and was deployed byte-identically. No boardctl product implementation was required in this repository."
+}
