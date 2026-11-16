@@ -726,3 +726,4 @@
 {"id":722,"timestamp":"2026-11-15 22:34:17","event_type":"task_completed","task_id":"RELEASE-2026-11-15-02","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":723,"timestamp":"2026-11-15 22:34:26","event_type":"task_completed","task_id":"RELEASE-2026-11-09-03","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":724,"timestamp":"2026-11-15 22:34:26","event_type":"task_completed","task_id":"RELEASE-2026-11-09-04","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":725,"timestamp":"2026-11-16 01:45:18","event_type":"task_created","task_id":"BT-103","actor":"foreman","detail":"{\"id\":\"BT-103\",\"status\":\"pending\"}","tick_number":null}
