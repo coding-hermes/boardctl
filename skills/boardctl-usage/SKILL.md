@@ -4,7 +4,7 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.25.0
+version: 1.26.0
 date: 2026-11-09
 category: software-development
 ---
@@ -56,7 +56,11 @@ blind spot.
 - `evidence baseline --record`: records current completion debt and enables
   FAIL-on-new-debt completion checks; without a baseline, debt is WARN-only.
 - `types`: lists configured ticket types and required metadata; `types --doctor`
-  reports the append-only `types.jsonl` configuration health.
+  reports the append-only `types.jsonl` configuration health. Authoring a type
+  means writing `<boarddir>/types.jsonl` by hand — the record schema is NOT in
+  `--help` or README (DF-BOARDCTL-57); the working shape is in "Typed rows
+  (BT-098)" below. **After any `--meta` write, re-read `show --json`**: the
+  update path nulls stored list values (DF-BOARDCTL-56).
 
 
 - `next-id` (2026-11-03): `boardctl next-id --family CF` prints the next free
@@ -964,3 +968,78 @@ Target `1cda136f85e753ea1de006ca79e3966ba9db5034`, HEAD build. Rows filed: DF-BO
 - The README's literal `--commit-hash abc1234` and bare `--deferred` examples are refused by current guards; both remain covered by DF-BOARDCTL-54 rather than being re-filed.
 - Fresh-install source build was proven on bunker-mvp, but the host's shared network namespace/open egress means the install result is isolation-UNVERIFIED. A direct probe observed 21 agent-side rows, including ci-act UNVERIFIED on the vulnerability-check step, but the wrapper's local evidence file retained only two launch rows before teardown; the complete ledger was not persisted. Destroy completed and `info` returned `not_found`.
 - `stats --json` completed at 0.00s displayed precision under warm and isolated-HOME arms; the operation was below a user-noticeable threshold, so no PERF row was warranted.
+
+## Typed rows (BT-098) — authoring, filing, and the `--meta` hazard (run 30)
+
+**Declaring a type.** Write `<boarddir>/types.jsonl`, one JSON object per line
+(no `boardctl` verb creates it; `init` does not):
+
+```json
+{"slug":"release","display":"Release","rev":1,
+ "template":{"title_prefix":"[RELEASE] ","default_priority":"P1",
+             "ac_skeleton":"- [ ] artifact built and signed\n- [ ] rollback path verified"},
+ "metadata":[{"name":"channel","type":"enum","required":true,"values":["stable","beta","nightly"],
+              "description":"release channel"},
+             {"name":"source_commit","type":"string","required":true},
+             {"name":"signoffs","type":"list","required":false},
+             {"name":"approval_ticket","type":"ref","ref":"task_id","required":false}]}
+```
+
+`slug`, `display` and `metadata[].name` are required; `rev` defaults to 1 and a
+repeated slug keeps the LAST line (with a `types --doctor` warning). Field types
+are `enum` (needs `values`), `string`, `list`, `ref` (needs `ref`, currently only
+`task_id`). A malformed line makes every board verb refuse with
+`types.jsonl line N: … — fix the file and re-run (nothing written)`.
+
+**Filing.** `create --id REL-1 --title 1.2.0 --type release --meta channel=stable
+--meta source_commit=abc1234 --meta signoffs=a@x,b@x` — the template supplies the
+`[RELEASE] ` prefix, priority P1 and the acceptance-criteria skeleton; explicit
+`--title/--priority/--acceptance-criteria` win. Lists take ONE comma-separated
+value and are stored as JSON arrays. `boardctl types` shows every field, its
+type and its required flag. Every conformance gate fires at write time with a
+remedy and writes nothing: missing required, enum outside `values`, `ref` to a
+non-existent task id, unknown slug, and `update --type` retag that would leave
+the row non-conformant (all rc=1).
+
+**The hazard (DF-BOARDCTL-56, open P1).** A later `update <id> --meta <other>=x`
+on that row rewrites `detail.metadata` and drops any stored value that is not a
+JSON string — `signoffs:["a@x","b@x"]` becomes `signoffs:null`, rc=0, no warning,
+and `validate` still says OK. The old value is in neither `tasks.jsonl` nor
+`events.jsonl` (task_updated events record only `{"status":…}`), so it is gone.
+Cause: `internal/board/write.go:1225-1231` decodes stored metadata through
+`map[string]string` and discards the JSON error; `encodeMetadata` then writes
+every declared field. Until the fix: set ALL metadata in the create pass, do not
+edit metadata afterwards, and re-read `show --json` after any `--meta` write.
+`update --status` and `update --note` alone preserve the array byte-for-byte.
+
+**Warning asymmetry (DF-BOARDCTL-58, open P3).** An undeclared `--meta` key
+warns at write time only on types that declare at least one field; on a bare
+builtin type (`bug`, `task`) the same write is silent and `validate` reports
+`BT-098: row … has undeclared metadata key` later.
+
+## Run-30 (2026-11-17; tick boardctl-dogfood-2026-11-17-10-20-34)
+
+- BT-098 typed rows driven end to end on a scratch board (HEAD `0179f5b`, parity
+  0/0): template application, list metadata, and all five write-time conformance
+  refusals behave as the code promises. Filed: DF-BOARDCTL-56 (P1, `--meta`
+  nulls stored lists), -57 (P2, `types` missing from `--help`, types.jsonl
+  schema documented only in testdata), -58 (P3, silent undeclared-key write on
+  metadata-less types), -59 (P2, coverage floor red + self-contradictory message).
+- **`make cover-check` is RED at HEAD**: `total 80.0% of statements (floor 80.0%)`
+  then `FAIL total coverage 80.0% is below floor 80.0%`; the raw number is
+  79.986683% (10513 statements / 8409 covered) and `%.1f` rounds it up to the
+  floor it fails (`internal/covercheck/covercheck.go:258/263`). The same step is
+  red on a fresh JIT agent (act, 15.1s) while the identical tree is green on
+  GitHub — the floor sits exactly on the achieved value. Read the total from the
+  profile with awk, never from the printed line.
+- Perf non-finding: `stats` 33.9 ms ± 8.9, `ready --json` 48.8 ms, `validate`
+  82.9 ms, `types` 5.6 ms on the 274-row board; on the 546-row task-router board
+  0.04–0.08 s wall; flamegraph not justified, no PERF row.
+- Install leg on `bunker-mvp` agent `b11919a8` (24 rows, destroyed, key removed):
+  fresh-install OK, tests OK, upgrade v0.4.0→HEAD OK, chaos-disconnect OK,
+  chaos-resource PASS, chaos-errorpath OK, **ci-pass FAIL (coverage)**, ci-act
+  UNVERIFIED, lint INFO, ui INFO, docker/shutdown SKIPPED by the safety gate,
+  corruption N/A. Grade install-proven / isolation-UNVERIFIED (net shared).
+- Trap: the collector's `.logs` directory can exist but be EMPTY while its ledger
+  line claims per-cell logs were saved — pull `qa-logs-*/<cell>.log` with
+  `bunker --server <host> exec <agent> -- cat <abs path>` BEFORE destroy.

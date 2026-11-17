@@ -1,0 +1,55 @@
+time="2026-11-17T10:26:57Z" level=info msg="Using docker host 'unix:///run/bunker/b11919a8/docker.sock', and daemon socket 'unix:///run/bunker/b11919a8/docker.sock'"
+[CI/Build & Test] ⭐ Run Set up job
+[CI/Build & Test] 🚀  Start image=catthehacker/ubuntu:act-latest
+[CI/Build & Test]   🐳  docker pull image=catthehacker/ubuntu:act-latest platform= username= forcePull=true
+[CI/Build & Test]   🐳  docker create image=catthehacker/ubuntu:act-latest platform= entrypoint=["tail" "-f" "/dev/null"] cmd=[] network="host"
+[CI/Build & Test]   🐳  docker run image=catthehacker/ubuntu:act-latest platform= entrypoint=["tail" "-f" "/dev/null"] cmd=[] network="host"
+[CI/Build & Test]   🐳  docker exec cmd=[node --no-warnings -e console.log(process.execPath)] user= workdir=
+[CI/Build & Test]   ✅  Success - Set up job
+[CI/Build & Test]   ☁  git clone 'https://github.com/actions/setup-go' # ref=v5
+[CI/Build & Test] ⭐ Run Main Checkout
+[CI/Build & Test]   🐳  docker cp src=/home/bunker-b11919a8/qa-coding-hermes-boardctl/. dst=/home/bunker-b11919a8/qa-coding-hermes-boardctl
+[CI/Build & Test]   ✅  Success - Main Checkout [581.98275ms]
+[CI/Build & Test] ⭐ Run Main Set up Go from go.mod
+[CI/Build & Test]   🐳  docker cp src=/home/bunker-b11919a8/.cache/act/actions-setup-go@v5/ dst=/var/run/act/actions/actions-setup-go@v5/
+[CI/Build & Test]   🐳  docker exec cmd=[/opt/acttoolcache/node/24.22.3/x64/bin/node /var/run/act/actions/actions-setup-go@v5/dist/setup/index.js] user= workdir=
+[CI/Build & Test]   ❓ add-matcher /run/act/actions/actions-setup-go@v5/matchers.json
+[CI/Build & Test]   ❓  ::group::go env
+[CI/Build & Test]   ❓  ::endgroup::
+[CI/Build & Test]   ✅  Success - Main Set up Go from go.mod [20.301729525s]
+[CI/Build & Test]   ⚙  ::set-output:: cache-hit=false
+[CI/Build & Test]   ⚙  ::set-output:: go-version=1.26.11
+[CI/Build & Test]   ⚙  ::add-path:: /opt/hostedtoolcache/go/1.26.10/x64/bin
+[CI/Build & Test]   ⚙  ::add-path:: /root/go/bin
+[CI/Build & Test] ⭐ Run Main Build
+[CI/Build & Test]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/2] user= workdir=
+[CI/Build & Test]   ✅  Success - Main Build [18.71415372s]
+[CI/Build & Test] ⭐ Run Main Vet
+[CI/Build & Test]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/3] user= workdir=
+[CI/Build & Test]   ✅  Success - Main Vet [6.413837848s]
+[CI/Build & Test] ⭐ Run Main Gofmt
+[CI/Build & Test]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/4] user= workdir=
+[CI/Build & Test]   ✅  Success - Main Gofmt [2.415890422s]
+[CI/Build & Test] ⭐ Run Main Version-check
+[CI/Build & Test]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/5] user= workdir=
+[CI/Build & Test]   ✅  Success - Main Version-check [497.451576ms]
+[CI/Build & Test] ⭐ Run Main Spec-check
+[CI/Build & Test]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/6] user= workdir=
+[CI/Build & Test]   ✅  Success - Main Spec-check [2.693131273s]
+[CI/Build & Test] ⭐ Run Main Vendor-check
+[CI/Build & Test]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/7] user= workdir=
+[CI/Build & Test]   ✅  Success - Main Vendor-check [474.153349ms]
+[CI/Build & Test] ⭐ Run Main Install govulncheck v1.7.0
+[CI/Build & Test]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/8] user= workdir=
+[CI/Build & Test]   ✅  Success - Main Install govulncheck v1.7.0 [7.24268322s]
+[CI/Build & Test] ⭐ Run Main Vulnerability-check
+[CI/Build & Test]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/9] user= workdir=
+[CI/Build & Test]   ✅  Success - Main Vulnerability-check [3.167484726s]
+[CI/Build & Test] ⭐ Run Main Coverage
+[CI/Build & Test]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/10] user= workdir=
+[CI/Build & Test]   ❌  Failure - Main Coverage [15.129002553s]
+[CI/Build & Test] exitcode '2': failure
+[CI/Build & Test] ⭐ Run Complete job
+[CI/Build & Test]   ✅  Success - Complete job
+[CI/Build & Test] 🏁  Job failed
+Error: Job 'Build & Test' failed
