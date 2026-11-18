@@ -51,6 +51,21 @@ var sanctionedExtras = []string{
 	"created_by", "filed_by", "found_by", "closed_by", "resolved_by", "dispatched_by",
 	"base_commit", "merge_commit", "code_commit", "fix_commit_hash", "followup_commit",
 	"work_commit", "worker_commit", "red_commit", "superseded_by", "due_date",
+	// DF-CRIER-508 census (2026-11-17, 1,082 boards / 484,968 rows): the
+	// derived-created_at provenance slot. created_at_source records WHERE a
+	// row's created_at came from when the date was derived from history rather
+	// than recorded live — crier writes the single canonical value "derived:
+	// first board commit whose tasks.jsonl contained this row id (committer
+	// date)" on every backfilled row, and its committed audit tool
+	// (scripts/board-created-at-census.py, DF-CRIER-451) REQUIRES a non-empty
+	// created_at_source on any row whose created_at is null, so the key is
+	// enforced convention, not ad-hoc drift: 22,712 rows / 71 boards / 11 crier
+	// id families, one uniform value string (100.0%). It was 320 of the 451
+	// validate warnings on that board. Sanctioned on the repo/tick precedent
+	// (SCHED-GAP-1572: a census of one project's board can establish a real
+	// concept) — the create schema records the date but not its provenance,
+	// and no canonical key respells it.
+	"created_at_source",
 	// work description
 	"detail", "description", "source", "type", "acceptance_criteria", "scope_files",
 	"worktree", "branch", "sessions",

@@ -333,3 +333,54 @@ func TestValidateEvidenceKeysAreNotDrift(t *testing.T) {
 		t.Fatalf("the evidence keys must not trigger the canon warning:\n%s", rendered)
 	}
 }
+
+// DF-CRIER-508: created_at_source — the derived-created_at provenance key.
+// The crier board (and every one of its worktree clones) backfills created_at
+// from board git history and records HOW the date was derived on the row; the
+// project's committed audit tool (scripts/board-created-at-census.py,
+// DF-CRIER-451) REQUIRES a non-empty created_at_source on any row whose
+// created_at is null, so removing the key would break that tool and delete
+// real provenance. Census 2026-11-17 (1,082 boards / 484,968 rows): 22,712
+// rows / 71 boards / 11 crier id families, one uniform value string (100.0%).
+// Sanctioned on the repo/tick precedent (SCHED-GAP-1572: one project's board
+// can establish a real concept).
+func TestCreatedAtSourceKeyIsSanctioned(t *testing.T) {
+	if !IsSanctionedTaskKey("created_at_source") {
+		t.Fatal("key \"created_at_source\" should be sanctioned — it is the derived-created_at provenance convention (DF-CRIER-508 census), not drift")
+	}
+	// near-misses stay drift: the sanctioned name is the exact provenance
+	// slot the crier tooling writes, not a family suffix to generalize.
+	for _, k := range []string{"created_at_sources", "createdatsource", "source_created_at"} {
+		if IsSanctionedTaskKey(k) {
+			t.Errorf("key %q should NOT be sanctioned (near-miss of created_at_source)", k)
+		}
+	}
+}
+
+// DF-CRIER-508 wiring: a row carrying created_at_source must validate with
+// zero key drift — on the live crier board this key alone produced 320 of the
+// 451 validate warnings.
+func TestValidateCreatedAtSourceIsNotDrift(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl": `{"id":"DF-CRIER-508","title":"derived-date row","status":"complete","priority":"P1",` +
+			`"created_at":"2026-11-17 00:00:00","created_at_source":"derived: first board commit whose tasks.jsonl contained this row id (committer date)"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := b.Validate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Keys.Clean != 1 {
+		t.Fatalf("expected 1 clean row, got %d (%+v)", rep.Keys.Clean, rep.Keys)
+	}
+	rendered := rep.RenderText()
+	if strings.Contains(rendered, "outside the declared canon") {
+		t.Fatalf("created_at_source must not trigger the canon warning (DF-CRIER-508):\n%s", rendered)
+	}
+}
