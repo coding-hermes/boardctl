@@ -739,3 +739,5 @@
 {"id":735,"timestamp":"2026-11-17 16:36:59","event_type":"audit","task_id":"RELEASE-2026-11-15-01","actor":"boardctl-pm","detail":"PM-PARK-BOUND: deferred row carried no defer_review_by so nothing would revisit it; bounded to 2026-11-24. Premise unchanged (v0.5.0 published 2026-11-15T12:47:48Z); owed action is a gitreins-evidence close, not a re-cut.","tick_number":null}
 {"id":736,"timestamp":"2026-11-17 18:11:22","event_type":"task_updated","task_id":"DF-BOARDCTL-59","actor":"foreman","detail":"{\"status\":\"pending\"}","tick_number":null}
 {"id":737,"timestamp":"2026-11-18 18:53:13","event_type":"task_updated","task_id":"DF-BOARDCTL-56","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
+{"id":738,"timestamp":"2026-11-20 20:39:25","event_type":"task_updated","task_id":"DF-BOARDCTL-57","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
+{"id":739,"timestamp":"2026-11-20 20:39:25","event_type":"task_updated","task_id":"DF-BOARDCTL-59","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
