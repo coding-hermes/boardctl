@@ -1,0 +1,45 @@
+{
+  "wave_id": "boardctl-foreman-2026-11-21-15-30-59",
+  "scheduler_tick": "boardctl-foreman-2026-11-21-15-30-59",
+  "project": "boardctl",
+  "repo": "/home/kara/coding-hermes-boardctl",
+  "budget": 8,
+  "workers_used": 1,
+  "composed_at": "2026-11-21T15:45:00-05:00",
+  "base": "origin/main",
+  "base_sha": "249acc4",
+  "mode": "serial-single-row (project prompt: one row per tick; candidate P2 rows DF-BOARDCTL-53/55/58 all collide in internal/board — wave declined)",
+  "model_switch": {
+    "configured": "openai/gpt-6.1-terra @ xkiro",
+    "reason": "xkiro lane DEAD: two consecutive probes ('LANE_PROBE_OK') exited 124 at 90s and 150s with ZERO output bytes (not a slow model — no stream at all); consistent with the 2026-11-20 verified 402 wallet drain recorded in wave boardctl-foreman-2026-11-20-20-30-12. Scheduler authorizes switch on actual unavailability.",
+    "replacement": "cx/gpt-6.1-terra @ 9router (:20128) — same generation, verified live this tick: probe returned LANE_PROBE_OK exit=0 (state.db sessions + session_model_usage re-checked at dispatch)."
+  },
+  "inherited_manifest_closure": {
+    "wave_id": "boardctl-foreman-2026-11-20-20-30-12",
+    "disposition": "DEAD — v1 terra@xkiro wrong-seat fallback killed ~5min; v2 terra@9router wave interrupted uncommitted (0 commits, worktree 7 behind main). This tick: the orphaned uncommitted DF-BOARDCTL-56 work (write.go per-field decode + preserve tests, no live owner, verified via /proc cwd sweep + state.db) was ADOPTED as WIP commit 3660643 on wt/DF-BOARDCTL-56 and rebased onto 249acc4. DF-BOARDCTL-57/59 rows remain pending with their stale worktrees left as evidence (15c080e, untouched).",
+    "untracked_manifest_file": "committed with this tick's board commit"
+  },
+  "rows": [
+    {
+      "id": "DF-BOARDCTL-56",
+      "priority": "P1",
+      "status_at_pick": "pending",
+      "attempt": 4,
+      "title": "update --meta nulls stored LIST metadata (silent, unrecoverable data loss in the BT-098 write path)",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-56",
+      "branch": "wt/DF-BOARDCTL-56",
+      "wip_commit": "3660643",
+      "brief": "/tmp/brief-DF-BOARDCTL-56-tick-20261121-1530.md",
+      "depends_on": [],
+      "files": ["internal/board/write.go", "internal/board/write_metadata_preserve_test.go"],
+      "gitreins_task": "DF-BOARDCTL-56 (created + started from control root 2026-11-21 BEFORE worktree prep/dispatch; criterion read back)"
+    }
+  ],
+  "merge_order": ["DF-BOARDCTL-56"],
+  "not_picked": [
+    {"id": "BT-094", "why": "P1 but gateway-repo work with a >=2h restarted-uptime proof — not completable in one tick"},
+    {"id": "BT-101", "why": "P1 adoption row targeting the foreman skills repo (fleet-level), not boardctl product code"},
+    {"id": "RELEASE-2026-11-16-01", "why": "P1 release row, explicitly NO-CUT pending multi-leg evidence chain (version-prep + candidate verdict + dogfood + exact-head CI + tag) — multi-tick"},
+    {"id": "DF-BOARDCTL-53/55/58", "why": "P2/P3 rows whose fixes collide with DF-BOARDCTL-56's internal/board write path seam — serial discipline"}
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "wave_id": "boardctl-foreman-2026-11-20-20-30-12",
+  "scheduler_tick": "boardctl-foreman-2026-11-20-20-30-12",
+  "project": "boardctl",
+  "repo": "/home/kara/coding-hermes-boardctl",
+  "budget": 3,
+  "composed_at": "2026-11-20T20:35:00-05:00",
+  "base": "origin/main",
+  "base_sha": "15c080ee65b9cb6ad2f1c5a8c7b12edad007d4b6",
+  "worker_model": "cx/gpt-6.1-terra",
+  "worker_provider": "9router",
+  "model_switch": {
+    "configured": "openai/gpt-6.1-terra @ xkiro",
+    "reason": "xkiro wallet drained — HTTP 402 'Insufficient wallet balance' verified at 2026-11-20T15:42Z (worker sessions silently fell back to deepseek-v4p1-flash@fireworks; independent LANE_OK probe also 402'd). Tick sanctions switch on actual unavailability.",
+    "replacement": "cx/gpt-6.1-terra @ 9router (:20128) — same generation, verified live: probe API call #1 billed cx/gpt-6.1-terra provider=custom base_url=http://100.99.183.108:20128/v1 with no fallback (agent.log 15:44:24).",
+    "note": "v1 dispatch (terra@xkiro) killed ~5min in with wrong-seat fallback; worktrees reset. v2 dispatch explicit on 9router."
+  },
+  "rows": [
+    {
+      "id": "DF-BOARDCTL-56",
+      "priority": "P1",
+      "status_at_pick": "in_progress",
+      "attempt": 3,
+      "title": "update --meta nulls stored LIST metadata (silent, unrecoverable data loss in the BT-098 write path)",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-56",
+      "branch": "wt/DF-BOARDCTL-56",
+      "brief": "/tmp/brief-DF-BOARDCTL-56.md",
+      "depends_on": [],
+      "files": ["internal/board/write.go", "internal/board/write_metadata_preserve_test.go"],
+      "gitreins_task": "DF-BOARDCTL-56 (pre-existing, in_progress from tick boardctl-foreman-2026-11-18-18-12-30; zero-write dead wave, branch rebuilt fresh)"
+    },
+    {
+      "id": "DF-BOARDCTL-57",
+      "priority": "P2",
+      "status_at_pick": "pending",
+      "attempt": 1,
+      "title": "BT-098's typed-row surface is undiscoverable: types missing from --help, types.jsonl schema undocumented",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-57",
+      "branch": "wt/DF-BOARDCTL-57",
+      "brief": "/tmp/brief-DF-BOARDCTL-57.md",
+      "depends_on": [],
+      "files": ["cmd help surface", "README.md", "skills/boardctl-usage/", "internal/board/types_doc_drift_test.go"],
+      "gitreins_task": "created fresh this tick"
+    },
+    {
+      "id": "DF-BOARDCTL-59",
+      "priority": "P2",
+      "status_at_pick": "pending",
+      "attempt": 1,
+      "title": "make cover-check FAILS at HEAD (79.9867% vs floor 80.0) and prints '80.0% is below floor 80.0'",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-59",
+      "branch": "wt/DF-BOARDCTL-59",
+      "brief": "/tmp/brief-DF-BOARDCTL-59.md",
+      "depends_on": [],
+      "files": ["internal/covercheck/covercheck.go", "internal/covercheck/covercheck_format_test.go", "coverage tests for evidence.go/initiative_refs.go/initiatives_cmd.go"],
+      "gitreins_task": "created fresh this tick"
+    }
+  ],
+  "independence": "rows verified from board JSONL: depends_on empty on all three; file seams disjoint (write.go / help+README+docs / covercheck+named coverage files); each in own worktree per wave doctrine",
+  "merge_order": ["DF-BOARDCTL-56", "DF-BOARDCTL-57", "DF-BOARDCTL-59 (last: coverage floor must hold at final tree)"],
+  "not_picked": [
+    {"id": "BT-094", "why": "P1 but work lives in the hermes gateway repo (agent/memory_manager.py), not boardctl — routes out per foreman routing table"},
+    {"id": "BT-101", "why": "P1 adoption row targeting the foreman skills repo, not boardctl code"},
+    {"id": "RELEASE-2026-11-15-01", "why": "P1 verification-of-published-release row; not code work this wave"},
+    {"id": "RELEASE-2026-11-16-01", "why": "P1 release row; its dispatchable leg (version-prep) edits README.md which collides with DF-BOARDCTL-57's README seam; the cut itself is owner-gated. Sequenced after this wave"},
+    {"id": "RELEASE-2026-11-16-02", "why": "P2 but touches Makefile+README, collides with DF-BOARDCTL-57/59 seams"}
+  ]
+}
