@@ -745,3 +745,4 @@
 {"id":741,"timestamp":"2026-11-21 01:42:19","event_type":"task_updated","task_id":"DF-BOARDCTL-56","actor":"foreman","detail":"{\"status\":\"pending\"}","tick_number":null}
 {"id":742,"timestamp":"2026-11-21 01:52:41","event_type":"task_updated","task_id":"DF-BOARDCTL-59","actor":"foreman","detail":"{\"status\":\"pending\"}","tick_number":null}
 {"id":743,"timestamp":"2026-11-21 16:08:20","event_type":"task_completed","task_id":"DF-BOARDCTL-56","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":744,"timestamp":"2026-11-21 16:30:24","event_type":"task_completed","task_id":"BT-101","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
