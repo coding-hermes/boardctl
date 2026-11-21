@@ -1,0 +1,35 @@
+{
+  "task_id": "BT-101",
+  "tick": "boardctl-foreman-2026-11-21-16-14-16",
+  "shape": "cross-repo (skills repo) — no boardctl product files change",
+  "premise": {
+    "boardctl_ready_json_works": "boardctl -C . ready --json -> total_ready=38, groups[].rows[] with id/priority/title/depends_on",
+    "boardctl_types": "closed set bug|chore|feat|task",
+    "prior_state": "clause 11 named `boardctl ready` (prose) and no skill text mentioned --type"
+  },
+  "ac": {
+    "AC-1": {
+      "claim": "foreman skill discovery step mandates `boardctl ready --json`",
+      "proof": "grep -c 'ready --json' coding-hermes-foreman/SKILL.md == 1 (clause 11)"
+    },
+    "AC-2": {
+      "claim": "brief template gains the filing rule: rows are filed with --type",
+      "proof": "grep -c 'Board filing' coding-hermes-worker/SKILL.md == 1 (Task Format template) + clause 11 filing sentence"
+    },
+    "AC-3": {
+      "claim": "ships via skills-repo shipping path",
+      "proof": "git commit 5299e6164ac97ee7db0dc2d58a42255e65e16f39 on coding-hermes/skills origin/main; deployed via ~/.hermes/scripts/skill-lock-enforce.sh"
+    },
+    "AC-4": {
+      "claim": "deployed skill text shows the new commands",
+      "proof": "sha256 source==deployed for both skills; grep 'ready --json' and 'Board filing' == 1 on ~/.hermes/skills copies"
+    }
+  },
+  "commit": "5299e6164ac97ee7db0dc2d58a42255e65e16f39",
+  "deployed_sha256": {
+    "coding-hermes-foreman/SKILL.md": "330bbad31f14baa17c0a24c4da89db17ac8e6a5d93656849899549b3b48b1ae2",
+    "coding-hermes-worker/SKILL.md": "9ced67286776a74b05fa941261ecb4a810d3193a7f23988eba2b361543fce893"
+  },
+  "source_sha256_equal_deployed": true,
+  "skills_origin_main_ahead": 0
+}
