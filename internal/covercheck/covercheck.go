@@ -260,7 +260,7 @@ func Evaluate(cov map[string]PackageCoverage, pol Policy) (Report, error) {
 			Kind:    "total",
 			Percent: rep.Total,
 			Floor:   pol.MinTotal,
-			Message: fmt.Sprintf("total coverage %.1f%% is below floor %.1f%%", rep.Total, pol.MinTotal),
+			Message: fmt.Sprintf("total coverage %.3f%% is below floor %.1f%%", rep.Total, pol.MinTotal),
 		}}, rep.Findings...)
 	}
 	for _, ex := range pol.Exempt {

@@ -101,7 +101,7 @@ func run(args []string) int {
 	}
 
 	lowest := lowestEvaluated(report)
-	outf("covercheck: total %.1f%% of statements (floor %.1f%%)\n", report.Total, *minTotal)
+	outf("covercheck: total %.3f%% of statements (floor %.1f%%)\n", report.Total, *minTotal)
 	if lowest != nil {
 		outf("covercheck: lowest package %s %.1f%% (floor %.1f%%)\n", lowest.Package, lowest.Percent, *minPackage)
 	}

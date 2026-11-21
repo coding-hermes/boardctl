@@ -70,4 +70,51 @@ func TestCreateWithoutRefFlagWritesNoKeyOnMirroredBoard(t *testing.T) {
 	}
 }
 
+func TestInitiativeRefHelpersAndInvalidInputs(t *testing.T) {
+	for _, tc := range []struct{ raw, part string }{
+		{"missing", "REPO"}, {":path#anchor", "REPO"},
+		{"repo:#anchor", "PATH"}, {"repo:path", "PATH"},
+		{"repo:a/./b#x", "PATH"}, {`repo:a\..\b#x`, "PATH"},
+		{"repo:path#", "ANCHOR"},
+	} {
+		t.Run(tc.raw, func(t *testing.T) {
+			if _, err := ParseInitiativeRef(tc.raw); err == nil || !strings.Contains(err.Error(), tc.part) {
+				t.Fatalf("error = %v, want %s", err, tc.part)
+			}
+		})
+	}
+	values := []string{"repo-a:doc#One", "repo-b:src#Two"}
+	parsed, err := ParseInitiativeRefStrings(values)
+	if err != nil || strings.Join(parsed, ",") != strings.Join(values, ",") {
+		t.Fatalf("refs %v error %v", parsed, err)
+	}
+	if _, err := ParseInitiativeRefStrings([]string{values[0], "invalid"}); err == nil {
+		t.Fatal("invalid ref accepted")
+	}
+	if !InitiativeRefRepoValid("repo-a") || InitiativeRefRepoValid("Bad Repo") {
+		t.Fatal("repo validation mismatch")
+	}
+	if got := InitiativeRefStrings([]InitiativeRef{{Repo: "a", Path: "doc", Anchor: "x"}}); len(got) != 1 || got[0] != "a:doc#x" {
+		t.Fatalf("strings = %v", got)
+	}
+	for _, tc := range []struct {
+		row   string
+		match bool
+	}{
+		{`{"id":"A"}`, false}, {`{"id":"A","initiative_refs":"not an array"}`, false},
+		{`{"id":"A","initiative_refs":["invalid","a:doc#x"]}`, true},
+	} {
+		row, err := ParseRow([]byte(tc.row))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := InitiativeRefsMatchRepo(row, "a"); got != tc.match {
+			t.Fatalf("row %s match=%v", tc.row, got)
+		}
+		if len(InitiativeRefsDisplay(row)) != len(InitiativeRefRepos(row)) {
+			t.Fatal("display mismatch")
+		}
+	}
+}
+
 func refsPtr(vals ...string) *[]string { return &vals }
