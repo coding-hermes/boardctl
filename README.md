@@ -1273,6 +1273,14 @@ boardctl -C ~/myproject create --id QA-X-9 --title "…" --evidence-run-id qa-1 
 boardctl -C ~/myproject update QA-X-3 --status complete --evidence-run-id qa-2 # REQUIRED for completions (TR-251)
 ```
 
+#### Retrying a closeout
+
+A second identical `update --status complete` exits 0, leaves the row unchanged,
+and appends no second `task_completed` event. To repair a closed row, omit
+`--status`, for example `boardctl update <id> --evidence-run-id <run>`. A retry
+can also apply supplied field changes. `--force` is not needed for retries and
+does not create another completion event; on update it permits non-conforming IDs.
+
 `--force` files a deliberate
 variant (still fingerprinted, so a later accidental re-file is caught). Rows
 written before this rule have no fingerprint and are grandfathered: still open

@@ -1251,9 +1251,17 @@ func cmdUpdate(dir string, args []string) error {
 		spec.AssocDim = board.WorktreesKey
 		spec.AssocValues = []string(wtFlags)
 	}
-	changes, err := b.UpdateTask(fs.Arg(0), spec)
+	result, err := b.UpdateTaskDetailed(fs.Arg(0), spec)
 	if err != nil {
 		return err
+	}
+	changes := result.Changed
+	if result.CompletionAlreadyRecorded {
+		fmt.Fprintf(os.Stderr, "completion already recorded for %q — duplicate status transition collapsed to a no-op (BOARD-GUARD-003); other supplied fields applied; no second task_completed event", fs.Arg(0))
+		if len(changes) == 0 {
+			fmt.Fprint(os.Stderr, "; nothing changed")
+		}
+		fmt.Fprintln(os.Stderr)
 	}
 	renderCompletionWarnings(b)
 	renderMetadataWarnings(b)

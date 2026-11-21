@@ -23,11 +23,11 @@ import (
 //
 // The gate is deliberately at the WRITE layer (every caller surface inherits
 // it: CLI update, tests, future HTTP) rather than validate/doctor — doctor
-// (AC2) reports the HISTORIC debt; this gate stops NEW debt. It fires only on
-// a real TRANSITION: a row already complete (either spelling, canonical or a
-// read alias, resolved through ResolveStatus) re-writing complete is an
-// idempotent no-op transition and passes un-gated, mirroring the task-router
-// append-only doctrine where history is never re-judged.
+// (AC2) reports HISTORIC debt; this gate stops NEW debt. A complete row
+// re-writing complete passes this gate un-gated for legacy rows without a
+// task_completed event. Once an event exists, BOARD-GUARD-003 in write.go
+// collapses the duplicate status transition while applying field repairs;
+// history is never re-judged and no completion event is duplicated.
 //
 // The refusal names the missing flag (--evidence-run-id) so the operator's
 // next command is copy-pasteable.

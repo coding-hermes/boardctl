@@ -947,11 +947,10 @@ Target `1cda136f85e753ea1de006ca79e3966ba9db5034`, HEAD build. Rows filed: DF-BO
   run id that exists nowhere under `.gitreins/history/`. Verified at HEAD on a real clone: both
   completed rc=0. Do not treat a completed row's `commit_hash` or `evidence` as proof; resolve the sha
   (`git cat-file -e <sha>^{commit}`) and the run dir yourself. Filed DF-BOARDCTL-52.
-- **Do not re-run a closeout.** The identical `update --status complete …` command exits 1 the second
-  time (`task_completed event already exists; refusing duplicate completion`), and `--force` does not
-  bypass it. If a retry lands anyway, drop `--status` and fix the field you actually need
-  (`update <id> --commit-hash <sha>`, `--note`, `--summary`) — that path works and exits 0. Filed
-  DF-BOARDCTL-53.
+- **Closeout retries are safe.** Repeating `update --status complete …` exits 0 and collapses the
+  duplicate status transition without a second completion event, with or without `--force`. Other
+  supplied fields are still applied. For a field repair, omit `--status`, for example
+  `update <id> --evidence-run-id <run>` or `update <id> --commit-hash <sha>`.
 - **Docs lag the guards.** `README:136` still shows `--commit-hash abc1234` and `README:1365` still
   shows a bare `--deferred`; neither DEFER-EVIDENCE flag appears anywhere in README/`docs/`. Run the
   fence you are copying before quoting it (DF-BOARDCTL-54; this skill's own recipe was corrected in the

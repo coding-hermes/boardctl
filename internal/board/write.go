@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -1035,6 +1036,12 @@ type UpdateSpec struct {
 	RecordDebt bool
 }
 
+// UpdateResult describes an update and whether its completion was already recorded.
+type UpdateResult struct {
+	Changed                   []string
+	CompletionAlreadyRecorded bool
+}
+
 // UpdateTask surgically updates ONE task row. Every untouched line of
 // tasks.jsonl — and every untouched field byte of the target row (kept as
 // verbatim RawMessage) — round-trips byte-identical. Implemented as
@@ -1047,16 +1054,23 @@ type UpdateSpec struct {
 // drift pointer (BT-024) — a task fix commit must NOT overwrite it; the
 // explicit way to move the pointer is `header --set-last-commit` (SetHeader).
 func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
+	result, err := b.UpdateTaskDetailed(id, spec)
+	return result.Changed, err
+}
+
+// UpdateTaskDetailed returns the duplicate-completion disposition alongside changes.
+func (b *Board) UpdateTaskDetailed(id string, spec UpdateSpec) (UpdateResult, error) {
+	var result UpdateResult
 	if spec.EvidenceFingerprint != "" {
 		if err := ValidateEvidenceFingerprint(spec.EvidenceFingerprint); err != nil {
-			return nil, err
+			return result, err
 		}
 	}
 	if spec.HasEvidenceArtifacts && spec.EvidenceFingerprint == "" {
-		return nil, fmt.Errorf("--evidence-artifact requires --evidence-fingerprint")
+		return result, fmt.Errorf("--evidence-artifact requires --evidence-fingerprint")
 	}
 	if spec.EvidenceFingerprint != "" && spec.EvidenceRunID == "" {
-		return nil, fmt.Errorf("--evidence-fingerprint requires --evidence-run-id")
+		return result, fmt.Errorf("--evidence-fingerprint requires --evidence-run-id")
 	}
 	// BT-050: the read-modify-write — file snapshot through atomic rewrite
 	// (and the audit event) — runs under the exclusive write guard, so two
@@ -1066,13 +1080,14 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 	var changed []string
 	var updateErr error
 	lockErr := b.withWriteLock(b.tasksPath, func() error {
-		changed, updateErr = b.updateTaskLocked(id, spec)
+		changed, updateErr = b.updateTaskLocked(id, spec, &result.CompletionAlreadyRecorded)
 		return nil // err rides updateErr; the guard must drop regardless
 	})
 	if lockErr != nil {
-		return nil, lockErr
+		return result, lockErr
 	}
-	return changed, updateErr
+	result.Changed = changed
+	return result, updateErr
 }
 
 // metadataValidationValues adapts stored JSON to the registry's string-based
@@ -1109,7 +1124,7 @@ func metadataValidationValues(stored map[string]json.RawMessage, typ TicketType)
 }
 
 // updateTaskLocked is UpdateTask's body, running under the write guard.
-func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
+func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([]string, error) {
 	b.metadataWarnings = nil
 	lines, err := ReadJSONLLines(b.tasksPath)
 	if err != nil {
@@ -1151,6 +1166,16 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 
 	var changed []string
 	set := func(key string, v any) error {
+		if *duplicate && target.Has(key) {
+			encoded, err := encodeValue(v, style)
+			if err != nil {
+				return err
+			}
+			var oldValue, newValue any
+			if json.Unmarshal(target.Get(key), &oldValue) == nil && json.Unmarshal(encoded, &newValue) == nil && reflect.DeepEqual(oldValue, newValue) {
+				return nil
+			}
+		}
 		if err := target.SetGoValue(key, v, style); err != nil {
 			return err
 		}
@@ -1170,35 +1195,36 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		// and the changed list stays empty. target is still the pre-write
 		// row here (set() has not run for status yet).
 		if s == "complete" {
-			// BOARD-GUARD-003: refuse duplicate completion only when the row is
-			// already complete AND a task_completed event exists. A failed->complete
-			// or pending->complete transition is a fresh completion and is allowed.
+			// BOARD-GUARD-003: collapse an already-recorded completion, while
+			// retaining all field updates and their ordinary validation.
 			if RowIsCompleteCanonical(target) {
 				alreadyCompleted, err := b.hasCompletionEvent(id)
 				if err != nil {
 					return nil, err
 				}
-				if alreadyCompleted {
-					return nil, fmt.Errorf("completion REFUSED for %q: task_completed event already exists; refusing duplicate completion", id)
+				*duplicate = alreadyCompleted
+			}
+			if !*duplicate {
+				// BOARD-GUARD-003: validate commit_hash and evidence-run-id provenance
+				commitHash := ""
+				if spec.CommitHash != nil {
+					commitHash = *spec.CommitHash
+				}
+				if err := b.validateCompletionProvenance(commitHash, spec.EvidenceRunID); err != nil {
+					return nil, err
+				}
+				if err := b.gateCompletionCommit(id, commitHash, spec.RecordDebt); err != nil {
+					return nil, err
 				}
 			}
-			// BOARD-GUARD-003: validate commit_hash and evidence-run-id provenance
-			commitHash := ""
-			if spec.CommitHash != nil {
-				commitHash = *spec.CommitHash
-			}
-			if err := b.validateCompletionProvenance(commitHash, spec.EvidenceRunID); err != nil {
+		}
+		if !*duplicate {
+			if err := gateCompletionEvidence(target, s, spec.EvidenceRunID != ""); err != nil {
 				return nil, err
 			}
-			if err := b.gateCompletionCommit(id, commitHash, spec.RecordDebt); err != nil {
+			if err := set("status", s); err != nil {
 				return nil, err
 			}
-		}
-		if err := gateCompletionEvidence(target, s, spec.EvidenceRunID != ""); err != nil {
-			return nil, err
-		}
-		if err := set("status", s); err != nil {
-			return nil, err
 		}
 	}
 	// BT-060: --title rewrites the row's title. Like every other update
@@ -1541,7 +1567,16 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	// an encode failure leaves the row (and the changed list) untouched.
 	if spec.EvidenceRunID != "" || spec.EvidenceFingerprint != "" {
 		pd := ParseFindingDetail(target.Get("detail"))
-		pd = pd.withEvidence([]EvidenceEntry{{RunID: spec.EvidenceRunID, TS: now, TreeFP: spec.EvidenceFingerprint, Artifacts: spec.EvidenceArtifacts}})
+		evidence := EvidenceEntry{RunID: spec.EvidenceRunID, TS: now, TreeFP: spec.EvidenceFingerprint, Artifacts: spec.EvidenceArtifacts}
+		if *duplicate {
+			for _, existing := range pd.Finding.Evidence {
+				if existing.RunID == evidence.RunID && existing.TreeFP == evidence.TreeFP && slicesEqual(existing.Artifacts, evidence.Artifacts) && existing.TaskID == "" {
+					evidence.TS = existing.TS
+					break
+				}
+			}
+		}
+		pd = pd.withEvidence([]EvidenceEntry{evidence})
 		enc, err := EncodeFindingDetail(pd, style)
 		if err != nil {
 			return nil, fmt.Errorf("detail: %w", err)
@@ -1561,6 +1596,9 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		if !seenRefChange {
 			changed = append(changed, InitiativeRefsKey)
 		}
+	}
+	if *duplicate && len(changed) == 0 && typeChangeDetail == nil {
+		return changed, nil
 	}
 	if target.Has("updated_at") {
 		if err := set("updated_at", now); err != nil {
@@ -1594,7 +1632,7 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	// value. BT-024: a commit hash is TASK-row state only — it must not
 	// overwrite the header's last_commit (the board-edit drift pointer);
 	// `header --set-last-commit` is the explicit drift-pointer update.
-	if spec.Status != nil {
+	if spec.Status != nil && !*duplicate {
 		etype := "task_updated"
 		if *spec.Status == "complete" {
 			etype = "task_completed"

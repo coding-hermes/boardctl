@@ -1,6 +1,7 @@
 package board
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -159,16 +160,16 @@ func TestIsTestEnvironmentUsesRepositoryRoot(t *testing.T) {
 	}
 }
 
-func TestBoardGuard003RejectsDuplicateCloseOfCompleteRow(t *testing.T) {
+func TestBoardGuard003CollapsesDuplicateCloseOfCompleteRow(t *testing.T) {
 	events := boardGuard003Audit + `{"id":2,"timestamp":"2026-09-25 00:00:01.000000","event_type":"task_completed","task_id":"TR-902","actor":"boardctl","detail":null,"tick_number":null}` + "\n"
 	b, dir := boardGuard003Fixture(t, "pending", events)
 	before, err := os.ReadFile(dir + "/tasks.jsonl")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = b.UpdateTask("TR-902", UpdateSpec{Status: strPtr("complete")})
-	if err == nil || !strings.Contains(err.Error(), "task_completed event already exists") {
-		t.Fatalf("duplicate close must be refused, got %v", err)
+	result, err := b.UpdateTaskDetailed("TR-902", UpdateSpec{Status: strPtr("complete")})
+	if err != nil || !result.CompletionAlreadyRecorded || len(result.Changed) != 0 {
+		t.Fatalf("duplicate close must be a no-op, got %+v, %v", result, err)
 	}
 	after, err := os.ReadFile(dir + "/tasks.jsonl")
 	if err != nil {
@@ -176,6 +177,63 @@ func TestBoardGuard003RejectsDuplicateCloseOfCompleteRow(t *testing.T) {
 	}
 	if string(before) != string(after) {
 		t.Fatal("duplicate refusal changed tasks.jsonl")
+	}
+}
+
+func TestBoardGuard003CompletionRetry(t *testing.T) {
+	for _, force := range []bool{false, true} {
+		t.Run(fmt.Sprintf("force=%v", force), func(t *testing.T) {
+			b, dir := boardGuard003Fixture(t, "pending", boardGuard003Audit)
+			spec := UpdateSpec{Status: strPtr("complete"), EvidenceRunID: "synthetic-run", CommitHash: strPtr(strings.Repeat("a", 40)), Summary: strPtr("done"), Force: force}
+			if _, err := b.UpdateTask("TR-901", UpdateSpec{Status: strPtr("complete")}); err == nil {
+				t.Fatal("fresh completion without evidence was accepted")
+			}
+			if _, err := b.UpdateTask("TR-901", spec); err != nil {
+				t.Fatal(err)
+			}
+			events, err := os.ReadFile(dir + "/events.jsonl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			tasks, err := os.ReadFile(dir + "/tasks.jsonl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Count(string(events), `"event_type":"task_completed"`) != 1 {
+				t.Fatalf("events: %s", events)
+			}
+			result, err := b.UpdateTaskDetailed("TR-901", spec)
+			if err != nil || !result.CompletionAlreadyRecorded || len(result.Changed) != 0 {
+				t.Fatalf("retry: %+v %v", result, err)
+			}
+			afterEvents, err := os.ReadFile(dir + "/events.jsonl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			afterTasks, err := os.ReadFile(dir + "/tasks.jsonl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(events) != string(afterEvents) || string(tasks) != string(afterTasks) {
+				t.Fatal("retry rewrote board")
+			}
+			spec.Summary = strPtr("repaired")
+			result, err = b.UpdateTaskDetailed("TR-901", spec)
+			if err != nil || !result.CompletionAlreadyRecorded || !strings.Contains(strings.Join(result.Changed, ","), "worker_summary") {
+				t.Fatalf("repair: %+v %v", result, err)
+			}
+			afterEvents, err = os.ReadFile(dir + "/events.jsonl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			afterTasks, err = os.ReadFile(dir + "/tasks.jsonl")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(events) != string(afterEvents) || !strings.Contains(string(afterTasks), `"repaired"`) {
+				t.Fatal("repair lost or appended event")
+			}
+		})
 	}
 }
 
