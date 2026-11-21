@@ -1075,6 +1075,39 @@ func (b *Board) UpdateTask(id string, spec UpdateSpec) ([]string, error) {
 	return changed, updateErr
 }
 
+// metadataValidationValues adapts stored JSON to the registry's string-based
+// validator without converting the values that will actually be written.
+func metadataValidationValues(stored map[string]json.RawMessage, typ TicketType) (map[string]string, error) {
+	values := make(map[string]string, len(stored))
+	for key, raw := range stored {
+		field, declared := typ.Field(key)
+		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+			continue
+		}
+		if declared {
+			if field.Type == "list" {
+				var list []string
+				if err := json.Unmarshal(raw, &list); err != nil {
+					return nil, fmt.Errorf("update refused: metadata field %q: %w", key, err)
+				}
+				values[key] = strings.Join(list, ",")
+				continue
+			}
+			var value string
+			if err := json.Unmarshal(raw, &value); err != nil {
+				return nil, fmt.Errorf("update refused: metadata field %q: %w", key, err)
+			}
+			values[key] = value
+			continue
+		}
+		if !json.Valid(raw) {
+			return nil, fmt.Errorf("update refused: invalid metadata field %q", key)
+		}
+		values[key] = string(raw)
+	}
+	return values, nil
+}
+
 // updateTaskLocked is UpdateTask's body, running under the write guard.
 func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 	b.metadataWarnings = nil
@@ -1177,6 +1210,8 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 			return nil, err
 		}
 	}
+	// Validate and merge metadata before emitting the type-change event.
+	var typeChangeDetail []byte
 	if spec.Type != nil {
 		reg, err := LoadTicketTypes(b.Dir)
 		if err != nil {
@@ -1190,29 +1225,12 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		if _, ok := reg.Types[nextType]; !ok {
 			return nil, fmt.Errorf("update refused: unknown ticket type %q — configured types: %s", nextType, reg.Names())
 		}
-		metadata := map[string]string{}
-		if raw := target.Get("detail"); len(raw) > 0 {
-			pd := ParseFindingDetail(raw)
-			if pd.Object && pd.Extra != nil {
-				var vals map[string]string
-				_ = json.Unmarshal(pd.Extra["metadata"], &vals)
-				for key, value := range vals {
-					metadata[key] = value
-				}
-			}
-		}
-		missing, invalid := reg.ValidateMetadata(nextType, metadata, map[string]bool{})
-		if len(missing) > 0 || len(invalid) > 0 {
-			return nil, fmt.Errorf("update refused: type %q is not conformant; missing=%s invalid=%s", nextType, strings.Join(missing, ", "), strings.Join(invalid, ", "))
-		}
 		if err := set("type", nextType); err != nil {
 			return nil, err
 		}
-		if _, err := b.AppendEvent(EventSpec{Type: "task_type_changed", TaskID: id, Detail: []byte(fmt.Sprintf(`{"old_type":%q,"new_type":%q}`, oldType, nextType))}); err != nil {
-			return nil, err
-		}
+		typeChangeDetail = []byte(fmt.Sprintf(`{"old_type":%q,"new_type":%q}`, oldType, nextType))
 	}
-	if spec.Metadata != nil {
+	if spec.Metadata != nil || spec.Type != nil {
 		reg, err := LoadTicketTypes(b.Dir)
 		if err != nil {
 			return nil, err
@@ -1222,45 +1240,76 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec) ([]string, error) {
 		if !ok {
 			return nil, fmt.Errorf("update refused: row type %q is not configured", typeName)
 		}
-		values := map[string]string{}
-		if raw := target.Get("detail"); len(raw) > 0 {
-			pd := ParseFindingDetail(raw)
-			if pd.Object && pd.Extra != nil {
-				_ = json.Unmarshal(pd.Extra["metadata"], &values)
+		stored := map[string]json.RawMessage{}
+		pd := ParseFindingDetail(target.Get("detail"))
+		if raw := pd.Extra["metadata"]; len(raw) > 0 {
+			if err := json.Unmarshal(raw, &stored); err != nil || stored == nil {
+				return nil, fmt.Errorf("update refused: invalid stored metadata object")
 			}
 		}
-		for key, value := range *spec.Metadata {
+		incoming := map[string]string{}
+		if spec.Metadata != nil {
+			incoming = *spec.Metadata
+		}
+		for key, value := range incoming {
 			if value == "" {
 				if f, declared := typ.Field(key); declared && f.Required {
 					return nil, fmt.Errorf("update refused: %q is REQUIRED by type %q (%s) — supply a value or change the row's type first", key, typeName, metadataFieldSpec(f))
 				}
-				delete(values, key)
+				delete(stored, key)
 				continue
 			}
 			if _, declared := typ.Field(key); !declared {
 				b.metadataWarnings = append(b.metadataWarnings, fmt.Sprintf("metadata key %q is not declared by type %q — it was written, but 'boardctl validate' will report it", key, typeName))
 			}
-			values[key] = value
+			encoded, err := encodeMetadata(map[string]string{key: value}, typ, style)
+			if err != nil {
+				return nil, fmt.Errorf("update refused: metadata field %q: %w", key, err)
+			}
+			var entry map[string]json.RawMessage
+			if err := json.Unmarshal(encoded, &entry); err != nil {
+				return nil, fmt.Errorf("update refused: metadata field %q: %w", key, err)
+			}
+			stored[key] = entry[key]
 		}
-		missing, invalid := reg.ValidateMetadata(typeName, values, map[string]bool{})
+		values, err := metadataValidationValues(stored, typ)
+		if err != nil {
+			return nil, err
+		}
+		ids := map[string]bool{}
+		if err := IterParsed(lines, func(row *Row, idx int, _ []byte) error {
+			if !b.skipTaskLine(lines, idx) {
+				ids[row.String("id")] = true
+			}
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		missing, invalid := reg.ValidateMetadata(typeName, values, ids)
 		if len(missing) > 0 || len(invalid) > 0 {
 			return nil, fmt.Errorf("update refused: type %q is not conformant; missing=%s invalid=%s", typeName, strings.Join(missing, ", "), strings.Join(invalid, ", "))
 		}
-		enc, err := encodeMetadata(values, typ, style)
-		if err != nil {
-			return nil, err
+		if spec.Metadata != nil {
+			enc, err := encodeValue(stored, style)
+			if err != nil {
+				return nil, fmt.Errorf("update refused: encode metadata: %w", err)
+			}
+			pd.Object = true
+			if pd.Extra == nil {
+				pd.Extra = map[string]json.RawMessage{}
+			}
+			pd.Extra["metadata"] = enc
+			detail, err := EncodeFindingDetail(pd, style)
+			if err != nil {
+				return nil, err
+			}
+			if err := set("detail", json.RawMessage(detail)); err != nil {
+				return nil, err
+			}
 		}
-		pd := ParseFindingDetail(target.Get("detail"))
-		pd.Object = true
-		if pd.Extra == nil {
-			pd.Extra = map[string]json.RawMessage{}
-		}
-		pd.Extra["metadata"] = enc
-		detail, err := EncodeFindingDetail(pd, style)
-		if err != nil {
-			return nil, err
-		}
-		if err := set("detail", json.RawMessage(detail)); err != nil {
+	}
+	if typeChangeDetail != nil {
+		if _, err := b.AppendEvent(EventSpec{Type: "task_type_changed", TaskID: id, Detail: typeChangeDetail}); err != nil {
 			return nil, err
 		}
 	}
