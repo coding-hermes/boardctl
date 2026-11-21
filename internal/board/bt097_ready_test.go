@@ -58,16 +58,27 @@ func TestBT097DispatchabilityScalingRatio(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		start := time.Now()
-		report, err := analyzeDispatchabilityRowsCore(rows)
-		elapsed := time.Since(start)
-		if err != nil {
-			t.Fatal(err)
+		// Best-of-N: a single sample on a loaded host is one-sided noise (a GC
+		// pause or scheduler slice in the small measurement inflates the ratio
+		// past the bound without any superlinear behaviour). Taking the minimum
+		// keeps the assertion a real complexity check while making the gate
+		// deterministic under contention.
+		best := time.Duration(1<<62 - 1)
+		for attempt := 0; attempt < 3; attempt++ {
+			start := time.Now()
+			report, err := analyzeDispatchabilityRowsCore(rows)
+			elapsed := time.Since(start)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(report.Rows) != n {
+				t.Fatalf("rows=%d, want %d", len(report.Rows), n)
+			}
+			if elapsed < best {
+				best = elapsed
+			}
 		}
-		if len(report.Rows) != n {
-			t.Fatalf("rows=%d, want %d", len(report.Rows), n)
-		}
-		return elapsed
+		return best
 	}
 	small := measure(1000)
 	large := measure(10000)
