@@ -291,6 +291,29 @@ boardctl -C ~/myproduct umbrella --validate
 boardctl -C ~/myproduct umbrella --json
 ```
 
+Per-initiative rollup across the view (BT-093): standing in the umbrella
+repo, `initiatives --umbrella` answers "which programmes span this
+product?" in one command — per-initiative totals aggregated over this
+repo's own board plus every child board, one bucket per initiative slug,
+each bucket carrying its per-repo breakdown keyed by the same repo
+qualifiers:
+
+```bash
+boardctl -C ~/myproduct initiatives --umbrella
+boardctl -C ~/myproduct initiatives --umbrella --json --status pending
+```
+
+The counting rules are the single-board rollup's (deferred excluded from
+actionable, complete/failed not actionable, unscoped rows never bucketed):
+the aggregate numbers ARE the per-board rollups, summed. A child board that
+fails to read is reported as an ERROR finding (stderr, exit 1) and its rows
+are ABSENT from the totals — healthy boards' totals still print, but the
+exit makes the degraded output impossible to read as a clean success.
+`--skip-bad-lines` arms the tolerant row-level read on every board in the
+view and the SKIPPED-LINES evidence block rides stderr (the same contract
+as `umbrella --skip-bad-lines` below). Plain `initiatives` (no `--umbrella`)
+is unchanged: it still rolls up exactly one board.
+
 Provenance and identity: every result names the repo each task came from,
 and task identity across the view is `<repo>/<id>` (`QualifiedTaskID`) —
 the same id in two child boards stays two distinct tasks, never merged.
@@ -1517,6 +1540,38 @@ slug, so the biggest programmes come first and the output diffs cleanly.
 Comparison is case-insensitive on read (a row written a year ago as
 `Lane-Hooks` still matches `--initiative lane-hooks`) while writes are
 normalised to lowercase so the stored key stays byte-stable.
+
+#### Rolling up across an umbrella repo (BT-093)
+
+A programme that spans repos lives on SEVERAL boards. Aimed at an umbrella
+repo (see [Umbrella repos](#umbrella-repos--a-unified-view-over-linked-child-boards-bt-078)),
+`initiatives --umbrella` rolls up the totals over this repo's OWN board
+plus every child board reachable through the `.coding-hermes/links/` view —
+one bucket per initiative slug (the slug is the cross-board identity), each
+bucket carrying `total`/`actionable`/`deferred`/`by_status` AND a per-repo
+breakdown (`repo` → `total`/`actionable`/`deferred`) named by the same repo
+qualifiers the umbrella commands use.
+
+```bash
+boardctl -C ~/myproduct initiatives --umbrella
+# one line per initiative, repos listed:
+# lane-hooks  3  2  1  pending=2 in_progress=1  auth=2 billing=1
+boardctl -C ~/myproduct initiatives --umbrella --json
+# initiatives[] with repos[] = {repo, total, actionable, deferred, by_status}
+boardctl -C ~/myproduct initiatives --umbrella --json --status pending
+```
+
+Counting rules match the single-board rollup exactly: `deferred` is
+excluded from `actionable`, `complete`/`failed` rows are not actionable,
+and unscoped rows (no `initiative` key) are never bucketed on any board.
+Ordering is the same — total-descending then slug — and each repo entry is
+sorted by its qualifier. A child board that fails to read is reported as a
+named ERROR finding on stderr and its rows are ABSENT from the totals while
+the healthy boards still aggregate; the command exits 1, so degraded output
+never reads as clean success (the fail-closed discipline `umbrella --stats`
+ships). `--skip-bad-lines` arms the tolerant read on every board in the
+view and the SKIPPED-LINES block rides stderr. Plain `initiatives` is
+unchanged: it still rolls up exactly one board.
 
 ### Cross-repository initiative refs (BT-092)
 

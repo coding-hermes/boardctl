@@ -119,7 +119,16 @@ commands:
   evidence baseline --record   record completion debt and enable FAIL-on-new-debt
   version [--json]
   stats   [--json] [--all] [--skip-bad-lines]
-  initiatives [--json] [--status S] [--skip-bad-lines]   list initiative rollups on this board
+  initiatives [--json] [--status S] [--skip-bad-lines] [--umbrella] [-C dir]
+          per-initiative rollup: total/actionable/deferred + by-status counts.
+          --umbrella (BT-093) aggregates over the umbrella view instead of one
+          board: the repo's own board plus every child board under
+          .coding-hermes/links/, each bucket carrying the per-repo breakdown
+          (REPOS column / JSON repos[].repo). A child board that fails to
+          read is reported as an ERROR finding and its rows are ABSENT from
+          the totals; the command still exits 1 — degraded totals never read
+          as clean success. --skip-bad-lines arms the tolerant read on every
+          board in the view.
   render  [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]
   import  <export.json> [--dry-run] [--renumber]
   serve   [-C dir] [--addr 127.0.0.1:8787]

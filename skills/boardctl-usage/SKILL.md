@@ -111,6 +111,13 @@ boardctl -C ~/myproduct umbrella --stats    # per-repo stats + grand totals
 boardctl -C ~/myproduct umbrella --validate # per-board validate + dep resolution
 boardctl -C ~/myproduct umbrella --json     # machine-readable census
 boardctl -C ~/myproduct umbrella --strict   # warnings also fail (exit 1)
+boardctl -C ~/myproduct initiatives --umbrella
+                                            # per-initiative rollup across the
+                                            # WHOLE view (BT-093): one bucket
+                                            # per slug + per-repo breakdown; a
+                                            # child that fails to read is an
+                                            # ERROR finding (rows excluded,
+                                            # exit 1)
 
 # graph-aware dispatch (BT-097): what can a wave start NOW?
 boardctl -C R ready [--initiative SLUG] [--blocked] [--json]
@@ -129,6 +136,8 @@ boardctl -C R stats [--json] [--all]       # counts by status/priority
 boardctl -C R list --initiative-ref-repo REPO --json  # rows referencing REPO
 boardctl -C R initiatives [--json] [--status S]  # per-initiative rollup:
                                            # total/actionable/deferred
+                                           # (--umbrella: across the whole
+                                           # umbrella view, per-repo breakdown)
 boardctl -C R list [--status pending] [--priority P1] [--initiative SLUG] [--actionable] [--json] [--all]
 boardctl -C R show <ID> [--events] [--skip-bad-lines]  # searches tasks AND
                                                        # fixtures; --skip-bad-lines
