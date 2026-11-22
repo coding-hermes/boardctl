@@ -13,7 +13,7 @@ PLATFORMS := \
 	windows/amd64 \
 	freebsd/amd64
 
-.PHONY: build test vet fmt fmt-check version-check vuln-check vendor-check vendor-strip cover-check dep-check release install install-release install-check clean
+.PHONY: build test vet fmt fmt-check version-check vuln-check vendor-check vendor-strip cover-check dep-check readme-fences release install install-release install-check clean
 
 # BT-057: the build commit stamped into every make-built binary. The guard
 # keeps non-git builds working (a tarball without .git yields an empty
@@ -134,6 +134,16 @@ cover-check:
 
 vet:
 	go vet ./...
+
+# DF-BOARDCTL-54: mechanical README-fence gate (check-only, never rewrites
+# files). The same checker runs inside `go test ./...` (TestREADMEFences in
+# cmd/boardctl), so CI's existing test job already enforces it; this target
+# is the direct, named entry point for auditing the README surface:
+# every fenced `boardctl` command is executed against a throwaway git+board
+# environment built from the working tree, and the run FAILS on any non-zero
+# exit the allowlist does not document (readme_fences_test.go).
+readme-fences:
+	go test -count=1 -v -run TestREADMEFences ./cmd/boardctl
 
 # BT-89: report-only build-set dependency-currency gate. It runs the Go
 # checker in internal/depcheck: ONE `go list -mod=mod -m -u all`, filtered to
