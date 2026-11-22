@@ -13,7 +13,9 @@
       "branch": "wt/QA-BOARDCTL-014",
       "base": "origin/main",
       "base_sha": "9daa637",
-      "files": ["cmd/boardctl/gzipmw_test.go"],
+      "files": [
+        "cmd/boardctl/gzipmw_test.go"
+      ],
       "gitreins_task": "QA-BOARDCTL-014",
       "note": "Selected for CI-health: 3 consecutive Multi-Arch failures on main (runs 10:21Z/10:38Z/10:57Z)."
     },
@@ -25,7 +27,9 @@
       "branch": "wt/RELEASE-2026-11-09-02",
       "base": "origin/main",
       "base_sha": "9daa637",
-      "files": ["cmd/boardctl/readme_acceptance_criteria_release_test.go"],
+      "files": [
+        "cmd/boardctl/readme_acceptance_criteria_release_test.go"
+      ],
       "gitreins_task": "RELEASE-2026-11-09-02",
       "note": "Derives expected tag from internal/versioncheck surfaces per row AC."
     },
@@ -37,15 +41,31 @@
       "branch": "wt/BT-89",
       "base": "origin/main",
       "base_sha": "9daa637",
-      "files": ["internal/depcheck (new)", "Makefile", "docs/dependency-currency.md (new)", "README.md (dep-check section)"],
+      "files": [
+        "internal/depcheck (new)",
+        "Makefile",
+        "docs/dependency-currency.md (new)",
+        "README.md (dep-check section)"
+      ],
       "gitreins_task": "BT-89",
       "note": "Independent of the other two rows (different files; README edit may collide with none of them)."
     }
   ],
   "excluded": [
-    {"id": "BT-093", "reason": "P2 feature (initiatives umbrella aggregation) is multi-surface; left for a dedicated tick"},
-    {"id": "BT-094", "reason": "P1 cross-repo owner-gated (hermes gateway)"},
-    {"id": "RELEASE-2026-11-16-01", "reason": "P1 owner-gated release cut (NO-CUT row)"}
+    {
+      "id": "BT-093",
+      "reason": "P2 feature (initiatives umbrella aggregation) is multi-surface; left for a dedicated tick"
+    },
+    {
+      "id": "BT-094",
+      "reason": "P1 cross-repo owner-gated (hermes gateway)"
+    },
+    {
+      "id": "RELEASE-2026-11-16-01",
+      "reason": "P1 owner-gated release cut (NO-CUT row)"
+    }
   ],
-  "workers_model": "glm-5.3-flash@ollama-cloud"
+  "workers_model": "glm-5.3-flash@ollama-cloud",
+  "finished_at": "2026-11-22T17:45:00Z",
+  "recovery_note": "Recovered by tick boardctl-foreman-2026-11-22-12-43-18. All 3 rows completed and merged by sibling stewardship: cherry-picks b4b312d/36bb412/d6fef4d on main, tips byte-identical to worktree product commits, all ancestors of origin/main=2d1f08e. Gates re-run green on merged tree (build/vet/test -short). Worktrees reaped; branches preserved as evidence."
 }
