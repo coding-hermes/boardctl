@@ -3,7 +3,9 @@
 Measured at `HEAD ed8fcfe` (tick 171/172 window, 2026-11-04) by the foreman for
 row **BT-86**. This document records *how* currency is measured, *what* the
 current state is, and *why* the graph-wide "N modules upgradable" number is not
-the number that matters for this module.
+the number that matters for this module. The dated "State at ed8fcfe" snapshot
+below is history, not a live reading: the BT-89 gate (`make dep-check`) is the
+surface that reports the build set's currency at any later HEAD.
 
 ## Why "upgradable modules" is not one number
 
@@ -115,16 +117,86 @@ The row was filed with a graph-wide snapshot that no longer describes HEAD:
 The build-set half of that drift was closed by the kin-openapi v0.152.0 and
 `x/text` bumps already on main; what remains is graph residue.
 
-## Cadence
+## Cadence (BT-89: the gate, not one-off audits)
 
-There is no scheduled pass. The follow-up row (`BT-89`) adds a report-only
-build-set currency check plus a documented cadence, so the next real drift (a
-vendored module falling behind) is found by a routine tick instead of by a
-one-off audit.
+BT-89 ships the report-only checker `internal/depcheck` and one Make target so
+the cadence below is a running command, not a manual audit:
+
+```bash
+make dep-check                 # report arm: always exits 0, prints the report
+make dep-check DEP_STRICT=1    # strict arm: non-zero, naming every behind module
+```
+
+Both arms run the same gate test (`go test -count=1 -v -run
+TestBuildSetCurrency ./internal/depcheck`) over the same package; `DEP_STRICT`
+only changes the verdict policy, and the Makefile passes it inline so strict
+state cannot leak into any other gate.
+
+**Scope:** the BUILD SET ONLY — go.mod's require block (the non-indirect
+require lines this binary compiles and vendors). The checker parses that
+require block, runs ONE `go list -mod=mod -m -u all`, and filters the
+graph-wide output down to the require set; the graph residue this audit
+catalogued above is never reported. **Policy: bump the build set, never
+promote graph residue** — fix a behind reading with `go get <module> && go mod
+tidy`, never by pulling a graph-only module into the require block.
+
+**Offline behaviour:** the `-u` lookup needs the module proxy. A failed
+`go list` invocation (network/proxy error, missing go toolchain) reports
+`currency unknown: <the proxy error text>` on a distinguishable path and never
+a silent "all current" answer; the strict arm fails on unknown too — a gate
+that cannot see the proxy cannot assert currency. The offline leg is proven in
+tests with a fake `go` executable (`TestCheckFakeGo/proxy-error`), and no test
+hits the network under `go test -short` (the live gate arm is skipped there).
+The synthetic-behind-fixture red proof runs through the real gate command:
+
+```bash
+# RED: strict arm on the committed behind fixture (example.com/two v1.2.3 [v1.5.0])
+DEP_STRICT=1 DEP_ROOT=<repo>/internal/depcheck/testdata/behind_fixture \
+  DEP_GOBIN=<fakebin>/go GOFAKE_MODE=behind make dep-check    # exits 2, naming the module
+# GREEN: strict arm on the same fixture read as current
+DEP_STRICT=1 DEP_ROOT=<repo>/internal/depcheck/testdata/behind_fixture \
+  DEP_GOBIN=<fakebin>/go GOFAKE_MODE=current make dep-check   # exits 0
+```
+
+`DEP_GOBIN` overrides the `go` binary the checker shells out to (the
+`go test` driver rewrites its subprocess PATH to put GOROOT/bin first, so a
+PATH shim cannot survive the driver; an explicit override can). All three
+fixture hooks — `DEP_STRICT`, `DEP_ROOT`, `DEP_GOBIN` — are unset in
+production invocations.
+
+**The cadence itself:**
+
+1. **Every release cut: run `make dep-check` before tagging.** A behind
+   build-set module at a cut is a decision, not automation: bump the module
+   first and verify the build, or cut and name the stale module in the
+   release notes as accepted debt. The report arm never blocks (it always
+   exits 0), so this paragraph is the wired-in step for the cut.
+2. **Quarterly refresh: via a board row.** Once a quarter, file a board row
+   ("quarterly dependency-currency refresh", task/chore type) that runs
+   `make dep-check`, bumps any build-set modules it names, and records the
+   report in the row closeout. A quarterly board row is the trigger — not a
+   cron — so the refresh lands where the foreman actually schedules work.
+
+**Why report-only:** BT-89 deliberately ships no CI gate for currency. A
+hard-gated currency check fails on every unrelated commit while the
+maintainer is between bumps — friction without payoff, when the build set
+only matters at a release cut. The strict arm exists so the gate is
+CI-ready the day the fleet wants it: point any CI step at
+`make dep-check DEP_STRICT=1` and the checker already fails closed on
+behind, missing, and proxy-unknown readings.
 
 ## Verification at this HEAD
 
 `go build ./...`, `go vet ./...`, `go test ./... -count=1`,
 `go test -race ./... -count=1 -short`, `govulncheck ./...`,
 `make fmt-check version-check spec-check vendor-check vuln-check cover-check`
-(83.1% total, floor 80.0%, 15 packages) — all green.
+(83.1% total, floor 80.0%, 15 packages) — all green. (BT-86 audit, 2026-11-04.)
+
+**BT-89 gate verification (2026-11-22):** `go build ./...`, `go vet ./...`,
+`go test -count=1 ./internal/depcheck ./cmd/boardctl`, `make dep-check`,
+`gofmt -l internal/depcheck` — all green; `make dep-check` (report arm) exits 0
+naming `github.com/getkin/kin-openapi v0.152.0 -> v0.153.0` BEHIND
+(`gopkg.in/yaml.v3 v3.0.1` current), `make dep-check DEP_STRICT=1` exits 2
+naming that module, and the synthetic-behind-fixture arms above exit 2 (RED)
+/ 0 (GREEN) through the real gate command. No new dependency was added to
+go.mod (stdlib-only checker).

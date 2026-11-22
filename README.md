@@ -1721,6 +1721,7 @@ make version-check    # README release-pin gate (CI enforces it too)
 make vuln-check       # dependency-vulnerability gate (CI enforces it too)
 make spec-check       # serve/OpenAPI parity gate (CI enforces it too)
 make cover-check      # test-coverage floor gate: total >= 80%, per-package >= 60% (CI enforces it too)
+make dep-check        # build-set dependency-currency REPORT (report-only; DEP_STRICT=1 for the strict arm; not CI-enforced)
 make release          # cross-compile all targets into dist/ (same asset names + SHA256SUMS the CI cut publishes)
 ```
 
@@ -1849,6 +1850,28 @@ package that does appear in the profile still contributes its statements
 to the module total (exemption waives only the per-package floor). The
 suite is run from the make shell, never from inside a test — a gate that
 re-ran `go test ./...` from within the suite would recurse.
+
+### Build-set dependency-currency report (BT-89)
+
+`make dep-check` is a REPORT-ONLY gate over the BUILD SET — go.mod's require
+block (the non-indirect require lines this binary compiles and vendors). It
+runs the checker in `internal/depcheck`: one `go list -mod=mod -m -u all`,
+filtered to the require set, printing a `current -> available` line for every
+build-set module the proxy has moved past; graph-wide residue is never
+reported. The report arm always exits 0 (a currency report must never block
+an unrelated commit). `make dep-check DEP_STRICT=1` is the strict arm: it
+exits non-zero naming every behind build-set module (and fails on a failed
+proxy lookup too — `currency unknown: <error>` is the distinguishable
+offline path; it is never a silent "all current"). No CI step runs this
+target; the cadence lives in docs/dependency-currency.md — run at every
+release cut and refreshed quarterly via a board row. Tests: table-driven
+over captured `go list` shapes plus one live arm against the real
+toolchain, skipped in `-short` mode.
+
+```bash
+make dep-check               # report arm: exit 0, prints the currency report
+make dep-check DEP_STRICT=1  # strict arm: exit non-zero naming behind modules
+```
 
 ### Deployment freshness gate (BT-057)
 

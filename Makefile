@@ -13,7 +13,7 @@ PLATFORMS := \
 	windows/amd64 \
 	freebsd/amd64
 
-.PHONY: build test vet fmt fmt-check version-check vuln-check vendor-check vendor-strip cover-check release install install-release install-check clean
+.PHONY: build test vet fmt fmt-check version-check vuln-check vendor-check vendor-strip cover-check dep-check release install install-release install-check clean
 
 # BT-057: the build commit stamped into every make-built binary. The guard
 # keeps non-git builds working (a tarball without .git yields an empty
@@ -134,6 +134,28 @@ cover-check:
 
 vet:
 	go vet ./...
+
+# BT-89: report-only build-set dependency-currency gate. It runs the Go
+# checker in internal/depcheck: ONE `go list -mod=mod -m -u all`, filtered to
+# go.mod's require block — the BUILD SET (the modules this binary compiles
+# and vendors). Graph-wide `go list -m all` residue is never reported.
+#   - the REPORT arm ALWAYS exits 0: a currency report must never block an
+#     unrelated commit;
+#   - `make dep-check DEP_STRICT=1` is the STRICT arm: non-zero, naming
+#     every behind build-set module;
+#   - a failed `-u` lookup needs the module proxy and prints
+#     "currency unknown: <proxy error>" — it never silently reports "all
+#     current" (the strict arm fails on unknown too).
+# No CI step runs this target (BT-89 ships no CI config changes); the
+# cadence lives in docs/dependency-currency.md: every release cut +
+# quarterly board-row refresh. DEP_STRICT/DEP_ROOT are passed INLINE to the
+# gate command (never exported make-wide) so strict/fixture state cannot
+# leak into any other gate or sub-make.
+DEP_STRICT ?=
+DEP_ROOT ?=
+DEP_GOBIN ?=
+dep-check:
+	DEP_STRICT="$(DEP_STRICT)" DEP_ROOT="$(DEP_ROOT)" DEP_GOBIN="$(DEP_GOBIN)" go test -count=1 -v -run TestBuildSetCurrency ./internal/depcheck
 
 # BT-036: the asset names this target emits are the CI names — the org
 # multi-arch workflow (.github/workflows/multiarch.yml) builds
