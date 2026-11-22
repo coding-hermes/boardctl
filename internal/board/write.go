@@ -726,6 +726,10 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		(spec.DeferReason == nil || strings.TrimSpace(*spec.DeferReason) == "") {
 		return "", fmt.Errorf("create: --deferred requires --defer-reason (a deferral without a named blocker is a phantom row; nothing written)")
 	}
+	// DEFER-EVIDENCE invariant: audit fields belong only to deferred rows.
+	if (spec.DeferReason != nil || spec.DeferReviewBy != nil) && (spec.Deferred == nil || !*spec.Deferred) {
+		return "", fmt.Errorf("create: --defer-reason and --defer-review-by require --deferred (nothing written)")
+	}
 	if spec.DeferReason != nil {
 		overrides["defer_reason"] = *spec.DeferReason
 	}
@@ -1456,6 +1460,10 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([
 				changed = append(changed, "defer_review_by")
 			}
 		}
+	}
+	// DEFER-EVIDENCE invariant: audit fields belong only to deferred rows.
+	if (spec.DeferReason != nil || spec.DeferReviewBy != nil) && !RowIsDeferred(target) {
+		return nil, fmt.Errorf("update: --defer-reason and --defer-review-by require --deferred (nothing written)")
 	}
 	// DEFER-EVIDENCE: --defer-reason sets (or re-points) the deferral's
 	// named blocker; --defer-review-by sets the re-triage date. set()
