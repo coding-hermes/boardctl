@@ -17,13 +17,20 @@ guards:
     build: true
     lint: true
     tests: true
+# DF-BOARDCTL-060 (2026-11-22): the tier-2 lane is `moonshotai/kimi-k3` served by
+# OpenRouter. The PROVIDER (base URL) and credential have no config.yaml surface:
+# engine/llm.py resolves those from GITREINS_LLM_BASE_URL / GITREINS_LLM_API_KEY
+# only, so the host env is the authority and the model ids here are kept aligned
+# with that lane (a DeepSeek model id paired with the OpenRouter endpoint 404s).
+# Previous lane: accounts/fireworks/models/kimi-k3 @ api.fireworks.ai — DEAD since
+# 2026-11-22: HTTP 412 PRECONDITION_FAILED, "Account ... is suspended".
 defaults:
-  model: deepseek-v4-flash
+  model: moonshotai/kimi-k3
   api_key_env: GITREINS_LLM_API_KEY
   max_iterations: 200
   max_time: "30m"
 evaluator:
-  model: deepseek-v4-flash
+  model: moonshotai/kimi-k3
   max_iterations: 200
   max_time: "30m"
   static_analysis_diagnostics: false
