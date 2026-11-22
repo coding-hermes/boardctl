@@ -1,5 +1,55 @@
 # Changelog
 
+## v0.6.0 — 2026-11-22
+
+This release contains 121 commits since v0.5.0 (114 non-merge, 13 material),
+summarized by the commit categories below. The cited short SHAs are taken
+directly from the release range (`git log v0.5.0..HEAD --oneline`).
+
+### Features
+
+- Typed board rows: rows now carry a typed discriminator with templates that
+  define required list metadata (BT-098) (`269add6`); the follow-up metadata
+  fixes are under Fixes below.
+- Initiative grouping extended: initiative cross-repo
+  refs (BT-092) (`baf6348`) and aggregate per-initiative totals across umbrella
+  and child boards (BT-093) (`4c50aeb`).
+- Serve: gzip compression middleware for the `/ui` and API endpoints
+  (PERF-001) (`bf17d57`).
+- `make dep-check`: a report-only build-set dependency-currency gate (BT-89)
+  (`d6fef4d`).
+
+### Fixes
+
+- Typed rows: persist the row discriminator across list/round-trips (BT-098)
+  (`53e22fc`).
+- Typed rows: preserve stored list metadata on `--meta` update
+  (DF-BOARDCTL-56) (`c86f635`).
+- Board guard: refuse defer fields on a non-deferred row (DF-BOARDCTL-55)
+  (`e9cf518`).
+- Board completion: collapse a duplicate completion into an idempotent no-op
+  (DF-BOARDCTL-53) (`aa924a2`).
+- Board guard: sanction/normalize `created_at_source` with a structured
+  `ci_result` (DF-CRIER-508) (`d9d54ff`).
+- Evidence gate: read the stored verdict at completion — refuse runs graded for
+  another task or commit (INFRA-LORE-045) (`cca45c8`).
+- GitReins: restore the tier-2 judge lane after the fireworks suspension
+  (DF-BOARDCTL-060) (`c8b5e69`).
+- Covercheck: print the measured total at 3 decimals so a boundary failure
+  never shows two equal numbers (`5119929`).
+
+### Excluded from these notes
+
+As bookkeeping, not release surface: 73 `board`, 12 `chore`, 6 `test`, 4
+`docs`, 2 `evidence`, 1 `dogfood`, and 3 untyped follow-up commits (the
+QA-BOARDCTL-005 lint pass and its READMEFences allowlist arm, plus the
+DF-BOARDCTL-54 README drift fix), plus 7 merge commits — 108 of the 121. The
+release itself contains every commit reachable from the tag.
+
+### Notes
+
+- No breaking changes. Rollback target: `v0.5.0`.
+
 ## v0.5.0 — 2026-11-15
 
 This release contains 60 commits since v0.4.0 (60 non-merge, 2 material),
