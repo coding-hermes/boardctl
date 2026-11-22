@@ -1,0 +1,76 @@
+{
+  "wave_id": "boardctl-foreman-2026-11-22-00-19-48",
+  "scheduler_tick": "boardctl-foreman-2026-11-22-00-19-48",
+  "project": "boardctl",
+  "repo": "/home/kara/coding-hermes-boardctl",
+  "budget": 9,
+  "workers_used": 4,
+  "composed_at": "2026-11-22T00:25:00-05:00",
+  "base": "origin/main",
+  "base_sha": "71fd5070bcf8e39153a65e6e21788e6ceaf87ae5",
+  "mode": "wave-4 (file-seam bounded: README.md and internal/board are the only hotspots, so only rows whose seams are disjoint are admitted)",
+  "rows": [
+    {
+      "id": "DF-BOARDCTL-55",
+      "priority": "P3",
+      "status_at_pick": "pending",
+      "title": "defer flags on non-deferred rows leave a parked reason silently",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-55",
+      "branch": "wt/DF-BOARDCTL-55",
+      "brief": "/home/kara/.hermes/cache/scratch/brief-DF-BOARDCTL-55-tick-20261122-0019.md",
+      "depends_on": [],
+      "files": ["internal/board/write.go", "internal/board/validate.go", "internal/board/*_test.go"],
+      "gitreins_task": "DF-BOARDCTL-55 (created + started from control root before dispatch)"
+    },
+    {
+      "id": "DF-BOARDCTL-57",
+      "priority": "P2",
+      "status_at_pick": "pending",
+      "title": "typed-row (types.jsonl) surface is undiscoverable in --help and docs",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-57",
+      "branch": "wt/DF-BOARDCTL-57",
+      "brief": "/home/kara/.hermes/cache/scratch/brief-DF-BOARDCTL-57-tick-20261122-0019.md",
+      "depends_on": [],
+      "files": ["cmd/boardctl/main.go", "README.md (types section only)", "skills/boardctl-usage/SKILL.md", "internal/board/types_doc_drift_test.go"],
+      "resumed_wip": "worktree carried an interrupted session's uncommitted work (README.md + main.go + skills/boardctl-usage/SKILL.md modified, types_doc_drift_test.go untracked, ahead=0) — brief instructs the worker to resume it, per DISPATCH DOCTRINE clause 15",
+      "gitreins_task": "DF-BOARDCTL-57 (was already in_progress from the 2026-11-20 wave; re-started this tick)"
+    },
+    {
+      "id": "README-019",
+      "priority": "P4",
+      "status_at_pick": "pending",
+      "title": "README releases link resolves to github.com/coding-hermes/releases (404)",
+      "worktree": "/home/kara/worktrees/boardctl-README-019",
+      "branch": "wt/README-019",
+      "brief": "/home/kara/.hermes/cache/scratch/brief-README-019-tick-20261122-0019.md",
+      "depends_on": [],
+      "files": ["README.md line 13 (releases link target only)"],
+      "gitreins_task": "README-019 (created + started before dispatch)"
+    },
+    {
+      "id": "README-018",
+      "priority": "P4",
+      "status_at_pick": "pending",
+      "title": "Go toolchain policy heading anchor fails check-md-anchors.py",
+      "worktree": "/home/kara/worktrees/boardctl-README-018",
+      "branch": "wt/README-018",
+      "brief": "/home/kara/.hermes/cache/scratch/brief-README-018-tick-20261122-0019.md",
+      "depends_on": [],
+      "files": ["README.md line 1802 (heading only)"],
+      "gitreins_task": "README-018 (created + started before dispatch)"
+    }
+  ],
+  "merge_order": ["README-019", "README-018", "DF-BOARDCTL-55", "DF-BOARDCTL-57"],
+  "not_picked": [
+    {"id": "RELEASE-2026-11-16-01", "why": "P1 but a release cut: public surface + multi-leg evidence chain (version-prep, candidate GitReins, dogfood refresh, exact-head CI, tag push). Lane authority: release cuts belong to the boardctl-releng lane and public-surface actions are owner-facing; a foreman-lane cut would also invalidate any in-flight candidate. Re-measured this tick: 60 non-merge commits since v0.5.0 (2 feat, 5 fix, 0 breaking) at 71fd507, so the row's 20124caf/24-commit premise is stale."},
+    {"id": "BT-094", "why": "P1 but deferred to 2026-11-29 and owner-gated: the fix surface is the Hermes gateway runtime, outside this repo (two prior ticks verified only)."},
+    {"id": "RELEASE-2026-11-15-01", "why": "P1 but deferred to 2026-11-24 with the release already published and verified; owed action is a gitreins-evidence close, not a re-cut."},
+    {"id": "DF-BOARDCTL-58", "why": "P3 internal/board write path — same seam as DF-BOARDCTL-55; serial discipline."},
+    {"id": "QA-BOARDCTL-007", "why": "P4 internal/board/validate.go — same seam as DF-BOARDCTL-55."},
+    {"id": "DF-BOARDCTL-54", "why": "P3 README fences + skills — same README seam as three admitted rows."},
+    {"id": "QA-BOARDCTL-005", "why": "P2 65-finding lint debt spanning internal/board write/read paths — collides with DF-BOARDCTL-55's files; needs its own tick."},
+    {"id": "QA-BOARDCTL-009/010/011/012/FOREMAN-2-R2", "why": "qa-harness rows: the defect surface is the QA harness repo, not boardctl product code — route to the QA lane, not a boardctl worker."},
+    {"id": "BT-89", "why": "P3 requires Makefile + README + a new checker package; README seam already taken."},
+    {"id": "BT-099/BT-102", "why": "depends_on BT-098/BT-097 gating not re-verified this tick; BT-099 is also an architectural multi-file feature."}
+  ]
+}

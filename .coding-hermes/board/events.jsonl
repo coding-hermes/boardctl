@@ -748,3 +748,12 @@
 {"id":744,"timestamp":"2026-11-21 16:30:24","event_type":"task_completed","task_id":"BT-101","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":745,"timestamp":"2026-11-21 23:02:00","event_type":"task_completed","task_id":"DF-BOARDCTL-59","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":746,"timestamp":"2026-11-22 00:13:53","event_type":"task_completed","task_id":"DF-BOARDCTL-53","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":747,"timestamp":"2026-11-22 00:22:15","event_type":"task_updated","task_id":"DF-BOARDCTL-55","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
+{"id":748,"timestamp":"2026-11-22 00:22:15","event_type":"task_updated","task_id":"README-019","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
+{"id":749,"timestamp":"2026-11-22 00:22:15","event_type":"task_updated","task_id":"README-018","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
+{"id":750,"timestamp":"2026-11-22 00:22:15","event_type":"task_updated","task_id":"DF-BOARDCTL-57","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
+{"id":751,"timestamp":"2026-11-22 00:39:50","event_type":"task_completed","task_id":"README-018","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":752,"timestamp":"2026-11-22 00:42:55","event_type":"task_completed","task_id":"README-019","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":753,"timestamp":"2026-11-22 00:42:56","event_type":"task_completed","task_id":"DF-BOARDCTL-55","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":754,"timestamp":"2026-11-22 00:42:56","event_type":"task_completed","task_id":"DF-BOARDCTL-57","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":755,"timestamp":"2026-11-22 00:44:12","event_type":"task_created","task_id":"DF-BOARDCTL-060","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-060\",\"status\":\"pending\"}","tick_number":null}
