@@ -1359,6 +1359,24 @@ and appends no second `task_completed` event. To repair a closed row, omit
 can also apply supplied field changes. `--force` is not needed for retries and
 does not create another completion event; on update it permits non-conforming IDs.
 
+#### Re-pointing a closed row for a re-judge (DF-DIGEST-068)
+
+When a follow-up commit lands on main AFTER a row closes, the row's
+`commit_hash` no longer matches the tip a Tier-2 judge grades, and the plain
+paths cannot fix it (a duplicate `--status complete` is collapsed, and
+`--commit-hash` on the closed row is not the completion door).
+`boardctl update <id> --repoint-commit <full-sha>` is the sanctioned re-point:
+it is allowed ONLY on completed rows (status complete AND a `task_completed`
+event on the row), validates the sha with the same format + resolvability
+gate the completion path uses (a full 40/64-hex id that resolves in this
+repository), REPLACES the row's `commit_hash`, and APPENDS a `foreman_note`
+disclosure recording `old -> new` so the original product sha stays visible
+in the row. It emits NO event (never a second `task_completed`) and is
+refused — with nothing written — on any non-complete row, on a symbolic or
+abbreviated or unresolvable sha, on a same-sha re-point, and in combination
+with `--status` or `--commit-hash`. The re-judge itself then runs in gitreins
+(`gitreins task complete <id>` grades the re-pointed tree).
+
 `--force` files a deliberate
 variant (still fingerprinted, so a later accidental re-file is caught). Rows
 written before this rule have no fingerprint and are grandfathered: still open

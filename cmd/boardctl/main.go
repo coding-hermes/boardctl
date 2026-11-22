@@ -60,6 +60,8 @@ commands:
           [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE]   (a re-detected finding is REFUSED with exit 2)
   update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
           [--commit-hash SHA] [--record-debt] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
+          [--repoint-commit SHA]  (re-judge re-point: replace a COMPLETED row's commit_hash;
+          refused on non-complete rows; appends a disclosure note; emits no event)
           [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
           [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
           [--acceptance-criteria TEXT]
@@ -965,7 +967,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "type", "meta", "title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "initiative-ref", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "record-debt", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "type", "meta", "title", "status", "worker-status", "commit-hash", "repoint-commit", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "initiative-ref", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "record-debt", "pull-request", "assoc-branch", "assoc-worktree"))
 	ticketType := fs.String("type", "", "new ticket type slug (atomic re-validation)")
 	var metadataFlags stringListFlag
 	fs.Var(&metadataFlags, "meta", "typed metadata key=value (repeatable)")
@@ -976,6 +978,11 @@ func cmdUpdate(dir string, args []string) error {
 	title := fs.String("title", "", "task title (free text; omitted = leave untouched)")
 	workerStatus := fs.String("worker-status", "", "worker_status")
 	commitHash := fs.String("commit-hash", "", "commit_hash")
+	// DF-DIGEST-068: the re-judge re-point door. Takes a value, so it
+	// joins the reorderArgs valueFlags list above. Refusals (non-complete
+	// row, unresolvable sha, --status/--commit-hash combination) live in
+	// the library so every caller surface inherits them.
+	repointCommit := fs.String("repoint-commit", "", "re-judge re-point: replace a COMPLETED row's commit_hash with a resolvable full sha (refused on non-complete rows; appends a disclosure note; emits no event)")
 	recordDebt := fs.Bool("record-debt", false, "record a debt commit in the completion evidence baseline")
 	guard := fs.String("guard", "", "guard_result: PASS|FAIL|SKIP")
 	ci := fs.String("ci", "", "ci_result: GREEN|RED|SKIP")
@@ -1046,6 +1053,8 @@ func cmdUpdate(dir string, args []string) error {
 	fs.Usage = func() {
 		_, _ = fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA] [--record-debt]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--repoint-commit SHA]  re-judge re-point: replace a COMPLETED row's commit_hash (DF-DIGEST-068;\n")
+		_, _ = fmt.Fprintf(fs.Output(), "                                  refused on non-complete rows; appends a disclosure note; emits no event)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--defer-reason R] [--defer-review-by DATE] [--acceptance-criteria TEXT]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--initiative SLUG | --clear-initiative] [--initiative-ref REPO:PATH#ANCHOR]... [--clear-initiative-refs] (each ref is REPO:PATH#ANCHOR; clear removes the array)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--worktree PATH] [--branch NAME]\n")
@@ -1077,7 +1086,7 @@ func cmdUpdate(dir string, args []string) error {
 	// --normalize alone satisfies the change-flag gate and needs no --force
 	// beyond the fleet-id escape hatch.
 	if *normalize {
-		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id"} {
+		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "repoint-commit", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id"} {
 			if fs.Lookup(f).Value.String() != "" {
 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
 			}
@@ -1148,6 +1157,7 @@ func cmdUpdate(dir string, args []string) error {
 		EvidenceArtifacts:    []string(evidenceArtifacts),
 		HasEvidenceArtifacts: len(evidenceArtifacts) > 0,
 		RecordDebt:           *recordDebt,
+		RepointCommit:        *repointCommit,
 	}
 	if *priority != "" {
 		spec.Priority = priority
