@@ -176,7 +176,12 @@ boardctl -C R create --id REL-1 --type release --meta channel=stable --meta sour
 # --type SLUG and repeatable --meta k=v are explicit filing controls; explicit
 # --title/--priority/--acceptance-criteria values always beat type templates.
 boardctl -C R update FEAT-1 --status complete \
-    --commit-hash <sha> --guard PASS --ci GREEN --summary "done (+80/-12)"
+    --commit-hash <full-40-or-64-hex-sha> --guard PASS --ci GREEN --summary "done (+80/-12)" \
+    --evidence-run-id <gitreins-run-id>
+# TR-251: completions REQUIRE --evidence-run-id. BOARD-GUARD-003 refuses
+# abbreviated/symbolic hashes and refuses a hash that does not RESOLVE in this
+# repo; the run id must resolve under .gitreins/history/ and its verdict.json
+# must grade THIS task and THIS commit.
 boardctl -C R update FEAT-1 --title "renamed: retry with backoff"  # BT-060
 
 # cross-repository initiative refs (BT-092): ordered REPO:PATH#ANCHOR locations
@@ -951,11 +956,19 @@ Target `1cda136f85e753ea1de006ca79e3966ba9db5034`, HEAD build. Rows filed: DF-BO
   and leaves an ACTIONABLE row carrying a reason + re-triage date; `stats` counts it actionable and
   `validate` says nothing. Treat "reason present" as advisory, never as parked — ask `deferred == true`.
   Filed DF-BOARDCTL-55.
+  **Superseded at HEAD (post-run 28, see Run-31):** `create --defer-reason` without `--deferred` is
+  now REFUSED (rc=1, `--defer-reason and --defer-review-by require --deferred`). On `update` the
+  reason alone is still accepted (stamps the field on an actionable row; `validate` warns on
+  non-deferred rows carrying the keys).
 - **Completion provenance: only the HEX FORMAT is enforced.** `--commit-hash HEAD` and `abc1234` are
   refused, but any 40/64-hex string is accepted — including 40 zeros — and `--evidence-run-id` accepts a
   run id that exists nowhere under `.gitreins/history/`. Verified at HEAD on a real clone: both
   completed rc=0. Do not treat a completed row's `commit_hash` or `evidence` as proof; resolve the sha
   (`git cat-file -e <sha>^{commit}`) and the run dir yourself. Filed DF-BOARDCTL-52.
+  **Superseded at HEAD (post-run 28, see Run-31):** the write path now ALSO enforces resolvability
+  (`git rev-parse --verify <hash>^{commit}`) and requires the `--evidence-run-id` to name an existing
+  `.gitreins/history/` run whose verdict grades this task and this commit. A fabricated 40-hex string
+  is now refused on a real clone.
 - **Closeout retries are safe.** Repeating `update --status complete …` exits 0 and collapses the
   duplicate status transition without a second completion event, with or without `--force`. Other
   supplied fields are still applied. For a field repair, omit `--status`, for example
@@ -1044,3 +1057,24 @@ builtin type (`bug`, `task`) the same write is silent and `validate` reports
 - Trap: the collector's `.logs` directory can exist but be EMPTY while its ledger
   line claims per-cell logs were saved — pull `qa-logs-*/<cell>.log` with
   `bunker --server <host> exec <agent> -- cat <abs path>` BEFORE destroy.
+
+## Run-31 (2026-11-22; DF-BOARDCTL-54) — the run-28 completion/deferral gaps are closed at the write layer, and the README is machine-checked
+
+- **Completion provenance is now fully enforced.** On a real clone (board outside `os.TempDir()`,
+  so the test-environment carve-out does not apply): a fabricated 40-hex `--commit-hash` is REFUSED
+  (`is not a resolvable commit: fatal: Needed a single revision`), a completion whose
+  `--evidence-run-id` names no `.gitreins/history/` directory is REFUSED, and a run whose
+  `verdict.json` grades another task is REFUSED (`evidence run … graded task …`). Do not trust
+  `commit_hash`/`evidence` without resolving them — but the write path now refuses the classic
+  fabrications up front.
+- **The deferral asymmetry flipped on `create`.** `create --defer-reason R` without `--deferred` is
+  refused (rc=1); `update --defer-reason R` without flipping the row still succeeds (validate warns
+  on non-deferred rows carrying the keys). `update --deferred true` requires `--defer-reason` unless
+  the row already stores one (reuse without retyping).
+- **The README recipes run.** The two DF-BOARDCTL-54 drifts are fixed at the source: the headline
+  completion example stamps `--commit-hash "$(git rev-parse HEAD)"` (a resolvable full hash) and the
+  deferred example carries `--defer-reason`/`--defer-review-by`. A mechanical gate
+  (`TestREADMEFences` in `cmd/boardctl`, also `make readme-fences`) parses every README fence,
+  executes each `boardctl` command against a throwaway git+board environment, and FAILS on any
+  non-zero exit that is not an explicitly allowlisted, commented refusal — so README recipe drift
+  now breaks `go test ./...` instead of waiting for the next dogfood run.
