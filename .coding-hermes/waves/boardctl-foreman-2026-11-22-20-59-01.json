@@ -1,0 +1,11 @@
+{
+  "scheduler_tick": "boardctl-foreman-2026-11-22-20-59-01",
+  "path": "serial",
+  "wave_budget": 5,
+  "wave_reason": "no mutually independent pending rows: BT-094 is cross-repo owner-gated; remaining README-*/Makefile rows collide on shared files; RELEASE-2026-11-16-01 (P1) dispatched alone",
+  "row": "RELEASE-2026-11-16-01",
+  "legs": "2-5 (dogfood gates, gitreins verdict dce849ad PASS at tip, cut v0.6.0 tag 55100783843c860a4b1bec9cbf34e79793d1bacf, row closed + pushed 0e915657)",
+  "worker": {"model": "glm-5.3-flash", "provider": "ollama-cloud", "session": "proc_7532f3c53e63"},
+  "evidence": [".coding-hermes/board/evidence/releng-boardctl-2026-11-22-legs-2-3.md", ".gitreins/history/2026-11-22/dce849ad/verdict.json"],
+  "finished_at": "2026-11-22T21:45:00Z"
+}
