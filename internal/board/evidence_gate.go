@@ -274,57 +274,126 @@ func (b *Board) hasCompletionEvent(taskID string) (bool, error) {
 	return false, nil
 }
 
-// validateCompletionProvenance refuses symbolic/abbreviated commit references
-// and run ids that do not name a directory in this repository's GitReins history.
-// In test environments (no git repo), validation is skipped to avoid breaking fixtures.
-func (b *Board) validateCompletionProvenance(commitHash, runID string) error {
+// validateCompletionProvenance refuses symbolic/abbreviated commit references,
+// run ids that do not name a directory in this repository's GitReins history,
+// and (INFRA-LORE-045) run ids whose STORED verdict grades another task or
+// another commit. The run directory is located by trying, in order:
+// <git toplevel>/.gitreins/history (the production layout), <board dir>/.gitreins
+// /history (flat scratch boards), then <board dir's parent>/.gitreins/history.
+// Whenever a matching run directory IS found the verdict CONTENT is checked
+// regardless of isTestEnvironment; only the not-found case keeps the existing
+// test-env exemption (boards with no history at all skip the run-id check, so
+// fixture tests passing arbitrary run ids keep working). skipContent is the
+// documented --force bypass: it skips only the verdict content checks — the
+// id format checks and the existing not-found/resolvability semantics stay.
+func (b *Board) validateCompletionProvenance(rowID, commitHash, runID string, skipContent bool) error {
 	if commitHash != "" {
 		if !commitObjectID.MatchString(commitHash) {
 			return fmt.Errorf("completion REFUSED: --commit-hash %q must be a full 40- or 64-hex commit id", commitHash)
 		}
-		cmd := exec.Command("git", "-C", b.Dir, "rev-parse", "--verify", commitHash+"^{commit}")
-		if output, err := cmd.CombinedOutput(); err != nil {
-			// In test environments, git may fail — allow it if the hash is well-formed
-			if !isTestEnvironment(b.Dir) {
-				return fmt.Errorf("completion REFUSED: --commit-hash %q is not a resolvable commit: %s", commitHash, strings.TrimSpace(string(output)))
-			}
-		}
 	}
-	if runID == "" {
-		return nil
-	}
-	if filepath.Base(runID) != runID || runID == "." || runID == ".." {
+	if runID != "" && (filepath.Base(runID) != runID || runID == "." || runID == "..") {
 		return fmt.Errorf("completion REFUSED: --evidence-run-id %q must name a directory under .gitreins/history/", runID)
 	}
-	rootCmd := exec.Command("git", "-C", b.Dir, "rev-parse", "--show-toplevel")
-	rootOut, err := rootCmd.Output()
-	if err != nil {
-		// Test environment — skip run-id validation
+	if runID == "" {
+		return b.resolveCompletionCommit(commitHash, skipContent)
+	}
+
+	candidates := []string{}
+	runDir := ""
+	if rootOut, gitErr := exec.Command("git", "-C", b.Dir, "rev-parse", "--show-toplevel").Output(); gitErr == nil {
+		candidates = append(candidates, filepath.Join(strings.TrimSpace(string(rootOut)), ".gitreins", "history"))
+	} else if !isTestEnvironment(b.Dir) {
+		return fmt.Errorf("completion REFUSED: cannot resolve repository for evidence run %q: %w", runID, gitErr)
+	}
+	// Flat scratch boards (and the not-found carve-out below): the board dir
+	// itself and its parent may carry a history even when git is unavailable.
+	candidates = append(candidates,
+		filepath.Join(b.Dir, ".gitreins", "history"),
+		filepath.Join(filepath.Dir(b.Dir), ".gitreins", "history"))
+	for _, history := range candidates {
+		werr := filepath.WalkDir(history, func(path string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				if os.IsNotExist(walkErr) {
+					return nil
+				}
+				return walkErr
+			}
+			if entry.IsDir() && entry.Name() == runID {
+				runDir = path
+				return filepath.SkipDir
+			}
+			return nil
+		})
+		if werr != nil && !os.IsNotExist(werr) {
+			return fmt.Errorf("completion REFUSED: cannot inspect .gitreins/history for evidence run %q: %w", runID, werr)
+		}
+		if runDir != "" {
+			break
+		}
+	}
+	if runDir == "" {
+		// Existing contract order preserved: a provided commit hash must still
+		// be resolvable; only then does the not-found refusal fire.
+		if err := b.resolveCompletionCommit(commitHash, skipContent); err != nil {
+			return err
+		}
 		if isTestEnvironment(b.Dir) {
 			return nil
 		}
-		return fmt.Errorf("completion REFUSED: cannot resolve repository for evidence run %q: %w", runID, err)
-	}
-	history := filepath.Join(strings.TrimSpace(string(rootOut)), ".gitreins", "history")
-	found := false
-	err = filepath.WalkDir(history, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			if os.IsNotExist(walkErr) {
-				return nil
-			}
-			return walkErr
-		}
-		if entry.IsDir() && entry.Name() == runID {
-			found = true
-			return filepath.SkipDir
-		}
-		return nil
-	})
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("completion REFUSED: cannot inspect .gitreins/history for evidence run %q: %w", runID, err)
-	}
-	if !found && !isTestEnvironment(b.Dir) {
 		return fmt.Errorf("completion REFUSED: --evidence-run-id %q is not an existing directory under .gitreins/history/", runID)
+	}
+	if skipContent {
+		return nil
+	}
+
+	// INFRA-LORE-045: the run EXISTS — prove it graded THIS task and THIS
+	// commit by reading the stored verdict. This applies REGARDLESS of
+	// isTestEnvironment; only the directory-existence step above is exempt.
+	verdictPath := filepath.Join(runDir, "verdict.json")
+	data, readErr := os.ReadFile(verdictPath)
+	if readErr != nil {
+		if os.IsNotExist(readErr) {
+			return fmt.Errorf("completion REFUSED: evidence run %q carries no verdict.json (expected %s); a bound run must store its verdict at .gitreins/history/<date>/<run-id>/verdict.json", runID, verdictPath)
+		}
+		return fmt.Errorf("completion REFUSED: cannot read verdict.json for evidence run %q: %w", runID, readErr)
+	}
+	var verdict struct {
+		TaskID string `json:"task_id"`
+		Commit string `json:"commit"`
+		Passed bool   `json:"passed"`
+	}
+	if err := json.Unmarshal(data, &verdict); err != nil {
+		return fmt.Errorf("completion REFUSED: evidence run %q verdict.json is not valid JSON: %v", runID, err)
+	}
+	gradedTask := strings.TrimSpace(verdict.TaskID)
+	gradedCommit := strings.TrimSpace(verdict.Commit)
+	if gradedTask != rowID {
+		return fmt.Errorf("completion REFUSED: evidence run %s graded task %s at commit %s; completion of %s requires a run graded for task %s", runID, gradedTask, gradedCommit, rowID, rowID)
+	}
+	if err := b.resolveCompletionCommit(commitHash, skipContent); err != nil {
+		return err
+	}
+	if commitHash != "" && gradedCommit != "" && gradedCommit != commitHash {
+		return fmt.Errorf("completion REFUSED for %q: evidence run %q graded commit %s but --commit-hash %s was provided; the bound run's commit and the row's commit must match", rowID, runID, gradedCommit, commitHash)
+	}
+	return nil
+}
+
+// resolveCompletionCommit enforces the existing commit-hash resolvability
+// check. skipContent (--force) tolerates a commit git cannot resolve (a 40/64
+// hex SHA that is not in this repo) because it is the documented deliberate
+// bypass; a malformed hash is refused earlier, unconditionally.
+func (b *Board) resolveCompletionCommit(commitHash string, skipContent bool) error {
+	if commitHash == "" {
+		return nil
+	}
+	cmd := exec.Command("git", "-C", b.Dir, "rev-parse", "--verify", commitHash+"^{commit}")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		// In test environments, git may fail — allow it if the hash is well-formed
+		if !isTestEnvironment(b.Dir) && !skipContent {
+			return fmt.Errorf("completion REFUSED: --commit-hash %q is not a resolvable commit: %s", commitHash, strings.TrimSpace(string(output)))
+		}
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -73,6 +74,14 @@ func TestBT090CompletionEvidenceCLIE2E(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(repo, ".gitreins", "history", "synthetic-run"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// INFRA-LORE-045: a located run must carry a verdict grading the task.
+	// The commit is empty so the commit cross-check does not gate the
+	// unknown-sha / debt cells; the row ids bind task_id per the table.
+	if err := os.WriteFile(
+		filepath.Join(repo, ".gitreins", "history", "synthetic-run", "verdict.json"),
+		[]byte(`{"task_id": "BT-090-CLI-1", "commit": "", "passed": true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	const firstID = "BT-090-CLI-1"
 	const secondID = "BT-090-CLI-2"
@@ -85,6 +94,14 @@ func TestBT090CompletionEvidenceCLIE2E(t *testing.T) {
 	}
 	complete := func(id, hash string, recordDebt bool) (int, string, string) {
 		t.Helper()
+		// Each row is closed against the same run id; the verdict content
+		// gate (INFRA-LORE-045) requires the stored verdict to grade THAT
+		// row, so the fixture rewrites it per completion.
+		if err := os.WriteFile(
+			filepath.Join(repo, ".gitreins", "history", "synthetic-run", "verdict.json"),
+			[]byte(fmt.Sprintf(`{"task_id": %q, "commit": %q, "passed": true}`, id, hash)), 0o644); err != nil {
+			t.Fatal(err)
+		}
 		args := []string{"-C", repo, "update", id, "--status", "complete", "--commit-hash", hash, "--evidence-run-id", "synthetic-run"}
 		if recordDebt {
 			args = append(args, "--record-debt")

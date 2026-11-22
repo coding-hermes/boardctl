@@ -38,6 +38,15 @@ func bt090Repo(t *testing.T) (*Board, string) {
 	if err := os.MkdirAll(filepath.Join(root, ".gitreins", "history", "synthetic-run"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	// INFRA-LORE-045: a located run must carry a verdict grading this task.
+	// The commit is left deliberately empty: the bt090 cells exercise the
+	// commit-debt arm (unknown sha / zero product files), and an empty
+	// verdict commit keeps the commit cross-check out of the way.
+	if err := os.WriteFile(
+		filepath.Join(root, ".gitreins", "history", "synthetic-run", "verdict.json"),
+		[]byte(`{"task_id": "BT-090-TARGET", "commit": "", "passed": true}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	b, err := Resolve(root)
 	if err != nil {
 		t.Fatal(err)

@@ -1214,7 +1214,7 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([
 				if spec.CommitHash != nil {
 					commitHash = *spec.CommitHash
 				}
-				if err := b.validateCompletionProvenance(commitHash, spec.EvidenceRunID); err != nil {
+				if err := b.validateCompletionProvenance(id, commitHash, spec.EvidenceRunID, spec.Force); err != nil {
 					return nil, err
 				}
 				if err := b.gateCompletionCommit(id, commitHash, spec.RecordDebt); err != nil {
