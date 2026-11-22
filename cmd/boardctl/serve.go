@@ -399,7 +399,7 @@ func (s *serveServer) routes() http.Handler {
 	mux.HandleFunc("GET /ui", s.handleUI)
 	mux.HandleFunc("GET /api/board/{slug}", s.handleAPIBoard)
 	mux.HandleFunc("GET /api/events/{slug}", s.handleAPIEvents)
-	return mux
+	return withGzip(mux)
 }
 
 // removeAllTemps deletes every upload temp tree (shutdown path, 7.2.8).
