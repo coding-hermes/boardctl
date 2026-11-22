@@ -57,8 +57,8 @@ blind spot.
   FAIL-on-new-debt completion checks; without a baseline, debt is WARN-only.
 - `types`: lists configured ticket types and required metadata; `types --doctor`
   reports the append-only `types.jsonl` configuration health. Authoring a type
-  means writing `<boarddir>/types.jsonl` by hand — the record schema is NOT in
-  `--help` or README (DF-BOARDCTL-57); the working shape is in "Typed rows
+  means writing `<boarddir>/types.jsonl` by hand — see the README schema and
+  the working shape in "Typed rows
   (BT-098)" below. **After any `--meta` write, re-read `show --json`**: the
   update path nulls stored list values (DF-BOARDCTL-56).
 
@@ -974,14 +974,7 @@ Target `1cda136f85e753ea1de006ca79e3966ba9db5034`, HEAD build. Rows filed: DF-BO
 (no `boardctl` verb creates it; `init` does not):
 
 ```json
-{"slug":"release","display":"Release","rev":1,
- "template":{"title_prefix":"[RELEASE] ","default_priority":"P1",
-             "ac_skeleton":"- [ ] artifact built and signed\n- [ ] rollback path verified"},
- "metadata":[{"name":"channel","type":"enum","required":true,"values":["stable","beta","nightly"],
-              "description":"release channel"},
-             {"name":"source_commit","type":"string","required":true},
-             {"name":"signoffs","type":"list","required":false},
-             {"name":"approval_ticket","type":"ref","ref":"task_id","required":false}]}
+{"slug":"release","display":"Release","rev":1,"template":{"title_prefix":"[RELEASE] ","default_priority":"P1","ac_skeleton":"- [ ] artifact built and signed\n- [ ] rollback path verified"},"metadata":[{"name":"channel","type":"enum","required":true,"values":["stable","beta","nightly"],"description":"release channel"},{"name":"source_commit","type":"string","required":true},{"name":"signoffs","type":"list","required":false},{"name":"approval_ticket","type":"ref","ref":"task_id","required":false}]}
 ```
 
 `slug`, `display` and `metadata[].name` are required; `rev` defaults to 1 and a
