@@ -1,0 +1,51 @@
+{
+  "tick_id": "boardctl-foreman-2026-11-22-13-46-56",
+  "created_at": "2026-11-22T14:05:00-05:00",
+  "project": "boardctl",
+  "workdir": "/home/kara/coding-hermes-boardctl",
+  "budget": 2,
+  "recovery": {
+    "inherited": "boardctl-foreman-2026-11-22-12-43-18",
+    "status": "verified-already-recovered",
+    "evidence": "wave had 0 live workers; BT-093 complete on main (branch wt/BT-093 absent, worktree reaped); 12-43-18 manifest recovery.status=recovered; finished_at set this tick; CI success on tip f088ec1"
+  },
+  "rows": [
+    {
+      "id": "QA-BOARDCTL-005",
+      "priority": "P2",
+      "title": "lint cell is RED at HEAD: golangci-lint 65 findings, no CI lint gate",
+      "worktree": "/home/kara/worktrees/boardctl-QA-BOARDCTL-005",
+      "branch": "wt/QA-BOARDCTL-005",
+      "base": "origin/main",
+      "base_sha": "f088ec1",
+      "files": [
+        "cmd/boardctl/*.go",
+        "internal/board/*.go",
+        "internal/render/*.go",
+        ".github/workflows/ci.yml",
+        ".golangci.yml"
+      ],
+      "gitreins_task": "QA-BOARDCTL-005"
+    },
+    {
+      "id": "DF-BOARDCTL-54",
+      "priority": "P3",
+      "title": "README deferred/commit-hash recipes refused at HEAD; defer flags undocumented",
+      "worktree": "/home/kara/worktrees/boardctl-DF-BOARDCTL-54",
+      "branch": "wt/DF-BOARDCTL-54",
+      "base": "origin/main",
+      "base_sha": "f088ec1",
+      "files": [
+        "README.md",
+        "docs/",
+        "skills/boardctl-usage/SKILL.md",
+        ".github/workflows/ci.yml",
+        "Makefile or test"
+      ],
+      "gitreins_task": "DF-BOARDCTL-54"
+    }
+  ],
+  "workers_model": "glm-5.3-flash@ollama-cloud",
+  "status": "merged",
+  "finished_at": "2026-11-22T16:35:00-05:00"
+}
