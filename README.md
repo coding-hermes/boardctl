@@ -10,7 +10,7 @@ no cache files, no parity probes. What git tracks is what you get.
 ## Install
 
 The zero-dependency path: grab a static binary from
-[releases](../../releases) (linux amd64/arm64/arm, darwin amd64/arm64, windows
+[releases](https://github.com/coding-hermes/boardctl/releases) (linux amd64/arm64/arm, darwin amd64/arm64, windows
 amd64, freebsd amd64) — no Go toolchain needed. Verify the binary's checksum
 before running it:
 
