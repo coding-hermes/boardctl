@@ -177,6 +177,22 @@ func TestGzipWrapper204(t *testing.T) {
 	}
 }
 
+// gzipMinCompressiblePayload is the minimum identity-body size below
+// which the strict "gzip wire smaller than identity" assertion must be
+// skipped. gzip output carries a FIXED framing cost on every response a
+// tiny body cannot amortize: the 2-byte magic number and header, the
+// 8-byte trailer (CRC32 + length), and ~10-30 bytes of flate overhead
+// even for already-hard-to-compress JSON. For payloads below that
+// floor the gzip wire can legitimately be LARGER than the identity
+// body — observed on hosted arm64-native CI, where the /api/boards
+// identity was ~144-149 bytes and gzip came out within one byte of it
+// (and sometimes larger). The strict size invariant is therefore only
+// meaningful once a body comfortably exceeds the framing cost; 512 is
+// a conservative floor (framing is bounded well under 100 bytes for
+// these payloads, so anything at or above 512 must compress or the
+// middleware is not doing its job on large payloads).
+const gzipMinCompressiblePayload = 512
+
 // TestServeJSONEndpointsThroughGzip: the real serve surface (routes())
 // serves /api/boards, /api/board/{slug} and /api/events/{slug} with
 // gzip on the wire and valid JSON after decompression; the identity arm
@@ -266,7 +282,23 @@ func TestServeJSONEndpointsThroughGzip(t *testing.T) {
 		if !bytes.Equal(decompressed, identity) {
 			t.Errorf("%s: decompressed gzip arm differs from identity arm", url)
 		}
-		if len(wire) >= len(identity) {
+		// Compression size check, threshold-aware.
+		//
+		// Route chosen: keep seedServeBoard untouched and make the
+		// assertion threshold-aware. seedServeBoard's shape is
+		// load-bearing across a dozen other tests (island task
+		// counts, board counts, dedupe ids), and /api/boards emits
+		// a fixed-cost ~150-byte summary per board that no amount
+		// of extra seeded task rows can push past a 512-byte
+		// floor, so growing the seed could never make THIS
+		// endpoint's strict assertion safe. Below the floor we
+		// still prove real compression happens on the live serve
+		// surface: the body must be valid gzip that decompresses
+		// byte-for-byte to the identity arm (above), and the
+		// /api/board/gzboard endpoint (identity ~5.6 KB, well
+		// above the floor) keeps the strict wire-smaller-than-
+		// identity invariant unconditionally.
+		if len(identity) >= gzipMinCompressiblePayload && len(wire) >= len(identity) {
 			t.Errorf("%s: gzip wire %d >= identity %d; no compression", url, len(wire), len(identity))
 		}
 	}
@@ -325,7 +357,10 @@ func TestServeUIThroughGzipLive(t *testing.T) {
 	if tasks := islandTaskCount(p.Boards); tasks != 3 {
 		t.Errorf("/ui island tasks = %d, want 3", tasks)
 	}
-	if len(wire) >= len(identityBody) {
+	// The /ui island payload is large (whole HTML document), so the
+	// strict invariant always applies here; the floor is only there
+	// for genuinely tiny bodies (see gzipMinCompressiblePayload).
+	if len(identityBody) >= gzipMinCompressiblePayload && len(wire) >= len(identityBody) {
 		t.Errorf("/ui gzip wire %d >= identity %d; no compression", len(wire), len(identityBody))
 	}
 }
