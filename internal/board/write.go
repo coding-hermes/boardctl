@@ -1044,6 +1044,23 @@ type UpdateSpec struct {
 	// requires --force.
 	Normalize  bool
 	RecordDebt bool
+	// DF-DIGEST-068: the re-judge re-point door for COMPLETED rows. A
+	// closed row (status complete + a task_completed event on the row)
+	// whose commit_hash no longer matches the tip a Tier-2 judge would
+	// grade (a follow-up commit landed on main after the close) can never
+	// be re-judged: gitreins task complete demands row commit_hash ==
+	// graded tip, and the plain update paths refuse to touch a completed
+	// row's completion. --repoint-commit replaces the row's commit_hash
+	// with a resolvable commit and appends a foreman_note disclosure
+	// recording old -> new (the original product sha stays visible in the
+	// row), emitting NO event — history is never re-judged here, the
+	// re-judge itself happens in gitreins against the re-pointed tree.
+	// Refused on any row that is not a completed row (status complete AND
+	// a task_completed event), on a sha that fails the completion path's
+	// format/resolvability validation, and in combination with --status
+	// or --commit-hash (same-field/event-bearing conflicts). Empty =
+	// flag absent, the field is untouched.
+	RepointCommit string
 }
 
 // UpdateResult describes an update and whether its completion was already recorded.
@@ -1173,6 +1190,48 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([
 
 	style := DetectStyle(lines[targetIdx])
 	now := DetectTSLayout(target.String("updated_at")).Now()
+
+	// DF-DIGEST-068: --repoint-commit validation runs BEFORE any set(), so
+	// a refused re-point writes NOTHING (same discipline as the TR-251
+	// completion gate). The write half lives among the field arms below;
+	// repointOldHash carries the pre-write value for the disclosure note.
+	repointOldHash := ""
+	if spec.RepointCommit != "" {
+		if spec.Status != nil {
+			return nil, fmt.Errorf("--repoint-commit cannot be combined with --status (a repoint never emits an event; a status transition would) — run the repoint on its own")
+		}
+		if spec.CommitHash != nil {
+			return nil, fmt.Errorf("--repoint-commit and --commit-hash target the same field (commit_hash) — use --repoint-commit alone")
+		}
+		if !RowIsCompleteCanonical(target) {
+			return nil, fmt.Errorf("completion REFUSED for %q: --repoint-commit requires a COMPLETED row (status complete); the row's status is %q — nothing written", id, target.String("status"))
+		}
+		completed, err := b.hasCompletionEvent(id)
+		if err != nil {
+			return nil, err
+		}
+		if !completed {
+			return nil, fmt.Errorf("completion REFUSED for %q: --repoint-commit requires a task_completed event for the row (the completion this re-point amends); none found in events.jsonl — nothing written", id)
+		}
+		// Same validation the completion --commit-hash path enforces:
+		// full 40/64-hex (unconditional) then resolvability via
+		// resolveCompletionCommit (its refusal already speaks the
+		// "completion REFUSED:" shape). The completion DEBT gate
+		// (gateCompletionCommit) deliberately does NOT run here: a
+		// re-judge re-point targets the tree the judge will grade — on
+		// board-driven repos that tip is routinely a board-only commit —
+		// and the original completion already passed its own gate.
+		if !commitObjectID.MatchString(spec.RepointCommit) {
+			return nil, fmt.Errorf("completion REFUSED: --repoint-commit %q must be a full 40- or 64-hex commit id", spec.RepointCommit)
+		}
+		if err := b.resolveCompletionCommit(spec.RepointCommit, false); err != nil {
+			return nil, err
+		}
+		repointOldHash = strings.TrimSpace(target.String("commit_hash"))
+		if repointOldHash == spec.RepointCommit {
+			return nil, fmt.Errorf("completion REFUSED for %q: --repoint-commit %s is already the row's commit_hash — nothing to re-point", id, spec.RepointCommit)
+		}
+	}
 
 	var changed []string
 	set := func(key string, v any) error {
@@ -1356,6 +1415,29 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([
 	}
 	if spec.CommitHash != nil {
 		if err := set("commit_hash", *spec.CommitHash); err != nil {
+			return nil, err
+		}
+	}
+	// DF-DIGEST-068: the --repoint-commit write half (validated above).
+	// commit_hash is replaced and a disclosure note is APPENDED to
+	// foreman_note (never replaced — the original product sha must stay
+	// visible in the row even after later re-points, and each note records
+	// its own old -> new so the chain survives). No event is appended:
+	// flag-only updates keep their historical no-event behavior, and this
+	// one must never duplicate the completion event it amends.
+	if spec.RepointCommit != "" {
+		if err := set("commit_hash", spec.RepointCommit); err != nil {
+			return nil, err
+		}
+		oldShown := repointOldHash
+		if oldShown == "" {
+			oldShown = "(empty)"
+		}
+		noteVal := fmt.Sprintf("re-judge re-point (--repoint-commit): commit_hash %s -> %s; no new task_completed event emitted; the original completion sha (%s) stays visible in this note.", oldShown, spec.RepointCommit, oldShown)
+		if existing := target.String("foreman_note"); existing != "" {
+			noteVal = existing + "\n\n" + noteVal
+		}
+		if err := set("foreman_note", noteVal); err != nil {
 			return nil, err
 		}
 	}
@@ -1624,8 +1706,8 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([
 	// above) — the deferred arm appended nothing to `changed`, so the
 	// no-change gate must not refuse it; anything else without a change
 	// flag still fails with the full flag list.
-	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil && spec.Initiative == nil {
-		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--initiative/--acceptance-criteria/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
+	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil && spec.Initiative == nil && spec.RepointCommit == "" {
+		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--repoint-commit/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--initiative/--acceptance-criteria/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
 	}
 
 	newLines := make([][]byte, len(lines))
