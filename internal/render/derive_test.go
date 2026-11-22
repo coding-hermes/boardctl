@@ -489,7 +489,7 @@ func TestPriorityCountOrderingCoversP0toP5(t *testing.T) {
 	// byte-order monotonicity is the property the sort relies on: every Pn
 	// label sorts before P(n+1), and P4/P5 after P3, with no rank table.
 	for i := 0; i < 5; i++ {
-		if !(fmt.Sprintf("P%d", i) < fmt.Sprintf("P%d", i+1)) {
+		if fmt.Sprintf("P%d", i) >= fmt.Sprintf("P%d", i+1) {
 			t.Fatalf("lexical order broken: P%d must sort before P%d", i, i+1)
 		}
 	}

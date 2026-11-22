@@ -39,8 +39,8 @@ func instCapture(fn func()) (string, string) {
 	go func() { b, _ := io.ReadAll(errR); doneErr <- string(b) }()
 
 	fn()
-	outW.Close()
-	errW.Close()
+	_ = outW.Close() // best-effort: pipe write-end close after fn() (double-close is the only failure mode)
+	_ = errW.Close()
 	return <-doneOut, <-doneErr
 }
 

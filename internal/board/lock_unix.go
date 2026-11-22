@@ -26,7 +26,7 @@ func acquireFileLock(path string) (*fileLock, error) {
 		return nil, fmt.Errorf("board lock: %w", err)
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("board lock: %w", err)
 	}
 	return &fileLock{f: f}, nil
@@ -42,7 +42,7 @@ func tryAcquireFileLock(path string) (*fileLock, bool, error) {
 		return nil, false, fmt.Errorf("board lock: %w", err)
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		f.Close()
+		_ = f.Close()
 		if err == syscall.EWOULDBLOCK {
 			return nil, false, nil
 		}
@@ -53,6 +53,6 @@ func tryAcquireFileLock(path string) (*fileLock, bool, error) {
 
 // release drops the flock and closes the fd.
 func (l *fileLock) release() {
-	syscall.Flock(int(l.f.Fd()), syscall.LOCK_UN)
-	l.f.Close()
+	_ = syscall.Flock(int(l.f.Fd()), syscall.LOCK_UN)
+	_ = l.f.Close()
 }

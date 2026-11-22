@@ -309,10 +309,7 @@ func CheckGateSteps(workflowPath string) error {
 		runLine := "run: " + step.Run
 		hasName, hasRun := false, false
 		for _, l := range lines {
-			trimmed := strings.TrimSpace(l)
-			if strings.HasPrefix(trimmed, "- ") {
-				trimmed = trimmed[2:]
-			}
+			trimmed := strings.TrimPrefix(strings.TrimSpace(l), "- ")
 			if trimmed == nameLine {
 				hasName = true
 			}

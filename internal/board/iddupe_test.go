@@ -437,7 +437,7 @@ func TestIDDupe_TopologyBHeaderNotParticipant(t *testing.T) {
 	if _, err := f.WriteString(`{"id":"QA-TB-1","title":"second different finding","reasoning":"r2","status":"pending","priority":"P2"}` + "\n"); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	rep := mustIDDupe(t, b, true)
 	if len(rep.Groups) != 1 || rep.Groups[0].ID != "QA-TB-1" {

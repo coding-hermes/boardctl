@@ -89,9 +89,13 @@ func postUpload(h http.Handler, fields map[string][]byte) *httptest.ResponseReco
 		if err != nil {
 			panic(err)
 		}
-		fw.Write(data)
+		if _, err := fw.Write(data); err != nil {
+			panic(err)
+		}
 	}
-	mw.Close()
+	if err := mw.Close(); err != nil {
+		panic(err)
+	}
 	req := httptest.NewRequest("POST", "/", &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	rec := httptest.NewRecorder()
@@ -226,9 +230,13 @@ func TestServeFolderUploadMatchesRender(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fw.Write(data)
+		if _, err := fw.Write(data); err != nil {
+			t.Fatal(err)
+		}
 	}
-	mw.Close()
+	if err := mw.Close(); err != nil {
+		t.Fatal(err)
+	}
 	req := httptest.NewRequest("POST", "/", &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	rec := httptest.NewRecorder()
@@ -356,16 +364,22 @@ func TestServeZipSlipDefense(t *testing.T) {
 	}
 	zw := zip.NewWriter(&withSlip)
 	for _, f := range zr.File {
-		zw.Copy(f)
+		if err := zw.Copy(f); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, evil := range []string{"../../evil.txt", filepath.Join("..", "..", filepath.Base(outsideDir), "evil.txt")} {
 		w, err := zw.Create(evil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		w.Write([]byte("pwned"))
+		if _, err := w.Write([]byte("pwned")); err != nil {
+			t.Fatal(err)
+		}
 	}
-	zw.Close()
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	srv := newServeServer(nil)
 	rec := postUpload(srv.routes(), map[string][]byte{"zip": withSlip.Bytes()})
@@ -396,8 +410,12 @@ func TestServeOversizeCap413(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fw.Write([]byte("x"))
-	mw.Close()
+	if _, err := fw.Write([]byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	if err := mw.Close(); err != nil {
+		t.Fatal(err)
+	}
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/", &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
@@ -559,7 +577,7 @@ func TestServeLiveServer404sNonRootPost(t *testing.T) {
 			t.Fatalf("POST %s: %v", path, err)
 		}
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close() // best-effort: client-side close after ReadAll
 		if resp.StatusCode != http.StatusNotFound {
 			t.Fatalf("live POST %s status = %d, want 404 (body: %q)", path, resp.StatusCode, body)
 		}
@@ -572,7 +590,7 @@ func TestServeLiveServer404sNonRootPost(t *testing.T) {
 		t.Fatalf("POST /: %v", err)
 	}
 	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close() // best-effort: client-side close after ReadAll
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("live POST / non-multipart status = %d, want 400 (body: %q)", resp.StatusCode, body)
 	}
@@ -591,9 +609,13 @@ func postUploadTo(h http.Handler, path string, fields map[string][]byte) *httpte
 		if err != nil {
 			panic(err)
 		}
-		fw.Write(data)
+		if _, err := fw.Write(data); err != nil {
+			panic(err)
+		}
 	}
-	mw.Close()
+	if err := mw.Close(); err != nil {
+		panic(err)
+	}
 	req := httptest.NewRequest("POST", path, &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	rec := httptest.NewRecorder()

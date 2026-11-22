@@ -2,7 +2,6 @@ package board
 
 import (
 	"path/filepath"
-	"runtime"
 )
 
 // BT-050: file-lock-guarded board writes.
@@ -144,12 +143,6 @@ func (b *Board) withWriteLock(path string, fn func() error) error {
 	return fn()
 }
 
-// lockDirForTests is the test seam: it reports where the lock file for a
-// board's write guard lives (relative to Dir), so concurrency tests can
-// assert the sidecar file exists and that bypassing the guard reintroduces
-// the race.
-func (b *Board) lockDirForTests() string { return b.Dir }
-
 // lockAcquireForProbe is a test-only helper that proves two independent
 // Board values on the same dir contend (used by the concurrency tests to
 // show the lock is a real exclusive resource, not a formality). It acquires
@@ -162,7 +155,3 @@ func lockAcquireForProbe(dir string) (release func(), err error) {
 	}
 	return lk.release, nil
 }
-
-// runtimeLockedOS reports the locking primitive in use — for the docs note
-// and diagnostics ("flock(2)" on unix, "LockFileEx" on windows).
-func runtimeLockedOS() string { return runtime.GOOS }

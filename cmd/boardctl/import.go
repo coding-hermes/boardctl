@@ -89,7 +89,7 @@ func cmdImport(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl import <export.json> [--dry-run] [--renumber] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl import <export.json> [--dry-run] [--renumber] [-C dir]\n") // best-effort: usage dump
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -130,7 +130,7 @@ func cmdImport(dir string, args []string) error {
 		path:     b.FixturesPath(),
 	})
 	if *dryRun {
-		fmt.Fprintf(os.Stdout, "dry-run: nothing written\n")
+		_, _ = fmt.Fprintf(os.Stdout, "dry-run: nothing written\n")
 		return nil
 	}
 	return applyImportPlan(b, plan)
@@ -571,19 +571,6 @@ func cloneRow(r *board.Row) *board.Row {
 	return c
 }
 
-// cloneRowWithout deep-copies a Row, dropping one key entirely.
-func cloneRowWithout(r *board.Row, drop string) *board.Row {
-	c := &board.Row{Vals: map[string]json.RawMessage{}}
-	for _, k := range r.Keys {
-		if k == drop {
-			continue
-		}
-		c.Keys = append(c.Keys, k)
-		c.Vals[k] = r.Vals[k]
-	}
-	return c
-}
-
 // stripProvenance removes the import provenance marker from a reasoning
 // string, reporting whether a marker was present.
 func stripProvenance(s string) (string, bool) {
@@ -774,33 +761,33 @@ func importFileDiff(path string, oldLines int, planned [][]byte) string {
 // rows that will land (tasks.jsonl, events.jsonl, and fixtures.jsonl when
 // the plan touches them). A no-op plan states that no file diff applies.
 func printImportPlan(w io.Writer, exportPath string, imp *importExport, targetName, boardDir string, p *importPlan, fx fixturesInfo) {
-	fmt.Fprintf(w, "boardctl import plan for %q (%s)\n", targetName, boardDir)
-	fmt.Fprintf(w, "  export: %s (%s, rendered %s)\n", exportPath, imp.Schema, imp.RenderedAt)
-	fmt.Fprintf(w, "  tasks: %d new, %d identical (no-op), %d skipped (differs)\n", len(p.tasks), len(p.identical), len(p.skipped))
+	_, _ = fmt.Fprintf(w, "boardctl import plan for %q (%s)\n", targetName, boardDir)
+	_, _ = fmt.Fprintf(w, "  export: %s (%s, rendered %s)\n", exportPath, imp.Schema, imp.RenderedAt)
+	_, _ = fmt.Fprintf(w, "  tasks: %d new, %d identical (no-op), %d skipped (differs)\n", len(p.tasks), len(p.identical), len(p.skipped))
 	for _, id := range p.identical {
-		fmt.Fprintf(w, "  = %s identical (no-op)\n", id)
+		_, _ = fmt.Fprintf(w, "  = %s identical (no-op)\n", id)
 	}
 	for _, id := range p.skipped {
-		fmt.Fprintf(w, "  ! %s skipped (differs)\n", id)
+		_, _ = fmt.Fprintf(w, "  ! %s skipped (differs)\n", id)
 	}
 	for _, t := range p.tasks {
 		if t.exportID != "" {
-			fmt.Fprintf(w, "  + %s new task (renumbered from %s)\n", t.id, t.exportID)
+			_, _ = fmt.Fprintf(w, "  + %s new task (renumbered from %s)\n", t.id, t.exportID)
 		} else {
-			fmt.Fprintf(w, "  + %s new task\n", t.id)
+			_, _ = fmt.Fprintf(w, "  + %s new task\n", t.id)
 		}
 	}
-	fmt.Fprintf(w, "  events: %d events appended (%d from export, %d task_created for new rows; %d task_created rows in the export itself are never replayed — Board.Create emits fresh ones at apply time)\n",
+	_, _ = fmt.Fprintf(w, "  events: %d events appended (%d from export, %d task_created for new rows; %d task_created rows in the export itself are never replayed — Board.Create emits fresh ones at apply time)\n",
 		len(p.events), p.fromExport, p.taskCreated, p.exportTaskCreated)
 	if p.fixturesSkip > 0 {
 		plural := "s"
 		if p.fixturesSkip == 1 {
 			plural = ""
 		}
-		fmt.Fprintf(w, "  no fixtures.jsonl on target; %d fixture row%s skipped\n", p.fixturesSkip, plural)
+		_, _ = fmt.Fprintf(w, "  no fixtures.jsonl on target; %d fixture row%s skipped\n", p.fixturesSkip, plural)
 	}
 	if len(p.fixtures) > 0 {
-		fmt.Fprintf(w, "  fixtures: %d appended (%s)\n", len(p.fixtures), strings.Join(p.fixtures, ", "))
+		_, _ = fmt.Fprintf(w, "  fixtures: %d appended (%s)\n", len(p.fixtures), strings.Join(p.fixtures, ", "))
 	}
 
 	// Planned file diff (append-only unified diff of everything apply will
@@ -847,11 +834,11 @@ func printImportPlan(w io.Writer, exportPath string, imp *importExport, targetNa
 		diff += importFileDiff(canonicalBoardFileNames["fixtures"], fx.oldLines, fixLines)
 	}
 	if diff == "" {
-		fmt.Fprintf(w, "planned diff: no file changes (no-op import)\n")
+		_, _ = fmt.Fprintf(w, "planned diff: no file changes (no-op import)\n")
 	} else {
-		fmt.Fprintf(w, "planned diff:\n%s", diff)
+		_, _ = fmt.Fprintf(w, "planned diff:\n%s", diff)
 	}
-	fmt.Fprintf(w, "plan: %d new tasks, %d updates, %d events\n", len(p.tasks), 0, len(p.events))
+	_, _ = fmt.Fprintf(w, "plan: %d new tasks, %d updates, %d events\n", len(p.tasks), 0, len(p.events))
 }
 
 // applyImportPlan writes the plan: task rows through Board.Create (which
@@ -894,6 +881,6 @@ func applyImportPlan(b *board.Board, p *importPlan) error {
 			return fmt.Errorf("append fixture %s: %w", fid, err)
 		}
 	}
-	fmt.Fprintf(os.Stdout, "imported: %d task row(s), %d event(s), %d fixture row(s) written\n", len(p.tasks), len(p.events), len(p.fixtures))
+	_, _ = fmt.Fprintf(os.Stdout, "imported: %d task row(s), %d event(s), %d fixture row(s) written\n", len(p.tasks), len(p.events), len(p.fixtures))
 	return nil
 }

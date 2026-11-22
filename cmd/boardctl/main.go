@@ -300,7 +300,7 @@ func run(args []string) int {
 	case "umbrella":
 		err = cmdUmbrella(boardDir, rest)
 	case "help", "-h", "--help":
-		fmt.Fprint(os.Stdout, usageText)
+		_, _ = fmt.Fprint(os.Stdout, usageText) // best-effort: usage dump
 		return 0
 	default:
 		fmt.Fprintf(os.Stderr, "boardctl: unknown command %q\n\n%s", cmd, usageText)
@@ -435,10 +435,10 @@ func parseFlags(fs *flag.FlagSet, args []string) error {
 	fs.SetOutput(origOut)
 	if errors.Is(err, flag.ErrHelp) {
 		// BT-041: help is a successful usage query — usage on stdout.
-		os.Stdout.Write(buf.Bytes())
+		_, _ = os.Stdout.Write(buf.Bytes()) // best-effort: usage dump
 		return errHelpShown
 	}
-	os.Stderr.Write(buf.Bytes())
+	_, _ = os.Stderr.Write(buf.Bytes()) // best-effort: flag-package usage/error dump
 	return err
 }
 
@@ -543,7 +543,7 @@ func cmdInit(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl init [-C dir] [--project P] [--namespace NS]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl init [-C dir] [--project P] [--namespace NS]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -557,16 +557,16 @@ func cmdInit(dir string, args []string) error {
 	boardDir, wrote, err := board.Init(dir, board.InitOptions{Project: *project, Namespace: *namespace})
 	if err != nil {
 		if errors.Is(err, board.ErrAlreadyInitialized) {
-			fmt.Fprintf(os.Stdout, "already initialized: %s\n", boardDir)
+			_, _ = fmt.Fprintf(os.Stdout, "already initialized: %s\n", boardDir)
 			return nil
 		}
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "initialized board at %s\n", boardDir)
+	_, _ = fmt.Fprintf(os.Stdout, "initialized board at %s\n", boardDir)
 	for _, p := range wrote {
-		fmt.Fprintf(os.Stdout, "  wrote %s\n", filepath.Base(p))
+		_, _ = fmt.Fprintf(os.Stdout, "  wrote %s\n", filepath.Base(p))
 	}
-	fmt.Fprintln(os.Stdout, "next: boardctl create --id TASK-1 --title \"First task\"")
+	_, _ = fmt.Fprintln(os.Stdout, "next: boardctl create --id TASK-1 --title \"First task\"") // best-effort: init hint
 	return nil
 }
 
@@ -639,10 +639,10 @@ func cmdList(dir string, args []string) error {
 		buf.WriteString("]\n")
 		var pretty bytes.Buffer
 		if err := json.Indent(&pretty, buf.Bytes(), "", "  "); err == nil {
-			os.Stdout.Write(pretty.Bytes())
-			os.Stdout.Write([]byte("\n"))
+			_, _ = os.Stdout.Write(pretty.Bytes()) // best-effort: report payload
+			_, _ = os.Stdout.Write([]byte("\n"))
 		} else {
-			os.Stdout.Write(buf.Bytes())
+			_, _ = os.Stdout.Write(buf.Bytes())
 		}
 		return exitError(reportSkipped(b))
 	}
@@ -690,7 +690,7 @@ func cmdShow(dir string, args []string) error {
 	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]\n") }
+	fs.Usage = func() { _, _ = fmt.Fprintf(fs.Output(), "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]\n") }
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -717,7 +717,7 @@ func cmdShow(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "%s\n", pretty)
+	_, _ = fmt.Fprintf(os.Stdout, "%s\n", pretty)
 	if file != b.TasksPath() {
 		fmt.Fprintf(os.Stderr, "note: row found in %s (fixture row)\n", filepath.Base(file))
 	}
@@ -726,11 +726,11 @@ func cmdShow(dir string, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stdout, "events for %s (%d):\n", id, len(evs))
+		_, _ = fmt.Fprintf(os.Stdout, "events for %s (%d):\n", id, len(evs))
 		for _, e := range evs {
 			raw := board.RowJSONCompact(e)
-			os.Stdout.Write(raw)
-			os.Stdout.Write([]byte("\n"))
+			_, _ = os.Stdout.Write(raw)
+			_, _ = os.Stdout.Write([]byte("\n"))
 		}
 	}
 	return exitError(reportSkipped(b))
@@ -809,9 +809,9 @@ func cmdCreate(dir string, args []string) error {
 		_, _ = fmt.Fprintf(fs.Output(), "          the dispatchability field: a foreman will not dispatch a row\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          without it. Omit the flag and NO acceptance_criteria key is\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          written (never an empty placeholder).\n")
-		fmt.Fprintf(fs.Output(), "\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n")
-		fmt.Fprintf(fs.Output(), "          -review → P4, -docs/-readme → P5. An explicit --priority\n")
-		fmt.Fprintf(fs.Output(), "          always wins (BT-071).\n")
+		_, _ = fmt.Fprintf(fs.Output(), "\n          --priority defaults to P2, EXCEPT on paperwork lanes:\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          -review → P4, -docs/-readme → P5. An explicit --priority\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          always wins (BT-071).\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -957,7 +957,7 @@ func cmdCreate(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "created task %s (appended to %s)\n", created, b.TasksPath())
+	_, _ = fmt.Fprintf(os.Stdout, "created task %s (appended to %s)\n", created, b.TasksPath())
 	return nil
 }
 
@@ -1045,7 +1045,7 @@ func cmdUpdate(dir string, args []string) error {
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
 		_, _ = fmt.Fprintf(fs.Output(), "boardctl update <id> [--status complete] [--title T] [--priority P1] [--worker-status S] [--commit-hash SHA] [--record-debt]\n")
-		fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP] [--summary S] [--note S (appends)]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--replace] [--blocked-reason R] [--completed-at TS] [--deferred true|false] [--defer-reason R] [--defer-review-by DATE] [--acceptance-criteria TEXT]\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--initiative SLUG | --clear-initiative] [--initiative-ref REPO:PATH#ANCHOR]... [--clear-initiative-refs] (each ref is REPO:PATH#ANCHOR; clear removes the array)\n")
 		_, _ = fmt.Fprintf(fs.Output(), "          [--worktree PATH] [--branch NAME]\n")
@@ -1087,11 +1087,11 @@ func cmdUpdate(dir string, args []string) error {
 			return err
 		}
 		if len(changes) == 0 {
-			fmt.Fprintf(os.Stdout, "task %s already canonical — nothing to rewrite (file untouched)\n", fs.Arg(0))
+			_, _ = fmt.Fprintf(os.Stdout, "task %s already canonical — nothing to rewrite (file untouched)\n", fs.Arg(0))
 			return nil
 		}
 		for _, ch := range changes {
-			fmt.Fprintf(os.Stdout, "normalized task %s: %s %q -> %q\n", fs.Arg(0), ch.Field, ch.Old, ch.New)
+			_, _ = fmt.Fprintf(os.Stdout, "normalized task %s: %s %q -> %q\n", fs.Arg(0), ch.Field, ch.Old, ch.New)
 		}
 		return nil
 	}
@@ -1275,7 +1275,7 @@ func cmdUpdate(dir string, args []string) error {
 	}
 	renderCompletionWarnings(b)
 	renderMetadataWarnings(b)
-	fmt.Fprintf(os.Stdout, "updated task %s: %s\n", fs.Arg(0), strings.Join(changes, ", "))
+	_, _ = fmt.Fprintf(os.Stdout, "updated task %s: %s\n", fs.Arg(0), strings.Join(changes, ", "))
 	return nil
 }
 
@@ -1298,15 +1298,15 @@ func cmdEvent(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl event --type task_created|task_dispatched|task_completed|audit|...\n")
-		fmt.Fprintf(fs.Output(), "          [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...'] [--tick N] [flags] [-C dir]\n")
-		fmt.Fprintf(fs.Output(), "\n")
-		fmt.Fprintf(fs.Output(), "          --tick N also rewrites the board header's ticks_total counter\n")
-		fmt.Fprintf(fs.Output(), "          (board.jsonl, or tasks.jsonl on legacy boards) to max(old, N);\n")
-		fmt.Fprintf(fs.Output(), "          each actual rewrite prints a notice to stderr naming the file\n")
-		fmt.Fprintf(fs.Output(), "          and the old -> new value. Pass --no-tick-write to append the\n")
-		fmt.Fprintf(fs.Output(), "          event without touching the header (the counter may then go\n")
-		fmt.Fprintf(fs.Output(), "          stale and fail the next `doctor` drift check).\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl event --type task_created|task_dispatched|task_completed|audit|...\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...'] [--tick N] [flags] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          --tick N also rewrites the board header's ticks_total counter\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          (board.jsonl, or tasks.jsonl on legacy boards) to max(old, N);\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          each actual rewrite prints a notice to stderr naming the file\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          and the old -> new value. Pass --no-tick-write to append the\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          event without touching the header (the counter may then go\n")
+		_, _ = fmt.Fprintf(fs.Output(), "          stale and fail the next `doctor` drift check).\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -1350,10 +1350,9 @@ func cmdEvent(dir string, args []string) error {
 		fmt.Fprintf(os.Stderr, "boardctl: notice: rewriting %s ticks_total %d -> %d\n", n.Path, n.Old, n.New)
 	}
 	if *detailFile != "" {
-		p := *detailFile
-		if strings.HasPrefix(p, "@") {
-			p = strings.TrimPrefix(p, "@")
-		}
+		// TrimPrefix no-ops without the prefix, so an unconditional trim
+		// replaces the guarded branch (REVIEW staticcheck S1017).
+		p := strings.TrimPrefix(*detailFile, "@")
 		content, err := os.ReadFile(p)
 		if err != nil {
 			return fmt.Errorf("--detail: %w", err)
@@ -1395,7 +1394,7 @@ func cmdEvent(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, "event id %d appended to %s\n", id, b.EventsPath())
+	_, _ = fmt.Fprintf(os.Stdout, "event id %d appended to %s\n", id, b.EventsPath())
 	return nil
 }
 
@@ -1437,16 +1436,16 @@ func cmdHeader(dir string, args []string) error {
 	}
 	if !writing {
 		if *asJSON {
-			os.Stdout.Write(board.RowJSONCompact(row))
-			os.Stdout.Write([]byte("\n"))
+			_, _ = os.Stdout.Write(board.RowJSONCompact(row))
+			_, _ = os.Stdout.Write([]byte("\n"))
 			return nil
 		}
 		pretty, err := board.MarshalRowJSON(row)
 		if err != nil {
 			return err
 		}
-		os.Stdout.Write(pretty)
-		os.Stdout.Write([]byte("\n"))
+		_, _ = os.Stdout.Write(pretty)
+		_, _ = os.Stdout.Write([]byte("\n"))
 		return nil
 	}
 	u := board.HeaderUpdate{}
@@ -1478,7 +1477,7 @@ func cmdHeader(dir string, args []string) error {
 	if b.Topology != "A" {
 		where = "line 1 of tasks.jsonl"
 	}
-	fmt.Fprintf(os.Stdout, "header updated (%s): %s\n", where, strings.Join(changed, ", "))
+	_, _ = fmt.Fprintf(os.Stdout, "header updated (%s): %s\n", where, strings.Join(changed, ", "))
 	return nil
 }
 
@@ -1503,7 +1502,7 @@ func cmdValidate(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -1526,7 +1525,7 @@ func cmdValidate(dir string, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(os.Stdout, res.RenderRepairText())
+		_, _ = fmt.Fprint(os.Stdout, res.RenderRepairText()) // best-effort: report payload
 		return nil
 	}
 	rep, err := b.Validate()
@@ -1556,7 +1555,7 @@ func cmdValidate(dir string, args []string) error {
 		// class must never degrade to a no-op gate.
 		return fmt.Errorf("validate: unknown --fail-on class %q (recognized: dangling-dep): %w", *failOn, errUsage)
 	}
-	fmt.Fprint(os.Stdout, rep.RenderText())
+	_, _ = fmt.Fprint(os.Stdout, rep.RenderText()) // best-effort: report payload
 	if b.HasSkipped() {
 		// Tolerant mode: the salvageable rows were validated and itemized
 		// (each skipped line carries its own error finding naming the
@@ -1592,13 +1591,13 @@ func cmdSweepStatus(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl sweep-status [--apply] [--decide] [--json] [--skip-bad-lines] [-C dir]\n")
-		fmt.Fprintf(fs.Output(), "\n--decide re-classifies off-vocabulary rows by machine-checkable rules:\n")
-		fmt.Fprintf(fs.Output(), "  %s\n", board.ResultDecideRuleDoc)
-		fmt.Fprintf(fs.Output(), "  a status \"duplicate\" WITH an earlier same-id twin closes as superseded-by-earliest\n")
-		fmt.Fprintf(fs.Output(), "  (with --apply): status=complete, superseded_by set, one audit event quoting the preserved text;\n")
-		fmt.Fprintf(fs.Output(), "  a \"duplicate\" with NO earlier twin, PENDING results, and every unmatched value\n")
-		fmt.Fprintf(fs.Output(), "  stay explicit decisions. --decide alone never writes; only --decide --apply does.\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl sweep-status [--apply] [--decide] [--json] [--skip-bad-lines] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "\n--decide re-classifies off-vocabulary rows by machine-checkable rules:\n")
+		_, _ = fmt.Fprintf(fs.Output(), "  %s\n", board.ResultDecideRuleDoc)
+		_, _ = fmt.Fprintf(fs.Output(), "  a status \"duplicate\" WITH an earlier same-id twin closes as superseded-by-earliest\n")
+		_, _ = fmt.Fprintf(fs.Output(), "  (with --apply): status=complete, superseded_by set, one audit event quoting the preserved text;\n")
+		_, _ = fmt.Fprintf(fs.Output(), "  a \"duplicate\" with NO earlier twin, PENDING results, and every unmatched value\n")
+		_, _ = fmt.Fprintf(fs.Output(), "  stay explicit decisions. --decide alone never writes; only --decide --apply does.\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -1626,10 +1625,10 @@ func cmdSweepStatus(dir string, args []string) error {
 		}
 		return exitError(reportSkipped(b))
 	}
-	fmt.Fprintf(os.Stdout, "board: %s\n", rep.BoardPath)
-	fmt.Fprint(os.Stdout, rep.RenderText())
+	_, _ = fmt.Fprintf(os.Stdout, "board: %s\n", rep.BoardPath)
+	_, _ = fmt.Fprint(os.Stdout, rep.RenderText())
 	if !*apply {
-		fmt.Fprintln(os.Stdout, "DRY-RUN — no files written (pass --apply to normalize the alias rows)")
+		_, _ = fmt.Fprintln(os.Stdout, "DRY-RUN — no files written (pass --apply to normalize the alias rows)")
 	}
 	return exitError(reportSkipped(b))
 }
@@ -1736,7 +1735,7 @@ func cmdDoctor(dir string, args []string) error {
 	args = reorderArgs(args, valueFlags("C"))
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl doctor [-C dir]\n") }
+	fs.Usage = func() { _, _ = fmt.Fprintf(fs.Output(), "boardctl doctor [-C dir]\n") }
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -1754,7 +1753,7 @@ func cmdDoctor(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(os.Stdout, rep.RenderText())
+	_, _ = fmt.Fprint(os.Stdout, rep.RenderText())
 	if rep.HasErrors() {
 		return errors.New("doctor found errors")
 	}
@@ -1814,7 +1813,7 @@ func releaseVersion() string {
 func cmdVersion(args []string) error {
 	fs := newFlagSet("version")
 	asJSON := fs.Bool("json", false, "emit version info as JSON")
-	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl version [--json]\n") }
+	fs.Usage = func() { _, _ = fmt.Fprintf(fs.Output(), "boardctl version [--json]\n") }
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -1830,17 +1829,17 @@ func cmdVersion(args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stdout, "%s\n", b)
+		_, _ = fmt.Fprintf(os.Stdout, "%s\n", b)
 		return nil
 	}
 	// The parenthetical only appears when the raw stamp adds information
 	// beyond the identity (e.g. "v0.1.3 (build 20260915)"); when the stamp
 	// IS the identity — or absent — the line stays single-value.
 	if version != "" && version != "dev" && version != v {
-		fmt.Fprintf(os.Stdout, "boardctl version %s (build %s)\n", v, version)
+		_, _ = fmt.Fprintf(os.Stdout, "boardctl version %s (build %s)\n", v, version)
 		return nil
 	}
-	fmt.Fprintf(os.Stdout, "boardctl version %s\n", v)
+	_, _ = fmt.Fprintf(os.Stdout, "boardctl version %s\n", v)
 	return nil
 }
 
@@ -1854,7 +1853,9 @@ func cmdStats(dir string, args []string) error {
 	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { fmt.Fprintf(fs.Output(), "boardctl stats [--json] [--all] [--skip-bad-lines] [-C dir]\n") }
+	fs.Usage = func() {
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl stats [--json] [--all] [--skip-bad-lines] [-C dir]\n")
+	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -1878,9 +1879,9 @@ func cmdStats(dir string, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(os.Stdout, string(out))
+		_, _ = fmt.Fprintln(os.Stdout, string(out))
 		return exitError(reportSkipped(b))
 	}
-	fmt.Fprint(os.Stdout, st.RenderText())
+	_, _ = fmt.Fprint(os.Stdout, st.RenderText())
 	return exitError(reportSkipped(b))
 }

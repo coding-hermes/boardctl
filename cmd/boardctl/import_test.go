@@ -120,7 +120,7 @@ func captureStderr(fn func()) (string, error) {
 		done <- string(b)
 	}()
 	fn()
-	w.Close()
+	_ = w.Close() // best-effort: pipe write-end close after fn() (double-close is the only failure mode)
 	return <-done, nil
 }
 
@@ -323,7 +323,7 @@ func TestImportEventsFreshSequencing(t *testing.T) {
 		`{"id":4,"timestamp":"2026-09-04 11:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":"external note","tick_number":null}` + "\n"); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close() // best-effort: os.File writes are unbuffered, nothing left to flush
 	export := mustRenderExport(t, src)
 
 	dst := t.TempDir()
@@ -659,7 +659,7 @@ func TestImportDryRunUnifiedDiff(t *testing.T) {
 	if _, err := f.WriteString(`{"id":3,"timestamp":"2026-09-04 10:00:00","event_type":"task_started","task_id":"QA-T-2","actor":"foreman","detail":null,"tick_number":null}` + "\n"); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 	export := mustRenderExport(t, src)
 
 	dst := t.TempDir()

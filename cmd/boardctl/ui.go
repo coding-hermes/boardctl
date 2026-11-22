@@ -168,7 +168,7 @@ func (s *serveServer) handleUI(w http.ResponseWriter, r *http.Request) {
 	uiNoteIfOver(len(page)) // R19: over ~5 MB is not an error; log a note
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, page)
+	_, _ = fmt.Fprint(w, page)
 }
 
 // uiIsland builds the R18 island payload: every currently loaded board's

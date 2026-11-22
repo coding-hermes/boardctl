@@ -65,12 +65,12 @@ func sub(t *testing.T, dir, rel, content string) string {
 func silenceSwitch(t *testing.T, v string) {
 	t.Helper()
 	old, had := os.LookupEnv(SkipEnv)
-	os.Setenv(SkipEnv, v)
+	_ = os.Setenv(SkipEnv, v)
 	t.Cleanup(func() {
 		if had {
-			os.Setenv(SkipEnv, old)
+			_ = os.Setenv(SkipEnv, old)
 		} else {
-			os.Unsetenv(SkipEnv)
+			_ = os.Unsetenv(SkipEnv)
 		}
 	})
 }

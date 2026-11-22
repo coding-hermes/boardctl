@@ -405,7 +405,7 @@ func (r *StatusSweepReport) RenderText() string {
 	rows := append(append([]StatusSweepRow{}, repSorted(r.Normalized)...), repSorted(r.Explicit)...)
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Line < rows[j].Line })
 	for _, row := range rows {
-		sb.WriteString(fmt.Sprintf("  line %d  %s: status %q — %s\n", row.Line, row.ID, row.Status, row.Action))
+		_, _ = fmt.Fprintf(&sb, "  line %d  %s: status %q — %s\n", row.Line, row.ID, row.Status, row.Action)
 		if row.Skipped {
 			// BT-066: the apply refused this row — make the non-repair
 			// visible right where the row is listed, not only in the census.
@@ -414,9 +414,9 @@ func (r *StatusSweepReport) RenderText() string {
 	}
 	sb.WriteString(r.Summarize() + "\n")
 	if r.Apply {
-		sb.WriteString(fmt.Sprintf("before: %d off-vocabulary rows; after: %d off-vocabulary rows\n", r.OffBefore, r.OffAfter))
+		_, _ = fmt.Fprintf(&sb, "before: %d off-vocabulary rows; after: %d off-vocabulary rows\n", r.OffBefore, r.OffAfter)
 		if skipped := len(repSkipped(r.Normalized)); skipped > 0 {
-			sb.WriteString(fmt.Sprintf("skipped: %d row(s) normalize refused — left byte-identical, decide those rows by hand\n", skipped))
+			_, _ = fmt.Fprintf(&sb, "skipped: %d row(s) normalize refused — left byte-identical, decide those rows by hand\n", skipped)
 		}
 	}
 	return sb.String()

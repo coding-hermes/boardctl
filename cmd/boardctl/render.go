@@ -52,7 +52,7 @@ func cmdRender(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -110,7 +110,7 @@ func cmdRender(dir string, args []string) error {
 		if werr := writeReportFile(*jsonOut, append(jb, '\n')); werr != nil {
 			return werr
 		}
-		fmt.Fprintf(os.Stdout, "wrote %s (board-report/v1 payload)\n", *jsonOut)
+		_, _ = fmt.Fprintf(os.Stdout, "wrote %s (board-report/v1 payload)\n", *jsonOut)
 	}
 
 	html, err := render.RenderHTML(payload)
@@ -118,14 +118,20 @@ func cmdRender(dir string, args []string) error {
 		return err
 	}
 	if *out == "-" {
-		os.Stdout.WriteString(html)
-		fmt.Fprintf(os.Stderr, "wrote report to stdout (%d bytes)\n", len(html))
+		// The payload itself: a failed stdout write (ENOSPC, closed fd) is
+		// a real failure, not a status line — report it. (EPIPE on a
+		// closed pipe still kills the process with SIGPIPE per Go's
+		// os.Stdout runtime handling.)
+		if _, werr := os.Stdout.WriteString(html); werr != nil {
+			return werr
+		}
+		_, _ = fmt.Fprintf(os.Stderr, "wrote report to stdout (%d bytes)\n", len(html))
 		return exitError(degraded)
 	}
 	if werr := writeReportFile(*out, []byte(html)); werr != nil {
 		return werr
 	}
-	fmt.Fprintf(os.Stdout, "wrote %s (%d bytes, %d board(s))\n", *out, len(html), len(payload.Boards))
+	_, _ = fmt.Fprintf(os.Stdout, "wrote %s (%d bytes, %d board(s))\n", *out, len(html), len(payload.Boards))
 	return exitError(degraded)
 }
 

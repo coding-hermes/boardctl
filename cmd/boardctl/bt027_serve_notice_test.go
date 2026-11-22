@@ -102,8 +102,12 @@ func TestBT027EmptyUploadStill400(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fw.Write([]byte("no file parts here"))
-	mw.Close()
+	if _, err := fw.Write([]byte("no file parts here")); err != nil {
+		t.Fatal(err)
+	}
+	if err := mw.Close(); err != nil {
+		t.Fatal(err)
+	}
 	req := httptest.NewRequest("POST", "/", &buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	rec := httptest.NewRecorder()

@@ -106,7 +106,7 @@ func cmdInstall(dir string, args []string) error {
 	// validate-failing board commit with the evidence on stderr.
 	lintMode := fs.String("lint-mode", boardLintModeEnforce, "reject arm behavior on a boardctl validate failure: enforce (default) blocks the commit, warn prints the evidence behind a WARN-ONLY banner and allows it")
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl install [-C repo] [--hook-path P] [--timeout S] [--dry-run] [--fleet PAT] [--fleet-root DIR] [--lint-mode enforce|warn]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl install [-C repo] [--hook-path P] [--timeout S] [--dry-run] [--fleet PAT] [--fleet-root DIR] [--lint-mode enforce|warn]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -187,7 +187,7 @@ func cmdInstall(dir string, args []string) error {
 	if err := os.Chmod(target, 0o755); err != nil {
 		return fmt.Errorf("boardctl install: cannot chmod hook %s: %w", target, err)
 	}
-	fmt.Fprintf(os.Stdout, "board-lint pre-commit hook installed at %s (timeout %ds)\n", target, *timeout)
+	_, _ = fmt.Fprintf(os.Stdout, "board-lint pre-commit hook installed at %s (timeout %ds)\n", target, *timeout)
 	return nil
 }
 

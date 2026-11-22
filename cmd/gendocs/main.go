@@ -66,7 +66,7 @@ func run(args []string) int {
 		fmt.Fprintf(os.Stderr, "gendocs: %v\n", err)
 		return 1
 	}
-	fmt.Fprintf(os.Stdout, "wrote %s (%d http routes from %s)\n", out, len(reg.HTTP), reg.Serve)
+	_, _ = fmt.Fprintf(os.Stdout, "wrote %s (%d http routes from %s)\n", out, len(reg.HTTP), reg.Serve)
 	return 0
 }
 

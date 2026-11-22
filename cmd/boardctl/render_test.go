@@ -311,7 +311,7 @@ func TestCmdRenderTornLineTail(t *testing.T) {
 	if _, err := f.WriteString(`{"id":"X","title":"torn"`); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 	outJSON := filepath.Join(t.TempDir(), "r.json")
 	outHTML := filepath.Join(t.TempDir(), "r.html")
 	if code := run([]string{"-C", dir, "render", "-o", outHTML, "--json", outJSON, "--tz", "UTC"}); code != 0 {
