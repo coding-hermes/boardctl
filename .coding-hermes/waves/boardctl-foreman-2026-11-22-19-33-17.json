@@ -1,0 +1,28 @@
+{
+  "tick_id": "boardctl-foreman-2026-11-22-19-33-17",
+  "created_at": "2026-11-22T19:40:00Z",
+  "project": "boardctl",
+  "workdir": "/home/kara/coding-hermes-boardctl",
+  "budget": 1,
+  "recovery": {
+    "inherited": "boardctl-foreman-2026-11-22-12-43-18",
+    "status": "recovered",
+    "evidence": "0 workers in inherited wave; its row BT-093 complete at 4c50aebf (ancestor of origin/main, parity 0 both sides), worktree/branch already reaped; inherited manifest 12-43-18 lacked finished_at on disk — set 2026-11-22T19:36:00Z with recovery_closeout note in this recovery tick."
+  },
+  "rows": [
+    {
+      "id": "RELEASE-2026-11-16-01",
+      "priority": "P1",
+      "title": "[P1 NO-CUT] v0.6.0 release readiness (version-prep leg this tick; cut leg stays pending)",
+      "worktree": "/home/kara/worktrees/boardctl-RELEASE-2026-11-16-01",
+      "branch": "wt/RELEASE-2026-11-16-01",
+      "base": "origin/main",
+      "base_sha": "50986e0",
+      "files": ["README.md", "CHANGELOG.md"],
+      "gitreins_task": "RELEASE-2026-11-16-01",
+      "scope_note": "Serial path (WAVE_BUDGET=1). Leg 1 only: version-prep (README pins + CHANGELOG + version-check green). Legs 2-5 (candidate verdict/dogfood/CI/cut) remain pending; leg 5 tag-cut is owner-gated until 1-4 pass.",
+      "selection": "boardctl next canonical pick (P1); BT-094 P1 remains formally deferred owner-gated (defer_review_by 2026-11-29)."
+    }
+  ],
+  "workers_model": "glm-5.3-flash@ollama-cloud"
+}
