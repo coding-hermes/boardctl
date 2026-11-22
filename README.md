@@ -633,6 +633,49 @@ proof of zero drift:
 key uniformity: N/M rows carry only canon keys (0 drift)
 ```
 
+## Typed ticket types
+
+A board can declare its own ticket types in `.coding-hermes/board/types.jsonl`
+(relative to the repository passed with `-C`). Initialize the board first with
+`boardctl -C /path/to/repo init`. Create the file below as a single JSON object
+per line; the example is one line, not a multiline JSON document. A nonempty
+file replaces the built-in type registry; an absent or empty file uses the
+built-in `task`, `bug`, `feat`, and `chore` types.
+
+### Example types.jsonl
+
+```jsonl
+{"slug":"release","display":"Release","rev":1,"template":{"title_prefix":"[RELEASE] ","default_priority":"P1","ac_skeleton":"- [ ] Verify artifact"},"metadata":[{"name":"channel","type":"enum","required":true,"values":["stable","beta"],"description":"Release channel"},{"name":"owner","type":"string","required":true}]}
+```
+
+Save that line as `/path/to/repo/.coding-hermes/board/types.jsonl`, then run:
+
+```bash
+boardctl -C /path/to/repo types --doctor
+boardctl -C /path/to/repo types --json
+boardctl -C /path/to/repo create --id REL-1 --title 'Version 1.0' --type release --meta channel=stable --meta owner=alex
+boardctl -C /path/to/repo show REL-1
+```
+
+Each record has a required `slug` (lowercase letters, digits and single
+hyphens; at most 64 characters) and `display`; `rev` defaults to 1. Append a
+new record to revise a slug: the last line wins, and `types --doctor` reports
+repeated or decreasing revisions. `retired: true` makes a type unavailable for
+new rows. The optional `template` has `title_prefix`, `default_priority` (P0
+through P5), and `ac_skeleton` (acceptance criteria text). Explicit
+`--priority` and `--acceptance-criteria` take precedence over their template
+values. The title prefix is prepended unless the title already starts with it;
+there is no `--title-prefix` flag. Metadata has no template defaults: supply
+explicit values with repeated `--meta name=value` flags.
+
+The optional `metadata` array declares fields using `name` (lowercase
+snake_case), `type`, `required`, and `description`. Types are `string`, `list`
+(comma-separated values), `enum` (requires a `values` array), and `ref`
+(requires a `ref` name; `task_id` checks that the referenced task exists).
+For example, `{"name":"approval","type":"ref","ref":"task_id"}` declares
+an optional task reference. Required fields must be supplied and enum values
+must match the declared choices. Inspect the active schema with `boardctl types`.
+
 ## Board-lint pre-commit hook (BT-054)
 
 `boardctl install` arms a git pre-commit hook that rejects a commit whose board

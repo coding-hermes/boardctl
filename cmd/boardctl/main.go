@@ -47,6 +47,7 @@ usage:
 
 commands:
   init    [-C dir] [--project P] [--namespace NS]   bootstrap a fresh board
+  types   [-C dir] [--json] [--doctor]   show declared ticket types, templates and metadata schema
   list    [--status S] [--priority P] [--initiative SLUG] [--initiative-ref-repo REPO] [--actionable] [--json] [--all] [--skip-bad-lines]
   show    <id> [--events]
   next-id --family CF [--width N] [--json]   (prints the next free id; read-only)
