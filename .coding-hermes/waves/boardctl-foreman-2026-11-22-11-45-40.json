@@ -1,0 +1,51 @@
+{
+  "tick_id": "boardctl-foreman-2026-11-22-11-45-40",
+  "created_at": "2026-11-22T12:10:00-05:00",
+  "project": "boardctl",
+  "workdir": "/home/kara/coding-hermes-boardctl",
+  "budget": 4,
+  "rows": [
+    {
+      "id": "QA-BOARDCTL-014",
+      "priority": "P3",
+      "title": "Multi-Arch Verify (arm64, native) red on main: gzip tiny-payload threshold flake",
+      "worktree": "/home/kara/worktrees/boardctl-QA-BOARDCTL-014",
+      "branch": "wt/QA-BOARDCTL-014",
+      "base": "origin/main",
+      "base_sha": "9daa637",
+      "files": ["cmd/boardctl/gzipmw_test.go"],
+      "gitreins_task": "QA-BOARDCTL-014",
+      "note": "Selected for CI-health: 3 consecutive Multi-Arch failures on main (runs 10:21Z/10:38Z/10:57Z)."
+    },
+    {
+      "id": "RELEASE-2026-11-09-02",
+      "priority": "P2",
+      "title": "README release pin duplicated as Go literal version-check never reads",
+      "worktree": "/home/kara/worktrees/boardctl-RELEASE-2026-11-09-02",
+      "branch": "wt/RELEASE-2026-11-09-02",
+      "base": "origin/main",
+      "base_sha": "9daa637",
+      "files": ["cmd/boardctl/readme_acceptance_criteria_release_test.go"],
+      "gitreins_task": "RELEASE-2026-11-09-02",
+      "note": "Derives expected tag from internal/versioncheck surfaces per row AC."
+    },
+    {
+      "id": "BT-89",
+      "priority": "P3",
+      "title": "Report-only build-set dependency-currency pass (dep-check + cadence)",
+      "worktree": "/home/kara/worktrees/boardctl-BT-89",
+      "branch": "wt/BT-89",
+      "base": "origin/main",
+      "base_sha": "9daa637",
+      "files": ["internal/depcheck (new)", "Makefile", "docs/dependency-currency.md (new)", "README.md (dep-check section)"],
+      "gitreins_task": "BT-89",
+      "note": "Independent of the other two rows (different files; README edit may collide with none of them)."
+    }
+  ],
+  "excluded": [
+    {"id": "BT-093", "reason": "P2 feature (initiatives umbrella aggregation) is multi-surface; left for a dedicated tick"},
+    {"id": "BT-094", "reason": "P1 cross-repo owner-gated (hermes gateway)"},
+    {"id": "RELEASE-2026-11-16-01", "reason": "P1 owner-gated release cut (NO-CUT row)"}
+  ],
+  "workers_model": "glm-5.3-flash@ollama-cloud"
+}
