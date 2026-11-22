@@ -103,6 +103,17 @@ var readmeFenceAllowlist = map[string][]allowlistEntry{
 	// Status-alias section: INTENTIONALLY negative — the fence comment says
 	// "exit 1 — writes reject aliases". A drift to rc=0 here would mean the
 	// write-vocabulary guard vanished, so no rc=0 arm is offered.
+	// hook doctor example (README "hook doctor" fence): the fence probes the
+	// README's example crier URL (http://127.0.0.1:8080). On a clean machine
+	// or a CI runner nothing listens there, so `hook doctor` exits 1 with
+	// "crier=unreachable" — the documented unhealthy outcome, not recipe
+	// drift. On hosts that actually run a crier bus on :8080 the same fence
+	// exits 0. Both outcomes are legitimate; never require a live crier to
+	// build the docs gate.
+	`hook install --hook post-commit --crier-url http://127.0.0.1:8080 --secret-file ~/.config/crier/boardctl.secret --dry-run|hook doctor`: {
+		{rc: 1, marker: "crier=unreachable"},
+		{rc: 0, marker: ""},
+	},
 	`validate|update FEAT-1 --status done`: {
 		{rc: 1, marker: "not in write vocabulary"},
 	},
