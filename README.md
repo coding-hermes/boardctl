@@ -118,24 +118,34 @@ boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
 boardctl -C ~/myproject create --id FEAT-1 --title "Add retry" \
     --reasoning "Idempotent retry with backoff" --evidence-run-id qa-2026-09-18T04:11Z
 
-# size a row (--complexity, default 3) and declare dependencies.
-# --depends-on takes a comma-separated id list and becomes the row's
-# depends_on array; every id must already exist — an unknown id is
-# REFUSED at write time (exit 1, nothing written: create the
-# dependency first). The dangling-reference side of this gate is
-# `validate --fail-on dangling-dep`.
-boardctl -C ~/myproject create --id FEAT-3 --title "Add jitter" \
-    --complexity 2 --depends-on FEAT-1,FEAT-2
-
 # rows can carry WHERE the work happened and WHICH agent runs did it
 # (see "Worktree, branch and session fields" below)
 boardctl -C ~/myproject create --id FEAT-2 --title "Add caching" \
     --worktree /home/me/wt/ft-2 --branch wt/ft-2 \
     --session 2f8c41a0 --session 91ab77c2
 
+# size a row (--complexity, default 3) and declare dependencies.
+# --depends-on takes a comma-separated id list and becomes the row's
+# depends_on array; every id must already exist — an unknown id is
+# REFUSED at write time (exit 1, nothing written: create the
+# dependency first). The dangling-reference side of this gate is
+# `validate --fail-on dangling-dep`.
+# (The FEAT-2 create above runs first on purpose, so this example's
+# --depends-on resolves: the fences are runnable top-to-bottom in
+# reading order, which the mechanical fence gate in cmd/boardctl
+# proves on every `go test` run.)
+boardctl -C ~/myproject create --id FEAT-3 --title "Add jitter" \
+    --complexity 2 --depends-on FEAT-1,FEAT-2
+
 # update a task row (status flip + completion event; --commit-hash stays on
-# the task row — the header drift pointer only moves via `header --set-last-commit`)
-boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash abc1234 \
+# the task row — the header drift pointer only moves via `header --set-last-commit`).
+# Completion provenance is enforced at the write layer (BOARD-GUARD-003/TR-251):
+# --commit-hash must be a FULL 40- or 64-hex commit id that RESOLVES in this
+# repository — abbreviations like abc1234 and symbolic refs like HEAD are
+# refused — and --evidence-run-id must name an existing
+# .gitreins/history/<date>/<run-id>/ run whose verdict.json grades THIS task
+# and THIS commit. "$(git rev-parse HEAD)" stamps the current HEAD commit.
+boardctl -C ~/myproject update FEAT-1 --status complete --commit-hash "$(git rev-parse HEAD)" \
     --guard PASS --ci GREEN --summary "retry added (+80/-12)" --evidence-run-id qa-run-1
 # BT-060: --title rewrites a row's title in place (with the task_updated event)
 boardctl -C ~/myproject update FEAT-1 --title "Add retry with backoff"
@@ -200,7 +210,9 @@ boardctl -C ~/myproject header --json          # print the header (raw JSON)
 boardctl -C ~/myproject header                 # pretty-printed
 
 # four --set-* flags; combine any of them, at least one is required:
-boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit abc1234
+# --set-last-commit takes any string, but the drift pointer is a commit id:
+# stamp the full hash ("$(git rev-parse HEAD)"), never an abbreviation.
+boardctl -C ~/myproject header --set-ticks-total 42 --set-last-commit "$(git rev-parse HEAD)"
 boardctl -C ~/myproject header --set-ticks-idle 3
 boardctl -C ~/myproject header --set-last-tick "2026-10-19T21:53:25.000000-05:00"
 # counters must be >= 0 — --set-ticks-total / --set-ticks-idle reject a
@@ -1471,14 +1483,30 @@ row.
 
 A task row may carry a first-class boolean `deferred` field, distinct from
 `blocked` and `complete`: deferral is "the owner parked this on purpose", not
-"something is wrong" (blocked) and not "this is done" (complete). Write it with
-`boardctl create --deferred` (bare flag, writes `deferred: true`) or
-`boardctl update <id> --deferred true|false` (any `strconv.ParseBool` spelling
-is accepted; a non-boolean value is a usage error with nothing written). The
-same nil-untouched discipline as the worktree fields applies: an omitted flag
-never creates or changes the key — a row without `deferred` is not deferred.
-An explicit `--deferred false` un-defers by REMOVING the key entirely
-(DF-BOARDCTL-29): the un-deferred row is byte-identical to a never-deferred
+"something is wrong" (blocked) and not "this is done" (complete). A deferral
+must name its blocker (DEFER-EVIDENCE): `--deferred` on `create`, and
+`--deferred true` on `update`, are REFUSED (exit 1, nothing written) unless
+`--defer-reason` is supplied — a deferral without a named blocker is a phantom
+row. `--defer-review-by DATE` optionally carries the re-triage date the row
+should be picked back up (conventionally an ISO date such as `2026-12-01`;
+the write path does not validate the format, so the date is only as good as
+the filing lane's discipline — the flags exist so a parked row says WHAT it
+is waiting on and WHEN to look again). Write it with
+`boardctl create --deferred --defer-reason R` or
+`boardctl update <id> --deferred true --defer-reason R` (any
+`strconv.ParseBool` spelling is accepted for the value; a non-boolean value
+is a usage error with nothing written). A row that already carries a reason
+can be re-deferred without retyping it: `update <id> --deferred true` alone
+reuses the stored reason. On `update` the two audit flags are also accepted
+WITHOUT flipping the row (`update <id> --defer-reason R` stamps the field on
+an actionable row); `validate` warns when a NON-deferred row carries
+`defer_reason`/`defer_review_by`, so stale reasons stay visible instead of
+reading as a deferral. The same nil-untouched discipline as the worktree
+fields applies: an omitted flag never creates or changes the key — a row
+without `deferred` is not deferred.
+An explicit `--deferred false` un-defers by REMOVING `deferred` together with
+both audit keys `defer_reason` and `defer_review_by` (DF-BOARDCTL-29 +
+DEFER-EVIDENCE): the un-deferred row is byte-identical to a never-deferred
 one apart from `updated_at`, and `--deferred false` on a row without the key
 is an idempotent no-op (no rewrite, nothing reported as changed).
 
@@ -1493,8 +1521,10 @@ under `pending` there). `validate` warns (never fails) on a hand-edited
 non-boolean `deferred` value, which reads as not deferred.
 
 ```bash
-boardctl -C ~/myproject create --id FEAT-3 --title "Maybe later" --deferred   # (since v0.1.11)
-boardctl -C ~/myproject update FEAT-3 --deferred false   # un-defer (since v0.1.11)
+boardctl -C ~/myproject create --id FEAT-3 --title "Maybe later" \
+    --deferred --defer-reason "owner-gated: budget ruling" \
+    --defer-review-by 2026-12-01   # (since v0.1.11)
+boardctl -C ~/myproject update FEAT-3 --deferred false   # un-defer: removes deferred + both audit keys (since v0.1.11)
 boardctl -C ~/myproject stats    # total, actionable, deferred: separate lines
 ```
 
