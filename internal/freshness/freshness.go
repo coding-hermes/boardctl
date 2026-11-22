@@ -97,7 +97,7 @@ func Check(binaryCommit string, cwd string, stderr io.Writer) {
 	if n == 1 {
 		unit = "commit"
 	}
-	fmt.Fprintf(stderr,
+	_, _ = fmt.Fprintf(stderr,
 		"boardctl: warning: this binary was built from commit %s (built %s), which is %d %s behind HEAD (%s) of the checkout at %s — rebuild (make build) or reinstall; silence with %s=1\n",
 		short(binaryCommit), date, n, unit, short(head), root, SkipEnv)
 }

@@ -82,7 +82,7 @@ func qaSeedValidBoard(t *testing.T) string {
 	}
 	regRow := `{"id": "` + qaRegistryFixtureID + `", "title": "registry fixture (no task row)", "status": "pending", "active": true}` + "\n"
 	if _, err := f.WriteString(regRow); err != nil {
-		f.Close()
+		_ = f.Close()
 		t.Fatal(err)
 	}
 	if err := f.Close(); err != nil {
@@ -393,7 +393,7 @@ func TestQACorruptionNoWriteAssertionDetectsWrites(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := f.WriteString("\n"); err != nil {
-		f.Close()
+		_ = f.Close()
 		t.Fatal(err)
 	}
 	if err := f.Close(); err != nil {

@@ -7,22 +7,6 @@ import (
 	"testing"
 )
 
-// realServeWiring is the exact routes() body of cmd/boardctl/serve.go at
-// the time internal/describe was introduced — the fixture for derivation
-// tests, kept textually faithful (registration order included).
-const realServeWiring = `package main
-
-import "net/http"
-
-func (s *serveServer) routes() http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", s.handleIndex)
-	mux.HandleFunc("POST /", s.handleUpload)
-	mux.HandleFunc("GET /api/boards", s.handleAPIBoards)
-	return mux
-}
-`
-
 // TestDeriveCLI_RealMain pins the CLI verb derivation against the repo's
 // live main.go: the registry must see every run() switch command (22 since
 // hook joined install/umbrella) and none besides, help excluded because

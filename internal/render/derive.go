@@ -198,17 +198,7 @@ type ReportPayload struct {
 	UploadNotice string `json:"upload_notice,omitempty"`
 }
 
-// fixtureRows / taskRows split the deduped task set.
-func fixtureRows(d *boardData) []*taskRec {
-	var out []*taskRec
-	for _, t := range d.tasks {
-		if t.fixture {
-			out = append(out, t)
-		}
-	}
-	return out
-}
-
+// nonFixtureRows splits the deduped task set: the rows that render.
 func nonFixtureRows(d *boardData) []*taskRec {
 	var out []*taskRec
 	for _, t := range d.tasks {
@@ -751,8 +741,8 @@ func tickHealth(events []*eventRec) TickHealth {
 				}
 			}
 		}
-		switch {
-		case et == "task_completed":
+		switch et {
+		case "task_completed":
 			c.c++
 		}
 		if failed {

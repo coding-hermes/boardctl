@@ -91,7 +91,7 @@ func runCLI(t *testing.T, dir string, extra ...string) (code int, stdout string)
 	os.Stdout = w
 	code = run(args)
 	os.Stdout = oldOut
-	w.Close()
+	_ = w.Close()
 	buf := make([]byte, 0, 4096)
 	tmp := make([]byte, 1024)
 	for {
@@ -260,7 +260,7 @@ func TestCLI_HelpDocumentsFreshIDRule(t *testing.T) {
 	os.Stderr = w
 	code := run([]string{"-h"})
 	os.Stderr = oldErr
-	w.Close()
+	_ = w.Close()
 	buf := make([]byte, 0, 8192)
 	tmp := make([]byte, 1024)
 	for {
@@ -341,13 +341,12 @@ func TestCLI_JSONRequiresByID(t *testing.T) {
 	os.Stderr = w
 	code := run(args)
 	os.Stderr = oldErr
-	w.Close()
-	buf := make([]byte, 0, 4096)
+	_ = w.Close()
+	// Drain the pipe so the child's stderr writes cannot block; the bytes
+	// themselves are not asserted (exit code is the contract).
 	tmp := make([]byte, 1024)
 	for {
-		n, err := r.Read(tmp)
-		buf = append(buf, tmp[:n]...)
-		if err != nil {
+		if _, err := r.Read(tmp); err != nil {
 			break
 		}
 	}
@@ -393,7 +392,7 @@ func TestCLI_ByIDRefusesUnknownStatus(t *testing.T) {
 	os.Stderr = w
 	code := run([]string{"--board-dir", dir, "--by-id", "--apply"})
 	os.Stderr = oldErr
-	w.Close()
+	_ = w.Close()
 	buf := make([]byte, 0, 4096)
 	tmp := make([]byte, 1024)
 	for {

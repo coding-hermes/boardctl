@@ -15,15 +15,6 @@ import (
 
 // ---- stress harness ---------------------------------------------------------
 
-// stressWriter is one concurrent writer's script: N creates of fresh ids,
-// an update of the SHARED row every other step (read-modify-write contention
-// on one line), and an audit event per step (MAX(id)+1 derivation race).
-type stressWriter struct {
-	creates int
-	updates int
-	events  int
-}
-
 // runBoardStress runs G goroutines against ONE board dir; every goroutine
 // resolves its OWN *Board value (the guard's re-entrancy bookkeeping is
 // per-value, single-goroutine by design — cross-goroutine serialization must
@@ -208,8 +199,8 @@ func TestParallelCreateSameIDExactlyOneWinner(t *testing.T) {
 		wg.Wait()
 		winners, dupErrs := 0, 0
 		for _, err := range errs {
-			switch {
-			case err == nil:
+			switch err {
+			case nil:
 				winners++
 			default:
 				var dup *ErrDuplicateTaskID
@@ -784,12 +775,12 @@ func TestLockReleasesWhenHolderDiesWithoutCleanup(t *testing.T) {
 	}
 	if lk, ok, _ := tryAcquireFileLock(lockPath); ok {
 		lk.release()
-		crashed.f.Close() // crash-path teardown: fd closed, no unlock syscall
+		_ = crashed.f.Close() // crash-path teardown: fd closed, no unlock syscall (unlock never happened by design)
 		t.Fatal("lock survived while the holder fd was open — unexpected")
 	}
 	// The crash: close the fd WITHOUT release(). flock semantics hand the
 	// lock to the next acquirer.
-	crashed.f.Close()
+	_ = crashed.f.Close() // crash-path teardown: fd closed, no unlock syscall
 
 	lk, ok, err := tryAcquireFileLock(lockPath)
 	if err != nil {

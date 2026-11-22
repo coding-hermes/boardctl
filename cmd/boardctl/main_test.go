@@ -44,7 +44,7 @@ func captureStdout(fn func()) (string, error) {
 	}()
 
 	fn()
-	w.Close()
+	_ = w.Close() // best-effort: pipe write-end close after fn() (double-close is the only failure mode)
 	return <-done, nil
 }
 

@@ -7,6 +7,33 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    name: Lint (golangci-lint, whole tree)
+    runs-on: ubuntu-latest
+    env:
+      # The repo vendors dependencies (go.mod + vendor/), so the lint build
+      # must run in vendor mode exactly like every other Go step here.
+      GOFLAGS: -mod=vendor
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go from go.mod
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # QA-BOARDCTL-005: lint the WHOLE tree on every push/PR — unlike the
+      # pre-commit guard, which is diff-scoped (--new-from-rev) and therefore
+      # never gates pre-existing findings. Version pinned to match the
+      # committed .golangci.yml (v2 config schema) and the toolchain the
+      # debt burn-down was verified with; the action caches the analysis
+      # between runs. vendor/ is excluded by the committed config (BT-087).
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.15.0
+
   build:
     name: Build & Test
     runs-on: ubuntu-latest

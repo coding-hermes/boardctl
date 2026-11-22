@@ -125,7 +125,7 @@ func fleetInstall(req fleetInstallRequest, out, errOut io.Writer) error {
 	}
 	binUsable := fleetBinUsable(req.binPath)
 	if !binUsable {
-		fmt.Fprintln(errOut, "boardctl install: this boardctl binary is unreachable the way a hook reaches it (recorded path missing or non-executable, no boardctl on PATH); every repo will report skipped-no-binary")
+		_, _ = fmt.Fprintln(errOut, "boardctl install: this boardctl binary is unreachable the way a hook reaches it (recorded path missing or non-executable, no boardctl on PATH); every repo will report skipped-no-binary") // best-effort: warning banner
 	}
 	summary := map[string]int{}
 	failed := 0
@@ -142,13 +142,13 @@ func fleetInstall(req fleetInstallRequest, out, errOut io.Writer) error {
 		if req.dryRun {
 			line += " (dry-run)"
 		}
-		fmt.Fprintln(out, line)
+		_, _ = fmt.Fprintln(out, line) // best-effort: rollout progress line
 	}
 	var parts []string
 	for _, class := range fleetClasses {
 		parts = append(parts, fmt.Sprintf("%d %s", summary[class], class))
 	}
-	fmt.Fprintf(out, "fleet rollout: %d repos — %s\n", len(selected), strings.Join(parts, ", "))
+	_, _ = fmt.Fprintf(out, "fleet rollout: %d repos — %s\n", len(selected), strings.Join(parts, ", ")) // best-effort: rollout summary
 	if failed > 0 {
 		return fmt.Errorf("fleet rollout: %d repo(s) FAILED (see the FAILED lines above)", failed)
 	}
@@ -195,7 +195,7 @@ func fleetRepos(root string, errOut io.Writer) ([]string, error) {
 				return fmt.Errorf("boardctl install: cannot read --fleet-root %s: %w", dir, err)
 			}
 			if errOut != nil {
-				fmt.Fprintf(errOut, "boardctl install: cannot read directory %s: %v\n", dir, err)
+				_, _ = fmt.Fprintf(errOut, "boardctl install: cannot read directory %s: %v\n", dir, err) // best-effort: walk diagnostic
 			}
 			return nil
 		}
@@ -327,9 +327,9 @@ func fleetInstallOne(repo string, binUsable bool, req fleetInstallRequest) (stri
 	}
 	tmpName := tmp.Name()
 	// No-op once the rename below succeeded; cleans up on every failure path.
-	defer os.Remove(tmpName)
+	defer func() { _ = os.Remove(tmpName) }() // best-effort: the rename makes this a non-issue
 	if _, err := tmp.Write([]byte(content)); err != nil {
-		tmp.Close()
+		_ = tmp.Close() // best-effort: the write already failed
 		return fleetOutcomeFailed, fmt.Sprintf("cannot write temp hook file: %v", err)
 	}
 	if err := tmp.Close(); err != nil {

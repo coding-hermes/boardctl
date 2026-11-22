@@ -74,7 +74,7 @@ func cmdServe(dir string, args []string) error {
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "boardctl serve [-C dir] [--addr 127.0.0.1:8787]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl serve [-C dir] [--addr 127.0.0.1:8787]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -101,7 +101,7 @@ func cmdServe(dir string, args []string) error {
 	var cBoards []*board.Board
 	if b, err := board.Resolve(dir); err == nil {
 		cBoards = append(cBoards, b)
-		fmt.Fprintf(os.Stdout, "including -C board: %s (%s)\n", b.Dir, b.Topology)
+		_, _ = fmt.Fprintf(os.Stdout, "including -C board: %s (%s)\n", b.Dir, b.Topology)
 	}
 
 	srv := newServeServer(cBoards)
@@ -121,8 +121,8 @@ func cmdServe(dir string, args []string) error {
 	// Prove the bound address is the requested one (the kernel answer,
 	// not just our intent) before advertising it.
 	bound := ln.Addr().String()
-	fmt.Fprintf(os.Stdout, "boardctl serve listening on http://%s (loopback only)\n", bound)
-	fmt.Fprintf(os.Stdout, "open the uploader in a browser; POST a board folder or .zip to render\n")
+	_, _ = fmt.Fprintf(os.Stdout, "boardctl serve listening on http://%s (loopback only)\n", bound)
+	_, _ = fmt.Fprintf(os.Stdout, "open the uploader in a browser; POST a board folder or .zip to render\n")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -138,16 +138,16 @@ func cmdServe(dir string, args []string) error {
 		}
 	case <-ctx.Done():
 		// Clean shutdown on SIGINT/SIGTERM exits 0 (BT-021 requirement 6).
-		fmt.Fprintln(os.Stdout, "\nshutting down (signal received)")
+		_, _ = fmt.Fprintln(os.Stdout, "\nshutting down (signal received)")
 	}
 	stop()
 	shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := httpSrv.Shutdown(shutCtx); err != nil {
-		fmt.Fprintf(os.Stdout, "shutdown: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stdout, "shutdown: %v\n", err)
 	}
 	srv.removeAllTemps()
-	fmt.Fprintln(os.Stdout, "serve stopped cleanly; upload temp dirs removed")
+	_, _ = fmt.Fprintln(os.Stdout, "serve stopped cleanly; upload temp dirs removed")
 	return nil
 }
 
@@ -376,7 +376,7 @@ func (s *serveServer) registerSession(sess *uploadSession) {
 		old.boards = live
 		old.identities = liveIDs
 		if len(live) == 0 {
-			os.RemoveAll(old.root)
+			_ = os.RemoveAll(old.root) // best-effort: dropping a superseded session's temp tree
 			continue
 		}
 		kept = append(kept, old)
@@ -407,7 +407,7 @@ func (s *serveServer) removeAllTemps() {
 	s.lock()
 	defer s.unlock()
 	for _, sess := range s.sessions {
-		os.RemoveAll(sess.root)
+		_ = os.RemoveAll(sess.root) // best-effort: shutdown temp cleanup
 	}
 	s.sessions = nil
 }
@@ -422,7 +422,9 @@ func (s *serveServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, uploaderPage)
+	// Best-effort body write: the status is already committed, and a client
+	// aborting mid-response needs no handling on the server side.
+	_, _ = io.WriteString(w, uploaderPage)
 }
 
 const uploaderPage = `<!DOCTYPE html>
@@ -505,7 +507,9 @@ func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad multipart form: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer r.MultipartForm.RemoveAll()
+	// Best-effort temp cleanup: ParseMultipartForm owns the os.TempDir
+	// scratch files; a failed unlink leaks nothing this server reads.
+	defer func() { _ = r.MultipartForm.RemoveAll() }()
 
 	root, err := os.MkdirTemp("", "boardctl-serve-")
 	if err != nil {
@@ -516,7 +520,7 @@ func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if sess.boards == nil {
 			// Nothing worth keeping (failed upload): drop the temp tree now.
-			os.RemoveAll(root)
+			_ = os.RemoveAll(root) // best-effort: the upload already failed
 		}
 	}()
 
@@ -528,7 +532,7 @@ func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "open zip part: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		if err := importZip(f, zparts[0].Size, root, sess); err != nil {
 			http.Error(w, err.msg, err.status)
 			return
@@ -601,7 +605,9 @@ func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, html)
+	// Best-effort body write: the status is already committed; see
+	// handleIndex for the reasoning.
+	_, _ = io.WriteString(w, html)
 }
 
 // uploadError is an HTTP-mapped failure.
@@ -656,13 +662,17 @@ func writeZipEntry(zf *zip.File, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer rc.Close()
+	// Read side: after a full copy a close failure carries no information.
+	defer func() { _ = rc.Close() }()
 	out, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 	_, err = io.Copy(out, rc)
+	// Write side: the Close flushes any residual buffering — surface it.
+	if cerr := out.Close(); err == nil {
+		err = cerr
+	}
 	return err
 }
 
@@ -716,12 +726,15 @@ func extractFolder(files []*multipart.FileHeader, root string, sess *uploadSessi
 		}
 		dst, err := os.Create(clean)
 		if err != nil {
-			src.Close()
+			_ = src.Close() // best-effort: the destination already failed
 			return &uploadError{http.StatusBadRequest, "write part " + name + ": " + err.Error()}
 		}
 		_, cpErr := io.Copy(dst, src)
-		src.Close()
-		dst.Close()
+		_ = src.Close() // read side: nothing buffered to flush
+		// Write side: the Close flushes — surface it when the copy succeeded.
+		if cerr := dst.Close(); cpErr == nil {
+			cpErr = cerr
+		}
 		if cpErr != nil {
 			return &uploadError{http.StatusBadRequest, "copy part " + name + ": " + cpErr.Error()}
 		}
@@ -734,7 +747,7 @@ func extractFolder(files []*multipart.FileHeader, root string, sess *uploadSessi
 // 3). Boards are ordered by path for deterministic payload order.
 func resolveBoards(root string, sess *uploadSession) []*board.Board {
 	var dirs []string
-	filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+	if err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
 		if err != nil || !d.IsDir() {
 			return nil
 		}
@@ -743,7 +756,12 @@ func resolveBoards(root string, sess *uploadSession) []*board.Board {
 			return filepath.SkipDir // nested board-in-board is one board
 		}
 		return nil
-	})
+	}); err != nil {
+		// WalkDir only fails when root itself is unreadable (per-entry
+		// errors are swallowed above); say so instead of silently
+		// registering zero boards.
+		_, _ = fmt.Fprintf(os.Stderr, "boardctl serve: walk %s: %v\n", root, err)
+	}
 	sort.Strings(dirs)
 	var boards []*board.Board
 	for _, d := range dirs {
@@ -830,5 +848,7 @@ func jsonWrite(w http.ResponseWriter, v any) {
 		http.Error(w, "encode json: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Write(buf.Bytes())
+	// Best-effort body write: headers are already set and a client abort
+	// mid-response needs no handling on the server side.
+	_, _ = w.Write(buf.Bytes())
 }

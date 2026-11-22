@@ -234,7 +234,7 @@ func firstNonBlankLine(path string) ([]byte, bool) {
 	if err != nil {
 		return nil, false
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	r := bufio.NewReader(f)
 	for {
 		line, err := r.ReadBytes('\n')

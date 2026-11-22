@@ -510,16 +510,16 @@ func SortedKeys[V any](m map[string]V) []string {
 // RenderText renders the stats for humans.
 func (s *Stats) RenderText() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("total tasks: %d\n", s.Total))
+	_, _ = fmt.Fprintf(&sb, "total tasks: %d\n", s.Total)
 	_, _ = fmt.Fprintf(&sb, "actionable: %d\n", s.Actionable)
 	_, _ = fmt.Fprintf(&sb, "deferred: %d\n", s.Deferred)
 	sb.WriteString("by status:\n")
 	for _, k := range SortedKeys(s.Status) {
-		sb.WriteString(fmt.Sprintf("  %-12s %d\n", k, s.Status[k]))
+		_, _ = fmt.Fprintf(&sb, "  %-12s %d\n", k, s.Status[k])
 	}
 	sb.WriteString("by priority:\n")
 	for _, k := range SortedKeys(s.Priority) {
-		sb.WriteString(fmt.Sprintf("  %-4s %d\n", k, s.Priority[k]))
+		_, _ = fmt.Fprintf(&sb, "  %-4s %d\n", k, s.Priority[k])
 	}
 	return sb.String()
 }

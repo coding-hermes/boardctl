@@ -111,7 +111,7 @@ func ensureTrailingNewline(path string) error {
 		}
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	st, err := f.Stat()
 	if err != nil || st.Size() == 0 {
 		return nil
@@ -127,8 +127,11 @@ func ensureTrailingNewline(path string) error {
 	if err != nil {
 		return err
 	}
-	defer af.Close()
+	// Write side: the Close flushes any residual buffering — surface it.
 	_, err = af.Write([]byte("\n"))
+	if cerr := af.Close(); err == nil {
+		err = cerr
+	}
 	return err
 }
 
@@ -151,8 +154,11 @@ func appendBytes(path string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 	_, err = f.Write(data)
+	// Write side: the Close flushes any residual buffering — surface it.
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
 	return err
 }
 
@@ -191,13 +197,13 @@ func atomicRewrite(path string, content []byte) error {
 		return err
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
+	defer func() { _ = os.Remove(tmpName) }()
 	if _, err := tmp.Write(content); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return err
 	}
 	if err := tmp.Chmod(0o644); err != nil {
-		tmp.Close()
+		_ = tmp.Close()
 		return err
 	}
 	if err := tmp.Close(); err != nil {

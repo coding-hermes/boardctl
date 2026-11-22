@@ -332,7 +332,7 @@ func TestBT072LoopbackInherited(t *testing.T) {
 			t.Fatalf("GET %s: %v", p, err)
 		}
 		b, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close() // best-effort: client-side close after ReadAll
 		if resp.StatusCode != 200 {
 			t.Errorf("live GET %s status = %d (body %q)", p, resp.StatusCode, b)
 		}
@@ -554,7 +554,7 @@ func TestBT072SnapshotSemantics(t *testing.T) {
 	if _, err := f.WriteString(`{"id": "SNAP-NEW", "title": "added after load", "status": "pending", "created_at": "2026-09-06 00:00:00", "updated_at": "2026-09-06 00:00:00"}` + "\n"); err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close() // best-effort: os.File writes are unbuffered, nothing left to flush
 
 	after := bt072APIDetail(t, h, "snapboard")
 	if len(after.Tasks) != len(before.Tasks) {
@@ -594,9 +594,13 @@ func TestBT072IdentityDedupePostFix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.WriteString(`{"id": "Z-4", "title": "fourth", "status": "pending", "priority": "P3", "created_at": "2026-09-06 00:00:00", "updated_at": "2026-09-06 00:00:00"}` + "\n")
-	f.WriteString(`{"id": "Z-5", "title": "fifth", "status": "review", "priority": "P3", "created_at": "2026-09-06 00:00:00", "updated_at": "2026-09-06 00:00:00"}` + "\n")
-	f.Close()
+	if _, err := f.WriteString(`{"id": "Z-4", "title": "fourth", "status": "pending", "priority": "P3", "created_at": "2026-09-06 00:00:00", "updated_at": "2026-09-06 00:00:00"}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(`{"id": "Z-5", "title": "fifth", "status": "review", "priority": "P3", "created_at": "2026-09-06 00:00:00", "updated_at": "2026-09-06 00:00:00"}` + "\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close() // best-effort: os.File writes are unbuffered, nothing left to flush
 	zipA5 := zipFromPaths(t, root2, filepath.Join(dirA5, "board.jsonl"), filepath.Join(dirA5, "tasks.jsonl"), filepath.Join(dirA5, "events.jsonl"))
 	if rec := postUpload(h, map[string][]byte{"zip": zipA5}); rec.Code != 200 {
 		t.Fatalf("re-upload A' status = %d", rec.Code)
