@@ -778,3 +778,4 @@
 {"id":774,"timestamp":"2026-11-22 12:19:14","event_type":"task_completed","task_id":"RELEASE-2026-11-09-02","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":775,"timestamp":"2026-11-22 12:19:14","event_type":"task_completed","task_id":"BT-89","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":776,"timestamp":"2026-11-22 13:09:24","event_type":"task_completed","task_id":"BT-093","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":777,"timestamp":"2026-11-22 13:30:16","event_type":"task_updated","task_id":"README-016","actor":"foreman","detail":"{\"title\":\"P4 — README promises 'make install' never builds from the checkout and fails loudly on a missing dist/ (README.md:43-48, README.md:1988-1991); Makefile install target builds from source and installs a 'dev' binary (rc=0) when dist/ is absent\"}","tick_number":null}
