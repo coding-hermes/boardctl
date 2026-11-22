@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,8 +29,39 @@ func TestREADMEAcceptanceCriteriaPublishedReleaseContract(t *testing.T) {
 	}
 	doc := string(data)
 
-	if !strings.Contains(doc, "Current release: **v0.5.0**") {
-		t.Fatal("README release pin changed: expected current release v0.5.0")
+	// The expected release tag is DERIVED from internal/versioncheck's own
+	// surfaces, never hard-coded: internal/versioncheck already gates the
+	// README pin line and download URLs (make version-check / CI / plain
+	// go test), so this assertion must not duplicate a vX.Y.Z literal that
+	// no documented release-cut step updates. A release-prep commit bumps
+	// README only; this test keeps following it.
+	readmePath := filepath.Join(root, versioncheck.READMEName)
+	surfaces, err := versioncheck.ReadSurfaces(readmePath)
+	if err != nil {
+		t.Fatalf("read README release surfaces: %v", err)
+	}
+	if len(surfaces.PinTags) == 0 {
+		t.Fatalf("README has no \"Current release: **vX.Y.Z**\" pin line (read via %s)", readmePath)
+	}
+	expectedTag := surfaces.PinTags[0]
+
+	// Cross-surface consistency (RELEASE-2026-11-09-02): every pin line and
+	// every download-URL tag in README must name the same tag as the first
+	// pin line. This is what catches a partially-updated release-prep
+	// commit that bumped one surface but not the others.
+	var problems []string
+	for i, tag := range surfaces.PinTags[1:] {
+		if tag != expectedTag {
+			problems = append(problems, fmt.Sprintf("pin line #%d says %q but pin line #1 says %q", i+2, tag, expectedTag))
+		}
+	}
+	for i, tag := range surfaces.URLTags {
+		if tag != expectedTag {
+			problems = append(problems, fmt.Sprintf("download URL #%d pins %q but the release pin line says %q", i+1, tag, expectedTag))
+		}
+	}
+	if len(problems) > 0 {
+		t.Fatalf("README release surfaces disagree on the release tag:\n  %s", strings.Join(problems, "\n  "))
 	}
 
 	sectionStart := strings.Index(doc, "## Acceptance criteria (DF-BOARDCTL-50)")
