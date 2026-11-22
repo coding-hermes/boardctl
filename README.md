@@ -1824,7 +1824,7 @@ outside any checkout, a commit rebased away, or a missing git binary all mean
 silent skip. Set `BOARDCTL_SKIP_FRESHNESS=1` to suppress the warning (the
 warning line itself names this switch).
 
-### Go toolchain policy {#go-toolchain-policy}
+### Go toolchain policy
 
 The toolchain requirement is authoritative in `go.mod`: `go.mod` declares `go 1.26.10`,
 which is the patch floor for local builds and CI. GitHub Actions uses
