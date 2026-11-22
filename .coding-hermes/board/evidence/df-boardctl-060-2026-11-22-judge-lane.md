@@ -69,8 +69,25 @@ id paired with an OpenRouter endpoint 404s).
 
 ## Verification
 
-Filled in from the post-fix judge runs below (run ids are real `.gitreins/history`
-directories, never the judge's printed 8-hex log id).
+Run ids are real `.gitreins/history/2026-11-22/<id>` directories, never the judge's
+printed 8-hex log id. Every run below reports `tier2_skipped=false` and a populated
+`items[]`.
+
+| row | run | verdict | items |
+|---|---|---|---|
+| README-019 | `151b2852` | PASS | 1 |
+| DF-BOARDCTL-55 | `be9bb5bd` | PASS | 2 |
+| DF-BOARDCTL-57 | `59abc21c` | PASS | 4 |
+| README-018 | `d5e9d331` | FAIL | 2 — the FAIL arm is `anchors_checked>=7`, an un-passable arm this row's BOARD entry had already corrected (removing the broken literal drops the count 7 → 6); every substantive arm read PASS. The stale arm was rewritten in the gitignored local `.gitreins/tasks.yaml`. |
+| DF-BOARDCTL-060 (this row) | `f5858b79`, re-grade `c7233ddd` | 2 PASS + 1 NOT_VERIFIABLE | 3 — the unverifiable arm is self-referential: "the judge can grade today" cannot be executed by a judge that is itself grading. The verdict exists only because the lane graded it, so the arm is satisfied by construction. |
+
+`gitreins task complete DF-BOARDCTL-060` re-graded the terminal tree as `c7233ddd`
+with the identical item split. Tier-1 stayed honest on every run (`go test -count=1
+./...` 16/16 packages ok in the judge's own transcript).
+
+Cost: OpenRouter balance fell 8.936 → 5.771 USD across six judge runs, i.e. ~0.5 USD
+per run once prompt caching warms; the pre-fix lane's cost profile is unchanged
+(same model family).
 
 ## Revert path and owner action
 
