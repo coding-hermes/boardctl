@@ -81,9 +81,13 @@ type df12Quickstart struct {
 
 // df12QuickstartBlock extracts the FIRST bash code block of README.md's
 // install section. The anchor is the `Current release:` pin line (the same
-// anchor internal/versioncheck gates on); the `[releases](../../releases)`
-// link must appear before it, proving the pin sits in the Install section and
-// not in some other prose block a future edit may add.
+// anchor internal/versioncheck gates on); a releases link must appear before
+// it, proving the pin sits in the Install section and not in some other prose
+// block a future edit may add. The link TARGET is deliberately not pinned: the
+// target is whatever resolvable URL the README ships (README-019 moved it from
+// the broken relative `../../releases` to the absolute boardctl release page),
+// and pinning the literal here would re-break the test every time the link is
+// repaired.
 func df12QuickstartBlock(t *testing.T, root string) []string {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root, versioncheck.READMEName))
@@ -104,12 +108,12 @@ func df12QuickstartBlock(t *testing.T, root string) []string {
 	}
 	install := false
 	for _, l := range lines[:pin] {
-		if strings.Contains(l, "[releases](../../releases)") {
+		if strings.Contains(l, "[releases](") {
 			install = true
 		}
 	}
 	if !install {
-		t.Fatalf("the `Current release:` pin line (line %d) has no [releases](../../releases) link above it — it is not in the Install section", pin+1)
+		t.Fatalf("the `Current release:` pin line (line %d) has no [releases](...) link above it — it is not in the Install section", pin+1)
 	}
 
 	// The first fence after the pin must be the bash quickstart block.
