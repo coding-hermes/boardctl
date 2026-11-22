@@ -290,6 +290,11 @@ func (b *Board) validateTasks(rep *Report) {
 					idx+1, id)
 			}
 		}
+		// DEFER-EVIDENCE: legacy audit fields on an actionable row are
+		// misleading; warn without making old boards fail validation.
+		if !RowIsDeferred(row) && (row.Has("defer_reason") || row.Has("defer_review_by")) {
+			rep.Add("warn", "tasks.jsonl line %d (task %s): non-deferred row carries defer_reason or defer_review_by — defer the row or remove the stale fields", idx+1, id)
+		}
 		// BT-077: the plural association dimensions. The write paths
 		// (create/update) validate every element before anything lands,
 		// so a malformed element on a row is hand-edited or legacy drift
