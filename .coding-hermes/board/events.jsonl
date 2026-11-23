@@ -793,3 +793,5 @@
 {"id":789,"timestamp":"2026-11-23 03:51:47","event_type":"task_completed","task_id":"QA-BOARDCTL-017","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":790,"timestamp":"2026-11-23 15:05:29","event_type":"task_created","task_id":"DF-BOARDCTL-061","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-061\",\"status\":\"pending\"}","tick_number":null}
 {"id":791,"timestamp":"2026-11-23 15:05:41","event_type":"task_created","task_id":"DF-BOARDCTL-062","actor":"foreman","detail":"{\"id\":\"DF-BOARDCTL-062\",\"status\":\"pending\"}","tick_number":null}
+{"id":792,"timestamp":"2026-11-23 16:40:43","event_type":"task_updated","task_id":"QA-BOARDCTL-015","actor":"foreman","detail":"{\"status\":\"in_progress\"}","tick_number":null}
+{"id":793,"timestamp":"2026-11-23 17:02:47","event_type":"task_completed","task_id":"QA-BOARDCTL-015","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
