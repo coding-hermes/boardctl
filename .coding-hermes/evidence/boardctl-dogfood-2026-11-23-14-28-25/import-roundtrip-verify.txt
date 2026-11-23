@@ -1,0 +1,16 @@
+# DF-BOARDCTL-062 evidence — run 31, 2026-11-23T15:06:15Z
+
+== render --json from demo (same board round-trip = sanctioned)
+wrote /tmp/df-run31/demo-export2.json (board-report/v1 payload)
+wrote board-report.html (70093 bytes, 1 board(s))
+render rc=0
+planned diff: no file changes (no-op import)
+plan: 0 new tasks, 0 updates, 0 events
+dry-run: nothing written
+
+== import into a DIFFERENT project's board (the README:570 claim)
+boardctl: board mismatch: export is for board "demo"; target board is "demo2" (-C /tmp/df-run31/demo2/.coding-hermes/board)
+cross-board import rc=1
+
+== import flag surface (no override flag exists)
+  import  <export.json> [--dry-run] [--renumber]

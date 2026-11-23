@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.26.0
-date: 2026-11-09
+version: 1.27.0
+date: 2026-11-23
 category: software-development
 ---
 
@@ -1078,3 +1078,41 @@ builtin type (`bug`, `task`) the same write is silent and `validate` reports
   executes each `boardctl` command against a throwaway git+board environment, and FAILS on any
   non-zero exit that is not an explicitly allowlisted, commented refusal — so README recipe drift
   now breaks `go test ./...` instead of waiting for the next dogfood run.
+
+## Run-31 dogfood (2026-11-23; tick boardctl-dogfood-2026-11-23-14-28-25) — v0.6.0 first-touch
+
+Numbering note: the section above ("Run-31", 2026-11-22, DF-BOARDCTL-54) borrowed the next
+label without a dogfood-log entry; this lane's actual run 31 is THIS section (the log's last
+numbered run was 30d).
+
+- **`--initiative` program scoping works, but its key is outside the canon (DF-BOARDCTL-061, P2).**
+  `create/update --initiative SLUG` writes a singular `initiative` key that
+  `internal/board/keys.go` does not sanction (only `initiative_refs`, BT-092). Result: `validate`
+  permanently warns `{initiative} outside the declared canon` with `0 fixable`, and
+  `update --normalize` answers "already canonical — nothing to rewrite". The product's own board
+  warns on BT-091..095 — the rows that implemented the feature. Until fixed: ignore those warnings
+  (do NOT hand-rename the key; every reader resolves this spelling) or add `initiative` to
+  `sanctionedExtras`.
+- **`--repoint-commit` (DF-DIGEST-068) is exactly as advertised.** Refused on a non-complete row
+  (rc=1, "nothing written"); on a complete row it rewrites `commit_hash`, appends a disclosure
+  note to `foreman_note`, and emits NO event — so a row closeout that leans on events will not
+  show a repoint; read the row's note tail instead.
+- **Import round-trip is same-board only (DF-BOARDCTL-062, P3).** The README's "round-trips a
+  report into another board" sentence contradicts the README-026 mismatch gate: importing an
+  export into a board whose identity differs is REFUSED (rc=1, no override flag). The supported
+  round-trip is back into the same board (or another copy of the same board), plan-first,
+  idempotent (identical rows → 0 written).
+- **`make dep-check` is the dependency-currency surface (BT-89).** Report arm rc=0, build-set
+  only ("1 of 2 build-set module(s) behind" names the module); `DEP_STRICT=1` exits non-zero.
+  Never read graph-wide `go list -m -u all` residue as this repo's debt.
+- **Evidence-gate carve-out.** On a /tmp (test-env) board, `--status complete --evidence-run-id
+  <fake>` is accepted with only a WARN — documented behavior, not a hole
+  (`evidence_gate.go:281-296`); on a real git+gitreins board the same write is refused, and an
+  EXISTING run must carry a verdict grading this task and commit (INFRA-LORE-045).
+- **Install path (v0.6.0).** `make install` without staged `dist/` assets refuses loudly and
+  prints the staging commands (RELEASE-2026-11-16-02) — it never builds from the checkout. With
+  assets it sha256-verifies then installs; `make install-check` proves the deployed identity.
+- **Perf envelope 2026-11-23 (295-row board, load 12.7/16):** warm 23–44 ms (stats 26.3, list
+  28.5, validate 43.6, initiatives 23.1, ready 24.9), cold first-run 0.02–0.03 s. Sub-noticeable;
+  no profile. Gzip serve verified on all three routes with `Vary: Accept-Encoding`
+  (69.4 KB → 18.8 KB on /ui).

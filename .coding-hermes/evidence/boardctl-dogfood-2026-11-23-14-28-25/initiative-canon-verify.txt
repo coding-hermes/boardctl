@@ -1,0 +1,21 @@
+# DF-BOARDCTL-061 evidence — run 31, 2026-11-23T15:06:07Z, HEAD 4ab8463, boardctl boardctl version v0.6.0
+
+== scratch init board, create --initiative (rc=0 line below)
+created task CANON-1 (appended to /tmp/df-run31/demo2/.coding-hermes/board/tasks.jsonl)
+create rc=0
+board: /tmp/df-run31/demo2/.coding-hermes/board (topology A)
+rows: 2 tasks, 1 events, 1 fixtures, header parsed
+key uniformity: 1/2 rows carry only canon keys; drift 1 row(s): initiative(1) — 0 fixable by 'boardctl update <id> --normalize'
+[warn] tasks.jsonl line 2 (task CANON-1): key(s) {initiative} outside the declared canon
+RESULT: OK (1 warning(s))
+validate rc=0
+task CANON-1 already canonical — nothing to rewrite (file untouched)
+normalize rc=0
+
+== real board census (validate, initiative warnings)
+key uniformity: 276/295 rows carry only canon keys; drift 19 row(s): acceptance(10), created(1), initiative(5), previous_blocked_reason(3), previous_status(3), updated(1) — 7 fixable by 'boardctl update <id> --normalize'
+[warn] tasks.jsonl line 223 (task BT-091): key(s) {initiative} outside the declared canon
+[warn] tasks.jsonl line 224 (task BT-092): key(s) {initiative} outside the declared canon
+[warn] tasks.jsonl line 225 (task BT-093): key(s) {initiative} outside the declared canon
+[warn] tasks.jsonl line 226 (task BT-094): key(s) {initiative} outside the declared canon
+[warn] tasks.jsonl line 227 (task BT-095): key(s) {initiative} outside the declared canon

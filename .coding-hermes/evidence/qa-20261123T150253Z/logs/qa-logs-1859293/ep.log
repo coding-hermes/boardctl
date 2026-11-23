@@ -1,0 +1,163 @@
+boardctl — manage coding-hermes JSONL foreman boards
+
+usage:
+  boardctl [-C <repo-or-board-dir>] <command> [flags]
+
+commands:
+  init    [-C dir] [--project P] [--namespace NS]   bootstrap a fresh board
+  types   [-C dir] [--json] [--doctor]   show declared ticket types, templates and metadata schema
+  list    [--status S] [--priority P] [--initiative SLUG] [--initiative-ref-repo REPO] [--actionable] [--json] [--all] [--skip-bad-lines]
+  show    <id> [--events]
+  next-id --family CF [--width N] [--json]   (prints the next free id; read-only)
+  next    [-C dir]   (prints the highest-priority dispatchable row; read-only)
+  ready   [-C dir] [--initiative SLUG] [--json] [--blocked] [--skip-bad-lines]
+  direction [-C dir] [--json] [--skip-bad-lines]
+  create  --id ID --title T [--type SLUG] [--meta k=v]... [--priority P] [--complexity N] [--depends-on a,b]
+          [--reasoning R] [--capability-tags a,b] [--initiative-ref REPO:PATH#ANCHOR]... [--status pending] [--force]
+          [--acceptance-criteria TEXT] [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--worktree PATH] [--branch NAME]
+          [--session ID]... [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]... [--deferred] [--defer-reason R] [--defer-review-by DATE]   (a re-detected finding is REFUSED with exit 2)
+  update  <id> --status complete [--title T] [--priority P1] [--worker-status S]
+          [--commit-hash SHA] [--record-debt] [--guard PASS|FAIL|SKIP] [--ci GREEN|RED|SKIP]
+          [--repoint-commit SHA]  (re-judge re-point: replace a COMPLETED row's commit_hash;
+          refused on non-complete rows; appends a disclosure note; emits no event)
+          [--summary S] [--note S (appends)] [--blocked-reason R] [--completed-at TS]
+          [--replace] [--worktree PATH] [--branch NAME] [--session ID]...
+          [--acceptance-criteria TEXT]
+          [--pull-request PR]... [--assoc-branch B]... [--assoc-worktree PATH]...
+          (repeatable; each merges one element into its pull_requests/
+          branches/worktrees dimension — existing elements, the other
+          dimensions, and the singular worktree/branch fields survive)
+          [--evidence-run-id RUN] [--evidence-fingerprint FP] [--evidence-artifact PATH]... [--deferred true|false] [--defer-reason R] [--defer-review-by DATE] [--normalize] [--force]
+          [--initiative SLUG | --clear-initiative] [--initiative-ref REPO:PATH#ANCHOR]... [--clear-initiative-refs]
+          (--initiative scopes the row into a programme and prints/rolls up under
+          'initiatives'; --clear-initiative REMOVES the key, leaving no empty
+          string to filter on. Together they are a usage error, not a precedence
+          rule. Comparison on read is case-insensitive; writes store lowercase.)
+          (--status complete REQUIRES --evidence-run-id: a completion without a
+          bound run is REFUSED — TR-251; doctor reports the historic debt as
+          verified_complete_share)
+  event   --type task_created|task_dispatched|task_completed|audit|...
+          [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
+          [--tick N] [--no-tick-write]
+  header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [--set-last-tick TIMESTAMP]
+  validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep]
+  sweep-status [--apply] [--decide] [--json] [--skip-bad-lines]
+           report (and with --apply fix) off-vocabulary task statuses on ONE
+           board: known read aliases are normalized to their canonical form;
+           unknown statuses (duplicate, parked, ...) are NEVER guessed — they
+           are reported with the explicit decision needed. --decide adds the
+           machine-checkable decisions: off-vocab guard/ci prose maps by rule
+           (first token PASS|OK->PASS, FAIL|ERROR->FAIL, GREEN->GREEN,
+           RED->RED; standalone SKIP or N/A -> SKIP; standalone SUCCESS ->
+           GREEN on ci / PASS on guard; PENDING, ambiguous PASS+FAIL prose
+           and anything unmatched stays explicit), and a status "duplicate"
+           WITH an earlier same-id twin closes as superseded-by-earliest
+           (--apply only; one audit event quotes the preserved text);
+           a "duplicate" with no earlier twin is refused. --decide alone
+           never writes; only --decide --apply does.
+  normalize-statuses [--apply] [--dry-run] [--json] [-C dir]
+           report status aliases and unknown/missing values on ONE resolved board;
+           dry-run is the default and never writes; --apply atomically canonicalizes
+           known aliases only, while unknown/missing statuses remain refused.
+  normalize-board [--apply] [--repair-events] [--json]
+           report (and with --apply fix) drifted row SHAPES on ONE board —
+           the board-wide twin of 'update --normalize': renames known key
+           aliases to their canonical keys, converts string depends_on
+
+           values to arrays where the conversion is unambiguous ("[]" and
+           "" -> [], a JSON array string -> the array, one bare id ->
+           [id]), and canonicalizes alias statuses (open -> pending). Rows
+           needing a human decision are REFUSED and reported: an alias over
+           a key the row already carries, an unconvertible depends_on shape
+           (number/object/malformed), a status that is absent/null/unknown.
+           Rows without created_at are counted and reported — never
+           fabricated. DRY-RUN by default: stages the would-be bytes at
+           <boarddir>/tasks.normalized.jsonl for review; --apply rewrites
+           tasks.jsonl in ONE guarded atomic pass (all repairs or nothing).
+
+  doctor
+  evidence baseline --record   record completion debt and enable FAIL-on-new-debt
+  version [--json]
+  stats   [--json] [--all] [--skip-bad-lines]
+  initiatives [--json] [--status S] [--skip-bad-lines] [--umbrella] [-C dir]
+          per-initiative rollup: total/actionable/deferred + by-status counts.
+          --umbrella (BT-093) aggregates over the umbrella view instead of one
+          board: the repo's own board plus every child board under
+          .coding-hermes/links/, each bucket carrying the per-repo breakdown
+          (REPOS column / JSON repos[].repo). A child board that fails to
+          read is reported as an ERROR finding and its rows are ABSENT from
+          the totals; the command still exits 1 — degraded totals never read
+          as clean success. --skip-bad-lines arms the tolerant read on every
+          board in the view.
+  render  [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]
+  import  <export.json> [--dry-run] [--renumber]
+  serve   [-C dir] [--addr 127.0.0.1:8787]
+  install [-C repo] [--hook-path P] [--timeout S] [--dry-run]
+          [--fleet PAT] [--fleet-root DIR] [--lint-mode enforce|warn]
+          install the board-lint pre-commit hook; --fleet rolls out the same
+          hook across every git repo under --fleet-root (default ~) matching
+          the comma-separated glob-or-path list PAT, one outcome line per
+          repo (installed / already present / skipped-no-board /
+          skipped-no-binary / skipped / FAILED + why); a worktree checkout
+          (.git is a file) is skipped — its hook lives in the main checkout;
+          --lint-mode sets the reject-arm behavior on a boardctl validate
+          failure: enforce (default) blocks the commit, warn prints the
+          same evidence behind a WARN-ONLY banner and allows it (a
+          re-install flips the mode in place; --fleet carries the mode
+          into every hook it writes)
+  hook    install|uninstall|doctor|dispatch|flush
+          install --hook <post-commit|post-merge> --crier-url URL --secret-file PATH
+          [--source-id ID] [--self BIN] [--hook-path P] [--dry-run];
+          uninstall --hook <post-commit|post-merge> [--hook-path P];
+          doctor [--probe-timeout 2s];
+          dispatch --hook <post-commit|post-merge> [--crier-url URL] [--secret-file PATH]
+          [--source-id ID] [--batch-cap N] [--budget 10s] [--dry-run];
+          flush [--dry-run]
+          git-hook intake for the crier pipeline (BOARDCTL-HOOK-001). install
+          appends a delimited managed block to .git/hooks/<hook> (never
+          replacing a sibling body); uninstall removes ONLY that block and
+          restores the pre-install bytes exactly. dispatch diffs HEAD^..HEAD
+          (post-commit) or ORIG_HEAD..HEAD (post-merge), and POSTs each newly
+          added/seen pending row to <crier-url>/ingress/webhooks/<source-id>
+          signed with X-Crier-Timestamp + sha256=HMAC(secret, timestamp.body)
+          and Idempotency-Key boardctl:<row-id>:<content-hash> (the hash
+          excludes the row id). It NEVER blocks the commit: every failure exits
+          0, undelivered rows spool beside the board and, after 3 attempts,
+          become an operator-visible dead-letter record. doctor names every
+          failing condition (exit 1); flush drains the spool on demand.
+  umbrella [--list|--stats|--validate] [--status s1,s2] [--json] [--strict]
+           [--skip-bad-lines] [-C dir]
+          read-only unified view over this repo and every child board
+          symlinked under .coding-hermes/links/ (one symlink per child
+          repo, named after the repo, aimed at <child>/.coding-hermes).
+          --status filters the --list task table (comma-separated
+          statuses; aliases like done/todo normalize).
+          Tasks keep repo provenance; ids are repo-qualified (<repo>/<id>),
+          colliding ids stay distinct, and cross-board depends_on refs
+          resolve only when unambiguous (AMBIGUOUS is reported, never
+          guessed). Broken/looping/out-of-repo links are findings (exit 1),
+          never followed. NEVER writes — writes stay single-repo via -C.
+          Line-level reads: by default the FIRST unparseable line in any
+          board aborts the whole view (exit 1, no partial output);
+          --skip-bad-lines degrades instead — every parseable row from
+          every healthy board is still counted/listed, each unparseable
+          line is reported on stderr as a SKIPPED-LINES block naming its
+          board and file:line, and the command exits 1
+
+--skip-bad-lines (list/show/stats/validate/render/umbrella): read the board
+tolerantly, keeping every line that parses; unparseable lines are reported on
+stderr as a SKIPPED-LINES evidence block and the command exits 1 even though it
+produced its normal output. Without the flag the first unparseable line aborts.
+For umbrella the block names each skipped line's board + file:line and the
+parseable rows of every healthy child board are still counted/listed.
+validate --repair: salvage every parseable row into <boarddir>/tasks.rewritten.jsonl
+(manual review file — tasks.jsonl is never overwritten).
+validate --strict-keys: treat BT-056 key-uniformity drift as an error (exit 1).
+validate --fail-on dangling-dep: treat a dangling depends_on reference (a
+warning by default) as a failure (exit 1). The pre-commit hook installed by
+'boardctl install' passes this flag; plain validate stays exit 0.
+Every validate run prints the census line "key uniformity: N/M rows carry only
+canon keys" — quote it as evidence of zero drift.
+
+-C resolves the board dir: a repo root (looks for .coding-hermes/board),
+.coding-hermes, or the board dir itself. Defaults to the current directory.

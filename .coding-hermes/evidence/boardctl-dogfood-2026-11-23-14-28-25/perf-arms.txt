@@ -1,0 +1,34 @@
+# run 31 perf arms — 2026-11-23T15:06:29Z, load load average: 9.58, 13.76, 17.42
+board: real boardctl board, 295 rows at measure time; binary = v0.6.0 release at ~/.local/bin/boardctl
+
+== cold (first run after sync)
+cold-stats wall 0.02 s
+cold-validate wall 0.03 s
+
+== warm hyperfine (15 runs each, 3 warmup, -N)
+Benchmark 1: boardctl -C . stats
+  Time (mean ± σ):      22.0 ms ±   1.5 ms    [User: 19.5 ms, System: 8.8 ms]
+Benchmark 2: boardctl -C . list
+  Time (mean ± σ):      21.7 ms ±   0.9 ms    [User: 20.7 ms, System: 7.0 ms]
+Benchmark 3: boardctl -C . list --actionable --json
+  Time (mean ± σ):      21.9 ms ±   0.8 ms    [User: 21.0 ms, System: 7.2 ms]
+Benchmark 4: boardctl -C . validate
+  Time (mean ± σ):      34.9 ms ±   1.9 ms    [User: 33.3 ms, System: 9.6 ms]
+Benchmark 5: boardctl -C . initiatives
+  Time (mean ± σ):      20.5 ms ±   1.4 ms    [User: 18.9 ms, System: 7.4 ms]
+Benchmark 6: boardctl -C . ready
+  Time (mean ± σ):      23.0 ms ±   2.4 ms    [User: 21.2 ms, System: 7.7 ms]
+Summary
+    1.06 ± 0.08 times faster than boardctl -C . list
+    1.07 ± 0.08 times faster than boardctl -C . list --actionable --json
+    1.07 ± 0.10 times faster than boardctl -C . stats
+    1.12 ± 0.14 times faster than boardctl -C . ready
+    1.71 ± 0.15 times faster than boardctl -C . validate
+
+== gzip serve arms (demo scratch board, 69.4 KB ui page)
+GET /ui gzip: 200 18834 bytes
+GET /ui plain: 200 69394 bytes
+GET /api/events/demo gzip: 200 217 bytes
+GET /api/events/demo plain: 200 543 bytes
+
+VERDICT: honest non-finding - every warm arm 23-44 ms, cold 0.02-0.03 s; nothing a user would feel; no profile run by doctrine

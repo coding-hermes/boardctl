@@ -1,0 +1,17 @@
+ok  	github.com/coding-hermes/boardctl/cmd/boardctl	11.275s
+ok  	github.com/coding-hermes/boardctl/cmd/covercheck	0.013s
+ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.040s
+ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.009s
+ok  	github.com/coding-hermes/boardctl/internal/board	6.059s
+ok  	github.com/coding-hermes/boardctl/internal/covercheck	0.020s
+ok  	github.com/coding-hermes/boardctl/internal/depcheck	2.123s
+ok  	github.com/coding-hermes/boardctl/internal/describe	0.008s
+ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.492s
+ok  	github.com/coding-hermes/boardctl/internal/freshness	0.900s
+ok  	github.com/coding-hermes/boardctl/internal/render	0.033s
+ok  	github.com/coding-hermes/boardctl/internal/secretscheck	0.005s
+ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.023s
+ok  	github.com/coding-hermes/boardctl/internal/vendorcheck	0.005s
+ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.011s
+ok  	github.com/coding-hermes/boardctl/internal/vulncheck	0.058s
+ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.013s
