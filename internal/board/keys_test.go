@@ -47,6 +47,20 @@ func TestIsSanctionedTaskKey(t *testing.T) {
 	if IsSanctionedTaskKey("probe_2026_10_31_0144") {
 		t.Error("timestamped probe_<date> keys should stay drift, not widen the canon")
 	}
+	// DF-BOARDCTL-061 (BT-093): the singular `initiative` key is the target
+	// of `create --initiative` / `update --initiative` and the grouping key
+	// behind `ready`/`initiatives`/`direction`. It is canon alongside the
+	// plural-locations twin `initiative_refs` (BT-092) — a distinct concept,
+	// so neither aliases the other — and must not draw the canon warning.
+	for _, k := range []string{"initiative", "initiative_refs"} {
+		if !IsSanctionedTaskKey(k) {
+			t.Errorf("key %q should be sanctioned (BT-092/BT-093 initiative keys)", k)
+		}
+	}
+	// near-miss spellings stay drift: the canon names exactly these two keys.
+	if IsSanctionedTaskKey("initiative_typo") {
+		t.Error("key \"initiative_typo\" should NOT be sanctioned (it is drift, not an initiative canon key)")
+	}
 	// the mutation-detection pair: near-misses that must stay drift, each one
 	// respelling (or pluralising) a sanctioned key rather than naming a concept.
 	nearMisses := []string{"attribute", "evidences", "judgement", "workers", "asignee"}

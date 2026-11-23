@@ -631,6 +631,15 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 			if k == InitiativeRefsKey && (spec.InitiativeRefs == nil || len(*spec.InitiativeRefs) == 0) {
 				continue
 			}
+			// BT-093: the singular `initiative` key follows the same rule — a
+			// neutral-mirrored placeholder would put the key on every create
+			// reusing a scoped board's key order, and initiative:"" is a second,
+			// invisible initiative (the update path's contract: empty means
+			// "unscoped", never "the empty initiative"). The key is appended
+			// only through the user-keys path when the flag was named.
+			if k == "initiative" && spec.Initiative == nil {
+				continue
+			}
 			row.Keys = append(row.Keys, k)
 			row.Vals[k] = neutral(k)
 		}

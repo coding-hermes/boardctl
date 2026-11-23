@@ -162,6 +162,13 @@ var sanctionedExtras = []string{
 	// BT-092: cross-repository initiative locations, stored as ordered
 	// REPO:PATH#ANCHOR strings.
 	"initiative_refs",
+	// BT-093: the singular `initiative` key — the target of the
+	// `create --initiative SLUG` / `update --initiative` flag and the
+	// grouping key behind `ready`/`initiatives`/`direction` (BT-097).
+	// Distinct concept from `initiative_refs` (BT-092): a singular work-
+	// direction slug on the row, not a cross-repo location list. Both
+	// spellings are canon; neither aliases the other.
+	"initiative",
 	// The premise probe (census 2026-11-03: 511 rows across 20 project families,
 	// dominated by code-factory and its work/review boards). A probe is a shell
 	// one-liner that PRINTS evidence for the row's own premise — the thing that
