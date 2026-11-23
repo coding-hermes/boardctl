@@ -21,10 +21,14 @@ PLATFORMS := \
 # main.buildCommit feeds internal/freshness.Check — see README Development.
 BUILD_COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
 
-# BT-042: install surface. `make install` installs the RELEASED asset when
-# dist/ contains the downloaded asset and SHA256SUMS; with no release assets it
-# falls back to a source build for fresh checkouts. `make install-check` is the
-# standing drift probe for the deployed copy.
+# BT-042: install surface. `make install` installs the RELEASED asset — the
+# dist/ asset + SHA256SUMS staged per README "## Install" — and REFUSES loudly
+# when they are not staged. NEVER a from-HEAD build: a checkout build reports
+# `dev` / vcs.modified=true, which is exactly the deployed-binary drift this
+# target exists to prevent (RELEASE-2026-11-16-02; the source-build fallback
+# added for QA-BOARDCTL-FOREMAN-3 is superseded — fresh checkouts install via
+# the release asset or `go install`). `make install-check` is the standing
+# drift probe for the deployed copy.
 # INSTALL_DIR/INSTALL_BIN are overridable for non-default deploy targets.
 INSTALL_DIR ?= $(HOME)/.local/bin
 INSTALL_BIN ?= $(INSTALL_DIR)/$(BINARY)
@@ -275,23 +279,18 @@ release: test
 # checks are ever reordered or the gate is ported elsewhere, both halves must
 # move together — the checksum step alone is not a complete gate.
 install:
-	@if [ ! -f "$(DIST)/SHA256SUMS" ]; then \
-		echo "== install: no release assets found; building from source"; \
-		$(MAKE) build; \
-		mkdir -p "$(INSTALL_DIR)"; \
-		cp "bin/$(BINARY)" "$(INSTALL_BIN)"; \
-		chmod 0755 "$(INSTALL_BIN)"; \
-		echo "install: $(INSTALL_BIN) installed from source; verify the deployed identity with 'make install-check'"; \
-	else \
-		$(MAKE) install-release; \
-	fi
+	@$(MAKE) install-release
 
 # Release-asset path: verify the downloaded platform asset before installing.
-# Keep the explicit missing-assets diagnostic for callers that invoke this
-# release-only path directly; `install` itself falls back to a source build.
+# `install` delegates here, so this guard is also the no-assets refusal: exit
+# non-zero and print the exact staging commands (never a from-HEAD build).
 install-release:
 	@if [ ! -f "$(DIST)/SHA256SUMS" ]; then \
-		echo "install: $(DIST)/SHA256SUMS not found — download the released asset + SHA256SUMS per README '## Install' first" >&2; \
+		echo "install: $(DIST)/SHA256SUMS not found — download the released asset + SHA256SUMS per README '## Install' first:" >&2; \
+		echo "  curl -sSL -o $(DIST)/boardctl_linux_amd64 https://github.com/coding-hermes/boardctl/releases/download/vX.Y.Z/boardctl_linux_amd64" >&2; \
+		echo "  curl -sSL -o $(DIST)/SHA256SUMS https://github.com/coding-hermes/boardctl/releases/download/vX.Y.Z/SHA256SUMS" >&2; \
+		echo "  make install" >&2; \
+		echo "install: refusing — never a from-HEAD build (a checkout build reports dev / vcs.modified=true and fails install-check; BT-042)" >&2; \
 		exit 1; \
 	fi
 	@if [ ! -f "$(DIST)/$(ASSET)" ]; then \

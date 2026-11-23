@@ -47,6 +47,11 @@ it never builds from the checkout (see
 [Development](#deployment-freshness-gate-bt-057) for the probe that keeps the
 installed copy provably on-release).
 
+With no staged assets, `make install` exits non-zero and prints the staging
+commands; it does not build from the checkout. A checkout build reports `dev`
+and fails `make install-check`, so never deploy one — stage the released
+asset first (curl both files into `dist/`, then `make install`).
+
 With a Go toolchain, `go install` works too:
 
 ```bash
