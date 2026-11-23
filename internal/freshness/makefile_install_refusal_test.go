@@ -2,6 +2,7 @@ package freshness
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -67,4 +68,71 @@ func TestMakeInstallRefusesWithoutStagedAssets(t *testing.T) {
 
 	// no-dist: DIST does not exist at all (fresh clone / worktree).
 	assertInstallRefusal(t, repo, filepath.Join(t.TempDir(), "dist"))
+}
+
+// Make-independent guard for the same invariant: on a host without GNU make
+// TestMakeInstallRefusesWithoutStagedAssets skips, so the no-fallback rule is
+// ALSO asserted structurally from the Makefile text (runs everywhere, no
+// toolchain needed). Closes the uncovered failure path gitreins run c659f0e5
+// flagged (skip on make-less hosts leaves the invariant unguarded there).
+func TestMakefileInstallPathHasNoSourceFallback(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), "Makefile"))
+	if err != nil {
+		t.Fatalf("read Makefile: %v", err)
+	}
+	text := string(data)
+
+	install := recipeBlock(t, text, "install")
+	if !strings.Contains(install, "$(MAKE) install-release") {
+		t.Errorf("`install` recipe must delegate to install-release; got:\n%s", install)
+	}
+	if strings.Contains(install, "build") {
+		t.Errorf("`install` recipe must not build from source; got:\n%s", install)
+	}
+
+	guard := recipeBlock(t, text, "install-release")
+	if !strings.Contains(guard, "exit 1") {
+		t.Errorf("install-release must exit non-zero when assets are missing; got:\n%s", guard)
+	}
+	if !strings.Contains(guard, "SHA256SUMS") {
+		t.Errorf("install-release guard must name the staged SHA256SUMS; got:\n%s", guard)
+	}
+}
+
+// recipeBlock returns the recipe lines of one target as trimmed text. A block
+// starts at a non-indented `target:` line (first listed name wins the match)
+// and ends at the next non-indented, non-comment target/variable line.
+func recipeBlock(t *testing.T, makefile, target string) string {
+	t.Helper()
+	var out []string
+	collecting := false
+	for _, line := range strings.Split(makefile, "\n") {
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimLeft(line, " "), "#") {
+			continue
+		}
+		if !strings.HasPrefix(line, "	") {
+			head := strings.SplitN(line, ":", 2)[0]
+			names := strings.Fields(head)
+			isTargetStart := len(names) > 0 && !strings.HasSuffix(head, "=")
+			if collecting {
+				break
+			}
+			if isTargetStart {
+				for _, n := range names {
+					if n == target {
+						collecting = true
+						break
+					}
+				}
+			}
+			continue
+		}
+		if collecting {
+			out = append(out, strings.TrimPrefix(line, "	"))
+		}
+	}
+	if len(out) == 0 {
+		t.Fatalf("target %s not found or has no recipe in Makefile", target)
+	}
+	return strings.Join(out, "\n")
 }
