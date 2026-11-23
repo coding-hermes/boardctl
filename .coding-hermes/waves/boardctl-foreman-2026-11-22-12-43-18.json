@@ -23,5 +23,7 @@
       "note": "Serial path: WAVE_BUDGET=1. BT-094/RELEASE-2026-11-16-01 (P1) remain owner-gated."
     }
   ],
+  "finished_at": "2026-11-22T19:36:00Z",
+  "recovery_closeout": "verified by tick boardctl-foreman-2026-11-22-19-33-17: row BT-093 status=complete commit 4c50aebf, git merge-base --is-ancestor 4c50aebf origin/main TRUE, origin/main parity 0 on both sides; worktree /home/kara/worktrees/boardctl-BT-093 and branch wt/BT-093 already reaped (present in neither git worktree list nor branch list); inherited manifest 11-45-40 finished_at set. Manifest lacked finished_at on disk despite tick 13-46-56's claim — set now.",
   "workers_model": "glm-5.3-flash@ollama-cloud"
 }
