@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coding-hermes/boardctl/internal/board"
 	"github.com/coding-hermes/boardctl/internal/render"
 )
 
@@ -669,5 +670,118 @@ func repoRoot(t *testing.T) string {
 			t.Fatal("go.mod not found: not inside the boardctl repo")
 		}
 		dir = parent
+	}
+}
+
+// ---------- QA-BOARDCTL-015: a same-identity upload must not shadow -C ----------
+
+// qa15OldSnapshotZip builds a same-identity (zipboarda|A) OLD-snapshot zip:
+// the standard seedServeBoard board reduced to 2 of its 3 task rows, as if
+// zipped before the newest task landed on disk. This is the evidence shape
+// of QA-BOARDCTL-015 RUN 3: a 2-row zip sharing the -C board's slug+topology
+// uploaded onto a serve whose -C disk board has moved on.
+func qa15OldSnapshotZip(t *testing.T) []byte {
+	t.Helper()
+	root := t.TempDir()
+	dir := seedServeBoard(t, filepath.Join(root, "proj", ".coding-hermes", "board"), "A")
+	tasks := `{"id": "Z-1", "title": "first", "status": "complete", "priority": "P1", "primary_model": "glm-5.3-flash", "created_at": "2026-09-01 00:00:00", "completed_at": "2026-09-02 00:00:00", "updated_at": "2026-09-02 00:00:00"}` + "\n" +
+		`{"id": "Z-2", "title": "second", "status": "complete", "priority": "P2", "primary_model": "kimi-k3", "created_at": "2026-09-03 00:00:00", "completed_at": "2026-09-04 00:00:00", "updated_at": "2026-09-04 00:00:00"}` + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "tasks.jsonl"), []byte(tasks), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return zipFromPaths(t, root,
+		filepath.Join(dir, "board.jsonl"), filepath.Join(dir, "tasks.jsonl"), filepath.Join(dir, "events.jsonl"))
+}
+
+// qa15AppendTask appends one pending task row to a topology-A board's
+// tasks.jsonl — the external write a second process makes while serve is up.
+func qa15AppendTask(t *testing.T, tasksPath, id string) {
+	t.Helper()
+	f, err := os.OpenFile(tasksPath, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := `{"id": "` + id + `", "title": "external ` + id + `", "status": "pending", "priority": "P3", "created_at": "2026-11-22 09:10:50", "updated_at": "2026-11-22 09:10:50"}` + "\n"
+	if _, err := f.WriteString(row); err != nil {
+		_ = f.Close() // best-effort: the write already failed
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestServeSameIdentityUploadCBoardPrecedence (QA-BOARDCTL-015, fix design
+// A): on one serve process, a zip upload sharing the -C board's slug+
+// topology must NOT shadow it in GET /api/boards — the disk-backed -C board
+// wins and the list keeps following external disk writes; the fully
+// shadowed upload session is compacted away (boards dropped, session gone).
+// The DF-BOARDCTL-2 upload-replace-upload behavior between upload sessions
+// stays pinned by df_boardctl_2_dedupe_test.go (no -C board there, no pins).
+func TestServeSameIdentityUploadCBoardPrecedence(t *testing.T) {
+	root := t.TempDir()
+	cdir := seedServeBoard(t, filepath.Join(root, "cproj", ".coding-hermes", "board"), "A")
+	cBoard, err := board.Resolve(cdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := newServeServer([]*board.Board{cBoard})
+	h := srv.routes()
+
+	// Baseline: exactly one entry — the live -C board.
+	api := df2APIBoards(t, h)
+	if len(api) != 1 || api[0].Slug != "zipboarda" || api[0].Topology != "A" || api[0].Total != 3 {
+		t.Fatalf("baseline /api/boards = %+v, want 1 entry zipboarda/A total 3", api)
+	}
+
+	// External write (a second process appends to the -C board on disk):
+	// the list must reflect it without a restart.
+	qa15AppendTask(t, filepath.Join(cdir, "tasks.jsonl"), "Z-4")
+	api = df2APIBoards(t, h)
+	if len(api) != 1 || api[0].Total != 4 {
+		t.Fatalf("post-write /api/boards = %+v, want the live -C board with total 4", api)
+	}
+
+	// Upload the OLD 2-row snapshot: same slug+topology identity.
+	rec := postUpload(h, map[string][]byte{"zip": qa15OldSnapshotZip(t)})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("upload status = %d: %s", rec.Code, rec.Body.String())
+	}
+	// The upload response report shows the live -C board (it cannot be
+	// replaced by the snapshot), not the uploaded 2-row snapshot.
+	p := mustIslandPayload(t, rec.Body.String())
+	if len(p.Boards) != 1 {
+		t.Fatalf("upload response boards = %d, want 1 (the -C board)", len(p.Boards))
+	}
+	if p.Boards[0].Derived.TotalNonFix != 4 {
+		t.Fatalf("upload response board %q carries total %d, want 4 (the live -C board; 2 would be the uploaded snapshot having replaced it)", p.Boards[0].Name, p.Boards[0].Derived.TotalNonFix)
+	}
+
+	// GET /api/boards keeps the -C board: one entry, still its live disk
+	// truth — NOT the uploaded 2-row snapshot (the shadow this row forbids).
+	api = df2APIBoards(t, h)
+	if len(api) != 1 || api[0].Slug != "zipboarda" || api[0].Topology != "A" {
+		t.Fatalf("/api/boards after upload = %+v, want the single -C board entry", api)
+	}
+	if api[0].Total != 4 {
+		t.Fatalf("/api/boards total after upload = %d, want 4 — the live -C board; 2 would be the uploaded snapshot shadowing it (QA-BOARDCTL-015)", api[0].Total)
+	}
+
+	// The disk keeps moving: another external write keeps flowing into the
+	// list without a restart and without any further upload.
+	qa15AppendTask(t, filepath.Join(cdir, "tasks.jsonl"), "Z-5")
+	api = df2APIBoards(t, h)
+	if len(api) != 1 || api[0].Total != 5 {
+		t.Fatalf("/api/boards after second write = %+v, want the live -C board with total 5", api)
+	}
+
+	// Compaction: the upload's only board shares the pinned -C identity, so
+	// the session lost its board and must be dropped outright (temp tree
+	// with it) — no dead session may linger behind the pinned -C board.
+	srv.lock()
+	n := len(srv.sessions)
+	srv.unlock()
+	if n != 0 {
+		t.Fatalf("live sessions after fully-shadowed upload = %d, want 0 (session compacted away)", n)
 	}
 }

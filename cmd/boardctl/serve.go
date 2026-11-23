@@ -174,7 +174,13 @@ type uploadSession struct {
 
 // serveServer carries the live server state.
 type serveServer struct {
-	cBoards  []*board.Board
+	cBoards []*board.Board
+	// pins carries the identities (serveBoardIdentity) of the -C boards
+	// (QA-BOARDCTL-015): a disk-backed -C board must not be shadowable by
+	// an upload session sharing its slug+topology — the -C board wins the
+	// merged list (and stays live, since its loader re-reads disk per
+	// request) while uploads keep replacing each other DF-BOARDCTL-2 style.
+	pins     map[string]bool
 	mu       chan struct{} // 1-slot semaphore: lock() sends, unlock() receives
 	sessions []*uploadSession
 	// snapshots is the BT-075 read-model cache, keyed by board identity
@@ -188,7 +194,15 @@ type serveServer struct {
 }
 
 func newServeServer(cBoards []*board.Board) *serveServer {
-	return &serveServer{cBoards: cBoards, mu: make(chan struct{}, 1), snapshots: map[string]*boardSnapshot{}}
+	// QA-BOARDCTL-015: every -C board identity is pinned before anything
+	// else can register under it.
+	pins := map[string]bool{}
+	for _, b := range cBoards {
+		if b != nil {
+			pins[serveBoardIdentity(b)] = true
+		}
+	}
+	return &serveServer{cBoards: cBoards, pins: pins, mu: make(chan struct{}, 1), snapshots: map[string]*boardSnapshot{}}
 }
 
 func (s *serveServer) lock()   { s.mu <- struct{}{} }
@@ -310,6 +324,16 @@ func slugifyServe(name string) string {
 // earlier ones (first-seen order kept): re-uploading a board must replace
 // its previous copy everywhere the report is derived from (DF-BOARDCTL-2).
 func mergeByIdentity(boards []*board.Board) []*board.Board {
+	return mergeByIdentityPinned(boards, nil)
+}
+
+// mergeByIdentityPinned is mergeByIdentity with pinned identities
+// (QA-BOARDCTL-015): a later entry sharing a pinned identity is DROPPED
+// instead of replacing — the pin's owner (the disk-backed -C board, always
+// first in every call site here) wins and stays live, while unpinned
+// entries keep the later-wins replace rule. Callers pass the -C identities
+// as pins; nil pins degrade to the plain DF-BOARDCTL-2 behavior.
+func mergeByIdentityPinned(boards []*board.Board, pins map[string]bool) []*board.Board {
 	idx := map[string]int{}
 	out := make([]*board.Board, 0, len(boards))
 	for _, b := range boards {
@@ -318,6 +342,11 @@ func mergeByIdentity(boards []*board.Board) []*board.Board {
 		}
 		id := serveBoardIdentity(b)
 		if i, ok := idx[id]; ok {
+			if pins[id] {
+				// Pinned identity: the earlier (disk-backed -C) entry
+				// wins; the later upload snapshot cannot shadow it.
+				continue
+			}
 			out[i] = b
 			continue
 		}
@@ -328,8 +357,9 @@ func mergeByIdentity(boards []*board.Board) []*board.Board {
 }
 
 // currentBoards returns the boards carried by live sessions with
-// same-identity entries collapsed (later uploads replace earlier ones, for
-// /api/boards, the compare view and every payload built from this list).
+// same-identity entries collapsed (later uploads replace earlier ones —
+// except a pinned -C board, which no upload may shadow — for /api/boards,
+// the compare view and every payload built from this list).
 func (s *serveServer) currentBoards() []*board.Board {
 	s.lock()
 	defer s.unlock()
@@ -338,51 +368,90 @@ func (s *serveServer) currentBoards() []*board.Board {
 	for _, sess := range s.sessions {
 		out = append(out, sess.boards...)
 	}
-	return mergeByIdentity(out)
+	return mergeByIdentityPinned(out, s.pins)
+}
+
+// compactSessionBoards drops boards whose identity is superseded (and the
+// index-aligned identity entries) from sess in place, keeping the relative
+// order of survivors. No filesystem side effects: the caller decides when
+// a no-longer-referenced extraction root is deleted (see registerSession),
+// because board identity derivation re-reads the tree from disk — a root
+// deleted too early turns identity into the dir-base fallback. Returns nil
+// when the session carries no live boards.
+func compactSessionBoards(sess *uploadSession, superseded map[string]bool) *uploadSession {
+	live := sess.boards[:0]
+	liveIDs := sess.identities[:0]
+	for i, b := range sess.boards {
+		if !superseded[sess.identities[i]] {
+			live = append(live, b)
+			liveIDs = append(liveIDs, sess.identities[i])
+		}
+	}
+	sess.boards = live
+	sess.identities = liveIDs
+	if len(live) == 0 {
+		return nil
+	}
+	return sess
 }
 
 // registerSession records a live upload session under the lock, dropping
 // any boards it replaces: a superseded board's session loses that board
 // (and is deleted outright once it carries none), together with its now
 // orphaned temp extraction tree (its files were copied per upload).
-func (s *serveServer) registerSession(sess *uploadSession) {
+// QA-BOARDCTL-015: a -C board's identity is PINNED, so a session board
+// sharing it is dead weight in every merged view and is dropped here
+// exactly like an upload-superseded one — including in the session that
+// just registered, when the -C board superseded all of its boards.
+// Returns the boards that survived registration (nil when the session was
+// dropped outright, temp tree and all): the caller seeds read-model
+// snapshots only for LIVE boards — a dropped session's extraction root no
+// longer exists, so computing a snapshot from it would fail or read a
+// tree that was never viewable.
+func (s *serveServer) registerSession(sess *uploadSession) []*board.Board {
 	s.lock()
 	defer s.unlock()
-	superseded := map[string]bool{}
+	// Two supersede sets: OLD sessions are replaced by the registering
+	// upload's own identities (DF-BOARDCTL-2) AND by the pinned -C
+	// identities; the REGISTERING session itself is measured only against
+	// the pins — its own identities obviously match its own boards and
+	// must never self-supersede it (the extraction root has to survive
+	// until the response payload is built).
+	oldSuperseded := map[string]bool{}
 	for _, id := range sess.identities {
-		superseded[id] = true
+		oldSuperseded[id] = true
+	}
+	for id := range s.pins {
+		oldSuperseded[id] = true
+	}
+	sessSuperseded := map[string]bool{}
+	for id := range s.pins {
+		sessSuperseded[id] = true
+	}
+	if sess = compactSessionBoards(sess, sessSuperseded); sess == nil {
+		// Fully shadowed by the -C board: the session is never registered.
+		// NOT removing the root here — the caller still derives the
+		// upload boards' identities (disk reads) for this request's
+		// response merge; the request's deferred cleanup deletes the
+		// tree once the response is rendered.
+		return nil
 	}
 	kept := s.sessions[:0]
 	for _, old := range s.sessions {
-		live := old.boards[:0]
-		for i, b := range old.boards {
-			if !superseded[old.identities[i]] {
-				live = append(live, b)
-			}
-		}
-		if len(live) == len(old.boards) {
-			kept = append(kept, old)
+		compacted := compactSessionBoards(old, oldSuperseded)
+		if compacted == nil {
+			// Dropping an old session: its boards vanish from every
+			// merged view immediately, so its temp tree is unread from
+			// here on and goes with it.
+			_ = os.RemoveAll(old.root) // best-effort: dropped session's temp tree
 			continue
 		}
-		// Index-aligned compaction: identities[i] belongs to boards[i],
-		// so the survivors keep their identity entries under the same
-		// relative order.
-		liveIDs := old.identities[:0]
-		for _, id := range old.identities {
-			if !superseded[id] {
-				liveIDs = append(liveIDs, id)
-			}
-		}
-		old.boards = live
-		old.identities = liveIDs
-		if len(live) == 0 {
-			_ = os.RemoveAll(old.root) // best-effort: dropping a superseded session's temp tree
-			continue
-		}
-		kept = append(kept, old)
+		kept = append(kept, compacted)
 	}
+
 	s.sessions = kept
 	s.sessions = append(s.sessions, sess)
+	return append([]*board.Board{}, sess.boards...)
 }
 
 // routes wires the serve HTTP surface (shared by cmdServe and tests).
@@ -583,13 +652,29 @@ func (s *serveServer) handleUpload(w http.ResponseWriter, r *http.Request) {
 	for _, b := range boards {
 		sess.identities = append(sess.identities, serveBoardIdentity(b))
 	}
-	s.registerSession(sess)
+	// registerSession compacts the session (a -C-pinned board is dropped
+	// outright) and returns the SURVIVING boards, so read-model snapshots
+	// are seeded only for live boards; a fully-dropped upload's temp tree
+	// is removed by the request's deferred cleanup after the response.
+	live := s.registerSession(sess)
+	if live == nil {
+		// QA-BOARDCTL-015: the upload was fully shadowed by the pinned -C
+		// board — the session was never registered. Nil the boards so the
+		// request-scoped deferred cleanup removes the temp tree once the
+		// response below is rendered (identity derivation just read it),
+		// and nothing dangles behind the -C board.
+		sess.boards = nil
+		sess.identities = nil
+	}
 	// BT-075 R13: the newly loaded boards' snapshots (payload + validate +
 	// sweep census) are computed once, at registration — never re-checked
 	// live afterwards (R9).
-	s.seedSnapshots(boards)
+	s.seedSnapshots(live)
 
-	all := mergeByIdentity(append(append([]*board.Board{}, s.cBoards...), boards...))
+	// QA-BOARDCTL-015: the response's board list is built with the -C pins
+	// too — an upload sharing the -C board's identity cannot shadow it here
+	// either; the live -C board (re-read per build) renders instead.
+	all := mergeByIdentityPinned(append(append([]*board.Board{}, s.cBoards...), boards...), s.pins)
 	payload, err := render.BuildBoards(all, render.Options{Now: time.Now(), Zone: time.Local})
 	if err != nil {
 		http.Error(w, "build report: "+err.Error(), http.StatusInternalServerError)
