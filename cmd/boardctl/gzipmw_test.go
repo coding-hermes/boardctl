@@ -42,7 +42,12 @@ func gunzipBody(t *testing.T, body []byte) []byte {
 // Content-Encoding: gzip + Vary: Accept-Encoding, no Content-Length,
 // and a body that decompresses to the handler's bytes.
 func TestGzipWrapperAccepted(t *testing.T) {
-	payload := []byte(`{"hello":"world","repeat":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}`)
+	// 512+ repeated bytes sit above the gzip framing break-even, so the
+	// strict size invariant below holds on every Go toolchain: a 67-byte
+	// body can land in a stored block (wire > payload) and fail the test
+	// without any product defect (QA-BOARDCTL-014-R2).
+	payload := append([]byte(`{"hello":"world","repeat":"`), bytes.Repeat([]byte("a"), 512)...)
+	payload = append(payload, `"}`...)
 	h := withGzip(staticBodyHandler(payload))
 
 	rec := httptest.NewRecorder()
