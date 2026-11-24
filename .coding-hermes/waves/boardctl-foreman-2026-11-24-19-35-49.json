@@ -1,0 +1,28 @@
+{
+  "tick_id": "boardctl-foreman-2026-11-24-19-35-49",
+  "project": "coding-hermes-boardctl",
+  "composed_at": "2026-11-24T19:50:00-05:00",
+  "wave_budget": 1,
+  "workers": 1,
+  "worker_model": "glm-5.3-flash",
+  "worker_provider": "opencode-go",
+  "dispatch_mode": "serial-shared-checkout (tick-mandated fallback; WAVE_BUDGET=1)",
+  "shared_checkout_exception": "worker edits only the enumerated scope paths in /home/kara/coding-hermes-boardctl; dirty-state snapshot at dispatch: untracked .coding-hermes/evidence/qa-20261123T002047Z/, .gitreins/review-state.json, .gitreins/review-state.lock; 0 staged, 0 dirty tracked files",
+  "base": "origin/main",
+  "base_sha": "124fa87c3203914384f8e194e15c4b522a12c940",
+  "merge_policy": "single worker commits on main in shared checkout; foreman runs full gate on the commit, pushes, then gitreins task complete",
+  "tasks": [
+    {
+      "id": "BT-104",
+      "priority": "P3",
+      "worktree": "/home/kara/coding-hermes-boardctl (shared control checkout, serial exception)",
+      "branch": "main",
+      "surface": "internal/board/keys.go sanctionedExtras + internal/board/write.go create-mirror skip + internal/board tests",
+      "brief": "/home/kara/.hermes/cache/scratch/bt104-brief-20261124.txt",
+      "independence": "sole dispatchable in-repo row: BT-094 is owner-gated deferred (review-by 2026-11-29); BT-095/QA-BOARDCTL-011/012 name fix surfaces outside this repo"
+    }
+  ],
+  "skipped_rows": [
+    {"id": "BT-094", "reason": "owner-gated deferral marker (deferred=true, defer_review_by=2026-11-29); live probe this tick: ps aux | grep mem-sync | wc -l = 0 (was 408 on 2026-11-10, 2 on 2026-11-14)"}
+  ]
+}
