@@ -640,6 +640,16 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 			if k == "initiative" && spec.Initiative == nil {
 				continue
 			}
+			// BT-104: `project` follows the DF-BOARDCTL-061 mirror-skip
+			// rule. The create path mirrors the last row's key set filtered
+			// to sanctioned keys, so sanctioning `project` would otherwise
+			// start neutral-mirroring it onto every row created on a board
+			// whose rows carry the key. There is no --project create flag,
+			// so the key is NEVER appended through this path: it stays
+			// wherever a writer explicitly put it.
+			if k == "project" {
+				continue
+			}
 			row.Keys = append(row.Keys, k)
 			row.Vals[k] = neutral(k)
 		}

@@ -398,3 +398,77 @@ func TestValidateCreatedAtSourceIsNotDrift(t *testing.T) {
 		t.Fatalf("created_at_source must not trigger the canon warning (DF-CRIER-508):\n%s", rendered)
 	}
 }
+
+// BT-104: `project` is the scheduler project name a digest/backfill row
+// belongs to or targets. Sanctioned on the digest-board census (113 rows,
+// 2026-11-22, re-censused 2026-11-24) — it names a real concept written by
+// more than one project family (digest 113, pulse 1), so it must not draw
+// the canon warning.
+func TestProjectKeyIsSanctioned(t *testing.T) {
+	if !IsSanctionedTaskKey("project") {
+		t.Fatal("key \"project\" should be sanctioned — it is the scheduler-project concept (BT-104 digest census), not drift")
+	}
+	// near-misses stay drift: the canon names the exact key the writers use.
+	for _, k := range []string{"projects", "proj", "scheduler_project"} {
+		if IsSanctionedTaskKey(k) {
+			t.Errorf("key %q should NOT be sanctioned (near-miss of project)", k)
+		}
+	}
+}
+
+// BT-104 wiring: a row carrying `project` must validate with zero key drift —
+// on the digest board this key alone produced 113 of the validate warnings.
+func TestValidateProjectKeyIsNotDrift(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl":  `{"id":"BT-104","title":"digest row","status":"pending","priority":"P3","project":"digest"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := b.Validate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Keys.Clean != 1 {
+		t.Fatalf("expected 1 clean row, got %d (%+v)", rep.Keys.Clean, rep.Keys)
+	}
+	rendered := rep.RenderText()
+	if strings.Contains(rendered, "outside the declared canon") {
+		t.Fatalf("project must not trigger the canon warning (BT-104):\n%s", rendered)
+	}
+}
+
+// BT-104 mirror-skip regression (the DF-BOARDCTL-061 trap): create mirrors the
+// last row's key set filtered to sanctioned keys, so sanctioning `project`
+// would start neutral-mirroring the key onto rows created WITHOUT it. There
+// is no --project create flag, so a create on a project-carrying board must
+// write NO project key — the key stays wherever a writer explicitly put it.
+func TestCreateWithoutProjectWritesNoKeyOnMirroredBoard(t *testing.T) {
+	dir := t.TempDir()
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl":  `{"id":"SEED-1","title":"digest row","status":"pending","priority":"P2","project":"digest"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-09-04 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"t","namespace":"t","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.Create(TaskRowSpec{ID: "PLAIN-1", Title: "no project"}); err != nil {
+		t.Fatalf("create without project: %v", err)
+	}
+	row, _, err := b.ShowTask("PLAIN-1")
+	if err != nil {
+		t.Fatalf("get row: %v", err)
+	}
+	if row == nil {
+		t.Fatal("row PLAIN-1 not found")
+	}
+	if row.Has("project") {
+		t.Fatalf("create on a project-carrying board wrote project=%q; the key must be absent", row.Get("project"))
+	}
+}

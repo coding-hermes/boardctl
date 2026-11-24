@@ -132,6 +132,18 @@ var sanctionedExtras = []string{
 	"repo",
 	"tick",
 	"ch:trace",
+	// BT-104: the scheduler project name a row belongs to or targets.
+	// Census (digest board /home/kara/get-h3/digest, 2026-11-22, re-censused
+	// 2026-11-24): 113 rows carry `project`, every one the single value
+	// "digest" (100.0%), and each drew a permanent canon warning; the pulse
+	// board (/home/kara/get-h3/pulse) carries 1 more, so the concept is
+	// written by more than one project family — the census rule — and it is
+	// growing (49 rows on 2026-11-21). Sanctioned on the SCHED-GAP-1572
+	// single-board-census precedent. NOT aliased onto `repo`: repo is the
+	// "owner/name" slug a row targets, while project is the scheduler
+	// project name the row was filed under — distinct concepts, and the
+	// value here is a bare project name, not a slug.
+	"project",
 	// BT-076: the owner-deferral flag. Written by `create --deferred` and
 	// `update --deferred true|false`; a deferred row stays searchable and
 	// returnable in every result set but must not inflate the pending /
