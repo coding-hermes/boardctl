@@ -401,6 +401,7 @@ func (b *Board) Create(spec TaskRowSpec) (string, error) {
 
 // createLocked is Create's body, running under the write guard.
 func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
+	b.metadataWarnings = nil // per-write state, never sticky (same discipline as update)
 	if spec.HasType {
 		reg, err := LoadTicketTypes(b.Dir)
 		if err != nil {
@@ -427,6 +428,16 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 		if len(invalid) > 0 {
 			return "", fmt.Errorf("create refused: type %q metadata values are invalid:\n  - %s\nnothing was written", spec.Type, strings.Join(invalid, "\n  - "))
+		}
+		// DF-BOARDCTL-58: an undeclared --meta key warns at WRITE time on
+		// create too, symmetric with update (BT-098 AC-7) — a type whose
+		// metadata list is empty (the built-ins) used to absorb the key
+		// silently. Advisory: the key is still written; validate's BT-098
+		// warning for the same row still fires.
+		for key := range spec.Metadata {
+			if _, declared := typ.Field(key); !declared && !decompositionMetadataKeys[key] {
+				b.metadataWarnings = append(b.metadataWarnings, fmt.Sprintf("metadata key %q is not declared by type %q — it was written, but 'boardctl validate' will report it", key, spec.Type))
+			}
 		}
 		if typ.Template != nil {
 			if typ.Template.TitlePrefix != "" && !strings.HasPrefix(spec.Title, typ.Template.TitlePrefix) {

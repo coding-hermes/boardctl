@@ -388,7 +388,92 @@ func TestBT098_UnknownMetaWarns(t *testing.T) {
 	}
 }
 
-// --- AC-8: validate conformance --------------------------------------------
+// --- DF-BOARDCTL-58: create warns on undeclared metadata too ------------------
+
+// TestBT098_CreateUndeclaredMetaWarns pins DF-BOARDCTL-58: `create --type bug
+// --meta severity=x` — an undeclared key on a type whose metadata list is
+// EMPTY (the built-ins) — used to write the key SILENTLY while the same key
+// on update warned. Create now warns with the update path's exact text and
+// the key is still written (advisory, never a refusal). Per-write state: a
+// clean create clears the warning.
+//
+// NOTE: validate's BT-098 row check only runs when types.jsonl is present
+// (validate.go gates on reg.Present — pre-existing built-in-registry
+// behaviour), so the validate-still-fires half of BT-098 AC-7 is asserted on
+// the registry-present board in TestBT098_CreateUndeclaredMetaWarnsValidate.
+func TestBT098_CreateUndeclaredMetaWarns(t *testing.T) {
+	dir := t.TempDir()
+	// No types.jsonl on purpose: the built-in registry (task/bug/feat/chore)
+	// is exactly the empty-metadata-list case the defect describes.
+	writeBoardFiles(t, dir, map[string]string{
+		"tasks.jsonl":  `{"id":"BASE-1","title":"Existing row","status":"pending","priority":"P2","complexity":3,"created_at":"2026-11-01T00:00:00+00:00","updated_at":"2026-11-01T00:00:00+00:00"}` + "\n",
+		"events.jsonl": `{"id":1,"timestamp":"2026-11-01 00:00:00","event_type":"audit","task_id":null,"actor":"foreman","detail":null,"tick_number":1}` + "\n",
+		"board.jsonl":  `{"project":"bt098","namespace":"bt098","version":1,"ticks_total":1,"ticks_idle":0,"last_commit":null}` + "\n",
+	})
+	b, err := Resolve(dir)
+	if err != nil {
+		t.Fatalf("resolve seeded board: %v", err)
+	}
+
+	if _, err := b.Create(TaskRowSpec{ID: "BUG-TEST-1", Title: "T", Type: "bug", HasType: true,
+		Metadata: map[string]string{"severity": "x"}, Status: "pending"}); err != nil {
+		t.Fatalf("undeclared metadata key must warn-and-write on create, got %v", err)
+	}
+	want := `metadata key "severity" is not declared by type "bug" — it was written, but 'boardctl validate' will report it`
+	if warnings := b.MetadataWarnings(); len(warnings) != 1 || warnings[0] != want {
+		t.Fatalf("metadata warnings = %q, want [%q]", warnings, want)
+	}
+	if row := bt098RowByID(t, b, "BUG-TEST-1"); !strings.Contains(row, `"severity":"x"`) {
+		t.Fatalf("the undeclared key was not written:\n%s", row)
+	}
+
+	// Per-write state, never sticky: a clean create emits nothing.
+	if _, err := b.Create(TaskRowSpec{ID: "BUG-TEST-2", Title: "T2", Type: "bug", HasType: true, Status: "pending"}); err != nil {
+		t.Fatalf("follow-up create: %v", err)
+	}
+	if got := b.MetadataWarnings(); len(got) != 0 {
+		t.Fatalf("warnings leaked between creates: %q", got)
+	}
+}
+
+// TestBT098_CreateUndeclaredMetaWarnsValidate pins DF-BOARDCTL-58 AC-3 on a
+// registry-present board: after a CREATE writes an undeclared key, validate's
+// existing BT-098 warning for the same row still fires (warn, never error) —
+// the create-side warning is additive to validate, not a substitute.
+func TestBT098_CreateUndeclaredMetaWarnsValidate(t *testing.T) {
+	b := bt098Seed(t)
+
+	if _, err := b.Create(TaskRowSpec{ID: "REL-TEST-2", Title: "R2", Type: "release", HasType: true,
+		Metadata: map[string]string{"channel": "beta", "source_commit": "abc1234", "weirdkey": "v"}, Status: "pending"}); err != nil {
+		t.Fatalf("undeclared metadata key must warn-and-write on create, got %v", err)
+	}
+	want := `metadata key "weirdkey" is not declared by type "release" — it was written, but 'boardctl validate' will report it`
+	if warnings := b.MetadataWarnings(); len(warnings) != 1 || warnings[0] != want {
+		t.Fatalf("metadata warnings = %q, want [%q]", warnings, want)
+	}
+	if row := bt098RowByID(t, b, "REL-TEST-2"); !strings.Contains(row, `"weirdkey":"v"`) {
+		t.Fatalf("the undeclared key was not written:\n%s", row)
+	}
+
+	rep, err := b.Validate()
+	if err != nil {
+		t.Fatalf("validate: %v", err)
+	}
+	if rep.HasErrors() {
+		t.Fatalf("undeclared metadata key must never be an ERROR:\n%s", rep.RenderText())
+	}
+	found := false
+	for _, f := range rep.Findings {
+		if f.Level == "warn" && strings.Contains(f.Msg, `has undeclared metadata key "weirdkey"`) {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("validate did not report the undeclared key:\n%s", rep.RenderText())
+	}
+}
+
+// --- AC-8: validate conformance ----------------------------------------------
 
 // TestBT098_ValidateConformance pins AC-8: a hand-edited row missing a
 // required field is an ERROR finding naming the field and its type contract,
