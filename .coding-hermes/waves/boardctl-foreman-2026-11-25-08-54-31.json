@@ -1,0 +1,26 @@
+{
+  "scheduler_tick_id": "boardctl-foreman-2026-11-25-08-54-31",
+  "created_utc": "2026-11-25T09:00:00Z",
+  "base_sha": "6042e74",
+  "wave_budget": 8,
+  "workers": [
+    {
+      "task_id": "DF-BOARDCTL-58",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-58",
+      "branch": "wt/DF-BOARDCTL-58",
+      "model": "glm-5.3-flash",
+      "provider": "opencode-go",
+      "scope": "internal/board: emit undeclared-metadata-key warning on types whose metadata list is empty + regression test"
+    },
+    {
+      "task_id": "DF-BOARDCTL-062",
+      "worktree": "/home/kara/worktrees/coding-hermes-boardctl-DF-BOARDCTL-062",
+      "branch": "wt/DF-BOARDCTL-062",
+      "model": "glm-5.3-flash",
+      "provider": "opencode-go",
+      "scope": "README.md:598 remove cross-board round-trip claim, name supported same-board path"
+    }
+  ],
+  "independence": "no depends_on edges between rows; disjoint files (internal/board/* vs README.md)",
+  "merge_plan": "serial merge wt/DF-BOARDCTL-58 then wt/DF-BOARDCTL-062 into main, gate each"
+}
