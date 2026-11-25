@@ -1383,6 +1383,22 @@ boardctl -C ~/myproject create --id QA-X-9 --title "…" --evidence-run-id qa-1 
 boardctl -C ~/myproject update QA-X-3 --status complete --evidence-run-id qa-2 # REQUIRED for completions (TR-251)
 ```
 
+The completion itself is audited in the event trail (BT-105): `update --status
+complete --evidence-run-id <run>` appends a `task_completed` event whose detail
+carries the bound run id — `{"status":"complete","evidence_run_id":"<run>"}` —
+so a closed row resolves from tracked events alone, without depending on the
+git-untracked `.gitreins/` tree for the id the gate validated. Completions
+without a bound run keep the status-only detail, and `task_updated` events
+never carry the key.
+
+Which form to pass: `--evidence-run-id` must be the on-disk history DIRECTORY
+name under `.gitreins/history/<date>/` — the gate resolves the id by walking
+those directories and reading the run's `verdict.json`. Do NOT pass the verdict
+id a gitreins judge prints: `Verdict saved <id>` mints a different identity
+than the on-disk history directory (measured 2026-11-20: the judge printed
+verdict id `78678d11` while the history directory on disk was `cb6d2dd2`), and
+a verdict id will not resolve.
+
 #### Retrying a closeout
 
 A second identical `update --status complete` exits 0, leaves the row unchanged,

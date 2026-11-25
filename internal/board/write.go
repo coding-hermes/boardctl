@@ -1862,10 +1862,22 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([
 		if *spec.Status == "complete" {
 			etype = "task_completed"
 		}
+		// BT-105: a completion bound to an evidence run must carry that run
+		// id IN the task_completed event detail — the append-only trail is
+		// the load-bearing audit surface, and without it the id the gate
+		// validated survives only in the row envelope plus git-untracked
+		// .gitreins/history. task_updated events keep the status-only
+		// shape, and so does a completion with no run bound (e.g. the
+		// legacy complete-row re-stamp path that passes gateCompletionEvidence's
+		// idempotent exemption).
+		detail := fmt.Sprintf(`{"status":%q}`, *spec.Status)
+		if etype == "task_completed" && spec.EvidenceRunID != "" {
+			detail = fmt.Sprintf(`{"status":%q,"evidence_run_id":%q}`, *spec.Status, spec.EvidenceRunID)
+		}
 		if _, err := b.AppendEvent(EventSpec{
 			Type:   etype,
 			TaskID: id,
-			Detail: []byte(fmt.Sprintf(`{"status":%q}`, *spec.Status)),
+			Detail: []byte(detail),
 		}); err != nil {
 			return changed, fmt.Errorf("task row updated but %s event failed: %w", etype, err)
 		}
