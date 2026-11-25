@@ -1053,6 +1053,10 @@ func cmdCreate(dir string, args []string) error {
 	if err != nil {
 		return err
 	}
+	// DF-BOARDCTL-58: render create-side metadata warnings (undeclared
+	// --meta key) the same way update does, so the write-time warning is
+	// visible on both surfaces.
+	renderMetadataWarnings(b)
 	_, _ = fmt.Fprintf(os.Stdout, "created task %s (appended to %s)\n", created, b.TasksPath())
 	return nil
 }
