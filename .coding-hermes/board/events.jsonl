@@ -799,3 +799,4 @@
 {"id":795,"timestamp":"2026-11-24 19:49:27","event_type":"task_completed","task_id":"BT-104","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":796,"timestamp":"2026-11-25 04:25:18","event_type":"task_created","task_id":"BT-105","actor":"foreman","detail":"{\"id\":\"BT-105\",\"status\":\"pending\"}","tick_number":null}
 {"id":797,"timestamp":"2026-11-25 05:18:15","event_type":"task_completed","task_id":"BT-099","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":798,"timestamp":"2026-11-25 08:39:41","event_type":"task_completed","task_id":"BT-105","actor":"foreman","detail":"{\"status\":\"complete\",\"evidence_run_id\":\"3a126ee1\"}","tick_number":null}
