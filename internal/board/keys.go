@@ -192,6 +192,19 @@ var sanctionedExtras = []string{
 	// (Timestamped one-offs like probe_2026_10_31_0144 stay drift: 4 rows each in a
 	// single project, which is a worker writing an ad-hoc key, not a convention.)
 	"probe",
+	// BT-099: the singular `parent` key — the subtask link. One value, a task
+	// id on the SAME board: the row it names is the row's parent, and every
+	// row carrying parent == <id> is one of that row's children (at most one
+	// parent per row, unbounded children). CENSUS-STYLE DECLARATION: no live
+	// row carries the key today (census 2026-11-24, 0 rows across the fleet
+	// boards sampled), so this is the DECLARED START of the concept, not
+	// measured drift — sanctioned before first use so the first subtask write
+	// lands clean instead of drawing a permanent canon warning. Write-time
+	// validated (self-parent, missing parent, complete parent, cycles) and
+	// read-time rolled up (CHILDREN / CHILD DEPS on show; ready withholds a
+	// parent whose open children are ready); nothing about children is ever
+	// stored on the parent row.
+	"parent",
 }
 
 // SanctionedTaskRowKeys is the full allowed set: the create schema plus the

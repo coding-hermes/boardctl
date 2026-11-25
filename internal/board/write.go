@@ -321,6 +321,23 @@ type TaskRowSpec struct {
 	// flag was omitted; a non-nil empty slice is the explicit clear form.
 	InitiativeRefs *[]string
 
+	// BT-099: the subtask link — the row's parent id. nil (flag omitted)
+	// writes NO parent key at all (a row without the key is a standalone
+	// row by definition); a non-nil pointer is authoritative and IS written
+	// after the write-time gate (self-parent, missing parent, complete
+	// parent, cycles — ValidateParentLink) has passed. On create an empty
+	// pointer value is the caller's explicit no-op and is not written.
+	Parent *string
+
+	// BT-099 (panel amendment 1): decomposition metadata living INSIDE the
+	// typed detail.metadata object, not as top-level canon keys. nil (flag
+	// omitted) writes nothing; a non-nil slice REPLACES that metadata key's
+	// array wholesale. They ride the same detail.metadata container the
+	// BT-098 template fields use, so boards without types.jsonl still carry
+	// them (the container is sanctioned detail state, not a typed field).
+	ExpectedFiles []string
+	VerifySteps   []string
+
 	// BT-022: prevalidated raw row for the import path. When Raw is set,
 	// Create still performs every check below (id format, duplicate id,
 	// status/priority vocabulary, depends_on existence) but appends these
@@ -499,6 +516,15 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 	}
 
+	// BT-099: the subtask link is write-time validated — a refused link
+	// aborts the create with NOTHING written (same discipline as the
+	// depends_on gate above).
+	if spec.Parent != nil && strings.TrimSpace(*spec.Parent) != "" {
+		if err := b.ValidateParentLink(spec.ID, strings.TrimSpace(*spec.Parent)); err != nil {
+			return "", fmt.Errorf("create refused: %v", err)
+		}
+	}
+
 	// SG-126 finding-fingerprint dedupe gate. Deliberately on the BUILT-row
 	// path only: the raw path (import) rehydrates exported rows verbatim and
 	// keeps its byte-for-byte round-trip contract, so it neither fingerprints
@@ -650,6 +676,14 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 			if k == "project" {
 				continue
 			}
+			// BT-099: `parent` follows the same mirror-skip rule — a null
+			// placeholder would make every create on a subtask-bearing
+			// board inherit a parent link nobody asked for. The key is
+			// appended only through the user-keys path when the caller
+			// named --parent.
+			if k == parentKey && spec.Parent == nil {
+				continue
+			}
 			row.Keys = append(row.Keys, k)
 			row.Vals[k] = neutral(k)
 		}
@@ -773,6 +807,12 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 	if spec.AcceptanceCriteria != nil {
 		overrides["acceptance_criteria"] = *spec.AcceptanceCriteria
 	}
+	// BT-099: the subtask link rides the overrides table like any other
+	// spec field; the append list below carries the key when the mirrored
+	// schema lacks it.
+	if spec.Parent != nil && strings.TrimSpace(*spec.Parent) != "" {
+		overrides[parentKey] = strings.TrimSpace(*spec.Parent)
+	}
 	overrides["created_at"] = nowStr
 	overrides["updated_at"] = nowStr
 	for k, v := range overrides {
@@ -783,7 +823,7 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		}
 	}
 	// Keys the user asked for but the mirrored schema lacks: append at end.
-	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "type", "worktree", "branch", "sessions", "deferred", "defer_reason", "defer_review_by", "initiative", InitiativeRefsKey, "acceptance_criteria"} {
+	for _, k := range []string{"depends_on", "capability_tags", "reasoning", "type", "worktree", "branch", "sessions", "deferred", "defer_reason", "defer_review_by", "initiative", InitiativeRefsKey, "acceptance_criteria", parentKey} {
 		if v, ok := overrides[k]; ok && !row.Has(k) {
 			if err := set(k, v); err != nil {
 				return "", err
@@ -827,6 +867,17 @@ func (b *Board) createLocked(spec TaskRowSpec) (string, error) {
 		return "", encErr
 	}
 	row.SetRaw("detail", enc)
+
+	// BT-099 (panel amendment 1): decomposition metadata lives INSIDE the
+	// detail.metadata object. Merged last so the type-template metadata
+	// written above survives (this merge only touches the two named keys).
+	if len(spec.ExpectedFiles) > 0 || len(spec.VerifySteps) > 0 {
+		merged, err := mergeDecompositionMetadata(row.Get("detail"), spec.ExpectedFiles, spec.VerifySteps, style)
+		if err != nil {
+			return "", err
+		}
+		row.SetRaw("detail", merged)
+	}
 
 	line := append(row.Marshal(style), '\n')
 	if err := appendBytes(b.tasksPath, line); err != nil {
@@ -1041,6 +1092,19 @@ type UpdateSpec struct {
 	// BT-092: ordered cross-repository initiative locations. A non-nil empty
 	// slice is the explicit clear form.
 	InitiativeRefs *[]string
+	// BT-099: the subtask link, same nil-untouched discipline. nil leaves
+	// the key alone; a non-nil EMPTY string removes the key (the child
+	// becomes a standalone row and the rollups recompute); a non-nil
+	// non-empty value sets it AFTER the write-time gate (self-parent,
+	// missing parent, complete parent, cycles — ValidateParentLink) has
+	// passed, so a refused re-parent writes NOTHING.
+	Parent *string
+	// BT-099 (panel amendment 1): decomposition metadata inside
+	// detail.metadata. nil leaves the key untouched; a non-nil pointer
+	// REPLACES that metadata key's array wholesale (the create path's
+	// value semantics — never merged element-wise).
+	ExpectedFiles *[]string
+	VerifySteps   *[]string
 	// DF-BOARDCTL-13: priority + SG-126 run evidence, same nil-untouched
 	// discipline. Priority rides create's BT-007 write-time gate verbatim
 	// (normalize bare digits/case variants, reject the rest) — BT-060 left
@@ -1374,7 +1438,13 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([
 				continue
 			}
 			if _, declared := typ.Field(key); !declared {
-				b.metadataWarnings = append(b.metadataWarnings, fmt.Sprintf("metadata key %q is not declared by type %q — it was written, but 'boardctl validate' will report it", key, typeName))
+				// BT-099: expected_files/verify_steps are boardctl-authored
+				// canonical metadata (decomposition metadata inside
+				// detail.metadata) — never "undeclared" drift, the same
+				// carve-out the row-canon _note family gets.
+				if !decompositionMetadataKeys[key] {
+					b.metadataWarnings = append(b.metadataWarnings, fmt.Sprintf("metadata key %q is not declared by type %q — it was written, but 'boardctl validate' will report it", key, typeName))
+				}
 			}
 			encoded, err := encodeMetadata(map[string]string{key: value}, typ, style)
 			if err != nil {
@@ -1620,6 +1690,46 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([
 			changed = append(changed, InitiativeRefsKey)
 		}
 	}
+	// BT-099: --parent sets, re-points, or (with an explicit empty string)
+	// removes the subtask link. The write-time gate runs BEFORE any set(),
+	// so a refused link (self-parent, missing parent, complete parent,
+	// cycle) writes NOTHING — the row is still the pre-write state here.
+	if spec.Parent != nil {
+		p := strings.TrimSpace(*spec.Parent)
+		if p == "" {
+			if target.Has(parentKey) {
+				target.DeleteKey(parentKey)
+				changed = append(changed, parentKey)
+			}
+		} else {
+			if err := b.ValidateParentLink(id, p); err != nil {
+				return nil, fmt.Errorf("update refused: %v", err)
+			}
+			if err := set(parentKey, p); err != nil {
+				return nil, err
+			}
+		}
+	}
+	// BT-099 (panel amendment 1): --expected-files / --verify-steps REPLACE
+	// their arrays inside detail.metadata. Only set("detail") after the full
+	// merge succeeds, so a refused merge writes nothing (same discipline as
+	// the evidence merge below).
+	if spec.ExpectedFiles != nil || spec.VerifySteps != nil {
+		var expected, verify []string
+		if spec.ExpectedFiles != nil {
+			expected = *spec.ExpectedFiles
+		}
+		if spec.VerifySteps != nil {
+			verify = *spec.VerifySteps
+		}
+		merged, err := mergeDecompositionMetadata(target.Get("detail"), expected, verify, style)
+		if err != nil {
+			return nil, err
+		}
+		if err := set("detail", json.RawMessage(merged)); err != nil {
+			return nil, err
+		}
+	}
 	// DF-BOARDCTL-50: --acceptance-criteria replaces the row's criteria —
 	// the missing sanctioned door this field never had (foremen refuse to
 	// dispatch a row without it, so lanes hand-edited tasks.jsonl instead).
@@ -1725,7 +1835,7 @@ func (b *Board) updateTaskLocked(id string, spec UpdateSpec, duplicate *bool) ([
 	// above) — the deferred arm appended nothing to `changed`, so the
 	// no-change gate must not refuse it; anything else without a change
 	// flag still fails with the full flag list.
-	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil && spec.Initiative == nil && spec.RepointCommit == "" {
+	if len(changed) == 0 && !spec.Normalize && len(spec.AssocValues) == 0 && spec.Deferred == nil && spec.Initiative == nil && spec.RepointCommit == "" && spec.Parent == nil && spec.ExpectedFiles == nil && spec.VerifySteps == nil {
 		return nil, fmt.Errorf("update requires at least one change flag (--status/--title/--worker-status/--commit-hash/--repoint-commit/--guard/--ci/--summary/--note/--blocked-reason/--completed-at/--worktree/--branch/--session/--priority/--evidence-run-id/--deferred/--initiative/--acceptance-criteria/--pull-request/--assoc-branch/--assoc-worktree) or --normalize")
 	}
 

@@ -115,9 +115,11 @@ func TestDF9CLIListSkipBad(t *testing.T) {
 func TestDF9CLIFlagsInUsage(t *testing.T) {
 	cases := []struct{ cmd, want string }{
 		{"list", "boardctl list [--status S] [--priority P] [--initiative SLUG] [--initiative-ref-repo REPO] [--actionable] [--json] [--all] [--skip-bad-lines] [-C dir]"},
-		{"show", "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]"},
+		// BT-099: show gained --json (the comment thread) and validate
+		// gained --fail-on parent-cycle — the usage pins move with them.
+		{"show", "boardctl show <id> [--events] [--json] [--skip-bad-lines] [-C dir]"},
 		{"stats", "boardctl stats [--json] [--all] [--skip-bad-lines] [-C dir]"},
-		{"validate", "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep] [-C dir]"},
+		{"validate", "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep|parent-cycle] [-C dir]"},
 		{"render", "boardctl render [-C dir] [-o out.html] [--tz Zone] [--json out.json] [--skip-bad-lines]"},
 	}
 	for _, tc := range cases {

@@ -74,6 +74,8 @@ var cliSummaries = map[string]string{
 	"update":             "update one task row",
 	"types":              "list configured ticket types + their required metadata fields",
 	"event":              "append a board event row",
+	"comment":            "append one typed comment event to a row's thread (events.jsonl only; never rewrites the row)",
+	"decompose":          "scaffold N child rows from a parent as template (--parallel default, --sequential chains the steps)",
 	"header":             "show or set board header fields",
 	"validate":           "validate board files (key uniformity, dangling deps)",
 	"sweep-status":       "report (and with --apply fix) off-vocabulary task statuses",

@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.27.0
-date: 2026-11-23
+version: 1.28.0
+date: 2026-11-24
 category: software-development
 ---
 
@@ -53,6 +53,13 @@ blind spot.
   post-merge hook NEVER blocks the commit.
 - `ready` (BT-097): graph-aware dispatchability wave view; `direction` is the
   per-initiative reverse view. Both are read-only and use transitive dependencies.
+- `comment` (BT-099): append one typed comment event to a row's thread —
+  events.jsonl only (tasks.jsonl is never touched, updated_at never moves,
+  the header tick counter never bumps). Exactly one of --body/--body-file;
+  every refusal exits 1 and appends nothing.
+- `decompose` (BT-099): scaffold N child rows from a parent as template —
+  default --parallel (independent children; --sequential is the opt-in chain
+  and absorbs 1 worker per wave). See Proven commands.
 - `evidence baseline --record`: records current completion debt and enables
   FAIL-on-new-debt completion checks; without a baseline, debt is WARN-only.
 - `types`: lists configured ticket types and required metadata; `types --doctor`
@@ -130,6 +137,52 @@ boardctl -C R direction [--json]            # per-initiative remaining / ready
                                             # now / wave projection
 boardctl -C R next                          # one highest-priority row using the same
                                             # graph-aware dispatchability predicate
+
+# subtasks + comments (BT-099): break one row into steps, discuss on the board
+boardctl -C R decompose BT-099 --count 3 --first-id BT-101
+                                            # scaffold 3 children of BT-099 (ids
+                                            # BT-101..BT-103). DEFAULT --parallel:
+                                            # independent children (a wave can
+                                            # absorb N workers). Each child
+                                            # inherits priority, capability_tags,
+                                            # type + detail.metadata
+                                            # (expected_files/verify_steps ride
+                                            # it) and carries parent: BT-099 but
+                                            # NEVER depends on the parent. The
+                                            # parent gets ONE decomposed_into
+                                            # audit event listing the ids.
+boardctl -C R decompose BT-099 --count 3 --sequential
+                                            # opt-in dep chain: child_i depends on
+                                            # child_{i-1}; prints "wave absorbs 1
+                                            # worker (sequential chain — use
+                                            # --parallel for N)" so the cost is
+                                            # visible at scaffold time. A refusal
+                                            # mid-loop (duplicate id) keeps the
+                                            # created children — append-only;
+                                            # re-run with --first-id to resume.
+boardctl -C R show BT-099                   # CHILDREN: 2/3 open (complete 1, pending 2)
+                                            # CHILD DEPS (union): BT-098  — read-time
+                                            # rollups, never stored on the row
+boardctl -C R comment BT-101 --body "split BT-098's validator first" --author bane
+                                            # append ONE comment event to the row's
+                                            # thread (events.jsonl only; the row and
+                                            # the header never move)
+boardctl -C R comment BT-101 --body-file ./notes.txt --reply-to 4179
+                                            # reply: --reply-to must name an
+                                            # existing comment event on the SAME
+                                            # task; --author defaults to foreman;
+                                            # both/neither of --body/--body-file
+                                            # and an empty-after-trim body all
+                                            # refuse (exit 1, nothing appended)
+boardctl -C R show BT-101 --json            # the thread as a stable JSON array
+                                            # [{event_id, ts, author, body,
+                                            # in_reply_to}] ordered by event id
+boardctl -C R ready                         # a parent whose open children are ready
+                                            # is WITHHELD ("children first"): ready
+                                            # lists the children and prints
+                                            # "WITHHELD (open children ready):
+                                            # BT-099 — dispatch BT-101, BT-102 first";
+                                            # next never picks the withheld parent
 
 # read
 boardctl -C R stats [--json] [--all]       # counts by status/priority

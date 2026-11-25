@@ -32,6 +32,19 @@ type BlockedRow struct {
 	Unsatisfied []UnsatisfiedDep `json:"unsatisfied"`
 }
 
+// WithheldRow is a row the shared engine removed from the ready set: BT-099's
+// parent suppression — the row itself is dispatchable, but at least one open
+// child of it is also ready, and children dispatch first (the same seam is
+// never double-dispatched in one wave). Reason is a stable machine string
+// ("open children ready"); Detail carries the human tail of the withheld line
+// ("dispatch BT-101, BT-102 first").
+type WithheldRow struct {
+	Row    *Row   `json:"-"`
+	ID     string `json:"id"`
+	Reason string `json:"reason"`
+	Detail string `json:"detail"`
+}
+
 // GraphReport is the shared dispatchability view consumed by next, ready, and
 // direction. Ready is the one definition of a row a foreman may dispatch.
 type GraphReport struct {
@@ -40,6 +53,11 @@ type GraphReport struct {
 	Blocked  []BlockedRow
 	Cycles   [][]string
 	Dangling []DanglingRef
+	// Withheld holds the BT-099 parents the engine pulled OUT of Ready
+	// (ready open children dispatch first). Consumers: ready prints the
+	// withheld block, next never picks a withheld row (they are not in
+	// Ready), direction reports the count.
+	Withheld []WithheldRow
 	// WaveLevels contains the topological completion wave for rows that can
 	// eventually be dispatched (complete rows are level zero). It is shared by
 	// direction so that projection does not repeatedly rescan the graph.
@@ -170,6 +188,55 @@ func analyzeDispatchabilityRowsCore(kept []*Row) (*GraphReport, error) {
 		if ready {
 			readySet[id] = true
 			report.readyByID[id] = struct{}{}
+		}
+	}
+	// BT-099 (panel amendment 3): parent-withholding composes into the SHARED
+	// engine so ready, next, and direction all honor it. A ready parent with
+	// at least one open child ALSO in the ready set is withheld — children
+	// first, then the parent; the same seam is never double-dispatched in one
+	// wave. The check runs to a fixpoint over the POST-suppression set, so a
+	// grandparent whose child was itself withheld (no longer ready) stays
+	// dispatchable. Open children are read from the row's parent key, so the
+	// suppression and the show/ParentRollup surfaces cannot disagree.
+	childrenByParent := make(map[string][]string, len(kept))
+	for _, row := range kept {
+		if pid := RowParentID(row); pid != "" {
+			childrenByParent[pid] = append(childrenByParent[pid], row.String("id"))
+		}
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, row := range kept {
+			id := row.String("id")
+			if !readySet[id] {
+				continue
+			}
+			var readyOpenChildren []string
+			for _, childID := range childrenByParent[id] {
+				st := statusByID[childID]
+				if st == "complete" || st == "failed" {
+					continue
+				}
+				if readySet[childID] {
+					readyOpenChildren = append(readyOpenChildren, childID)
+				}
+			}
+			if len(readyOpenChildren) == 0 {
+				continue
+			}
+			delete(readySet, id)
+			delete(report.readyByID, id)
+			report.Withheld = append(report.Withheld, WithheldRow{
+				Row:    row,
+				ID:     id,
+				Reason: "open children ready",
+				Detail: "dispatch " + strings.Join(readyOpenChildren, ", ") + " first",
+			})
+			changed = true
+		}
+	}
+	for _, row := range kept {
+		if readySet[row.String("id")] {
 			report.Ready = append(report.Ready, row)
 		}
 	}

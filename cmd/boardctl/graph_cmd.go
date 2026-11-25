@@ -41,12 +41,20 @@ type graphStatsJSON struct {
 	DeferredOpen int `json:"deferred_open"`
 }
 
+// withheldJSON is one BT-099 withheld parent in the ready --json payload.
+type withheldJSON struct {
+	ID     string `json:"id"`
+	Reason string `json:"reason"`
+	Detail string `json:"detail"`
+}
+
 type readyJSON struct {
 	Board            string              `json:"board"`
 	Verb             string              `json:"verb"`
 	InitiativeFilter string              `json:"initiative_filter"`
 	TotalReady       int                 `json:"total_ready"`
 	Groups           []readyGroupJSON    `json:"groups"`
+	Withheld         []withheldJSON      `json:"withheld,omitempty"`
 	Blocked          []blockedJSON       `json:"blocked"`
 	Cycles           [][]string          `json:"cycles"`
 	Dangling         []board.DanglingRef `json:"dangling"`
@@ -86,6 +94,10 @@ type directionJSON struct {
 type directionStatsJSON struct {
 	OpenInitiatives int `json:"open_initiatives"`
 	TotalReady      int `json:"total_ready"`
+	// BT-099: parents the shared engine withheld this wave (their open
+	// children are ready and dispatch first). Omitted when zero so a
+	// parentless board's payload is byte-identical to its pre-BT-099 shape.
+	WithheldParents int `json:"withheld_parents,omitempty"`
 }
 
 func cmdReady(dir string, args []string) error {
@@ -173,6 +185,14 @@ func buildReadyJSON(b *board.Board, report *board.GraphReport, filter string) re
 		}
 		blocked = append(blocked, blockedJSON{ID: item.Row.String("id"), Priority: item.Row.String("priority"), Title: item.Row.String("title"), Initiative: initiativeOf(item.Row), BlockerClass: item.Class, Chain: item.Chain, ChainText: item.ChainText, Unsatisfied: item.Unsatisfied})
 	}
+	// BT-099: the withheld parents (ready open children dispatch first).
+	withheld := make([]withheldJSON, 0, len(report.Withheld))
+	for _, w := range report.Withheld {
+		if filter != "" && initiativeOf(w.Row) != filter {
+			continue
+		}
+		withheld = append(withheld, withheldJSON{ID: w.ID, Reason: w.Reason, Detail: w.Detail})
+	}
 	open, deferred := 0, 0
 	for _, row := range report.Rows {
 		st := board.NormalizeStatus(row.String("status"))
@@ -183,7 +203,7 @@ func buildReadyJSON(b *board.Board, report *board.GraphReport, filter string) re
 			deferred++
 		}
 	}
-	return readyJSON{Board: b.Dir + "/tasks.jsonl", Verb: "ready", InitiativeFilter: filter, TotalReady: countGroupRows(groupList), Groups: groupList, Blocked: blocked, Cycles: nonNilCycles(report.Cycles), Dangling: nonNilDangling(report.Dangling), Stats: graphStatsJSON{OpenRows: open, ReadyRows: countGroupRows(groupList), BlockedRows: len(blocked), DeferredOpen: deferred}}
+	return readyJSON{Board: b.Dir + "/tasks.jsonl", Verb: "ready", InitiativeFilter: filter, TotalReady: countGroupRows(groupList), Groups: groupList, Withheld: withheld, Blocked: blocked, Cycles: nonNilCycles(report.Cycles), Dangling: nonNilDangling(report.Dangling), Stats: graphStatsJSON{OpenRows: open, ReadyRows: countGroupRows(groupList), BlockedRows: len(blocked), DeferredOpen: deferred}}
 }
 
 func printReady(b *board.Board, payload readyJSON, showBlocked bool) {
@@ -198,6 +218,15 @@ func printReady(b *board.Board, payload readyJSON, showBlocked bool) {
 			_, _ = fmt.Fprintf(os.Stdout, "    %s  %s  %s\n", row.ID, row.Priority, row.Title)
 		}
 	}
+	// BT-099: the withheld block — a parent whose open children are ready
+	// dispatches AFTER them, never in the same wave.
+	if len(payload.Withheld) > 0 {
+		_, _ = fmt.Fprintf(os.Stdout, "withheld: %d row(s)\n", len(payload.Withheld))
+		for _, w := range payload.Withheld {
+			_, _ = fmt.Fprintf(os.Stdout, "  WITHHELD (%s): %s — %s\n", w.Reason, w.ID, w.Detail)
+		}
+		_, _ = fmt.Fprintln(os.Stdout)
+	}
 	_, _ = fmt.Fprintf(os.Stdout, "blocked: %d row(s)", len(payload.Blocked))
 	if !showBlocked {
 		_, _ = fmt.Fprintln(os.Stdout, " — re-run with --blocked to name each blocker chain")
@@ -210,7 +239,14 @@ func printReady(b *board.Board, payload readyJSON, showBlocked bool) {
 }
 
 func printDirection(payload directionJSON) {
-	_, _ = fmt.Fprintf(os.Stdout, "board: %s\n%d open initiative(s)\n\n", payload.Board, len(payload.Initiatives))
+	_, _ = fmt.Fprintf(os.Stdout, "board: %s\n%d open initiative(s)\n", payload.Board, len(payload.Initiatives))
+	// BT-099: the shared engine's withheld parents (their open children are
+	// ready and dispatch first) — the same numbers show and ready print, so
+	// the surfaces cannot drift.
+	if payload.Stats.WithheldParents > 0 {
+		_, _ = fmt.Fprintf(os.Stdout, "withheld parents: %d (open children are ready — children first)\n", payload.Stats.WithheldParents)
+	}
+	_, _ = fmt.Fprintf(os.Stdout, "\n")
 	for _, item := range payload.Initiatives {
 		_, _ = fmt.Fprintf(os.Stdout, "  %-16s total %d | complete %d | failed %d | deferred %d | remaining %d\n", item.Initiative, item.Total, item.Complete, item.Failed, item.Deferred, item.Remaining)
 		_, _ = fmt.Fprintf(os.Stdout, "                 ready now: %d (%s)\n", item.ReadyNow, strings.Join(item.ReadyIDs, ", "))
@@ -280,7 +316,7 @@ func buildDirectionJSON(b *board.Board, report *board.GraphReport) directionJSON
 	for _, item := range report.Blocked {
 		blockedBy[initiativeOf(item.Row)]++
 	}
-	out := directionJSON{Board: b.Dir + "/tasks.jsonl", Verb: "direction", Initiatives: []directionInitiativeJSON{}, Cycles: nonNilCycles(report.Cycles), Dangling: nonNilDangling(report.Dangling), Unscoped: directionUnscopedJSON{WaveProjection: []int{}}, Stats: directionStatsJSON{TotalReady: len(report.Ready)}}
+	out := directionJSON{Board: b.Dir + "/tasks.jsonl", Verb: "direction", Initiatives: []directionInitiativeJSON{}, Cycles: nonNilCycles(report.Cycles), Dangling: nonNilDangling(report.Dangling), Unscoped: directionUnscopedJSON{WaveProjection: []int{}}, Stats: directionStatsJSON{TotalReady: len(report.Ready), WithheldParents: len(report.Withheld)}}
 	for slug, rows := range groups {
 		if slug == "" {
 			out.Unscoped = directionUnscoped(rows, readyBy[slug], report.WaveLevels)

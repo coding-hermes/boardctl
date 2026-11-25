@@ -205,7 +205,7 @@ func TestSkillCoverageParserProvesGatesBite(t *testing.T) {
 	// Commands the dispatcher actually routes (run() in main.go), all
 	// present in usageText. If any goes missing from the parse, the gate
 	// would stop checking it.
-	for _, want := range []string{"init", "types", "list", "show", "create", "update", "event", "header", "validate", "sweep-status", "normalize-statuses", "normalize-board", "doctor", "version", "stats", "render", "import", "serve", "install", "hook", "umbrella", "next-id", "next"} {
+	for _, want := range []string{"init", "types", "list", "show", "create", "update", "event", "comment", "decompose", "header", "validate", "sweep-status", "normalize-statuses", "normalize-board", "doctor", "version", "stats", "render", "import", "serve", "install", "hook", "umbrella", "next-id", "next"} {
 		found := false
 		for _, c := range cmds {
 			if c == want {
@@ -217,9 +217,10 @@ func TestSkillCoverageParserProvesGatesBite(t *testing.T) {
 			t.Errorf("usageSkillCommands() missed dispatched command %q; got %v", want, cmds)
 		}
 	}
-	// 27 dispatched commands exactly, including the types registry surface.
-	if len(cmds) != 27 {
-		t.Errorf("usageSkillCommands() = %v (%d), want the 27 dispatched commands", cmds, len(cmds))
+	// 29 dispatched commands exactly, including the types registry surface
+	// and BT-099's comment/decompose pair.
+	if len(cmds) != 29 {
+		t.Errorf("usageSkillCommands() = %v (%d), want the 29 dispatched commands", cmds, len(cmds))
 	}
 	// Continuation lines must not leak in as fake commands.
 	for _, bad := range []string{"reasoning", "capability-tags", "set-ticks-total"} {

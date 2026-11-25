@@ -262,6 +262,33 @@ boardctl -C ~/myproject header --set-last-tick "2026-10-19T21:53:25.000000-05:00
 # all four --set-* flags (ticks-total, ticks-idle, last-commit, last-tick)
 # and the nine header keys `header --json` returns.
 
+# subtasks + comments (BT-099): decompose one row into child rows, discuss on
+# the board. decompose scaffolds N children from the parent as template
+# (priority, capability_tags, type + configured detail.metadata inherit;
+# each child carries parent: <PARENT-ID> and does NOT depend on the parent).
+# Default --parallel: independent children, a wave can absorb N workers —
+# --sequential is the opt-in chain (child_i depends on child_{i-1}) and
+# prints "wave absorbs 1 worker (sequential chain — use --parallel for N)".
+# Ids auto-mint next-id-style; --first-id pins the first child's id.
+boardctl -C ~/myproject create --id DF-EX-100 --title "Add exports" --priority P2
+boardctl -C ~/myproject decompose DF-EX-100 --count 2 --first-id DF-EX-101
+# the parent's read-time rollup (never stored — recomputed on every read):
+#   CHILDREN: 2/2 open (pending 2)
+#   CHILD DEPS (union): (none)
+boardctl -C ~/myproject show DF-EX-100
+# a comment appends ONE typed event to events.jsonl — tasks.jsonl is never
+# touched, updated_at never moves, the header tick counter never bumps.
+# --reply-to must name an existing comment event on the SAME task; --author
+# defaults to foreman; both/neither of --body/--body-file and an
+# empty-after-trim body refuse (exit 1, nothing appended).
+boardctl -C ~/myproject comment DF-EX-101 --body "taking this step first" --author bane
+boardctl -C ~/myproject show DF-EX-101 --json   # the thread as a stable array:
+                                                # [{event_id, ts, author, body,
+                                                #  in_reply_to}], event-id order
+# ready withholds a parent whose open children are ready ("children first" —
+# the parent prints in a WITHHELD (open children ready) line until they close;
+# `next` never picks a withheld parent).
+
 # round-trip a report export into the board (BT-022): a board-report/v1
 # JSON from `render --json`. Identical rows are no-ops; same-id rows with
 # different content are SKIPPED — --renumber appends them under the next

@@ -8,16 +8,19 @@ import (
 )
 
 // TestDeriveCLI_RealMain pins the CLI verb derivation against the repo's
-// live main.go: the registry must see every run() switch command (22 since
-// hook joined install/umbrella) and none besides, help excluded because
-// its case body prints usageText.
+// live main.go: the registry must see every run() switch command (24 since
+// BT-099's comment and decompose joined event) and none besides, help
+// excluded because its case body prints usageText.
 func TestDeriveCLI_RealMain(t *testing.T) {
 	verbs, err := DeriveCLI(filepath.Join("..", "..", "cmd", "boardctl", "main.go"))
 	if err != nil {
 		t.Fatalf("derive from the real main.go: %v", err)
 	}
 	want := []string{
-		"init", "list", "show", "create", "update", "types", "evidence", "next-id", "next", "ready", "direction", "event", "header",
+		"init", "list", "show", "create", "update", "types", "evidence", "next-id", "next", "ready", "direction", "event",
+		"comment",   // BT-099: typed comment events (append-only thread)
+		"decompose", // BT-099: subtask scaffolding from a parent row
+		"header",
 		"validate", "sweep-status", "normalize-statuses", "normalize-board", "doctor", "version", "stats",
 		"initiatives", // the discovery half of the scoop query (side-by-side with stats)
 		"render", "import", "serve", "install",

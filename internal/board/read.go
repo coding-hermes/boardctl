@@ -109,10 +109,14 @@ var PriorityVocabulary = map[string]bool{
 // live fleet boards. Legacy free-form event_type rows already on boards are
 // NOT flagged by validate — only new writes are restricted.
 var EventTypeVocabulary = map[string]bool{
-	"audit":             true,
-	"board_bootstrap":   true,
-	"board_init":        true,
-	"board_migration":   true,
+	"audit":           true,
+	"board_bootstrap": true,
+	"board_init":      true,
+	"board_migration": true,
+	// BT-099: the human-chatter event class. Appended by `comment` only; a
+	// comment never bumps the header ticks_total (Tick is nil on that path,
+	// so the write.go bump simply does not fire — panel amendment 5).
+	"comment":           true,
 	"dogfood":           true,
 	"e2e_verified":      true,
 	"idle":              true,

@@ -81,8 +81,24 @@ commands:
   event   --type task_created|task_dispatched|task_completed|audit|...
           [--task-id ID] [--actor foreman] [--detail @file | --detail-text '...']
           [--tick N] [--no-tick-write]
+  comment <ID> (--body TEXT | --body-file PATH) [--author NAME]
+          [--reply-to EVENT-ID] [-C dir]
+          append ONE typed comment event (the audit trail IS the feature):
+          tasks.jsonl is never touched, updated_at never moves, the header
+          tick counter never bumps; --reply-to must name an existing comment
+          event on the SAME task; every refusal exits 1 and appends NOTHING.
+  decompose <PARENT-ID> --count N [--parallel] [--sequential] [--first-id ID]
+          [--title-prefix "string"] [-C dir]
+          scaffold N children from the parent as template (priority,
+          capability_tags, type + configured detail.metadata inherit; each
+          child carries parent: <PARENT-ID> and does NOT depend on the
+          parent). Default --parallel (independent children — a wave can
+          absorb N workers); --sequential chains child_i on child_{i-1} and
+          absorbs 1 worker per wave (the cost line prints). Ids auto-mint
+          next-id-style or --first-id pins the first; a refusal mid-loop
+          keeps the created children (resume with --first-id).
   header  [--json] [--set-ticks-total N] [--set-ticks-idle N] [--set-last-commit SHA] [--set-last-tick TIMESTAMP]
-  validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep]
+  validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep|parent-cycle]
   sweep-status [--apply] [--decide] [--json] [--skip-bad-lines]
            report (and with --apply fix) off-vocabulary task statuses on ONE
            board: known read aliases are normalized to their canonical form;
@@ -271,6 +287,10 @@ func run(args []string) int {
 		err = cmdDirection(boardDir, rest)
 	case "event":
 		err = cmdEvent(boardDir, rest)
+	case "comment":
+		err = cmdComment(boardDir, rest)
+	case "decompose":
+		err = cmdDecompose(boardDir, rest)
 	case "header":
 		err = cmdHeader(boardDir, rest)
 	case "validate":
@@ -689,10 +709,15 @@ func cmdShow(dir string, args []string) error {
 	fs := newFlagSet("show")
 	args = reorderArgs(args, valueFlags("C"))
 	withEvents := fs.Bool("events", false, "also print events for the task")
+	// BT-099: --json emits the comment thread as a stable array of
+	// {event_id, ts, author, body, in_reply_to} instead of the row body.
+	asJSON := fs.Bool("json", false, "emit the comment thread as a JSON array (stable: ordered by event id) instead of the row body")
 	skipBad := useSkipBad(fs)
 	var cdir string
 	addCFlag(fs, &cdir)
-	fs.Usage = func() { _, _ = fmt.Fprintf(fs.Output(), "boardctl show <id> [--events] [--skip-bad-lines] [-C dir]\n") }
+	fs.Usage = func() {
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl show <id> [--events] [--json] [--skip-bad-lines] [-C dir]\n")
+	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
 	}
@@ -715,6 +740,22 @@ func cmdShow(dir string, args []string) error {
 	if row == nil {
 		return fmt.Errorf("task %q not found (searched tasks.jsonl and fixtures.jsonl)", id)
 	}
+	thread, err := showCommentThread(b, id)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		if thread == nil {
+			thread = []commentEntry{}
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(thread); err != nil {
+			return err
+		}
+		return exitError(reportSkipped(b))
+	}
 	pretty, err := board.MarshalRowJSON(row)
 	if err != nil {
 		return err
@@ -722,6 +763,16 @@ func cmdShow(dir string, args []string) error {
 	_, _ = fmt.Fprintf(os.Stdout, "%s\n", pretty)
 	if file != b.TasksPath() {
 		fmt.Fprintf(os.Stderr, "note: row found in %s (fixture row)\n", filepath.Base(file))
+	}
+	// BT-099: the read-time child rollup — computed from the board on every
+	// read (never stored on the row), via the ONE shared helper ready and
+	// direction also consume, so the surfaces cannot disagree.
+	rows, err := b.TaskRows()
+	if err != nil {
+		return err
+	}
+	if rollup := board.ComputeParentRollup(id, rows); rollup != nil {
+		_, _ = fmt.Fprintf(os.Stdout, "%s\n%s\n", rollup.ChildrenLine(), rollup.DepsLine())
 	}
 	if *withEvents {
 		evs, err := b.EventsForTask(id)
@@ -735,14 +786,33 @@ func cmdShow(dir string, args []string) error {
 			_, _ = os.Stdout.Write([]byte("\n"))
 		}
 	}
+	// BT-099: the comment thread block, after the row body. Computed at read
+	// time from the events trail — a comment never rewrote this row.
+	if block := renderCommentThread(thread); block != "" {
+		_, _ = fmt.Fprint(os.Stdout, "\n"+block)
+	}
 	return exitError(reportSkipped(b))
+}
+
+// showCommentThread loads and parses one task's comment thread (nil when the
+// task has no comments yet).
+func showCommentThread(b *board.Board, id string) ([]commentEntry, error) {
+	evs, err := b.EventsForTask(id)
+	if err != nil {
+		return nil, err
+	}
+	thread := buildCommentThread(evs)
+	if len(thread) == 0 {
+		return nil, nil
+	}
+	return thread, nil
 }
 
 // ---------- create ----------
 
 func cmdCreate(dir string, args []string) error {
 	fs := newFlagSet("create")
-	args = reorderArgs(args, valueFlags("C", "id", "title", "type", "meta", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "initiative-ref", "defer-reason", "defer-review-by", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "id", "title", "type", "meta", "status", "priority", "complexity", "depends-on", "reasoning", "capability-tags", "acceptance-criteria", "initiative", "initiative-ref", "defer-reason", "defer-review-by", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "worktree", "branch", "session", "pull-request", "assoc-branch", "assoc-worktree", "expected-files", "verify-steps", "parent"))
 	id := fs.String("id", "", "task id (required)")
 	title := fs.String("title", "", "task title (required)")
 	ticketType := fs.String("type", "", "ticket type slug")
@@ -802,6 +872,16 @@ func cmdCreate(dir string, args []string) error {
 	deferReason := fs.String("defer-reason", "", "why the task is deferred (REQUIRED with --deferred; the next tick acts on or re-triages this)")
 	deferReviewBy := fs.String("defer-review-by", "", "date the deferral should be re-triaged (ISO date, e.g. 2026-11-14)")
 	force := fs.Bool("force", false, "write the id even if it violates the fleet id format (also files a duplicate finding as a variant)")
+	// BT-099: decomposition metadata + the subtask link. --expected-files is
+	// a comma list -> the detail.metadata.expected_files array;
+	// --verify-steps is repeatable -> the verify_steps array (panel
+	// amendment 1: inside the typed detail.metadata container, NOT top-level
+	// canon keys). --parent links the row under an open parent row.
+	var expectedFiles stringListFlag
+	fs.Var(&expectedFiles, "expected-files", "files the task expects to touch, comma-separated (stored as the detail.metadata.expected_files array)")
+	var verifySteps stringListFlag
+	fs.Var(&verifySteps, "verify-steps", "one verification step (repeatable: --verify-steps A --verify-steps B records the ordered detail.metadata.verify_steps array)")
+	parent := fs.String("parent", "", "subtask link: the open parent row's id (refused on self-parent, missing parent, complete parent, or a link that closes a parent cycle)")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
@@ -948,6 +1028,20 @@ func cmdCreate(dir string, args []string) error {
 	if *acceptance != "" {
 		spec.AcceptanceCriteria = acceptance
 	}
+	// BT-099: --parent links the row under an open parent (write-time
+	// validated inside Create); an empty flag writes no parent key.
+	if *parent != "" {
+		spec.Parent = parent
+	}
+	// BT-099: decomposition metadata into detail.metadata (panel amendment
+	// 1). --expected-files is ONE comma list (splitCSV, so spaces around
+	// commas are tolerated); --verify-steps is repeatable and order-bound.
+	if len(expectedFiles) > 0 {
+		spec.ExpectedFiles = splitCSV(strings.Join(expectedFiles, ","))
+	}
+	if len(verifySteps) > 0 {
+		spec.VerifySteps = []string(verifySteps)
+	}
 	if *complexity != "" {
 		n, err := parseIntFlag("--complexity", *complexity)
 		if err != nil {
@@ -967,7 +1061,7 @@ func cmdCreate(dir string, args []string) error {
 
 func cmdUpdate(dir string, args []string) error {
 	fs := newFlagSet("update")
-	args = reorderArgs(args, valueFlags("C", "type", "meta", "title", "status", "worker-status", "commit-hash", "repoint-commit", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "initiative-ref", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "record-debt", "pull-request", "assoc-branch", "assoc-worktree"))
+	args = reorderArgs(args, valueFlags("C", "type", "meta", "title", "status", "worker-status", "commit-hash", "repoint-commit", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "initiative", "initiative-ref", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "evidence-fingerprint", "evidence-artifact", "record-debt", "pull-request", "assoc-branch", "assoc-worktree", "parent", "expected-files", "verify-steps"))
 	ticketType := fs.String("type", "", "new ticket type slug (atomic re-validation)")
 	var metadataFlags stringListFlag
 	fs.Var(&metadataFlags, "meta", "typed metadata key=value (repeatable)")
@@ -1043,6 +1137,14 @@ func cmdUpdate(dir string, args []string) error {
 	fs.Var(&prFlags, "pull-request", "associate a GitHub PR (repeatable; bare number 123 or PR URL https://github.com/owner/repo/pull/123; MERGES into pull_requests, never overwrites)")
 	fs.Var(&brFlags, "assoc-branch", "associate a git branch (repeatable; MERGES into branches, never overwrites)")
 	fs.Var(&wtFlags, "assoc-worktree", "associate a git worktree path (repeatable; MERGES into worktrees, never overwrites)")
+	// BT-099: subtask link + decomposition metadata. --parent "" removes the
+	// link (the child becomes a standalone row); --expected-files /
+	// --verify-steps REPLACE their arrays inside detail.metadata.
+	parent := fs.String("parent", "", "set or re-point the subtask link to this open parent row (empty string removes the link; refused on self-parent, missing parent, complete parent, cycles)")
+	var expectedFiles stringListFlag
+	fs.Var(&expectedFiles, "expected-files", "REPLACE the detail.metadata.expected_files array (comma-separated files)")
+	var verifySteps stringListFlag
+	fs.Var(&verifySteps, "verify-steps", "REPLACE the detail.metadata.verify_steps array (repeatable, order-bound)")
 	// BT-025: bool flag — rewrite status/guard_result/ci_result on the row
 	// to their canonical forms (read-alias fix path). Takes no value, so it
 	// must NOT join the reorderArgs valueFlags list.
@@ -1086,7 +1188,7 @@ func cmdUpdate(dir string, args []string) error {
 	// --normalize alone satisfies the change-flag gate and needs no --force
 	// beyond the fleet-id escape hatch.
 	if *normalize {
-		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "repoint-commit", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id"} {
+		for _, f := range []string{"title", "status", "worker-status", "commit-hash", "repoint-commit", "guard", "ci", "summary", "note", "blocked-reason", "completed-at", "deferred", "defer-reason", "defer-review-by", "acceptance-criteria", "worktree", "branch", "session", "priority", "evidence-run-id", "parent", "expected-files", "verify-steps"} {
 			if fs.Lookup(f).Value.String() != "" {
 				return fmt.Errorf("--normalize cannot be combined with --%s (it already canonicalizes status/guard_result/ci_result)", f)
 			}
@@ -1183,6 +1285,30 @@ func cmdUpdate(dir string, args []string) error {
 	}
 	if *deferReviewBy != "" {
 		spec.DeferReviewBy = deferReviewBy
+	}
+	// BT-099: --parent set / re-point / remove. An EXPLICIT flag naming the
+	// empty string is the remove form — the omitted sentinel and the
+	// explicit empty string are different inputs here, and fs.Visit is the
+	// only thing that distinguishes them (an empty flag value reads the same
+	// as an unset one through the value's String()).
+	explicitParent := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "parent" {
+			explicitParent = true
+		}
+	})
+	if explicitParent {
+		v := strings.TrimSpace(*parent)
+		spec.Parent = &v
+	}
+	// BT-099: decomposition metadata replacement inside detail.metadata.
+	if len(expectedFiles) > 0 {
+		list := splitCSV(strings.Join(expectedFiles, ","))
+		spec.ExpectedFiles = &list
+	}
+	if len(verifySteps) > 0 {
+		list := []string(verifySteps)
+		spec.VerifySteps = &list
 	}
 	// --initiative / --clear-initiative: set or remove the grouping key.
 	// Both together is a usage error, not a silent precedence rule.
@@ -1508,11 +1634,11 @@ func cmdValidate(dir string, args []string) error {
 	// human running plain `boardctl validate` still sees the warning and a
 	// clean exit (legacy boards carry dangling refs that must not fail
 	// interactive reads).
-	failOn := fs.String("fail-on", "", "promote a warning class to an error (exit 1): dangling-dep")
+	failOn := fs.String("fail-on", "", "promote a warning class to an error (exit 1): dangling-dep, parent-cycle")
 	var cdir string
 	addCFlag(fs, &cdir)
 	fs.Usage = func() {
-		_, _ = fmt.Fprintf(fs.Output(), "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep] [-C dir]\n")
+		_, _ = fmt.Fprintf(fs.Output(), "boardctl validate [--skip-bad-lines] [--repair] [--strict-keys] [--fail-on dangling-dep|parent-cycle] [-C dir]\n")
 	}
 	if err := parseFlags(fs, args); err != nil {
 		return err
@@ -1560,10 +1686,18 @@ func cmdValidate(dir string, args []string) error {
 		if n := rep.CountDanglingDepWarns(); n > 0 {
 			rep.Add("error", "%d dangling depends_on warning(s) promoted to a failure by --fail-on dangling-dep", n)
 		}
+	case "parent-cycle":
+		// BT-099: parent cycles are already error-level findings (a
+		// hand-edited board state the write paths refuse); --fail-on
+		// parent-cycle names the class explicitly for callers that want the
+		// promotion line in the report, mirroring dangling-dep's shape.
+		if n := rep.CountFindingsByClass("parent-cycle", "error"); n > 0 {
+			rep.Add("error", "%d parent cycle(s) promoted to a failure by --fail-on parent-cycle", n)
+		}
 	default:
 		// Usage-level refusal (exit 2): a hook calling with a misspelled
 		// class must never degrade to a no-op gate.
-		return fmt.Errorf("validate: unknown --fail-on class %q (recognized: dangling-dep): %w", *failOn, errUsage)
+		return fmt.Errorf("validate: unknown --fail-on class %q (recognized: dangling-dep, parent-cycle): %w", *failOn, errUsage)
 	}
 	_, _ = fmt.Fprint(os.Stdout, rep.RenderText()) // best-effort: report payload
 	if b.HasSkipped() {

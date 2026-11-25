@@ -40,6 +40,24 @@ func (r *Report) Add(level, format string, args ...any) {
 	r.Findings = append(r.Findings, Finding{Level: level, Class: "general", Msg: fmt.Sprintf(format, args...)})
 }
 
+// AddFinding appends a pre-built finding (used when the Class matters —
+// BT-099's parent-cycle family is machine-counted by --fail-on).
+func (r *Report) AddFinding(f Finding) {
+	r.Findings = append(r.Findings, f)
+}
+
+// CountFindingsByClass counts findings of one machine-readable class at the
+// given level ("error" or "warn"); "" matches any level.
+func (r *Report) CountFindingsByClass(class, level string) int {
+	n := 0
+	for _, f := range r.Findings {
+		if f.Class == class && (level == "" || f.Level == level) {
+			n++
+		}
+	}
+	return n
+}
+
 // Errors returns the count of error-level findings.
 func (r *Report) Errors() int {
 	n := 0
@@ -110,6 +128,9 @@ func (b *Board) validateTasks(rep *Report) {
 	}
 	seen := map[string]int{}
 	depends := map[string][]depRef{} // dependency id -> rows that reference it
+	// BT-099: parent-link census for the read-time parent checks below.
+	var allRows []*Row
+	parentRefs := map[string][]depRef{} // parent id -> rows that reference it
 	rows := 0
 	// validateTaskRow itemizes one salvageable row (shared by the default
 	// and the DF-BOARDCTL-9 tolerant scan).
@@ -262,6 +283,13 @@ func (b *Board) validateTasks(rep *Report) {
 		// BT-007: collect depends_on for the existence cross-check below.
 		for _, dep := range rowStringSlice(row, "depends_on") {
 			depends[dep] = append(depends[dep], depRef{line: idx + 1, id: id})
+		}
+		// BT-099: collect the parent link for the existence / completeness /
+		// cycle cross-checks below (single-valued; a malformed shape reads
+		// as no parent, exactly like a malformed depends_on above).
+		allRows = append(allRows, row)
+		if pid := RowParentID(row); pid != "" {
+			parentRefs[pid] = append(parentRefs[pid], depRef{line: idx + 1, id: id})
 		}
 		// BT-076: the deferred flag is boolean on every row boardctl
 		// writes (create --deferred / update --deferred). Hand-edited or
@@ -417,6 +445,35 @@ func (b *Board) validateTasks(rep *Report) {
 					ref.line, ref.id, dep)
 			}
 		}
+	}
+	// BT-099: the parent-link family — dangling parent, complete-parent
+	// violation, and parent cycles are ERRORS naming the ids (a row can only
+	// get here by hand-editing: the write paths refuse every one of these
+	// shapes). Findings carry Class "parent-cycle" / "dangling-parent" /
+	// "complete-parent" so `--fail-on parent-cycle` can promote the cycle
+	// class the way --fail-on dangling-dep promotes its family.
+	statusBy := map[string]string{}
+	for _, row := range allRows {
+		statusBy[row.String("id")] = NormalizeStatus(row.String("status"))
+	}
+	for _, pid := range SortedKeys(parentRefs) {
+		if _, ok := seen[pid]; !ok {
+			for _, ref := range parentRefs[pid] {
+				rep.AddFinding(Finding{Level: "error", Class: "dangling-parent",
+					Msg: fmt.Sprintf("tasks.jsonl line %d (task %s): parent references nonexistent task id %q", ref.line, ref.id, pid)})
+			}
+			continue
+		}
+		if st := statusBy[pid]; st == "complete" || st == "failed" {
+			for _, ref := range parentRefs[pid] {
+				rep.AddFinding(Finding{Level: "error", Class: "complete-parent",
+					Msg: fmt.Sprintf("tasks.jsonl line %d (task %s): parent %q is %s — open rows only", ref.line, ref.id, pid, st)})
+			}
+		}
+	}
+	for _, cycle := range ParentCycles(allRows) {
+		rep.AddFinding(Finding{Level: "error", Class: "parent-cycle",
+			Msg: fmt.Sprintf("parent cycle detected: %s — every row in the cycle is unresolvable (fix by clearing one parent with 'boardctl update <id> --parent \"\"')", strings.Join(cycle, " -> "))})
 	}
 	rep.Tasks = rows
 }
