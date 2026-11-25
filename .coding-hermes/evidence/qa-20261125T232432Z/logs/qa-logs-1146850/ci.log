@@ -1,0 +1,307 @@
+QA-6 hygiene: removed stale agent-workspace venv (/home/bunker-346cc200/qa-boardctl/.venv) before act replay
+time="2026-11-25T23:21:30Z" level=info msg="Using docker host 'unix:///run/bunker/346cc200/docker.sock', and daemon socket 'unix:///run/bunker/346cc200/docker.sock'"
+[CI/Lint (golangci-lint, whole tree)] ⭐ Run Set up job
+[CI/Build & Test                    ] ⭐ Run Set up job
+[CI/Lint (golangci-lint, whole tree)] 🚀  Start image=catthehacker/ubuntu:act-latest
+[CI/Build & Test                    ] 🚀  Start image=catthehacker/ubuntu:act-latest
+[CI/Build & Test                    ]   🐳  docker pull image=catthehacker/ubuntu:act-latest platform= username= forcePull=true
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker pull image=catthehacker/ubuntu:act-latest platform= username= forcePull=true
+[CI/Build & Test                    ]   🐳  docker create image=catthehacker/ubuntu:act-latest platform= entrypoint=["tail" "-f" "/dev/null"] cmd=[] network="host"
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker create image=catthehacker/ubuntu:act-latest platform= entrypoint=["tail" "-f" "/dev/null"] cmd=[] network="host"
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker run image=catthehacker/ubuntu:act-latest platform= entrypoint=["tail" "-f" "/dev/null"] cmd=[] network="host"
+[CI/Build & Test                    ]   🐳  docker run image=catthehacker/ubuntu:act-latest platform= entrypoint=["tail" "-f" "/dev/null"] cmd=[] network="host"
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker exec cmd=[node --no-warnings -e console.log(process.execPath)] user= workdir=
+[CI/Build & Test                    ]   🐳  docker exec cmd=[node --no-warnings -e console.log(process.execPath)] user= workdir=
+[CI/Build & Test                    ]   ✅  Success - Set up job
+[CI/Lint (golangci-lint, whole tree)]   ✅  Success - Set up job
+[CI/Build & Test                    ]   ☁  git clone 'https://github.com/actions/setup-go' # ref=v5
+[CI/Lint (golangci-lint, whole tree)]   ☁  git clone 'https://github.com/actions/setup-go' # ref=v5
+[CI/Build & Test                    ] ⭐ Run Main Checkout
+[CI/Build & Test                    ]   🐳  docker cp src=/home/bunker-346cc200/qa-boardctl/. dst=/home/bunker-346cc200/qa-boardctl
+[CI/Lint (golangci-lint, whole tree)]   ☁  git clone 'https://github.com/golangci/golangci-lint-action' # ref=v8
+[CI/Build & Test                    ]   ✅  Success - Main Checkout [1.133035014s]
+[CI/Build & Test                    ] ⭐ Run Main Set up Go from go.mod
+[CI/Build & Test                    ]   🐳  docker cp src=/home/bunker-346cc200/.cache/act/actions-setup-go@v5/ dst=/var/run/act/actions/actions-setup-go@v5/
+[CI/Build & Test                    ]   🐳  docker exec cmd=[/opt/acttoolcache/node/24.22.3/x64/bin/node /var/run/act/actions/actions-setup-go@v5/dist/setup/index.js] user= workdir=
+[CI/Build & Test                    ]   | Setup go version spec 1.26.10
+[CI/Build & Test                    ]   | Attempting to download 1.26.10...
+[CI/Build & Test                    ]   | (node:31) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+[CI/Build & Test                    ]   | (Use `node --trace-deprecation ...` to show where the warning was created)
+[CI/Build & Test                    ]   | matching 1.26.10...
+[CI/Build & Test                    ]   | Acquiring 1.26.10 from https://github.com/actions/go-versions/releases/download/1.26.10-39437851726/go-1.26.10-linux-x64.tar.gz
+[CI/Build & Test                    ]   | Extracting Go...
+[CI/Build & Test                    ]   | [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /tmp/36af2629-906b-4f42-9aa1-472283824a03 -f /tmp/3c44e7cc-5bfd-40d7-bd04-68a396275faa
+[CI/Build & Test                    ]   | Successfully extracted go to /tmp/36af2629-906b-4f42-9aa1-472283824a03
+[CI/Build & Test                    ]   | Adding to the cache ...
+[CI/Build & Test                    ]   | Successfully cached go to /opt/hostedtoolcache/go/1.26.10/x64
+[CI/Build & Test                    ]   | Added go to the path
+[CI/Build & Test                    ]   | Successfully set up Go version 1.26.10
+[CI/Build & Test                    ]   | go: downloading go1.26.11 (linux/amd64)
+[CI/Build & Test                    ]   | [command]/opt/hostedtoolcache/go/1.26.10/x64/bin/go env GOMODCACHE
+[CI/Build & Test                    ]   | [command]/opt/hostedtoolcache/go/1.26.10/x64/bin/go env GOCACHE
+[CI/Build & Test                    ]   | /root/go/pkg/mod
+[CI/Build & Test                    ]   | /root/.cache/go-build
+[CI/Build & Test                    ]   | Cache is not found
+[CI/Build & Test                    ]   ❓ add-matcher /run/act/actions/actions-setup-go@v5/matchers.json
+[CI/Build & Test                    ]   | go version go1.26.11 linux/amd64
+[CI/Build & Test                    ]   | 
+[CI/Build & Test                    ]   ❓  ::group::go env
+[CI/Build & Test                    ]   | AR='ar'
+[CI/Build & Test                    ]   | CC='gcc'
+[CI/Build & Test                    ]   | CGO_CFLAGS='-O2 -g'
+[CI/Build & Test                    ]   | CGO_CPPFLAGS=''
+[CI/Build & Test                    ]   | CGO_CXXFLAGS='-O2 -g'
+[CI/Build & Test                    ]   | CGO_ENABLED='1'
+[CI/Build & Test                    ]   | CGO_FFLAGS='-O2 -g'
+[CI/Build & Test                    ]   | CGO_LDFLAGS='-O2 -g'
+[CI/Build & Test                    ]   | CXX='g++'
+[CI/Build & Test                    ]   | GCCGO='gccgo'
+[CI/Build & Test                    ]   | GO111MODULE=''
+[CI/Build & Test                    ]   | GOAMD64='v1'
+[CI/Build & Test                    ]   | GOARCH='amd64'
+[CI/Build & Test                    ]   | GOAUTH='netrc'
+[CI/Build & Test                    ]   | GOBIN=''
+[CI/Build & Test                    ]   | GOCACHE='/root/.cache/go-build'
+[CI/Build & Test                    ]   | GOCACHEPROG=''
+[CI/Build & Test                    ]   | GODEBUG=''
+[CI/Build & Test                    ]   | GOENV='/root/.config/go/env'
+[CI/Build & Test                    ]   | GOEXE=''
+[CI/Build & Test                    ]   | GOEXPERIMENT=''
+[CI/Build & Test                    ]   | GOFIPS140='off'
+[CI/Build & Test                    ]   | GOFLAGS=''
+[CI/Build & Test                    ]   | GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build3366736950=/tmp/go-build -gno-record-gcc-switches'
+[CI/Build & Test                    ]   | GOHOSTARCH='amd64'
+[CI/Build & Test                    ]   | GOHOSTOS='linux'
+[CI/Build & Test                    ]   | GOINSECURE=''
+[CI/Build & Test                    ]   | GOMOD='/home/bunker-346cc200/qa-boardctl/go.mod'
+[CI/Build & Test                    ]   | GOMODCACHE='/root/go/pkg/mod'
+[CI/Build & Test                    ]   | GONOPROXY=''
+[CI/Build & Test                    ]   | GONOSUMDB=''
+[CI/Build & Test                    ]   | GOOS='linux'
+[CI/Build & Test                    ]   | GOPATH='/root/go'
+[CI/Build & Test                    ]   | GOPRIVATE=''
+[CI/Build & Test                    ]   | GOPROXY='https://proxy.golang.org,direct'
+[CI/Build & Test                    ]   | GOROOT='/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64'
+[CI/Build & Test                    ]   | GOSUMDB='sum.golang.org'
+[CI/Build & Test                    ]   | GOTELEMETRY='local'
+[CI/Build & Test                    ]   | GOTELEMETRYDIR='/root/.config/go/telemetry'
+[CI/Build & Test                    ]   | GOTMPDIR=''
+[CI/Build & Test                    ]   | GOTOOLCHAIN='auto'
+[CI/Build & Test                    ]   | GOTOOLDIR='/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/pkg/tool/linux_amd64'
+[CI/Build & Test                    ]   | GOVCS=''
+[CI/Build & Test                    ]   | GOVERSION='go1.26.11'
+[CI/Build & Test                    ]   | GOWORK=''
+[CI/Build & Test                    ]   | PKG_CONFIG='pkg-config'
+[CI/Build & Test                    ]   | 
+[CI/Build & Test                    ]   ❓  ::endgroup::
+[CI/Build & Test                    ]   ✅  Success - Main Set up Go from go.mod [15.65948162s]
+[CI/Build & Test                    ]   ⚙  ::set-output:: cache-hit=false
+[CI/Build & Test                    ]   ⚙  ::set-output:: go-version=1.26.11
+[CI/Build & Test                    ]   ⚙  ::add-path:: /opt/hostedtoolcache/go/1.26.10/x64/bin
+[CI/Build & Test                    ]   ⚙  ::add-path:: /root/go/bin
+[CI/Build & Test                    ] ⭐ Run Main Build
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/2] user= workdir=
+[CI/Lint (golangci-lint, whole tree)] ⭐ Run Main Checkout
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker cp src=/home/bunker-346cc200/qa-boardctl/. dst=/home/bunker-346cc200/qa-boardctl
+[CI/Lint (golangci-lint, whole tree)]   ✅  Success - Main Checkout [1.814306436s]
+[CI/Lint (golangci-lint, whole tree)] ⭐ Run Main Set up Go from go.mod
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker cp src=/home/bunker-346cc200/.cache/act/actions-setup-go@v5/ dst=/var/run/act/actions/actions-setup-go@v5/
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker exec cmd=[/opt/acttoolcache/node/24.22.3/x64/bin/node /var/run/act/actions/actions-setup-go@v5/dist/setup/index.js] user= workdir=
+[CI/Lint (golangci-lint, whole tree)]   | Setup go version spec 1.26.10
+[CI/Lint (golangci-lint, whole tree)]   | Found in cache @ /opt/hostedtoolcache/go/1.26.10/x64
+[CI/Lint (golangci-lint, whole tree)]   | (node:32) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+[CI/Lint (golangci-lint, whole tree)]   | (Use `node --trace-deprecation ...` to show where the warning was created)
+[CI/Lint (golangci-lint, whole tree)]   | Added go to the path
+[CI/Lint (golangci-lint, whole tree)]   | Successfully set up Go version 1.26.10
+[CI/Lint (golangci-lint, whole tree)]   | go: downloading go1.26.11 (linux/amd64)
+[CI/Lint (golangci-lint, whole tree)]   | [command]/opt/hostedtoolcache/go/1.26.10/x64/bin/go env GOMODCACHE
+[CI/Lint (golangci-lint, whole tree)]   | [command]/opt/hostedtoolcache/go/1.26.10/x64/bin/go env GOCACHE
+[CI/Lint (golangci-lint, whole tree)]   | /root/go/pkg/mod
+[CI/Lint (golangci-lint, whole tree)]   | /root/.cache/go-build
+[CI/Build & Test                    ]   ✅  Success - Main Build [16.911962818s]
+[CI/Lint (golangci-lint, whole tree)]   | Cache is not found
+[CI/Lint (golangci-lint, whole tree)]   ❓ add-matcher /run/act/actions/actions-setup-go@v5/matchers.json
+[CI/Lint (golangci-lint, whole tree)]   | go version go1.26.11 linux/amd64
+[CI/Lint (golangci-lint, whole tree)]   | 
+[CI/Lint (golangci-lint, whole tree)]   ❓  ::group::go env
+[CI/Build & Test                    ] ⭐ Run Main Vet
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/3] user= workdir=
+[CI/Lint (golangci-lint, whole tree)]   | AR='ar'
+[CI/Lint (golangci-lint, whole tree)]   | CC='gcc'
+[CI/Lint (golangci-lint, whole tree)]   | CGO_CFLAGS='-O2 -g'
+[CI/Lint (golangci-lint, whole tree)]   | CGO_CPPFLAGS=''
+[CI/Lint (golangci-lint, whole tree)]   | CGO_CXXFLAGS='-O2 -g'
+[CI/Lint (golangci-lint, whole tree)]   | CGO_ENABLED='1'
+[CI/Lint (golangci-lint, whole tree)]   | CGO_FFLAGS='-O2 -g'
+[CI/Lint (golangci-lint, whole tree)]   | CGO_LDFLAGS='-O2 -g'
+[CI/Lint (golangci-lint, whole tree)]   | CXX='g++'
+[CI/Lint (golangci-lint, whole tree)]   | GCCGO='gccgo'
+[CI/Lint (golangci-lint, whole tree)]   | GO111MODULE=''
+[CI/Lint (golangci-lint, whole tree)]   | GOAMD64='v1'
+[CI/Lint (golangci-lint, whole tree)]   | GOARCH='amd64'
+[CI/Lint (golangci-lint, whole tree)]   | GOAUTH='netrc'
+[CI/Lint (golangci-lint, whole tree)]   | GOBIN=''
+[CI/Lint (golangci-lint, whole tree)]   | GOCACHE='/root/.cache/go-build'
+[CI/Lint (golangci-lint, whole tree)]   | GOCACHEPROG=''
+[CI/Lint (golangci-lint, whole tree)]   | GODEBUG=''
+[CI/Lint (golangci-lint, whole tree)]   | GOENV='/root/.config/go/env'
+[CI/Lint (golangci-lint, whole tree)]   | GOEXE=''
+[CI/Lint (golangci-lint, whole tree)]   | GOEXPERIMENT=''
+[CI/Lint (golangci-lint, whole tree)]   | GOFIPS140='off'
+[CI/Lint (golangci-lint, whole tree)]   | GOFLAGS='-mod=vendor'
+[CI/Lint (golangci-lint, whole tree)]   | GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build3135746336=/tmp/go-build -gno-record-gcc-switches'
+[CI/Lint (golangci-lint, whole tree)]   | GOHOSTARCH='amd64'
+[CI/Lint (golangci-lint, whole tree)]   | GOHOSTOS='linux'
+[CI/Lint (golangci-lint, whole tree)]   | GOINSECURE=''
+[CI/Lint (golangci-lint, whole tree)]   | GOMOD='/home/bunker-346cc200/qa-boardctl/go.mod'
+[CI/Lint (golangci-lint, whole tree)]   | GOMODCACHE='/root/go/pkg/mod'
+[CI/Lint (golangci-lint, whole tree)]   | GONOPROXY=''
+[CI/Lint (golangci-lint, whole tree)]   | GONOSUMDB=''
+[CI/Lint (golangci-lint, whole tree)]   | GOOS='linux'
+[CI/Lint (golangci-lint, whole tree)]   | GOPATH='/root/go'
+[CI/Lint (golangci-lint, whole tree)]   | GOPRIVATE=''
+[CI/Lint (golangci-lint, whole tree)]   | GOPROXY='https://proxy.golang.org,direct'
+[CI/Lint (golangci-lint, whole tree)]   | GOROOT='/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64'
+[CI/Lint (golangci-lint, whole tree)]   | GOSUMDB='sum.golang.org'
+[CI/Lint (golangci-lint, whole tree)]   | GOTELEMETRY='local'
+[CI/Lint (golangci-lint, whole tree)]   | GOTELEMETRYDIR='/root/.config/go/telemetry'
+[CI/Lint (golangci-lint, whole tree)]   | GOTMPDIR=''
+[CI/Lint (golangci-lint, whole tree)]   | GOTOOLCHAIN='auto'
+[CI/Lint (golangci-lint, whole tree)]   | GOTOOLDIR='/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.11.linux-amd64/pkg/tool/linux_amd64'
+[CI/Lint (golangci-lint, whole tree)]   | GOVCS=''
+[CI/Lint (golangci-lint, whole tree)]   | GOVERSION='go1.26.11'
+[CI/Lint (golangci-lint, whole tree)]   | GOWORK=''
+[CI/Lint (golangci-lint, whole tree)]   | PKG_CONFIG='pkg-config'
+[CI/Lint (golangci-lint, whole tree)]   | 
+[CI/Lint (golangci-lint, whole tree)]   ❓  ::endgroup::
+[CI/Lint (golangci-lint, whole tree)]   ✅  Success - Main Set up Go from go.mod [10.636825802s]
+[CI/Lint (golangci-lint, whole tree)]   ⚙  ::set-output:: cache-hit=false
+[CI/Lint (golangci-lint, whole tree)]   ⚙  ::set-output:: go-version=1.26.11
+[CI/Lint (golangci-lint, whole tree)]   ⚙  ::add-path:: /opt/hostedtoolcache/go/1.26.10/x64/bin
+[CI/Lint (golangci-lint, whole tree)]   ⚙  ::add-path:: /root/go/bin
+[CI/Lint (golangci-lint, whole tree)] ⭐ Run Main golangci-lint
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker cp src=/home/bunker-346cc200/.cache/act/golangci-golangci-lint-action@v8/ dst=/var/run/act/actions/golangci-golangci-lint-action@v8/
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker exec cmd=[/opt/acttoolcache/node/24.22.3/x64/bin/node /var/run/act/actions/golangci-golangci-lint-action@v8/dist/run/index.js] user= workdir=
+[CI/Lint (golangci-lint, whole tree)]   ❓  ::group::prepare environment
+[CI/Lint (golangci-lint, whole tree)]   | Checking for go.mod: go.mod
+[CI/Lint (golangci-lint, whole tree)]   | (node:130) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+[CI/Lint (golangci-lint, whole tree)]   | (Use `node --trace-deprecation ...` to show where the warning was created)
+[CI/Lint (golangci-lint, whole tree)]   | Cache not found for input keys: golangci-lint.cache-Linux-2968-6bb8ef2c1a28be573c9a13ea994223587842d7ca, golangci-lint.cache-Linux-2968-
+[CI/Lint (golangci-lint, whole tree)]   | Finding needed golangci-lint version...
+[CI/Lint (golangci-lint, whole tree)]   | Installation mode: binary
+[CI/Lint (golangci-lint, whole tree)]   | Installing golangci-lint binary v2.15.0...
+[CI/Lint (golangci-lint, whole tree)]   | Downloading binary https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz ...
+[CI/Lint (golangci-lint, whole tree)]   | [command]/usr/bin/tar xz --overwrite --warning=no-unknown-keyword --overwrite -C /root -f /tmp/73e8992b-d365-42d5-a765-9cc16c302503
+[CI/Lint (golangci-lint, whole tree)]   | Installed golangci-lint into /root/golangci-lint-2.15.0-linux-amd64/golangci-lint in 1195ms
+[CI/Lint (golangci-lint, whole tree)]   | Prepared env in 1329ms
+[CI/Lint (golangci-lint, whole tree)]   ❓  ::endgroup::
+[CI/Lint (golangci-lint, whole tree)]   ❓  ::group::run golangci-lint
+[CI/Lint (golangci-lint, whole tree)]   | Running [/root/golangci-lint-2.15.0-linux-amd64/golangci-lint config path] in [/home/bunker-346cc200/qa-boardctl] ...
+[CI/Lint (golangci-lint, whole tree)]   | Running [/root/golangci-lint-2.15.0-linux-amd64/golangci-lint config verify] in [/home/bunker-346cc200/qa-boardctl] ...
+[CI/Lint (golangci-lint, whole tree)]   | Running [/root/golangci-lint-2.15.0-linux-amd64/golangci-lint run] in [/home/bunker-346cc200/qa-boardctl] ...
+[CI/Build & Test                    ]   ✅  Success - Main Vet [6.651214702s]
+[CI/Build & Test                    ] ⭐ Run Main Gofmt
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/4] user= workdir=
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.299s
+[CI/Build & Test                    ]   ✅  Success - Main Gofmt [2.83181467s]
+[CI/Build & Test                    ] ⭐ Run Main Version-check
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/5] user= workdir=
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.075s
+[CI/Build & Test                    ]   ✅  Success - Main Version-check [1.672632613s]
+[CI/Build & Test                    ] ⭐ Run Main Spec-check
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/6] user= workdir=
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.207s
+[CI/Build & Test                    ]   ✅  Success - Main Spec-check [7.298593925s]
+[CI/Build & Test                    ] ⭐ Run Main Vendor-check
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/7] user= workdir=
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/vendorcheck	0.009s
+[CI/Build & Test                    ]   ✅  Success - Main Vendor-check [1.868881525s]
+[CI/Build & Test                    ] ⭐ Run Main Install govulncheck v1.7.0
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/8] user= workdir=
+[CI/Build & Test                    ]   | go: downloading golang.org/x/vuln v1.7.0
+[CI/Build & Test                    ]   | go: downloading golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5
+[CI/Build & Test                    ]   | go: downloading golang.org/x/mod v0.39.0
+[CI/Build & Test                    ]   | go: downloading golang.org/x/tools v0.49.0
+[CI/Build & Test                    ]   | go: downloading golang.org/x/sync v0.22.0
+[CI/Build & Test                    ]   ✅  Success - Main Install govulncheck v1.7.0 [11.658116986s]
+[CI/Build & Test                    ] ⭐ Run Main Vulnerability-check
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/9] user= workdir=
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/vulncheck	4.748s
+[CI/Build & Test                    ]   ✅  Success - Main Vulnerability-check [5.224881042s]
+[CI/Build & Test                    ] ⭐ Run Main Coverage
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/10] user= workdir=
+[CI/Lint (golangci-lint, whole tree)]   | 0 issues.
+[CI/Lint (golangci-lint, whole tree)]   | 
+[CI/Lint (golangci-lint, whole tree)]   | golangci-lint found no issues
+[CI/Lint (golangci-lint, whole tree)]   | Ran golangci-lint in 36293ms
+[CI/Lint (golangci-lint, whole tree)]   ❓  ::endgroup::
+[CI/Lint (golangci-lint, whole tree)]   ✅  Success - Main golangci-lint [39.573758046s]
+[CI/Lint (golangci-lint, whole tree)]   ⚙  ::add-path:: /root/golangci-lint-2.15.0-linux-amd64
+[CI/Lint (golangci-lint, whole tree)] ⭐ Run Post golangci-lint
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker exec cmd=[/opt/acttoolcache/node/24.22.3/x64/bin/node /var/run/act/actions/golangci-golangci-lint-action@v8/dist/post_run/index.js] user= workdir=
+[CI/Lint (golangci-lint, whole tree)]   | (node:2967) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+[CI/Lint (golangci-lint, whole tree)]   | (Use `node --trace-deprecation ...` to show where the warning was created)
+[CI/Lint (golangci-lint, whole tree)]   | [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/bunker-346cc200/qa-boardctl --files-from manifest.txt --use-compress-program zstdmt
+[CI/Lint (golangci-lint, whole tree)]   | Cache Size: ~0 MB (270842 B)
+[CI/Lint (golangci-lint, whole tree)]   | Cache saved successfully
+[CI/Lint (golangci-lint, whole tree)]   | Saved cache for golangci-lint from paths '/root/.cache/golangci-lint' in 385ms
+[CI/Lint (golangci-lint, whole tree)]   ✅  Success - Post golangci-lint [1.201973159s]
+[CI/Lint (golangci-lint, whole tree)] ⭐ Run Post Set up Go from go.mod
+[CI/Lint (golangci-lint, whole tree)]   🐳  docker exec cmd=[/opt/acttoolcache/node/24.22.3/x64/bin/node /var/run/act/actions/actions-setup-go@v5/dist/cache-save/index.js] user= workdir=
+[CI/Lint (golangci-lint, whole tree)]   | (node:2997) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+[CI/Lint (golangci-lint, whole tree)]   | (Use `node --trace-deprecation ...` to show where the warning was created)
+[CI/Lint (golangci-lint, whole tree)]   | [command]/opt/hostedtoolcache/go/1.26.10/x64/bin/go env GOMODCACHE
+[CI/Lint (golangci-lint, whole tree)]   | [command]/opt/hostedtoolcache/go/1.26.10/x64/bin/go env GOCACHE
+[CI/Lint (golangci-lint, whole tree)]   | /root/go/pkg/mod
+[CI/Lint (golangci-lint, whole tree)]   | /root/.cache/go-build
+[CI/Lint (golangci-lint, whole tree)]   | [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/bunker-346cc200/qa-boardctl --files-from manifest.txt --use-compress-program zstdmt
+[CI/Lint (golangci-lint, whole tree)]   | Cache Size: ~161 MB (169069109 B)
+[CI/Lint (golangci-lint, whole tree)]   | Cache saved successfully
+[CI/Lint (golangci-lint, whole tree)]   | Cache saved with the key: setup-go-Linux-x64-ubuntu20-go-1.26.11-c8772b70481e60a7e608c9e28f1bdbab3aac7249de161b29fc0d56a5ddfe2a56
+[CI/Lint (golangci-lint, whole tree)]   ✅  Success - Post Set up Go from go.mod [4.879832796s]
+[CI/Lint (golangci-lint, whole tree)] ⭐ Run Complete job
+[CI/Lint (golangci-lint, whole tree)] Cleaning up container for job Lint (golangci-lint, whole tree)
+[CI/Lint (golangci-lint, whole tree)]   ✅  Success - Complete job
+[CI/Lint (golangci-lint, whole tree)] 🏁  Job succeeded
+[CI/Build & Test                    ]   | covercheck: total 81.238% of statements (floor 80.0%)
+[CI/Build & Test                    ]   | covercheck: lowest package github.com/coding-hermes/boardctl/internal/describe 66.5% (floor 60.0%)
+[CI/Build & Test                    ]   | covercheck: exempt internal/secretscheck: not present in profile (zero statements, exempt by policy)
+[CI/Build & Test                    ]   | covercheck: PASS: 16 packages evaluated
+[CI/Build & Test                    ]   ✅  Success - Main Coverage [16.582458756s]
+[CI/Build & Test                    ] ⭐ Run Main Test
+[CI/Build & Test                    ]   🐳  docker exec cmd=[bash -e /var/run/act/workflow/11] user= workdir=
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/cmd/boardctl	8.516s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/cmd/covercheck	0.008s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.029s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.006s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/board	3.747s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/covercheck	0.008s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/depcheck	0.025s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/describe	0.005s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.518s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/freshness	0.719s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/render	0.036s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/secretscheck	0.005s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.035s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/vendorcheck	0.006s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.017s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/vulncheck	3.020s
+[CI/Build & Test                    ]   | ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.012s
+[CI/Build & Test                    ]   ✅  Success - Main Test [13.55208261s]
+[CI/Build & Test                    ] ⭐ Run Post Set up Go from go.mod
+[CI/Build & Test                    ]   🐳  docker exec cmd=[/opt/acttoolcache/node/24.22.3/x64/bin/node /var/run/act/actions/actions-setup-go@v5/dist/cache-save/index.js] user= workdir=
+[CI/Build & Test                    ]   | (node:14144) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+[CI/Build & Test                    ]   | (Use `node --trace-deprecation ...` to show where the warning was created)
+[CI/Build & Test                    ]   | [command]/opt/hostedtoolcache/go/1.26.10/x64/bin/go env GOMODCACHE
+[CI/Build & Test                    ]   | [command]/opt/hostedtoolcache/go/1.26.10/x64/bin/go env GOCACHE
+[CI/Build & Test                    ]   | /root/go/pkg/mod
+[CI/Build & Test                    ]   | /root/.cache/go-build
+[CI/Build & Test                    ]   | [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/bunker-346cc200/qa-boardctl --files-from manifest.txt --use-compress-program zstdmt
+[CI/Build & Test                    ]   | Cache Size: ~187 MB (196518937 B)
+[CI/Build & Test                    ]   | Cache saved successfully
+[CI/Build & Test                    ]   | Cache saved with the key: setup-go-Linux-x64-ubuntu20-go-1.26.11-c8772b70481e60a7e608c9e28f1bdbab3aac7249de161b29fc0d56a5ddfe2a56
+[CI/Build & Test                    ]   ✅  Success - Post Set up Go from go.mod [3.051113273s]
+[CI/Build & Test                    ] ⭐ Run Complete job
+[CI/Build & Test                    ] Cleaning up container for job Build & Test
+[CI/Build & Test                    ]   ✅  Success - Complete job
+[CI/Build & Test                    ] 🏁  Job succeeded
