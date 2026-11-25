@@ -595,7 +595,11 @@ run evidence remains under `.gitreins/history/`.
   reproducible output.
 - `--json <path>` — ALSO write the raw `board-report/v1` payload as JSON to
   `<path>`; that file is the exact format `boardctl import` consumes, so
-  `render --json` + `import` round-trips a report into another board.
+  `render --json` + `import` round-trips a report into the SAME board
+  (same-board recovery of its rows). Import verifies the target's identity:
+  a report rendered from board A refuses any other target (exit 1, nothing
+  written — "board mismatch: export is for board A; target board is B").
+  Copying rows between DIFFERENT boards is not supported.
 - `--skip-bad-lines` — degrade with evidence: keep every line that parses,
   report unparseable lines on stderr, exit 1 when anything was skipped.
 
