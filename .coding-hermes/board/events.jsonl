@@ -797,4 +797,5 @@
 {"id":793,"timestamp":"2026-11-23 17:02:47","event_type":"task_completed","task_id":"QA-BOARDCTL-015","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":794,"timestamp":"2026-11-23 18:56:14","event_type":"task_completed","task_id":"DF-BOARDCTL-061","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
 {"id":795,"timestamp":"2026-11-24 19:49:27","event_type":"task_completed","task_id":"BT-104","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
+{"id":796,"timestamp":"2026-11-25 04:25:18","event_type":"task_created","task_id":"BT-105","actor":"foreman","detail":"{\"id\":\"BT-105\",\"status\":\"pending\"}","tick_number":null}
 {"id":797,"timestamp":"2026-11-25 05:18:15","event_type":"task_completed","task_id":"BT-099","actor":"foreman","detail":"{\"status\":\"complete\"}","tick_number":null}
