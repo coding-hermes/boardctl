@@ -1,0 +1,67 @@
+=== author types.jsonl (schema from testdata) with expected_files+verify_steps declared ===
+types rc=0
+release (Release) template: prefix="[REL] " priority=P1 skeleton metadata: channel(enum, required: stable|beta|nightly), expected_files(list), verify_steps(list), signoffs(list)
+=== typed parent REL-100: channel enum + expected-files + verify-steps + signoffs list ===
+create rc=0
+created task REL-100 (appended to /home/kara/.hermes/cache/scratch/df-run32/board2b/.coding-hermes/board/tasks.jsonl)
+{"type":"release","priority":"P1","title":"[REL] Cut release","detail":{"channel":"beta","expected_files":["goreleaser.yml","README.md"],"signoffs":["ana@x","bo@x"],"verify_steps":["make release-check"]}}
+=== decompose typed parent x2 (default parallel) ===
+decompose rc=0
+REL-101 created: "[REL] Cut release — step 1/2" (parent REL-100, deps: —)
+REL-102 created: "[REL] Cut release — step 2/2" (parent REL-100, deps: —)
+parent REL-100 updated: decomposed into REL-101, REL-102
+{"id":"REL-100","type":"release","detail":{"channel":"beta","expected_files":["goreleaser.yml","README.md"],"signoffs":["ana@x","bo@x"],"verify_steps":["make release-check"]}}
+{"id":"REL-101","type":"release","detail":{"channel":"beta","expected_files":["goreleaser.yml","README.md"],"signoffs":["ana@x","bo@x"],"verify_steps":["make release-check"]}}
+{"id":"REL-102","type":"release","detail":{"channel":"beta","expected_files":["goreleaser.yml","README.md"],"signoffs":["ana@x","bo@x"],"verify_steps":["make release-check"]}}
+=== CONTRAST: untyped parent UNT-100 with same arrays -> decompose ===
+decompose rc=0
+UNT-101 created: "Untyped shell — step 1/2" (parent UNT-100, deps: —)
+UNT-102 created: "Untyped shell — step 2/2" (parent UNT-100, deps: —)
+parent UNT-100 updated: decomposed into UNT-101, UNT-102
+{"id":"UNT-100","detail":{"metadata":{"expected_files":["a.go","b.go"],"verify_steps":["go test ./..."]},"fingerprint":"7c2babe6e55158af01d2fe91b544497ee3fdddd91cbc4a29a772bb8a224b1362"}}
+{"id":"UNT-101","detail":{"fingerprint":"5729538a440d6bf3264da15c596319155a4d1da1524302b13af309b976997ccf"}}
+{"id":"UNT-102","detail":{"fingerprint":"d6d2cc2e5ebc3dccdb50c01c5dff504d4d79345c6b8f05ada1baaf5c3d279ed4"}}
+=== show --json FULL shape on REL-101 (has comment) ===
+rc=0
+--- doc kinds (jq -s):
+[
+  "array"
+]
+--- first doc keys:
+[
+  {
+    "event_id": 9,
+--- second doc:
+null
+--- v0.6.0 show --json doc kinds on same row:
+v060 rc=1
+jq: parse error: Invalid literal at line 1, column 5
+=== DF-56-class: update --meta channel=stable on REL-100; signoffs list + expected_files survive? ===
+update rc=0
+updated task REL-100: detail, updated_at
+{"channel":"stable","expected_files":["goreleaser.yml","README.md"],"signoffs":["ana@x","bo@x"],"verify_steps":["make release-check"]}
+=== update --note on REL-100; arrays survive? ===
+rc=0
+{"channel":"stable","expected_files":["goreleaser.yml","README.md"],"signoffs":["ana@x","bo@x"],"verify_steps":["make release-check"]}
+=== update --expected-files REPLACE on REL-101 ===
+rc=0
+{"channel":"beta","expected_files":["new.go"],"signoffs":["ana@x","bo@x"],"verify_steps":["make release-check"]}
+=== untyped create --meta foo=bar: warning? silent drop? ===
+create rc=0
+created task UNT-2 (appended to /home/kara/.hermes/cache/scratch/df-run32/board2b/.coding-hermes/board/tasks.jsonl)
+{"detail":{"fingerprint":"451cc06321c0f0806af6ad1fa412351c8e305605ad27c5bfb30e1b264b3c4589"}}
+=== untyped update --meta foo=baz on UNT-2: warning? silent? ===
+update rc=1
+boardctl: update refused: row type "" is not configured
+{"detail":{"fingerprint":"451cc06321c0f0806af6ad1fa412351c8e305605ad27c5bfb30e1b264b3c4589"}}
+=== typed create --meta UNDECLARED key extra=1 on release type ===
+create rc=0
+warning: metadata key "extra" is not declared by type "release" — it was written, but 'boardctl validate' will report it
+created task REL-200 (appended to /home/kara/.hermes/cache/scratch/df-run32/board2b/.coding-hermes/board/tasks.jsonl)
+{"detail":{"channel":"beta","extra":"1"}}
+=== update --parent re-point + removal on REL-101 ===
+repoint rc=0
+{"parent":"REL-300"}
+remove rc=0
+{"parent":"KEY-ABSENT"}
+PROBE2B DONE

@@ -4,8 +4,8 @@ description: >-
   How to use boardctl — the CLI for coding-hermes JSONL foreman boards
   (tasks/events/board/fixtures under .coding-hermes/board/). Entry points,
   proven commands, error meanings, and pitfalls from a real-use dogfood run.
-version: 1.28.0
-date: 2026-11-24
+version: 1.29.0
+date: 2026-11-26
 category: software-development
 ---
 
@@ -59,7 +59,11 @@ blind spot.
   every refusal exits 1 and appends nothing.
 - `decompose` (BT-099): scaffold N child rows from a parent as template —
   default --parallel (independent children; --sequential is the opt-in chain
-  and absorbs 1 worker per wave). See Proven commands.
+  and absorbs 1 worker per wave). See Proven commands. CAVEAT (run 32,
+  DF-BOARDCTL-063): detail.metadata (expected_files/verify_steps) inherits
+  only when the parent has a declared `type`; on untyped parents the children
+  silently get no metadata until that row is fixed — re-add per child with
+  `update <child> --expected-files … --verify-steps …`.
 - `evidence baseline --record`: records current completion debt and enables
   FAIL-on-new-debt completion checks; without a baseline, debt is WARN-only.
 - `types`: lists configured ticket types and required metadata; `types --doctor`
@@ -1169,3 +1173,45 @@ numbered run was 30d).
   28.5, validate 43.6, initiatives 23.1, ready 24.9), cold first-run 0.02–0.03 s. Sub-noticeable;
   no profile. Gzip serve verified on all three routes with `Vary: Accept-Encoding`
   (69.4 KB → 18.8 KB on /ui).
+
+## Run-32 dogfood (2026-11-26; tick boardctl-dogfood-2026-11-26-15-03-41) — BT-099 subtasks/comments first-touch
+
+Measured at HEAD `c6924e7` (HEAD build) beside deployed v0.6.0. Full record:
+`docs/dogfood/2026-11-26-run32-bt099-subtasks-integration.md`. Findings: DF-BOARDCTL-063/064/065.
+
+- **Subtask flow that works end-to-end**: create parent (optionally with
+  `--expected-files a.go,b.go --verify-steps "go test ./..."` — flags are real but absent
+  from `--help`/README, DF-BOARDCTL-065) → `decompose <id> --count N [--first-id X]` →
+  children carry `parent`, never depend on it; parallel default, `--sequential` prints the
+  wave-cost line → `comment <id> --body … [--reply-to <event-id>]` threads append-only
+  (tasks.jsonl md5-identical, no tick bump) → `show <parent>` rollups
+  (`CHILDREN: n/m open`, `CHILD DEPS (union)`) are read-time, never stored → `ready`
+  prints `WITHHELD (open children ready)` and `next` never picks the parent; the parent
+  re-enters `ready` when its last child completes.
+- **Untyped parents lose decomposition metadata through decompose** (DF-BOARDCTL-063,
+  P2): inheritance is gated on a declared `type` (`internal/board/decompose.go:203-207`).
+  Typed parent → all `detail.metadata` keys inherit byte-identical; untyped → children
+  get nothing, rc=0, silent. Workaround until fixed: declare a type, or re-add
+  `--expected-files`/`--verify-steps` per child with `update`.
+- **`create --meta` on an untyped row is a silent no-op** (DF-BOARDCTL-064, P2): rc=0,
+  nothing stored, no warning — while `update --meta` on the same row refuses rc=1
+  (`row type "" is not configured`). Do not pass `--meta` to untyped creates expecting
+  storage; verify with `jq '.detail'` after the write.
+- **decompose id minting is next-id-consistent**: it skips occupied ids and uses min
+  width 3 (`CH-8` first-id with `CH-9` present mints `CH-010`, `CH-011`; `next-id
+  --family CH` says `CH-012`). Not drift — the allocation rule.
+- **`show --json` on a row emits ONLY the comment-thread array** (`{event_id, ts, author,
+  body, in_reply_to}`), replacing the row body — by its flag definition. For the row in
+  machine form use `list --json` or plain `show`.
+- **validate owns hand-edited parent damage**: dangling `parent` and cycles are errors
+  naming ids, and the cycle message carries the remedy (`update <id> --parent ""`);
+  `--fail-on parent-cycle` promotes to rc=1.
+- **Re-proofs at this HEAD**: `update --meta` preserves stored lists byte-for-byte
+  (DF-BOARDCTL-56 fix holds on the new arrays); `task_completed` events carry
+  `evidence_run_id` (BT-105); singular `initiative` validates clean (DF-BOARDCTL-061).
+- **Release boundary**: v0.6.0 refuses `comment`/`decompose` (unknown command, rc=2) —
+  BT-099 ships in the v0.7.0 cut (candidate verified READY by RELEASE-2026-11-26-01).
+- **Perf envelope 2026-11-26 (load 18.3/16 = upper bounds):** real 300-row board warm
+  validate 99 ms / stats 82 / ready 33 / list --json 61; 5,001-row parent/child board
+  validate 124 / ready 93 / next 152; depth-999 chain next 184 ms worst case; comment 23;
+  decompose-5 68; cold 32–55 ms. 16.7× rows ≈ 1.3–1.5× time. Sub-noticeable; no PERF row.

@@ -1,0 +1,48 @@
+board: /home/kara/coding-hermes-boardctl/.coding-hermes/board (topology A)
+rows: 303 tasks, 816 events, 1 fixtures, header parsed
+key uniformity: 284/303 rows carry only canon keys; drift 19 row(s): acceptance(10), created(1), initiative(5), previous_blocked_reason(3), previous_status(3), updated(1) — 7 fixable by 'boardctl update <id> --normalize'
+[warn] tasks.jsonl line 2 (task NEVER-DONE): key(s) {acceptance} outside the declared canon
+[warn] tasks.jsonl line 124 (task RELEASE-2026-10-01-01): status "closed" is a read alias for "complete" — canonicalize with 'boardctl update RELEASE-2026-10-01-01 --normalize'
+[warn] tasks.jsonl line 124 (task RELEASE-2026-10-01-01): key(s) {previous_blocked_reason, previous_status} outside the declared canon
+[warn] tasks.jsonl line 171 (task DF-BOARDCTL-41): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 172 (task DF-BOARDCTL-42): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 185 (task RELEASE-2026-10-22-01): status "closed" is a read alias for "complete" — canonicalize with 'boardctl update RELEASE-2026-10-22-01 --normalize'
+[warn] tasks.jsonl line 185 (task RELEASE-2026-10-22-01): title carries "P0" but priority is "P2" — the priority field wins; rewrite the title with 'boardctl update RELEASE-2026-10-22-01 --title', or fix the field with 'boardctl update RELEASE-2026-10-22-01 --priority <Pn>', or re-file the row with 'boardctl create --id RELEASE-2026-10-22-01 --force --priority <Pn>' if it should be re-filed
+[warn] tasks.jsonl line 185 (task RELEASE-2026-10-22-01): title carries "P1" but priority is "P2" — the priority field wins; rewrite the title with 'boardctl update RELEASE-2026-10-22-01 --title', or fix the field with 'boardctl update RELEASE-2026-10-22-01 --priority <Pn>', or re-file the row with 'boardctl create --id RELEASE-2026-10-22-01 --force --priority <Pn>' if it should be re-filed
+[warn] tasks.jsonl line 185 (task RELEASE-2026-10-22-01): key(s) {previous_blocked_reason, previous_status} outside the declared canon
+[warn] tasks.jsonl line 201 (task QA-BOARDCTL-FOREMAN-1): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 202 (task QA-BOARDCTL-FOREMAN-2): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 203 (task RELEASE-2026-10-25-01): status "closed" is a read alias for "complete" — canonicalize with 'boardctl update RELEASE-2026-10-25-01 --normalize'
+[warn] tasks.jsonl line 203 (task RELEASE-2026-10-25-01): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 203 (task RELEASE-2026-10-25-01): key(s) {previous_blocked_reason, previous_status} outside the declared canon
+[warn] tasks.jsonl line 204 (task QA-BOARDCTL-RELENG-1): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 204 (task QA-BOARDCTL-RELENG-1): key(s) {acceptance} outside the declared canon — fixable with 'boardctl update QA-BOARDCTL-RELENG-1 --normalize'
+[warn] tasks.jsonl line 205 (task QA-BOARDCTL-RELENG-2): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 206 (task QA-BOARDCTL-REVIEW-1): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 206 (task QA-BOARDCTL-REVIEW-1): key(s) {acceptance} outside the declared canon — fixable with 'boardctl update QA-BOARDCTL-REVIEW-1 --normalize'
+[warn] tasks.jsonl line 207 (task QA-BOARDCTL-REVIEW-2): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 207 (task QA-BOARDCTL-REVIEW-2): key(s) {acceptance} outside the declared canon — fixable with 'boardctl update QA-BOARDCTL-REVIEW-2 --normalize'
+[warn] tasks.jsonl line 208 (task BT-81): key(s) {acceptance} outside the declared canon
+[warn] tasks.jsonl line 209 (task BT-82): key(s) {acceptance} outside the declared canon
+[warn] tasks.jsonl line 210 (task QA-BOARDCTL-FOREMAN-3): guard_result "DEGRADED-PASS (gitleaks PASS; Go lanes skipped because Makefile-only staged)" is free-form — not in the guard_result vocabulary {PASS,FAIL,SKIP} (valid: that vocabulary or the structured form {"status":"pass|fail|skip|pending","details":"<prose>"}; writes now enforce this; hand-edit the row or rewrite via boardctl update)
+[warn] tasks.jsonl line 210 (task QA-BOARDCTL-FOREMAN-3): ci_result "PENDING (exact-head CI for the final board closeout push is queued; prior implementation runs green)" is free-form — not in the ci_result vocabulary {GREEN,RED,SKIP} (valid: that vocabulary or the structured form {"status":"pass|fail|skip|pending","details":"<prose>"}; writes now enforce this; hand-edit the row or rewrite via boardctl update)
+[warn] tasks.jsonl line 210 (task QA-BOARDCTL-FOREMAN-3): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 210 (task QA-BOARDCTL-FOREMAN-3): key(s) {acceptance} outside the declared canon — fixable with 'boardctl update QA-BOARDCTL-FOREMAN-3 --normalize'
+[warn] tasks.jsonl line 211 (task QA-BOARDCTL-FOREMAN-4): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 211 (task QA-BOARDCTL-FOREMAN-4): key(s) {acceptance} outside the declared canon — fixable with 'boardctl update QA-BOARDCTL-FOREMAN-4 --normalize'
+[warn] tasks.jsonl line 212 (task QA-BOARDCTL-FOREMAN-5): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 212 (task QA-BOARDCTL-FOREMAN-5): key(s) {acceptance} outside the declared canon — fixable with 'boardctl update QA-BOARDCTL-FOREMAN-5 --normalize'
+[warn] tasks.jsonl line 213 (task QA-BOARDCTL-FOREMAN-6): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 213 (task QA-BOARDCTL-FOREMAN-6): key(s) {acceptance} outside the declared canon — fixable with 'boardctl update QA-BOARDCTL-FOREMAN-6 --normalize'
+[warn] tasks.jsonl line 223 (task BT-091): key(s) {initiative} outside the declared canon
+[warn] tasks.jsonl line 224 (task BT-092): key(s) {initiative} outside the declared canon
+[warn] tasks.jsonl line 225 (task BT-093): key(s) {initiative} outside the declared canon
+[warn] tasks.jsonl line 226 (task BT-094): key(s) {initiative} outside the declared canon
+[warn] tasks.jsonl line 227 (task BT-095): key(s) {initiative} outside the declared canon
+[warn] tasks.jsonl line 228 (task BT-096): created_at absent — the report parser excludes this row from time-based metrics; hand-edit the row to add a parseable created_at
+[warn] tasks.jsonl line 228 (task BT-096): key(s) {created, updated} outside the declared canon
+[warn] events.jsonl line 329: event has no id field (legacy shape tolerated)
+[warn] events.jsonl line 369: event id "EVT-RELEASE-2026-10-04-1200" is not a JSON number (legacy shape tolerated)
+[warn] events.jsonl line 370: event id "EVT-ND-1810" is not a JSON number (legacy shape tolerated)
+[warn] events.jsonl line 525: duplicate event id 127 (also line 127) — benign legacy duplicates exist on live boards
+RESULT: OK (44 warning(s))

@@ -1,0 +1,28 @@
+target-binding | OK | target=<unset> runner=boardctl repo=boardctl identity_source=origin-remote remote=git@github.com:coding-hermes
+launch | OK | agent=55ca1074 server=bunker-mvp ttl=4h cpu=4.0 memory=default script_bytes=202644 — battery started detached 
+toolchain-bootstrap | OK | go 1.27.4 installed (discovered; ~/tools/go; floor=1.26.10 ambient=1.22.2 installed=1.27.4)
+toolchain-bootstrap | OK | system gcc/g++ toolchain (~/tools/bin wrappers -> gcc/g++) — preferred over zig-cc for C++ cgo deps (MCP-008)
+toolchain-bootstrap | OK | make available (preinstalled) — GNU Make 4.3
+toolchain-bootstrap | OK | jq installed (static jq-linux64 -> jq-1.8.2 at /home/bunker-55ca1074/tools/bin/jq)
+fresh-install | OK | ; no artifact expected for [go build ./...] — a compile/dependency-install leg ships code, not binaries (set Q
+lint | OK | golangci-lint run (rc=0)
+toolchain-bootstrap | OK | node+npm installed (v22.15.0)
+tests | OK | go test ./... -count=1 (rc=0)
+docker_build | N/A | no Dockerfile trigger
+compose_config | N/A | no compose file trigger
+toolchain-bootstrap | OK | compose plugin installed (~/.docker/cli-plugins/docker-compose)
+toolchain-bootstrap | OK | buildx plugin installed (github.com/docker/buildx v0.39.1 334b63fe2bb0f0e89a8fd067704a0d113f57ec25)
+toolchain-bootstrap | OK | HARNESS-COMPOSE=ok (docker compose version passes)
+toolchain-bootstrap | OK | HARNESS_NODE=ok (node v22.15.0, npm 10.9.2)
+ci-pass | OK | act: 2 jobs green — act_result=pass rc=0 (1 triggerable workflow(s)) jq=/home/bunker-55ca1074/tools/bin/jq
+upgrade | OK | previous release v0.5.0 (tree via git archive) → HEAD reinstall clean
+docker-deploy | SKIPPED | safety gate: controller is the live Hermes host; Compose lifecycle cells are forced off
+ui-probe | INFO | go-native start command is not a long-running server (rc/exit in log) — no HTML surface to probe: wrote /home/
+chaos-disconnect | OK | chaos-disconnect tests: fails fast on disconnect (rc=1): NETWORK_CUT_APPLIED
+go: downloading gopkg.in/yaml.v3 
+chaos-shutdown | SKIPPED | safety gate: controller is the live Hermes host; Compose lifecycle cells are forced off
+chaos-corruption | N/A | no db/state files in repo (scanned: *.db *.sqlite *.sqlite3, plus *.jsonl *.ndjson and *.json under data/ stat
+chaos-resource | PASS | suite survives 3G memory cap (cap mechanism=ulimit -v CAP_REQUESTED=3145728KB CAP_EFFECTIVE=3145728 SUBSHELL_C
+chaos-errorpath | OK | clean error on missing config (rc=2)
+collect | OK | agent=55ca1074 (bunker-mvp) — pulled=23 agent_lines=23 evidence row(s), merge-deduped by ts; evidence dir: /ho
+evidence-outside-repo | WARN | collect evidence /tmp/bunker-qa-evidence-20261126T150923Z-2686527.jsonl resolves outside the checkout /home/ka

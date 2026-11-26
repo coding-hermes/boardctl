@@ -1,0 +1,169 @@
+=== init ===
+initialized board at /home/kara/.hermes/cache/scratch/df-run32/board1/.coding-hermes/board
+  wrote tasks.jsonl
+  wrote events.jsonl
+  wrote board.jsonl
+  wrote fixtures.jsonl
+next: boardctl create --id TASK-1 --title "First task"
+real 0.03
+user 0.00
+sys 0.01
+rc=0
+=== create parent DF-EX-100 with expected-files + verify-steps + tags ===
+created task DF-EX-100 (appended to /home/kara/.hermes/cache/scratch/df-run32/board1/.coding-hermes/board/tasks.jsonl)
+rc=0
+=== stored parent row (jq keys + detail.metadata) ===
+{"keys":["acceptance_criteria","attempts","blocked_reason","blocked_since","blocks","capability_tags","ci_result","commit_hash","completed_at","complexity","created_at","depends_on","detail","dispatched_at","exit_code","fallback_model","fallback_provider","files_changed","foreman_note","guard_result","id","lines_added","lines_removed","perpetual","primary_model","primary_provider","priority","reasoning","review_notes","status","title","updated_at","worker_status","worker_summary"],"detail":{"metadata":{"expected_files":["cmd/widget.go","internal/widget/render.go"],"verify_steps":["go test ./...","prove render goldens"]},"fingerprint":"978c18e2a03758bc02c3a796147b504c684b0b2051b84a9ca6c3dc7c69455520"}}
+=== decompose DF-EX-100 --count 3 --first-id DF-EX-101 (default parallel) ===
+DF-EX-101 created: "Ship the widget refactor — step 1/3" (parent DF-EX-100, deps: —)
+DF-EX-102 created: "Ship the widget refactor — step 2/3" (parent DF-EX-100, deps: —)
+DF-EX-103 created: "Ship the widget refactor — step 3/3" (parent DF-EX-100, deps: —)
+parent DF-EX-100 updated: decomposed into DF-EX-101, DF-EX-102, DF-EX-103
+real 0.01
+user 0.01
+sys 0.00
+rc=0
+=== children shape: parent key, depends_on, titles, inherited fields ===
+{"id":"DF-EX-100","parent":null,"depends_on":[],"title":"Ship the widget refactor","priority":"P2","complexity":3,"capability_tags":["go","board"],"type":null,"detail":{"metadata":{"expected_files":["cmd/widget.go","internal/widget/render.go"],"verify_steps":["go test ./...","prove render goldens"]},"fingerprint":"978c18e2a03758bc02c3a796147b504c684b0b2051b84a9ca6c3dc7c69455520"}}
+{"id":"DF-EX-101","parent":"DF-EX-100","depends_on":[],"title":"Ship the widget refactor — step 1/3","priority":"P2","complexity":3,"capability_tags":["go","board"],"type":null,"detail":{"fingerprint":"c108d40324008ff00599f62cdf453b40a9597389a9120a26fdb38d73e279cd7c"}}
+{"id":"DF-EX-102","parent":"DF-EX-100","depends_on":[],"title":"Ship the widget refactor — step 2/3","priority":"P2","complexity":3,"capability_tags":["go","board"],"type":null,"detail":{"fingerprint":"55fc4ab3e3ac9b090fad0ca9ffad69c5f2217e1adabeb032a47cdeaf8dc53cbd"}}
+{"id":"DF-EX-103","parent":"DF-EX-100","depends_on":[],"title":"Ship the widget refactor — step 3/3","priority":"P2","complexity":3,"capability_tags":["go","board"],"type":null,"detail":{"fingerprint":"35d01b5189d659ddc1d1d5939b189db7a9fc25e1cb3bfcd8105fadaffb3f4762"}}
+=== parent audit event decomposed_into ===
+"decomposed_into\":[\"DF-EX-101\",\"DF-EX-102\",\"DF-EX-103\"]}
+=== task_created events per child ===
+DF-EX-101 created-events: 1
+DF-EX-102 created-events: 1
+DF-EX-103 created-events: 1
+=== second parent DF-EX-200 + sequential decompose (cost line?) ===
+created task DF-EX-200 (appended to /home/kara/.hermes/cache/scratch/df-run32/board1/.coding-hermes/board/tasks.jsonl)
+rc=0
+wave absorbs 1 worker (sequential chain — use --parallel for N)
+DF-EX-201 created: "Sequential shell — step 1/3" (parent DF-EX-200, deps: —)
+DF-EX-202 created: "Sequential shell — step 2/3" (parent DF-EX-200, deps: DF-EX-201)
+DF-EX-203 created: "Sequential shell — step 3/3" (parent DF-EX-200, deps: DF-EX-202)
+parent DF-EX-200 updated: decomposed into DF-EX-201, DF-EX-202, DF-EX-203
+rc=0
+{"id":"DF-EX-200","parent":null,"depends_on":[]}
+{"id":"DF-EX-201","parent":"DF-EX-200","depends_on":[]}
+{"id":"DF-EX-202","parent":"DF-EX-200","depends_on":["DF-EX-201"]}
+{"id":"DF-EX-203","parent":"DF-EX-200","depends_on":["DF-EX-202"]}
+=== comment thread on DF-EX-101: two top-level + one reply ===
+comment event id 11 appended to /home/kara/.hermes/cache/scratch/df-run32/board1/.coding-hermes/board/events.jsonl
+real 0.01
+user 0.00
+sys 0.01
+rc=0
+comment event id 12 appended to /home/kara/.hermes/cache/scratch/df-run32/board1/.coding-hermes/board/events.jsonl
+rc=0
+first comment event id: 11
+comment event id 13 appended to /home/kara/.hermes/cache/scratch/df-run32/board1/.coding-hermes/board/events.jsonl
+rc=0
+tasks.jsonl md5 before=4365c15ee913c9898518ac899d748fa2 after=4365c15ee913c9898518ac899d748fa2 same=YES
+header before={"project":"df32probe","namespace":"scratch","version":1,"ticks_total":0,"ticks_idle":0,"cooldown_s":21600,"last_commit":null}
+header after ={"project":"df32probe","namespace":"scratch","version":1,"ticks_total":0,"ticks_idle":0,"cooldown_s":21600,"last_commit":null}
+=== show DF-EX-101 renders COMMENTS thread ===
+{
+  "attempts": 0,
+  "blocked_reason": null,
+  "blocked_since": null,
+  "blocks": [],
+  "capability_tags": [
+    "go",
+    "board"
+  ],
+  "ci_result": null,
+  "commit_hash": null,
+  "completed_at": null,
+  "complexity": 3,
+  "created_at": "2026-11-26T15:12:09.088765+00:00",
+  "depends_on": [],
+  "dispatched_at": null,
+  "exit_code": null,
+  "fallback_model": null,
+  "fallback_provider": null,
+  "files_changed": [],
+  "foreman_note": null,
+  "guard_result": null,
+  "id": "DF-EX-101",
+  "lines_added": 0,
+  "lines_removed": 0,
+  "perpetual": null,
+  "primary_model": null,
+  "primary_provider": null,
+  "priority": "P2",
+  "reasoning": null,
+  "review_notes": null,
+  "status": "pending",
+  "title": "Ship the widget refactor — step 1/3",
+  "updated_at": "2026-11-26T15:12:09.088765+00:00",
+  "worker_status": "pending",
+  "worker_summary": null,
+  "detail": {
+    "fingerprint": "c108d40324008ff00599f62cdf453b40a9597389a9120a26fdb38d73e279cd7c"
+  },
+  "parent": "DF-EX-100"
+}
+
+COMMENTS (3)
+  #11 2026-11-26T15:12 bane: taking this step first
+  #12 2026-11-26T15:12 dogfood: second thought
+    #13 2026-11-26T15:12 foreman: agreed, replying
+rc=0
+=== show --json thread array ===
+jq: error (at <stdin>:23): Cannot index array with string "comments"
+=== show parent DF-EX-100 rollup (CHILDREN / CHILD DEPS) ===
+{
+  "attempts": 0,
+  "blocked_reason": null,
+  "blocked_since": null,
+  "blocks": [],
+  "capability_tags": [
+    "go",
+    "board"
+  ],
+  "ci_result": null,
+  "commit_hash": null,
+  "completed_at": null,
+  "complexity": 3,
+  "created_at": "2026-11-26T15:12:09.078626+00:00",
+  "depends_on": [],
+  "dispatched_at": null,
+  "exit_code": null,
+  "fallback_model": null,
+  "fallback_provider": null,
+  "files_changed": [],
+  "foreman_note": null,
+  "guard_result": null,
+  "id": "DF-EX-100",
+  "lines_added": 0,
+  "lines_removed": 0,
+  "perpetual": null,
+  "primary_model": null,
+  "primary_provider": null,
+  "priority": "P2",
+  "reasoning": "parent shell",
+  "review_notes": null,
+  "status": "pending",
+  "title": "Ship the widget refactor",
+  "updated_at": "2026-11-26T15:12:09.078626+00:00",
+  "worker_status": "pending",
+  "worker_summary": null,
+  "acceptance_criteria": "AC1 widget renders",
+  "detail": {
+    "metadata": {
+      "expected_files": [
+        "cmd/widget.go",
+        "internal/widget/render.go"
+      ],
+      "verify_steps": [
+        "go test ./...",
+        "prove render goldens"
+      ]
+    },
+    "fingerprint": "978c18e2a03758bc02c3a796147b504c684b0b2051b84a9ca6c3dc7c69455520"
+  }
+}
+CHILDREN: 3/3 open (pending 3)
+CHILD DEPS (union): (none)
+rc=0
+=== ready — parent withheld while children open+ready ===

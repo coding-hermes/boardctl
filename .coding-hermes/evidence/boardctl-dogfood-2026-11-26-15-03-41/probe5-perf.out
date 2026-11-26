@@ -1,0 +1,29 @@
+hyperfine: yes
+ 10:23:15 up 5 days, 14:32,  2 users,  load average: 18.33, 17.96, 15.62
+wrote 5000 synthetic rows
+5001 /home/kara/.hermes/cache/scratch/df-run32/perf/big/.coding-hermes/board/tasks.jsonl
+wrote 1000 deep chain rows
+=== REAL board (300 rows) warm ===
+validate: 99269 us avg over 15 runs
+stats: 81664 us avg over 15 runs
+ready: 32692 us avg over 15 runs
+list --json: 61296 us avg over 15 runs
+=== 5k-row parent/child board (500 parents, 4500 children) warm ===
+validate: 124222 us avg over 10 runs
+ready: 93011 us avg over 10 runs
+stats: 95435 us avg over 10 runs
+show parent (rollup): 90061 us avg over 10 runs
+next: 151815 us avg over 10 runs
+=== 1k deep chain (parent+depends depth 999) warm ===
+validate: 54279 us avg over 5 runs
+ready: 77308 us avg over 5 runs
+next: 184239 us avg over 5 runs
+=== comment append cost (restore-loop, 10 runs) ===
+comment: 22604 us avg over 10 runs
+=== decompose cost (fresh parent per run, 5 runs) ===
+decompose-5-children: 67625 us avg over 5 runs (incl 5 guarded creates + 1 event)
+=== cold first-call (fresh copy, single run each) ===
+cold validate: 55035 us
+cold stats: 39786 us
+cold ready: 32288 us
+PERF DONE

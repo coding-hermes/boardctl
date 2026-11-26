@@ -1,0 +1,82 @@
+=== comment refusals — each must rc=1 and append NOTHING ===
+baseline: events=2 maxid=2
+boardctl: comment refused: task "NOPE-1" not found (searched tasks.jsonl and fixtures.jsonl); nothing appended
+rc=1
+boardctl: comment: body is empty after trim — refusing to append an empty comment
+rc=1
+boardctl: comment: --body and --body-file are mutually exclusive — exactly one is required
+rc=1
+boardctl: comment: exactly one of --body or --body-file is required (nothing appended)
+rc=0
+boardctl: comment refused: --reply-to 9999 is not an existing comment event on task "CH-1" — nothing appended
+rc=1
+boardctl: comment refused: --reply-to 1 is not an existing comment event on task "CH-1" — nothing appended
+rc=1
+boardctl: comment refused: --reply-to 3 is not an existing comment event on task "CH-1" — nothing appended
+rc=1
+after refusals: events=3 maxid=3  (parent comment added 1: expect events baseline+1)
+=== parent validation refusals (create path) ===
+boardctl: create refused: parent refused for "SELF-1": self-parent — a row cannot be its own parent
+rc=1
+boardctl: create refused: parent refused for "ORPH-1": parent task "GHOST-9" does not exist in tasks.jsonl (create the parent first)
+rc=1
+boardctl: create refused: parent refused for "LATE-1": parent "PR-1" is complete — open rows only
+rc=1
+cycle: CH-1 parent PR-1; re-point PR-1 -> CH-1 (2-node cycle)
+boardctl: update refused: parent refused for "PR-1": link closes a parent cycle PR-1 -> CH-1 -> PR-1
+rc=1
+0
+(0 = refusal wrote nothing)
+=== decompose refusals ===
+boardctl: decompose refused: parent "PR-1" is complete — open rows only
+rc=1
+boardctl: decompose: --count must be at least 1 (got 0): usage
+rc=2
+CH-8 created: "child one — step 1/3" (parent CH-1, deps: —)
+CH-010 created: "child one — step 2/3" (parent CH-1, deps: —)
+CH-011 created: "child one — step 3/3" (parent CH-1, deps: —)
+parent CH-1 updated: decomposed into CH-8, CH-010, CH-011
+rc=0
+(CH-8 should exist, CH-9 collision stops loop; children created remain)
+CH-1 CH-9 CH-8 CH-010 CH-011 
+=== validate catches hand-edited dangling parent + cycle ===
+create w/ dangling parent rc=1 (expect refusal)
+{"attempts":0,"blocked_reason":null,"blocked_since":null,"blocks":[],"capability_tags":[],"ci_result":null,"commit_hash":null,"completed_at":null,"complexity":3,"created_at":"2026-11-26T15:19:12.533931+00:00","depends_on":[],"dispatched_at":null,"exit_code":null,"fallback_model":null,"fallback_provider":null,"files_changed":[],"foreman_note":null,"guard_result":null,"id":"VA-2","lines_added":0,"lines_removed":0,"perpetual":null,"primary_model":null,"primary_provider":null,"priority":"P2","reasoning":null,"review_notes":null,"status":"pending","title":"b","updated_at":"2026-11-26T15:19:12.533931+00:00","worker_status":"pending","worker_summary":null,"detail":{"fingerprint":"338e4ea2c552f2dd2af9d275987d26f9278304d479b6895e3b918a1546d093f0"}}
+validate rc=0
+fail-on parent-cycle rc=0
+=== BT-105: completion event carries evidence run id ===
+boardctl: WARN completion debt for "EV-1" (c6924e70bed2cd8038648f868683302e6ca012ce): repository unavailable; commit product paths could not be measured; use a real commit, bind an evidence run, or deliberately record this id with --record-debt
+updated task EV-1: status, commit_hash, detail, updated_at
+rc=0
+"event_type": "task_completed", "task_id": "EV-1", "actor": "foreman", "detail": "{\"status\":\"complete\",\"evidence_run_id\":\"abc123def456\"
+"{\"status\":\"complete\",\"evidence_run_id\":\"abc123def456\"}"
+=== probe1 tail: complete all children -> parent released in ready ===
+c101 rc=0
+"{\"status\":\"complete\",\"evidence_run_id\":\"df32r1\"}"
+board: /home/kara/.hermes/cache/scratch/df-run32/board1/.coding-hermes/board/tasks.jsonl
+ready now: 2 row(s) across 1 initiative group(s)
+
+  (no initiative) (2 ready — could absorb 2 workers)
+    DF-EX-100  P2  Ship the widget refactor
+    DF-EX-201  P3  Sequential shell — step 1/3
+withheld: 1 row(s)
+  WITHHELD (open children ready): DF-EX-200 — dispatch DF-EX-201 first
+
+blocked: 3 row(s) — re-run with --blocked to name each blocker chain
+=== DF-BOARDCTL-061 re-proof: --initiative singular key no longer warns ===
+{"initiative":"myprog","initiative_refs":null}
+key uniformity: 2/2 rows carry only canon keys (0 drift)
+RESULT: OK (0 warning(s))
+validate rc=0
+=== release boundary: deployed v0.6.0 refuses comment/decompose ===
+boardctl: unknown command "comment"
+
+v060 comment rc=2
+boardctl: unknown command "decompose"
+
+=== zero-migration: real repo board copy, HEAD vs v0.6.0 validate/stats ===
+HEAD validate rc=0
+v060 validate rc=0
+warning counts same
+stats IDENTICAL
+PROBE3 DONE

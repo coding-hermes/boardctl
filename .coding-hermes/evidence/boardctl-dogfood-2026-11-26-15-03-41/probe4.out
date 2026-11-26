@@ -1,0 +1,33 @@
+=== bare comment (no body flags) true rc, no pipe ===
+rc=1
+boardctl: comment: exactly one of --body or --body-file is required (nothing appended)
+=== comment --body-file happy path ===
+rc=0
+comment event id 10 appended to /home/kara/.hermes/cache/scratch/df-run32/board3/.coding-hermes/board/events.jsonl
+{"body":"body from file\nsecond line"}
+=== next-id width parity on CH family (CH-1..CH-9, CH-010, CH-011 present) ===
+CH-012
+boardctl: CH-012 is the next free id after 5 existing CH row(s) (max 11); create refuses a duplicate, so a lost race is a retry, not a second row
+rc=0
+CH-12
+boardctl: CH-12 is the next free id after 5 existing CH row(s) (max 11); create refuses a duplicate, so a lost race is a retry, not a second row
+rc=0
+=== validate: dangling parent (jq-inserted) ===
+VA-2 now:
+{"id":"VA-2","parent":"VA-9"}
+validate rc=1
+[error] tasks.jsonl line 3 (task VA-2): parent references nonexistent task id "VA-9"
+RESULT: FAIL (1 error(s), 0 warning(s))
+fail-on parent-cycle rc=1
+=== validate: 2-node cycle (VA-1<->VA-3 hand-edited) ===
+validate rc=1
+[error] tasks.jsonl line 3 (task VA-2): parent references nonexistent task id "VA-9"
+[error] parent cycle detected: VA-1 -> VA-3 -> VA-1 — every row in the cycle is unresolvable (fix by clearing one parent with 'boardctl update <id> --parent ""')
+RESULT: FAIL (2 error(s), 0 warning(s))
+fail-on parent-cycle rc=1
+=== sweep-status/doctor tolerate parent rows (no crash on new key) ===
+doctor rc=1
+[warn] not inside a git repo — git tracked-set check skipped
+RESULT: FAIL (2 error(s), 1 warning(s))
+boardctl: doctor found errors
+PROBE4 DONE
