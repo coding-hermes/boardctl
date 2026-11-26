@@ -803,3 +803,4 @@
 {"id":799,"timestamp":"2026-11-25 09:27:04","event_type":"task_completed","task_id":"DF-BOARDCTL-58","actor":"foreman","detail":"{\"status\":\"complete\",\"evidence_run_id\":\"cb6d9fca\"}","tick_number":null}
 {"id":800,"timestamp":"2026-11-25 09:27:11","event_type":"task_completed","task_id":"DF-BOARDCTL-062","actor":"foreman","detail":"{\"status\":\"complete\",\"evidence_run_id\":\"449d64f8\"}","tick_number":null}
 {"id":801,"timestamp":"2026-11-25 15:55:41","event_type":"task_completed","task_id":"README-016","actor":"foreman","detail":"{\"status\":\"complete\",\"evidence_run_id\":\"a1334fde\"}","tick_number":null}
+{"id":802,"timestamp":"2026-11-26 00:07:08","event_type":"task_completed","task_id":"QA-BOARDCTL-012","actor":"foreman","detail":"{\"status\":\"complete\",\"evidence_run_id\":\"99cd7fc8\"}","tick_number":null}
