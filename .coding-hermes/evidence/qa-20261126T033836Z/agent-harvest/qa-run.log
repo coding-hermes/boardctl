@@ -1,0 +1,4 @@
+WARN: node+npm install failed (offline agent?) — ui-probe frontend/ arm will grade ENV-BLOCKED: curl: (23) client returned ERROR on write of 1360 bytes
+HARNESS-COMPOSE=ok
+HARNESS_NODE=missing
+CELLS-DONE

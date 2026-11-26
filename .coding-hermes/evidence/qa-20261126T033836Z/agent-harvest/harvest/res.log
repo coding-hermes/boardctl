@@ -1,0 +1,20 @@
+PARENT_CAP=unlimited
+SUBSHELL_CAP=3145728
+CAP_EFFECTIVE=3145728 CAP_REQUESTED=3145728
+ok  	github.com/coding-hermes/boardctl/cmd/boardctl	10.571s
+ok  	github.com/coding-hermes/boardctl/cmd/covercheck	0.041s
+ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.039s
+ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.012s
+ok  	github.com/coding-hermes/boardctl/internal/board	4.434s
+ok  	github.com/coding-hermes/boardctl/internal/covercheck	0.014s
+ok  	github.com/coding-hermes/boardctl/internal/depcheck	0.659s
+ok  	github.com/coding-hermes/boardctl/internal/describe	0.011s
+ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.943s
+ok  	github.com/coding-hermes/boardctl/internal/freshness	0.906s
+ok  	github.com/coding-hermes/boardctl/internal/render	0.119s
+ok  	github.com/coding-hermes/boardctl/internal/secretscheck	0.016s
+ok  	github.com/coding-hermes/boardctl/internal/speccheck	0.117s
+ok  	github.com/coding-hermes/boardctl/internal/vendorcheck	0.049s
+ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.057s
+ok  	github.com/coding-hermes/boardctl/internal/vulncheck	0.091s
+ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.040s

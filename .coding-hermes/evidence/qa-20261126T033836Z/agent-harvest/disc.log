@@ -1,0 +1,23 @@
+NETWORK_CUT_APPLIED
+go: downloading gopkg.in/yaml.v3 v3.0.1
+go: downloading github.com/getkin/kin-openapi v0.152.0
+# github.com/coding-hermes/boardctl/internal/speccheck
+internal/speccheck/speccheck.go:60:2: module lookup disabled by GOPROXY=off
+FAIL	github.com/coding-hermes/boardctl/internal/speccheck [setup failed]
+ok  	github.com/coding-hermes/boardctl/cmd/boardctl	10.599s
+ok  	github.com/coding-hermes/boardctl/cmd/covercheck	0.020s
+ok  	github.com/coding-hermes/boardctl/cmd/dedupe-board	0.067s
+ok  	github.com/coding-hermes/boardctl/cmd/gendocs	0.055s
+ok  	github.com/coding-hermes/boardctl/internal/board	4.227s
+ok  	github.com/coding-hermes/boardctl/internal/covercheck	0.015s
+ok  	github.com/coding-hermes/boardctl/internal/depcheck	0.113s
+ok  	github.com/coding-hermes/boardctl/internal/describe	0.014s
+ok  	github.com/coding-hermes/boardctl/internal/fmtcheck	0.884s
+ok  	github.com/coding-hermes/boardctl/internal/freshness	0.899s
+ok  	github.com/coding-hermes/boardctl/internal/render	0.093s
+ok  	github.com/coding-hermes/boardctl/internal/secretscheck	0.012s
+ok  	github.com/coding-hermes/boardctl/internal/vendorcheck	0.017s
+ok  	github.com/coding-hermes/boardctl/internal/versioncheck	0.071s
+ok  	github.com/coding-hermes/boardctl/internal/vulncheck	0.204s
+ok  	github.com/coding-hermes/boardctl/internal/workflowcheck	0.021s
+FAIL
