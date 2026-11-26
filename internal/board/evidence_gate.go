@@ -87,6 +87,33 @@ func (b *Board) completionBaselinePath() string {
 	return filepath.Join(b.Dir, completionEvidenceBaselineFile)
 }
 
+// ErrForeignBaselineSchema marks the refusal to touch an evidence-baseline
+// file that carries the board-evidence-audit READER schema instead of the
+// completion baseline schema (INT-CI-746).
+var ErrForeignBaselineSchema = errors.New("foreign baseline schema")
+
+// checkForeignBaselineSchema refuses to treat content as a completion
+// evidence baseline when it carries the reader schema owned by
+// scripts/board-evidence-audit.py ({"rows": [...], "signatures": [...]}).
+// encoding/json silently ignores unknown fields, so that file decodes as an
+// EMPTY baseline and a record-debt rewrite would clobber every row id and
+// claim signature. The refusal propagates as a completion REFUSED and the
+// file is left byte-for-byte untouched.
+func checkForeignBaselineSchema(path string, content []byte) error {
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(content, &keys); err != nil {
+		// Not a JSON object at all: the strict decode below reports it.
+		return nil
+	}
+	_, hasRows := keys["rows"]
+	_, hasSignatures := keys["signatures"]
+	if !hasRows && !hasSignatures {
+		return nil
+	}
+	return fmt.Errorf("%w: %s: uses the board-evidence-audit reader schema (rows/signatures); boardctl will not rewrite it — record debt line-wise or to a separate file",
+		ErrForeignBaselineSchema, filepath.Base(path))
+}
+
 func readCompletionBaseline(path string) (completionEvidenceBaseline, bool, error) {
 	content, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
@@ -94,6 +121,9 @@ func readCompletionBaseline(path string) (completionEvidenceBaseline, bool, erro
 	}
 	if err != nil {
 		return completionEvidenceBaseline{}, false, err
+	}
+	if err := checkForeignBaselineSchema(path, content); err != nil {
+		return completionEvidenceBaseline{}, true, err
 	}
 	var baseline completionEvidenceBaseline
 	if err := json.Unmarshal(content, &baseline); err != nil {
@@ -202,7 +232,18 @@ func (b *Board) gateCompletionCommit(taskID, hash string, recordDebt bool) error
 
 // RecordCompletionBaseline records current completion debt and establishes the
 // board's FAIL-on-new-debt mode. It is atomic: a failed census leaves no file.
+// A pre-existing file in the board-evidence-audit reader schema is REFUSED
+// (INT-CI-746): establishing a fresh baseline must not silently clobber the
+// reader-owned document.
 func (b *Board) RecordCompletionBaseline() (int, error) {
+	path := b.completionBaselinePath()
+	if content, err := os.ReadFile(path); err == nil {
+		if ferr := checkForeignBaselineSchema(path, content); ferr != nil {
+			return 0, fmt.Errorf("completion REFUSED: %w", ferr)
+		}
+	} else if !os.IsNotExist(err) {
+		return 0, err
+	}
 	rows, err := b.TaskRows()
 	if err != nil {
 		return 0, err
